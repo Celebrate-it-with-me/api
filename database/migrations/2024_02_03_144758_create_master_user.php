@@ -11,11 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        User::query()->firstOrCreate([
-            'name' => 'Henry Carmenate',
-            'email' => 'henrycarmenateg@gmail.com',
-            'password' => Hash::make('password'),
-        ]);
+
     }
 
     /**
@@ -23,8 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        User::query()->where('name', 'Henry Carmenate')
-            ->where('email', 'henrycarmenateg@gmail.com')
-            ->delete();
+
     }
 };
