@@ -74,13 +74,27 @@ class AuthenticationController extends Controller
             return response()->json(['message' => 'Access Denied. You are not authorized to access this page.'], 403);
         }
 
-        Auth::login($user);
-        $request->session()->regenerate();
+        $token = $user->createToken($request->input('device'))->plainTextToken;
 
         return response()->json([
             'message' => 'Logged in successfully!',
             'user' => $user,
+            'token' => $token
         ]);
+    }
+
+    /**
+     * Logout the authenticated user by deleting their current access token.
+     *
+     * @param Request $request The incoming request containing the user information.
+     *
+     * @return JsonResponse A JSON response indicating the success of the logout operation.
+     */
+    public function appLogout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Logged out successfully!']);
     }
 
 }
