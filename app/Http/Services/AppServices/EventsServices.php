@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class EventsServices
 {
@@ -40,7 +41,7 @@ class EventsServices
         return Events::query()->create([
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
-            'event_date' => $this->request->input('eventDate'),
+            'event_date' => Carbon::createFromFormat('m/d/Y', $this->request->input('eventDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
             'status' => $this->request->input('status'),
             'custom_url_slug' => $this->request->input('customUrlSlug'),
