@@ -22,10 +22,11 @@ class EventResource extends JsonResource
             'eventDate' => $this->event_date,
             'organizer' => UserResource::make($this->organizer),
             'status' => $this->status,
-            'customUrlSlug' => $this->customUrlSlug,
+            'customUrlSlug' => $this->custom_url_slug,
             'visibility' => $this->visibility,
             'createdAt' => $this->created_at->toDateTimeString(),
             'updatedAt' => $this->updated_at->toDateTimeString(),
+            'selected' => false
         ];
     }
 }
