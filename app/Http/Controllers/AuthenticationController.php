@@ -10,6 +10,7 @@ use Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticationController extends Controller
@@ -92,6 +93,7 @@ class AuthenticationController extends Controller
      */
     public function appLogout(Request $request): JsonResponse
     {
+        Log::info('Checking user', [$request->user()]);
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out successfully!']);
