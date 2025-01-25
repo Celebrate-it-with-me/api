@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\UserLoggedInEvent;
+use App\Events\UserLoggedOutEvent;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
@@ -77,6 +79,8 @@ class AuthenticationController extends Controller
 
         $token = $user->createToken($request->input('device'))->plainTextToken;
 
+        UserLoggedInEvent::dispatch($user, $request);
+        
         return response()->json([
             'message' => 'Logged in successfully!',
             'user' => $user,
@@ -93,9 +97,10 @@ class AuthenticationController extends Controller
      */
     public function appLogout(Request $request): JsonResponse
     {
-        Log::info('Checking user', [$request->user()]);
         $request->user()->currentAccessToken()->delete();
 
+        UserLoggedOutEvent::dispatch($request->user());
+        
         return response()->json(['message' => 'Logged out successfully!']);
     }
 
