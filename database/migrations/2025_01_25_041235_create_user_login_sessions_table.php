@@ -18,8 +18,9 @@ return new class extends Migration
             $table->string('ip_address')->nullable();
             $table->string('browser')->nullable();
             $table->string('device')->nullable();
-            $table->string('location')->nullable();
-            $table->dateTime('logout_time');
+            /*$table->string('location')->nullable();*/
+            $table->string('platform')->nullable();
+            $table->dateTime('logout_time')->nullable();
             $table->timestamps();
         });
     }
