@@ -67,7 +67,10 @@ class AuthenticationController extends Controller
      */
     public function appLogin(AppLoginRequest $request): JsonResponse
     {
-        $user = User::query()->where('email', $request->input('email'))->first();
+        $user = User::query()
+            ->with('lastLoginSession')
+            ->where('email', $request->input('email'))
+            ->first();
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid Credentials'], 401);
