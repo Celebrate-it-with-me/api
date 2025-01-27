@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Events extends Model
 {
@@ -31,5 +32,15 @@ class Events extends Model
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'organizer_id', 'id');
+    }
+    
+    /**
+     * Define a one-to-one relationship with the SaveTheDate model.
+     *
+     * @return HasOne
+     */
+    public function saveTheDate(): HasOne
+    {
+        return $this->hasOne(SaveTheDate::class, 'event_id', 'id');
     }
 }
