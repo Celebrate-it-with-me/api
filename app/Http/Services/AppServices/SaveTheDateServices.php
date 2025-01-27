@@ -3,49 +3,46 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
-use App\Models\User;
+use App\Models\SaveTheDate;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
-class EventsServices
+class SaveTheDateServices
 {
     protected Request $request;
-    protected Events $event;
+    protected SaveTheDate $saveTheDate;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->event = new Events();
+        $this->saveTheDate = new SaveTheDate();
+    }
+    
+    /**
+     * Get event save the date.
+     * @param Events $event
+     * @return mixed
+     */
+    public function getEventSTD(Events $event): mixed
+    {
+        return $event->saveTheDate;
     }
 
-    /**
-     * Get user logged events.
-     * @return Collection
-     */
-    public function getUserEvents(): Collection
+    public function createEventSTD(Events $event)
     {
-        return Events::query()
-            ->where('organizer_id', $this->request->user()->id)
-            ->get();
-    }
-
-    /**
-     * Create user event.
-     * @return Model|Builder
-     */
-    public function create(): Model|Builder
-    {
-        return Events::query()->create([
-            'event_name' => $this->request->input('eventName'),
-            'event_description' => $this->request->input('eventDescription'),
-            'event_date' => Carbon::createFromFormat('m/d/Y', $this->request->input('eventDate'))->toDateTimeString(),
-            'organizer_id' => $this->request->user()->id,
-            'status' => $this->request->input('status'),
-            'custom_url_slug' => $this->request->input('customUrlSlug'),
-            'visibility' => $this->request->input('visibility'),
+        // I need to save the image
+        
+        return SaveTheDate::query()->create([
+            'event_id' => $event->id,
+            'std_title' => $this->request->input('stdTitle'),
+            'std_subtitle' => $this->request->input('stdSubTitle'),
+            'image_url' => $this->request->input('image'),
+            'background_color' => $this->request->input('backgroundColor'),
+            'use_countdown' => $this->request->input('useCountdown'),
+            'use_add_to_calendar' => $this->request->input('useAddToCalendar'),
+            'is_enabled' => $this->request->input('isEnabled'),
         ]);
     }
 

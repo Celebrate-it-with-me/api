@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateEventsRequest extends FormRequest
+class StoreSaveTheDateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
