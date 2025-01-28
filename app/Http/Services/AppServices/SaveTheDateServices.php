@@ -4,7 +4,9 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
 use App\Models\SaveTheDate;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SaveTheDateServices
 {
@@ -26,8 +28,13 @@ class SaveTheDateServices
     {
         return $event->saveTheDate;
     }
-
-    public function createEventSTD(Events $event)
+    
+    /**
+     * Create STD event.
+     * @param Events $event
+     * @return SaveTheDate|Model
+     */
+    public function createEventSTD(Events $event): Model|SaveTheDate
     {
         $imagePath = null;
         
@@ -39,7 +46,7 @@ class SaveTheDateServices
         return SaveTheDate::query()->create([
             'event_id' => $event->id,
             'std_title' => $this->request->input('stdTitle'),
-            'std_subtitle' => $this->request->input('stdSubTitle'),
+            'std_subtitle' => $this->request->input('stdSubtitle'),
             'image_url' => $imagePath,
             'background_color' => $this->request->input('backgroundColor'),
             'use_countdown' => $this->request->input('useCountdown') === "true",
@@ -47,39 +54,39 @@ class SaveTheDateServices
             'is_enabled' => $this->request->input('isEnabled') === "true",
         ]);
     }
-
+    
     /**
-     * Update user event info.
-     * @param Events $event
-     * @return Events
+     * Updates the SaveTheDate event with new data, including handling image uploads.
+     *
+     * @param SaveTheDate $saveTheDate The SaveTheDate model instance to be updated.
+     * @return Model|SaveTheDate The updated SaveTheDate model instance.
      */
-    public function update(Events $event): Events
+    public function updateEventSTD(SaveTheDate $saveTheDate): Model|SaveTheDate
     {
-        $this->event = $event;
-
-        $this->event->event_name = $this->request->input('eventName');
-        $this->event->event_description = $this->request->input('eventDescription');
-        $this->event->event_date = $this->request->input('eventDate');
-        $this->event->status = $this->request->input('status');
-        $this->event->custom_url_slug = $this->request->input('customUrlSlug');
-        $this->event->visibility = $this->request->input('visibility');
-
-        $this->event->save();
-
-        return $this->event;
-    }
-
-    /**
-     * Delete user from db.
-     * @param Events $event
-     * @return Events
-     */
-    public function destroy(Events $event): Events
-    {
-        $eventSaved = clone $event;
-
-        $event->delete();
-
-        return $eventSaved;
+        $imagePath = $saveTheDate->image_url;
+        
+        // Handle new image upload from the request
+        if ($this->request->hasFile('image') && $this->request->file('image')->isValid()) {
+            // Delete existing image file if it exists
+            if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+                Storage::disk('public')->delete($imagePath);
+            }
+            
+            $imagePath = $this->request->file('image')
+                ->store("images/save-the-date/$saveTheDate->event_id", 'public');
+        }
+        
+        // Update existing SaveTheDate record with new data
+        $saveTheDate->update([
+            'std_title' => $this->request->input('stdTitle'),
+            'std_subtitle' => $this->request->input('stdSubtitle'),
+            'image_url' => $imagePath,
+            'background_color' => $this->request->input('backgroundColor'),
+            'use_countdown' => $this->request->input('useCountdown') === "true",
+            'use_add_to_calendar' => $this->request->input('useAddToCalendar') === "true",
+            'is_enabled' => $this->request->input('isEnabled') === "true",
+        ]);
+        
+        return $saveTheDate;
     }
 }
