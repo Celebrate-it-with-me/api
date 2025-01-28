@@ -34,7 +34,7 @@ class SaveTheDateController extends Controller
      * @param Events $event
      * @return SaveTheDateResource|JsonResponse
      */
-    public function store(StoreSaveTheDateRequest $request, Events $event)
+    public function store(StoreSaveTheDateRequest $request, Events $event): JsonResponse|SaveTheDateResource
     {
         try {
             return SaveTheDateResource::make($this->saveTheDateServices->createEventSTD($event));
