@@ -9,6 +9,7 @@ use App\Http\Services\AppServices\SaveTheDateServices;
 use App\Models\Events;
 use App\Models\SaveTheDate;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SaveTheDateController extends Controller
@@ -34,7 +35,7 @@ class SaveTheDateController extends Controller
      * @param Events $event
      * @return SaveTheDateResource|JsonResponse
      */
-    public function store(StoreSaveTheDateRequest $request, Events $event)
+    public function store(StoreSaveTheDateRequest $request, Events $event): JsonResponse|SaveTheDateResource
     {
         try {
             return SaveTheDateResource::make($this->saveTheDateServices->createEventSTD($event));
@@ -55,9 +56,13 @@ class SaveTheDateController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateSaveTheDateRequest $request, SaveTheDate $saveTheDate)
+    public function update(UpdateSaveTheDateRequest $request, SaveTheDate $saveTheDate): JsonResponse|SaveTheDateResource
     {
-        //
+        try {
+            return SaveTheDateResource::make($this->saveTheDateServices->updateEventSTD($saveTheDate));
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
     }
 
     /**
