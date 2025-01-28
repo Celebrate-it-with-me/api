@@ -14,10 +14,14 @@ class SaveTheDate extends Model
     protected $table = 'save_the_date';
     
     protected $fillable = [
-      'event_id',
-      'message',
-      'image_url',
-      'is_enabled'
+        'event_id',
+        'std_title',
+        'std_subtitle',
+        'background_color',
+        'image_url',
+        'use_countdown',
+        'use_add_to_calendar',
+        'is_enabled'
     ];
     
     /**
