@@ -4,10 +4,7 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
 use App\Models\SaveTheDate;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class SaveTheDateServices
 {
@@ -32,17 +29,22 @@ class SaveTheDateServices
 
     public function createEventSTD(Events $event)
     {
-        // I need to save the image
+        $imagePath = null;
+        
+        if ($this->request->hasFile('image') && $this->request->file('image')->isValid()) {
+            $imagePath = $this->request->file('image')
+                ->store("images/save-the-date/$event->id", 'public');
+        }
         
         return SaveTheDate::query()->create([
             'event_id' => $event->id,
             'std_title' => $this->request->input('stdTitle'),
             'std_subtitle' => $this->request->input('stdSubTitle'),
-            'image_url' => $this->request->input('image'),
+            'image_url' => $imagePath,
             'background_color' => $this->request->input('backgroundColor'),
-            'use_countdown' => $this->request->input('useCountdown'),
-            'use_add_to_calendar' => $this->request->input('useAddToCalendar'),
-            'is_enabled' => $this->request->input('isEnabled'),
+            'use_countdown' => $this->request->input('useCountdown') === "true",
+            'use_add_to_calendar' => $this->request->input('useAddToCalendar') === "true",
+            'is_enabled' => $this->request->input('isEnabled') === "true",
         ]);
     }
 

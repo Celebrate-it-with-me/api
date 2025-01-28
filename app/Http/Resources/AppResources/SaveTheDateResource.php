@@ -17,7 +17,11 @@ class SaveTheDateResource extends JsonResource
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
-            'message' => $this->message,
+            'stdTitle' => $this->std_title,
+            'stdSubTitle' => $this->std_subtitle,
+            'backgroundColor' => $this->background_color,
+            'useCountdown' => $this->use_countdown,
+            'useAddToCalendar' => $this->use_add_to_calendar,
             'imageUrl' => $this->image_url,
             'isEnabled' => $this->is_enabled,
         ];
