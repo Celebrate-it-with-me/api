@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\AppControllers;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreSaveTheDateRequest;
 use App\Http\Requests\app\UpdateSaveTheDateRequest;
 use App\Http\Resources\AppResources\SaveTheDateResource;
@@ -9,7 +10,6 @@ use App\Http\Services\AppServices\SaveTheDateServices;
 use App\Models\Events;
 use App\Models\SaveTheDate;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SaveTheDateController extends Controller
