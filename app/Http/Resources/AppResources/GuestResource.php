@@ -26,7 +26,9 @@ class GuestResource extends JsonResource
             'confirmed' => $this->confirmed,
             'confirmedDate' => $this->confirmed_date,
             'accessCode' => $this->access_code,
-            'codeUsedTimes' => $this->code_used_times
+            'codeUsedTimes' => $this->code_used_times,
+            'companionType' => $this->companion_type,
+            'companionQty' => $this->companion_qty
         ];
     }
 }
