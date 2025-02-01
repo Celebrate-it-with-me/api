@@ -8,8 +8,6 @@ use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Services\AppServices\GuestServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class GuestController extends Controller
@@ -19,10 +17,11 @@ class GuestController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Events $event): JsonResponse|AnonymousResourceCollection
+    public function index(Events $event)
     {
         try {
-            return GuestResource::collection($this->guestServices->getEventsGuests($event));
+            return GuestResource::collection($this->guestServices->getEventsGuests($event))
+                ->response()->getData(true);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
