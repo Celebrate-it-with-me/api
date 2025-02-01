@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -69,7 +68,9 @@ class MainGuest extends Model
         'access_code',
         'code_used_times',
         'confirmed',
-        'confirmed_date'
+        'confirmed_date',
+        'companion_type',
+        'companion_qty',
     ];
 
 

@@ -24,14 +24,16 @@ class GuestServices
     }
 
     /**
-     * Get user logged events.
-     * @return Collection
+     * Get event guests.
      */
-    public function getEventsGuests(Events $event): Collection
+    public function getEventsGuests(Events $event)
     {
+        $perPage = $this->request->input('perPage', 10);
+        $pageSelected = $this->request->input('pageSelected', 1);
+        
         return Mainguest::query()
             ->where('event_id', $event->id)
-            ->get();
+            ->paginate($perPage, ['*'], 'guests', $pageSelected);
     }
     
     /**
@@ -52,6 +54,8 @@ class GuestServices
             'code_used_times' => 0,
             'confirmed' => 'unused',
             'confirmed_date' => null,
+            'companion_type' => $this->request->input('companionType') ?? 'no_companion',
+            'companion_qty' => $this->request->input('companionQty') ?? 0,
         ]);
         
         if (!$mainGuest) {
@@ -84,7 +88,15 @@ class GuestServices
         
         $code .= Str::upper(Str::substr($this->request->input('lastName'), 0, 1));
         
-        $code .= Str::upper(Str::substr($this->request->input('phoneNumber'), -2));
+        do {
+            $randomNumber = random_int(1000, 9999);
+            $isUnique = !MainGuest::query()
+                ->where('event_id', $this->request->input('eventId'))
+                ->where('access_code', $code . $randomNumber)
+                ->exists();
+        } while (!$isUnique);
+        
+        $code .= $randomNumber;
         
         return $code;
     }
