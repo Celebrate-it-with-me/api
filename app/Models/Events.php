@@ -43,4 +43,14 @@ class Events extends Model
     {
         return $this->hasOne(SaveTheDate::class, 'event_id', 'id');
     }
+    
+    /**
+     * Define a one-to-one relationship with the Rsvp model.
+     *
+     * @return HasOne
+     */
+    public function rsvp(): HasOne
+    {
+        return $this->hasOne(Rsvp::class, 'event_id', 'id');
+    }
 }
