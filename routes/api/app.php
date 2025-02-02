@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
+use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AuthenticationController;
 
@@ -19,6 +20,8 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::post('event/{event}/guest', [GuestController::class, 'store']);
     Route::get('event/{event}/guest', [GuestController::class, 'index']);
+    
+    Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });

@@ -1,15 +1,15 @@
 <?php
-
-use App\Http\Controllers\AuthenticationController;
-use App\Http\Controllers\GalleryController;
-use App\Http\Controllers\MainGuestController;
-use App\Http\Controllers\RSVPController;
-use App\Http\Controllers\S3ObjectsController;
-use App\Http\Controllers\SMSReminderController;
-use App\Http\Controllers\TotalsController;
-use App\Http\Controllers\UserController;
-
-Route::post('/login', [AuthenticationController::class, 'adminLogin']);
+    
+    use App\Http\Controllers\AppControllers\RSVPController;
+    use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\GalleryController;
+    use App\Http\Controllers\MainGuestController;
+    use App\Http\Controllers\S3ObjectsController;
+    use App\Http\Controllers\SMSReminderController;
+    use App\Http\Controllers\TotalsController;
+    use App\Http\Controllers\UserController;
+    
+    Route::post('/login', [AuthenticationController::class, 'adminLogin']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('userInfo', [UserController::class, 'userInfo']);
