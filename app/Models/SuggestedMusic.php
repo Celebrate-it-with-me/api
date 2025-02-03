@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SuggestedMusic extends Model
 {
@@ -43,5 +44,15 @@ class SuggestedMusic extends Model
     public function suggestedBy(): BelongsTo
     {
         return $this->belongsTo(MainGuest::class, 'suggested_by', 'id');
+    }
+    
+    /**
+     * Retrieve the associated music votes for the suggested music.
+     *
+     * @return HasMany
+     */
+    public function musicVotes(): HasMany
+    {
+        return $this->hasMany(SuggestedMusicVote::class, 'suggested_music_id', 'id');
     }
 }
