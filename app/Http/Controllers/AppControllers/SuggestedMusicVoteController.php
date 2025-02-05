@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreSuggestedMusicRequest;
+use App\Http\Requests\app\StoreSuggestedVoteMusicRequest;
 use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Resources\AppResources\SuggestedMusicVoteResource;
 use App\Http\Services\AppServices\SuggestedMusicVoteServices;
@@ -33,26 +34,25 @@ class SuggestedMusicVoteController extends Controller
     }
     
     /**
-     * Store a newly created resource in storage.
-     * @param StoreSuggestedMusicRequest $request
-     * @param Events $event
-     * @return SaveTheDateResource|JsonResponse
+     * Handles the storing or updating of a suggested music vote.
+     *
+     * @param StoreSuggestedVoteMusicRequest $request The request instance containing validation rules and data.
+     * @param SuggestedMusic $suggestedMusic The suggested music instance to be processed.
+     *
+     * @return SuggestedMusicVoteResource|JsonResponse On success, returns a resource representation of the suggested music vote.
+     * On failure, returns a JSON response with the error message and an empty data array.
      */
-    public function store(StoreSuggestedMusicRequest $request, Events $event): JsonResponse|SuggestedMusicVoteResource
+    public function storeOrUpdate(StoreSuggestedVoteMusicRequest $request, SuggestedMusic $suggestedMusic): SuggestedMusicVoteResource | JsonResponse
     {
         try {
-            return SuggestedMusicVoteResource::make($this->suggestedMusicVoteServices->create($event));
+            return SuggestedMusicVoteResource::make(
+                $this->suggestedMusicVoteServices->storeOrUpdate($suggestedMusic)
+            );
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
     
-    public function destroy(suggestedMusicVote $suggestedMusicVote): JsonResponse|SuggestedMusicVoteResource
-    {
-        try {
-            return SuggestedMusicVoteResource::make($this->suggestedMusicVoteServices->remove($suggestedMusicVote));
-        } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
-        }
-    }
+    
+    
 }
