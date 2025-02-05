@@ -23,10 +23,10 @@ class StoreSuggestedMusicRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'eventId' => 'required|numeric|exists:events,id',
-            'name' => 'required|string|max:255',
-            'platformUrl' => 'required|string|max:255',
-            'suggestedBy' => 'required|numeric|exists:main_guests,id',
+            'title' => 'required|string|max:255',
+            'artist' => 'required|string|max:255',
+            'album' => 'required|string|max:255',
+            'thumbnailUrl' => 'string|max:255',
         ];
         
     }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\AppResources;
 
-use App\Http\Resources\MainGuestResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,10 +17,12 @@ class SuggestedMusicResource extends JsonResource
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
-            'name' => $this->name,
+            'platformId' => $this->platformId,
+            'title' => $this->title,
+            'artist' => $this->artist,
+            'album' => $this->album,
             'platform' => $this->platform,
-            'platformUrl' => $this->platform_url,
-            'suggestedBy' => MainGuestResource::make($this->suggestedBy)
+            'thumbnailUrl' => $this->thumbnailUrl,
         ];
     }
 }

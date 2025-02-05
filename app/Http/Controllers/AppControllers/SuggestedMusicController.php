@@ -5,15 +5,13 @@ namespace App\Http\Controllers\AppControllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreSaveTheDateRequest;
 use App\Http\Requests\app\StoreSuggestedMusicRequest;
-use App\Http\Requests\app\UpdateSaveTheDateRequest;
 use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Resources\AppResources\SuggestedMusicResource;
-use App\Http\Services\AppServices\SaveTheDateServices;
 use App\Http\Services\AppServices\SuggestedMusicServices;
 use App\Models\Events;
-use App\Models\SaveTheDate;
 use App\Models\SuggestedMusic;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
 
 class SuggestedMusicController extends Controller
@@ -24,10 +22,10 @@ class SuggestedMusicController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Events $event): JsonResponse|SuggestedMusicResource
+    public function index(Events $event): AnonymousResourceCollection|JsonResponse
     {
         try {
-            return SuggestedMusicResource::make($this->suggestedMusicServices->getSuggestedMusic($event));
+            return SuggestedMusicResource::collection($this->suggestedMusicServices->getSuggestedMusic($event));
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
