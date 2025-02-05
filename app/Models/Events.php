@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Events extends Model
@@ -42,5 +43,25 @@ class Events extends Model
     public function saveTheDate(): HasOne
     {
         return $this->hasOne(SaveTheDate::class, 'event_id', 'id');
+    }
+    
+    /**
+     * Define a one-to-one relationship with the Rsvp model.
+     *
+     * @return HasOne
+     */
+    public function rsvp(): HasOne
+    {
+        return $this->hasOne(Rsvp::class, 'event_id', 'id');
+    }
+    
+    /**
+     * Get the suggested music for the event.
+     *
+     * @return HasMany
+     */
+    public function musicSuggestions(): HasMany
+    {
+        return $this->hasMany(SuggestedMusic::class, 'event_id', 'id');
     }
 }
