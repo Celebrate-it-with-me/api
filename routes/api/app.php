@@ -28,6 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
     Route::delete('suggest-music/{suggestedMusic}', [SuggestedMusicController::class, 'destroy']);
     
+    Route::post('suggest-music/{suggestedMusic}/vote', [SuggestedMusicController::class, 'storeOrUpdate']);
+    
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
 
