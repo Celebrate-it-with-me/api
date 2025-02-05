@@ -38,28 +38,14 @@ class SuggestedMusicServices
     {
         return SuggestedMusic::query()->create([
             'event_id' => $event->id,
-            'name' => $this->request->get('name'),
-            'platform'  => $this->getPlatform(),
-            'platform_url' => $this->request->get('platform_url'),
-            'suggested_by' => $this->request->get('suggested_by'),
+            'title' => $this->request->get('title'),
+            'artist' => $this->request->get('artist'),
+            'album' => $this->request->get('album'),
+            'platformId' => $this->request->get('platformId'),
+            'platform'  => 'spotify',
+            'thumbnailUrl' => $this->request->get('thumbnailUrl'),
+            'suggested_by' => $this->request->user()->id,
         ]);
-    }
-    
-    /**
-     * Determine the platform based on the provided platform URL.
-     *
-     * @return string
-     */
-    private function getPlatform(): string
-    {
-        return match (true) {
-            str_contains($this->request->get('platform_url'), 'youtube.com') || str_contains(
-                $this->request->get('platform_url'),
-                'youtu.be'
-            ) => 'youtube',
-            str_contains($this->request->get('platform_url'), 'spotify.com') => 'spotify',
-            default => 'unknown',
-        };
     }
     
     /**

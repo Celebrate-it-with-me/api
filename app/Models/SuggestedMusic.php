@@ -12,9 +12,12 @@ class SuggestedMusic extends Model
     
     protected $fillable = [
         'event_id',
-        'name',
+        'title',
+        'artist',
+        'album',
         'platform',
-        'platform_url',
+        'platformId',
+        'thumbnailUrl',
         'suggested_by'
     ];
     

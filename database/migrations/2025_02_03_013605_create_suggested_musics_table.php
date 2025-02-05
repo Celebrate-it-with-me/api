@@ -14,20 +14,18 @@ return new class extends Migration
         Schema::create('suggested_music', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('event_id');
-            $table->string('name');
+            $table->string('title');
+            $table->string('artist');
+            $table->string('album');
             $table->enum('platform', ['youtube', 'spotify'])
-                ->default('youtube');
-            $table->string('platform_url');
+                ->default('spotify');
+            $table->string('platformId');
+            $table->text('thumbnailUrl');
             $table->unsignedBigInteger('suggested_by');
             
             $table->foreign('event_id')
                 ->references('id')
                 ->on('events')
-                ->onDelete('cascade');
-            
-            $table->foreign('suggested_by')
-                ->references('id')
-                ->on('main_guests')
                 ->onDelete('cascade');
             $table->timestamps();
         });
@@ -56,7 +54,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('suggested_music');
         Schema::dropIfExists('suggested_music_votes');
+        Schema::dropIfExists('suggested_music');
     }
 };
