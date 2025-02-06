@@ -4,8 +4,9 @@ use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
-    use App\Http\Controllers\AppControllers\SuggestedMusicController;
-    use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
+use App\Http\Controllers\AppControllers\SuggestedMusicController;
+use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -29,6 +30,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('suggest-music/{suggestedMusic}', [SuggestedMusicController::class, 'destroy']);
     
     Route::post('suggest-music/{suggestedMusic}/vote', [SuggestedMusicController::class, 'storeOrUpdate']);
+    
+    Route::get('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'index']);
+    Route::post('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'store']);
+    Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
+    Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });

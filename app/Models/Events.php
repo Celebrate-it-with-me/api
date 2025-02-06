@@ -64,4 +64,14 @@ class Events extends Model
     {
         return $this->hasMany(SuggestedMusic::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the suggested music configuration for the event.
+     *
+     * @return HasOne
+     */
+    public function suggestedMusicConfig(): HasOne
+    {
+        return $this->hasOne(SuggestedMusicConfig::class, 'event_id', 'id');
+    }
 }
