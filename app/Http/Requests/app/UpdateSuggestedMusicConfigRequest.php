@@ -11,7 +11,7 @@ class UpdateSuggestedMusicConfigRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,14 @@ class UpdateSuggestedMusicConfigRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'title' => 'string|max:255',
+            'subTitle' => 'string|max:255',
+            'mainColor' => 'required|string|max:255',
+            'secondaryColor' => 'required|string|max:255',
+            'usePreview' => 'required|boolean',
+            'useSuggestedMusic' => 'required|boolean',
+            'useVoteSystem' => 'required|boolean',
+            'searchLimit' => 'numeric',
         ];
     }
 }

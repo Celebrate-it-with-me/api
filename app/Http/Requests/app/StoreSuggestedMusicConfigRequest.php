@@ -23,12 +23,13 @@ class StoreSuggestedMusicConfigRequest extends FormRequest
     {
         return [
             'title' => 'string|max:255',
-            'sub_title' => 'string|max:255',
-            'main_color' => 'required|string|max:255',
-            'secondary_color' => 'required|string|max:255',
-            'use_preview' => 'required|boolean',
-            'use_vote_system' => 'required|boolean',
-            'search_limit' => 'numeric',
+            'subTitle' => 'string|max:255',
+            'mainColor' => 'required|string|max:255',
+            'secondaryColor' => 'required|string|max:255',
+            'usePreview' => 'required|boolean',
+            'useSuggestedMusic' => 'required|boolean',
+            'useVoteSystem' => 'required|boolean',
+            'searchLimit' => 'numeric',
         ];
     }
 }

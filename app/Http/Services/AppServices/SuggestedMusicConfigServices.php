@@ -21,9 +21,9 @@ class SuggestedMusicConfigServices
     /**
      * Get event suggested music Config.
      * @param Events $event
-     * @return HasMany
+     * @return mixed
      */
-    public function getSuggestedMusicConfig(Events $event): HasMany
+    public function getSuggestedMusicConfig(Events $event): mixed
     {
         return $event->suggestedMusicConfig;
     }
@@ -42,6 +42,7 @@ class SuggestedMusicConfigServices
             'sub_title' => $this->request->input('subTitle'),
             'main_color' => $this->request->input('mainColor'),
             'secondary_color' => $this->request->input('secondaryColor'),
+            'use_suggested_music' => $this->request->input('useSuggestedMusic'),
             'use_preview' => $this->request->input('usePreview'),
             'use_vote_system' => $this->request->input('useVoteSystem'),
             'search_limit' => $this->request->input('searchLimit'),
@@ -63,6 +64,7 @@ class SuggestedMusicConfigServices
         $this->suggestedMusicConfig->main_color = $this->request->input('mainColor');
         $this->suggestedMusicConfig->secondary_color = $this->request->input('secondaryColor');
         $this->suggestedMusicConfig->use_preview = $this->request->input('usePreview');
+        $this->suggestedMusicConfig->use_suggested_music = $this->request->input('useSuggestedMusic');
         $this->suggestedMusicConfig->use_vote_system = $this->request->input('useVoteSystem');
         $this->suggestedMusicConfig->search_limit = $this->request->input('searchLimit');
         $this->suggestedMusicConfig->save();
