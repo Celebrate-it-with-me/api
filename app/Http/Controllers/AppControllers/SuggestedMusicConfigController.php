@@ -10,7 +10,6 @@ use App\Http\Services\AppServices\SuggestedMusicConfigServices;
 use App\Models\Events;
 use App\Models\SuggestedMusicConfig;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
 
 class SuggestedMusicConfigController extends Controller
@@ -26,12 +25,12 @@ class SuggestedMusicConfigController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Events $event): JsonResponse|AnonymousResourceCollection
+    public function index(Events $event): JsonResponse|SuggestedMusicConfigResource
     {
         try {
-            return SuggestedMusicConfigResource::collection($this->suggestedMusicConfigServices->getSuggestedMusicConfig($event));
+            return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->getSuggestedMusicConfig($event));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            return response()->json(['message' => $th->getMessage(). ' '.$th->getFile(). ' ' . $th->getLine() , 'data' => []], 500);
         }
     }
 

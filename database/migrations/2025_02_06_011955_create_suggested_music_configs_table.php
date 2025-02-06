@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('sub_title')->nullable();
             $table->string('main_color')->nullable();
             $table->string('secondary_color')->nullable();
+            $table->tinyInteger('use_suggested_music')->default(0);
             $table->tinyInteger('use_preview')->default(0);
             $table->tinyInteger('use_vote_system')->default(0);
             $table->integer('search_limit')->default(10);

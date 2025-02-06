@@ -19,6 +19,7 @@ class SuggestedMusicConfig extends Model
         'sub_title',
         'main_color',
         'secondary_color',
+        'use_suggested_music',
         'use_preview',
         'use_vote_system',
         'search_limit'

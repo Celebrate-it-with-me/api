@@ -22,6 +22,7 @@ class SuggestedMusicConfigResource extends JsonResource
             'mainColor' => $this->main_color,
             'secondaryColor' => $this->secondary_color,
             'usePreview' => $this->use_preview,
+            'useSuggestedMusic' => $this->use_suggested_music,
             'useVoteSystem' => $this->use_vote_system,
             'searchLimit' => $this->search_limit,
         ];
