@@ -95,6 +95,15 @@ class MainGuest extends Model
     }
     
     /**
+     * Companions relationship.
+     * @return HasMany
+     */
+    public function companions(): HasMany
+    {
+        return $this->hasMany(PartyMember::class, 'main_guest_id', 'id');
+    }
+    
+    /**
      * Relation with events model
      * @property int $event_id
      * @property-read \App\Models\Events $event
