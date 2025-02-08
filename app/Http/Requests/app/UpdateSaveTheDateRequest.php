@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\app;
 
+use App\Rules\ColorRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Log;
 
@@ -28,7 +29,7 @@ class UpdateSaveTheDateRequest extends FormRequest
             'stdTitle' => 'required|string|max:255',
             'stdSubTitle' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'backgroundColor' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'backgroundColor' => ['nullable', 'string', new ColorRule()],
             'useCountdown' => 'required|boolean',
             'useAddToCalendar' => 'required|boolean',
             'isEnabled' => 'required|boolean',

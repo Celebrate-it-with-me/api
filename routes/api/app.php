@@ -6,7 +6,8 @@ use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
-use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\AppControllers\TemplateController;
+    use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -35,6 +36,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'store']);
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
+    
+    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
