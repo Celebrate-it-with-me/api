@@ -23,7 +23,11 @@ class SaveTheDateController extends Controller
     public function index(Events $event): JsonResponse|SaveTheDateResource
     {
         try {
-            return SaveTheDateResource::make($this->saveTheDateServices->getEventSTD($event));
+            if ($std = $this->saveTheDateServices->getEventSTD($event)) {
+                return SaveTheDateResource::make($std);
+            }
+
+            return response()->json(['message' => 'There is no save the date yet!'], 404);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }

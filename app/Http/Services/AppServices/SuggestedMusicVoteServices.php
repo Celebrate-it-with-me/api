@@ -32,28 +32,36 @@ class SuggestedMusicVoteServices
     }
     
     /**
-     * Create Suggested Music Vote.
-     * @param SuggestedMusic $suggestedMusic
-     * @return SaveTheDate|Model
+     * Handles the creation or updating of a music vote for a suggested music item.
+     *
+     * This method checks if a vote by the currently authenticated user already exists for
+     * the specified suggested music. If it does, the vote type is updated. If no such
+     * vote exists, a new vote is created with the corresponding data.
+     *
+     * @param SuggestedMusic $suggestedMusic The suggested music instance for which the vote is being processed.
+     * @return SuggestedMusicVote The updated or newly created music vote instance.
      */
-    public function create(SuggestedMusic $suggestedMusic): Model|SuggestedMusic
+    public function storeOrUpdate(SuggestedMusic $suggestedMusic): SuggestedMusicVote
     {
-        return SuggestedMusicVote::query()->create([
-            'suggested_music_id' => $suggestedMusic->id,
-            'main_guest_id' => $this->request->user()->id,
-            'vote_type' => $this->request->get('voteType'),
-        ]);
-    }
-    
-    /**
-     * @param SuggestedMusicVote $suggestedMusicVote
-     * @return SuggestedMusicVote
-     */
-    public function remove(SuggestedMusicVote $suggestedMusicVote): SuggestedMusicVote
-    {
-        $suggestedMusicVoteClone = clone $suggestedMusicVote;
-        $suggestedMusicVoteClone->delete();
+        $mainGuestId = $this->request->user()->id;
         
-        return $suggestedMusicVoteClone;
+        $musicVote = SuggestedMusicVote::query()
+            ->where('suggested_music_id', $suggestedMusic->id)
+            ->where('main_guest_id', $mainGuestId)
+            ->first();
+        
+        if ($musicVote) {
+            $musicVote->vote_type = $this->request->get('direction');
+            $musicVote->save();
+            
+            return $musicVote;
+        }
+        
+        return SuggestedMusicVote::query()
+            ->create([
+                'main_guest_id' => $mainGuestId,
+                'vote_type' => $this->request->get('direction'),
+                'suggested_music_id' => $suggestedMusic->id
+            ]);
     }
 }
