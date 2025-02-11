@@ -22,10 +22,11 @@ class SuggestedMusicController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Events $event): AnonymousResourceCollection|JsonResponse
+    public function index(Events $event)
     {
         try {
-            return SuggestedMusicResource::collection($this->suggestedMusicServices->getSuggestedMusic($event));
+            return SuggestedMusicResource::collection($this->suggestedMusicServices->getSuggestedMusic($event))
+                ->response()->getData(true);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
