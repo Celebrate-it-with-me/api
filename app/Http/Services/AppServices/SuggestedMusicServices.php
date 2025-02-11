@@ -3,10 +3,12 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
+use App\Models\MainGuest;
 use App\Models\SaveTheDate;
 use App\Models\SuggestedMusic;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SuggestedMusicServices
 {
@@ -26,16 +28,31 @@ class SuggestedMusicServices
      */
     public function getSuggestedMusic(Events $event): mixed
     {
-        return $event->musicSuggestions;
+        $perPage = 5;
+        $pageSelected = $this->request->input('pageSelected', 1);
+        
+        return SuggestedMusic::query()
+            ->where('event_id', $event->id)
+            ->orderBy('id', 'DESC')
+            ->paginate($perPage, ['*'], 'guests', $pageSelected);
     }
     
     /**
-     * Create STD event.
+     * Add Suggested Music.
      * @param Events $event
      * @return SaveTheDate|Model
+     * @throws ValidationException
      */
     public function create(Events $event): Model|SuggestedMusic
     {
+        $mainGuest = MainGuest::query()
+            ->where('access_code', $this->request->input('accessCode'))
+            ->first();
+        
+        if (!$mainGuest) {
+            throw ValidationException::withMessages(['message' => 'Invalid access code!']);
+        }
+        
         return SuggestedMusic::query()->create([
             'event_id' => $event->id,
             'title' => $this->request->get('title'),
@@ -44,7 +61,7 @@ class SuggestedMusicServices
             'platformId' => $this->request->get('platformId'),
             'platform'  => 'spotify',
             'thumbnailUrl' => $this->request->get('thumbnailUrl'),
-            'suggested_by' => $this->request->user()->id,
+            'suggested_by' => $mainGuest->id,
         ]);
     }
     

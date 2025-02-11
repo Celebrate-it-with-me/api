@@ -6,6 +6,7 @@ use App\Models\Events;
 use App\Models\MainGuest;
 use App\Models\PartyMember;
 use Exception;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +27,7 @@ class GuestServices
     /**
      * Get event guests.
      */
-    public function getEventsGuests(Events $event)
+    public function getEventsGuests(Events $event): LengthAwarePaginator
     {
         $perPage = $this->request->input('perPage', 10);
         $pageSelected = $this->request->input('pageSelected', 1);
