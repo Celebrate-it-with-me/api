@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
     
+    Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
+    
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
 
