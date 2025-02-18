@@ -10,7 +10,7 @@ use App\Http\Services\AppServices\RsvpServices;
 use App\Models\Events;
 use App\Models\Rsvp;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
 class RsvpController extends Controller
 {
@@ -35,8 +35,7 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-
-
+    
     /**
      * Store a newly created resource in storage.
      */
@@ -48,28 +47,19 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-
+    
     /**
-     * Display the specified resource.
+     * Save the RSVP data.
      */
-    public function show(Rsvp $rsvp)
+    public function saveRsvp(Request $request): JsonResponse|bool
     {
-        //
+        try {
+            $this->rsvpService->saveRsvp();
+            
+            return response()->json(['message' => 'Rsvp saved.']);
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateRsvpRequest $request, Rsvp $rsvp)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Rsvp $rsvp)
-    {
-        //
-    }
+    
 }

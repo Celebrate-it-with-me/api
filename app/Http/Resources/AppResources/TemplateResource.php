@@ -3,6 +3,7 @@
 namespace App\Http\Resources\AppResources;
 
 use App\Http\Resources\UserResource;
+use App\Models\GuestCompanion;
 use App\Models\MainGuest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -58,15 +59,16 @@ class TemplateResource extends JsonResource
                 'lastName' => $this->mainGuest->last_name,
                 'email' => $this->mainGuest->email,
                 'phoneNumber' => $this->mainGuest->phone_number,
+                'mealPreference' => $this->mainGuest->meal_preference,
                 'accessCode' => $this->mainGuest->access_code,
                 'codeUsedTimes' => $this->mainGuest->code_used_times,
                 'confirmed' => $this->mainGuest->confirmed,
+                'rsvpCompleted' => $this->mainGuest->confirmed !== 'unused',
                 'confirmedDate' => $this->mainGuest->confirmed_date,
                 'companionType' => $this->mainGuest->companion_type,
                 'companionQty' => $this->mainGuest->companion_qty,
-                'companions' => $this->mainGuest->companions
+                'companions' => GuestCompanionResource::collection($this->mainGuest->companions)
             ]
-            
         ];
     }
 }
