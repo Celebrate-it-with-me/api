@@ -28,6 +28,7 @@ class MainGuestResource extends JsonResource
             'partySize' => count($partyMembers) + 1,
             'phoneNumber' => $this->phone_number,
             'accessCode' => $this->access_code,
+            'mealPreference' => $this->meal_preference,
             'confirmed' => $this->confirmed,
             'confirmedDate' => Carbon::parse($this->confirmed_date)->toFormattedDateString(),
             'created_at' => $this->created_at->toFormattedDateString(),

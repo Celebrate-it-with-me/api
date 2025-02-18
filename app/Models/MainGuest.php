@@ -100,13 +100,13 @@ class MainGuest extends Model
      */
     public function companions(): HasMany
     {
-        return $this->hasMany(PartyMember::class, 'main_guest_id', 'id');
+        return $this->hasMany(GuestCompanion::class, 'main_guest_id', 'id');
     }
     
     /**
      * Relation with events model
      * @property int $event_id
-     * @property-read \App\Models\Events $event
+     * @property-read Events $event
      * @method static Builder|Model whereEventId($value)
      */
     public function event(): BelongsTo
