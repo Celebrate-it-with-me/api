@@ -16,6 +16,7 @@ Route::post('login', [AuthenticationController::class, 'appLogin']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('event', [EventsController::class, 'store']);
     Route::get('event', [EventsController::class, 'index']);
+    Route::get('event/filters', [EventsController::class, 'filterEvents']);
     
     Route::get('event/{event}/save-the-date', [SaveTheDateController::class, 'index']);
     Route::post('event/{event}/save-the-date', [SaveTheDateController::class, 'store']);
