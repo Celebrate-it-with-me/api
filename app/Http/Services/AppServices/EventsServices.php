@@ -31,6 +31,24 @@ class EventsServices
             ->where('organizer_id', $this->request->user()->id)
             ->get();
     }
+    
+    /**
+     * Getting filtered events.
+     * @param string $query
+     * @return Collection
+     */
+    public function getFilteredEvents(string $query): Collection
+    {
+        return Events::query()
+            ->where('organizer_id', $this->request->user()->id)
+            ->when($query, function ($subQuery) use ($query) {
+                $subQuery->whereNested(function($subQuery) use ($query) {
+                   $subQuery->where('event_name', 'like', '%' . $query . '%');
+                   $subQuery->orWhere('event_description', 'like', '%' . $query . '%');
+                });
+            })
+            ->get();
+    }
 
     /**
      * Create user event.
