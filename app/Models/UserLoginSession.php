@@ -2,14 +2,9 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  *
@@ -40,59 +35,34 @@ use Spatie\Permission\Traits\HasRoles;
  * @method static \Illuminate\Database\Eloquent\Builder|User whereUpdatedAt($value)
  * @mixin \Eloquent
  */
-class User extends Authenticatable
+class UserLoginSession extends Model
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
-
+    use HasFactory;
+    
+    protected $table = 'user_login_sessions';
+    
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-    ];
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
+        'user_id',
+        'login_time',
+        'ip_address',
+        'browser',
+        'device',
+        'location',
+        'logout_time'
     ];
     
     /**
-     * Relation with user login sessions.
-     * @return HasMany
+     * Relationship with users.
+     * @return BelongsTo
      */
-    public function userLoginSessions(): HasMany
+    public function user(): BelongsTo
     {
-        return $this->hasMany(UserLoginSession::class, 'user_id', 'id' );
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
     
-    /**
-     * Retrieves the latest user login session where the last login time is not null.
-     *
-     * @return HasOne
-     */
-    public function lastLoginSession(): HasOne
-    {
-        return $this->hasOne(UserLoginSession::class, 'user_id', 'id' )
-            ->whereNotNull('logout_time')
-            ->latest('id');
-    }
 }
