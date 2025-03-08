@@ -1,19 +1,20 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateEventsRequest extends FormRequest
+class StoreSuggestedMusicRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
-
+    
+    
     /**
      * Get the validation rules that apply to the request.
      *
@@ -22,7 +23,11 @@ class UpdateEventsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'title' => 'required|string|max:255',
+            'artist' => 'required|string|max:255',
+            'album' => 'required|string|max:255',
+            'thumbnailUrl' => 'string|max:255',
         ];
+        
     }
 }

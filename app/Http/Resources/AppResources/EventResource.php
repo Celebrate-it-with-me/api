@@ -26,7 +26,8 @@ class EventResource extends JsonResource
             'visibility' => $this->visibility,
             'createdAt' => $this->created_at->toDateTimeString(),
             'updatedAt' => $this->updated_at->toDateTimeString(),
-            'selected' => false
+            'selected' => false,
+            'saveTheDate' => (bool) $this->saveTheDate?->is_enabled ?? false
         ];
     }
 }

@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreEventsRequest;
-use App\Http\Requests\UpdateEventsRequest;
+use App\Http\Requests\app\StoreEventsRequest;
+use App\Http\Requests\app\UpdateEventsRequest;
 use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventsServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
 
@@ -23,6 +24,21 @@ class EventsController extends Controller
     {
         try {
             return EventResource::collection($this->eventsServices->getUserEvents());
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    /**
+     * Filtering events.
+     * @param Request $request
+     * @return JsonResponse|AnonymousResourceCollection
+     */
+    public function filterEvents(Request $request): JsonResponse|AnonymousResourceCollection
+    {
+        try {
+            return EventResource::collection($this->eventsServices->getFilteredEvents(
+                $request->input('query') ?? ''));
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
