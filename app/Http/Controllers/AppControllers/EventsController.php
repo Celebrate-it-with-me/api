@@ -11,6 +11,7 @@ use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class EventsController extends Controller
@@ -88,7 +89,10 @@ class EventsController extends Controller
     public function destroy(Events $event): JsonResponse|EventResource
     {
         try {
-            return EventResource::make($this->eventsServices->destroy($event));
+            return response()->json([
+                'message' => 'Event deleted successfully.',
+                'data' => $this->eventsServices->destroy($event)
+            ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
