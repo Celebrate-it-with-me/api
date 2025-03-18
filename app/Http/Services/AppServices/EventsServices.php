@@ -104,12 +104,23 @@ class EventsServices
 
         $this->event->event_name = $this->request->input('eventName');
         $this->event->event_description = $this->request->input('eventDescription');
-        $this->event->event_date = $this->request->input('eventDate');
+        $this->event->start_date = $this->request->input('startDate');
+        $this->event->end_date = $this->request->input('endDate');
         $this->event->status = $this->request->input('status');
         $this->event->custom_url_slug = $this->request->input('customUrlSlug');
         $this->event->visibility = $this->request->input('visibility');
-
         $this->event->save();
+        
+        $this->event->eventFeature->save_the_date = $this->request->input('saveTheDate') ?? false;
+        $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
+        $this->event->eventFeature->gallery = $this->request->input('gallery') ?? false;
+        $this->event->eventFeature->music = $this->request->input('music') ?? false;
+        $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
+        $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
+        $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;
+        $this->event->eventFeature->analytics = $this->request->input('analytics') ?? false;
+        $this->event->eventFeature->save();
+        
 
         return $this->event;
     }
