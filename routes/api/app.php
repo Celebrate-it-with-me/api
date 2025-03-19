@@ -18,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('event', [EventsController::class, 'index']);
     Route::get('event/filters', [EventsController::class, 'filterEvents']);
     Route::delete('event/{event}', [EventsController::class, 'destroy']);
+    Route::put('event/{event}', [EventsController::class, 'update']);
     
     Route::get('event/{event}/save-the-date', [SaveTheDateController::class, 'index']);
     Route::post('event/{event}/save-the-date', [SaveTheDateController::class, 'store']);

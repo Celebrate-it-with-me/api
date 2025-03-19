@@ -28,7 +28,6 @@ class EventResource extends JsonResource
             'createdAt' => $this->created_at->toDateTimeString(),
             'updatedAt' => $this->updated_at->toDateTimeString(),
             'selected' => false,
-            'saveTheDate' => (bool) $this->saveTheDate?->is_enabled ?? false,
             'eventFeature' => EventFeatureResource::make($this->eventFeature)
         ];
     }
