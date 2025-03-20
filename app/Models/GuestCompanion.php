@@ -25,7 +25,8 @@ class GuestCompanion extends Model
         'email',
         'phone_number',
         'confirmed',
-        'confirmed_date',
+        'confirmed_at',
+        'meal_preference'
     ];
     
     /**
