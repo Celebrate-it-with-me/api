@@ -139,6 +139,5 @@ class EventsServices
             Log::error($e->getMessage());
             return false;
         }
-        
     }
 }
