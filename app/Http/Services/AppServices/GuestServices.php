@@ -5,7 +5,6 @@ namespace App\Http\Services\AppServices;
 use App\Models\Events;
 use App\Models\GuestCompanion;
 use App\Models\MainGuest;
-use App\Models\PartyMember;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
