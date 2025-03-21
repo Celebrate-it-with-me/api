@@ -38,5 +38,21 @@ class CompanionServices
             return false;
         }
     }
-
+    
+    /**
+     * Creates a new guest companion associated with the given main guest.
+     *
+     * @param MainGuest $mainGuest The main guest to associate with the companion.
+     * @return GuestCompanion The newly created guest companion.
+     */
+    public function createCompanion(MainGuest $mainGuest): GuestCompanion
+    {
+        return GuestCompanion::query()->create([
+            'main_guest_id' => $mainGuest->id,
+            'first_name' => $this->request->input('firstName'),
+            'last_name' => $this->request->input('lastName'),
+            'email' => $this->request->input('email'),
+            'phone_number' => $this->request->input('phoneNumber'),
+        ]);
+    }
 }
