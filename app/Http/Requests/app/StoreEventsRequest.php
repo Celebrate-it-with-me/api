@@ -24,7 +24,8 @@ class StoreEventsRequest extends FormRequest
         return [
             'eventName' => 'required|string|max:255',
             'eventDescription' => 'nullable|string',
-            'eventDate' => 'required|date_format:m/d/Y',
+            'startDate' => 'required|date_format:m/d/Y H:i',
+            'endDate' => 'required|date_format:m/d/Y H:i',
             'status' => 'required|in:draft,published,archived,canceled',
             'customUrlSlug' => 'nullable|string|unique:events,custom_url_slug|regex:/^[a-z0-9-]+$/',
             'visibility' => 'required|in:public,private,restricted',

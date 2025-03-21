@@ -3,12 +3,11 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
+use App\Models\GuestCompanion;
 use App\Models\MainGuest;
-use App\Models\PartyMember;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -45,6 +44,10 @@ class GuestServices
      */
     public function create(Events $event): Model|Builder
     {
+        $companionsQty = $this->request->input('companionType') === 'no_name'
+            ? $this->request->input('companionQty')
+            : count($this->request->input('companionList'));
+        
         $mainGuest =  MainGuest::query()->create([
             'event_id' => $event->id,
             'first_name' => $this->request->input('firstName'),
@@ -56,7 +59,7 @@ class GuestServices
             'confirmed' => 'unused',
             'confirmed_date' => null,
             'companion_type' => $this->request->input('companionType') ?? 'no_companion',
-            'companion_qty' => $this->request->input('companionQty') ?? 0,
+            'companion_qty' => $companionsQty,
         ]);
         
         if (!$mainGuest) {
@@ -64,14 +67,15 @@ class GuestServices
         }
         
         $partyMembers = $this->request->input('companionList');
-        if (count(($partyMembers))) {
+        if (count($partyMembers)) {
             foreach ($partyMembers as $member) {
-                PartyMember::query()->create([
+                GuestCompanion::query()->create([
                     'main_guest_id' => $mainGuest->id,
-                    'name'  => "{$member['firstName']} {$member['lastName']}",
-                    'confirmed' => 'unused',
+                    'first_name' => $member['firstName'],
+                    'last_name' => $member['lastName'],
                     'email' => $member['email'],
                     'phone_number' => $member['phoneNumber'],
+                    'confirmed' => 'pending',
                     'confirmed_date' => null,
                 ]);
             }

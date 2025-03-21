@@ -2,13 +2,17 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Models\EventFeature;
 use App\Models\Events;
 use App\Models\User;
+use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class EventsServices
 {
@@ -49,22 +53,44 @@ class EventsServices
             })
             ->get();
     }
-
+    
     /**
      * Create user event.
      * @return Model|Builder
+     * @throws Exception
      */
     public function create(): Model|Builder
     {
-        return Events::query()->create([
+        Log::info('start date', [$this->request->input('startDate')]);
+        
+        $event = Events::query()->create([
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
-            'event_date' => Carbon::createFromFormat('m/d/Y', $this->request->input('eventDate'))->toDateTimeString(),
+            'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
+            'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
             'status' => $this->request->input('status'),
             'custom_url_slug' => $this->request->input('customUrlSlug'),
             'visibility' => $this->request->input('visibility'),
         ]);
+        
+        if (!$event) {
+            throw new Exception('Create event failed');
+        }
+        
+        EventFeature::query()->create([
+           'event_id' => $event->id,
+            'save_the_date' => $this->request->input('saveTheDate') ?? false,
+            'rsvp' => $this->request->input('rsvp') ?? false,
+            'gallery' => $this->request->input('gallery') ?? false,
+            'music' => $this->request->input('music') ?? false,
+            'seats_accommodation' => $this->request->input('seatsAccommodation') ?? false,
+            'preview' => $this->request->input('preview') ?? false,
+            'budget' => $this->request->input('budget') ?? false,
+            'analytics' => $this->request->input('analytics') ?? false,
+        ]);
+        
+        return $event;
     }
 
     /**
@@ -78,27 +104,40 @@ class EventsServices
 
         $this->event->event_name = $this->request->input('eventName');
         $this->event->event_description = $this->request->input('eventDescription');
-        $this->event->event_date = $this->request->input('eventDate');
+        $this->event->start_date = $this->request->input('startDate');
+        $this->event->end_date = $this->request->input('endDate');
         $this->event->status = $this->request->input('status');
         $this->event->custom_url_slug = $this->request->input('customUrlSlug');
         $this->event->visibility = $this->request->input('visibility');
-
         $this->event->save();
+        
+        $this->event->eventFeature->save_the_date = $this->request->input('saveTheDate') ?? false;
+        $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
+        $this->event->eventFeature->gallery = $this->request->input('gallery') ?? false;
+        $this->event->eventFeature->music = $this->request->input('music') ?? false;
+        $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
+        $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
+        $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;
+        $this->event->eventFeature->analytics = $this->request->input('analytics') ?? false;
+        $this->event->eventFeature->save();
+        
 
         return $this->event;
     }
-
+    
     /**
      * Delete user from db.
      * @param Events $event
-     * @return Events
+     * @return bool
      */
-    public function destroy(Events $event): Events
+    public function destroy(Events $event): bool
     {
-        $eventSaved = clone $event;
-
-        $event->delete();
-
-        return $eventSaved;
+        try {
+            $event->delete();
+            return true;
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+            return false;
+        }
     }
 }
