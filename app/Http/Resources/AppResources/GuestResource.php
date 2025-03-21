@@ -28,7 +28,8 @@ class GuestResource extends JsonResource
             'accessCode' => $this->access_code,
             'codeUsedTimes' => $this->code_used_times,
             'companionType' => $this->companion_type,
-            'companionQty' => $this->companion_qty
+            'companionQty' => $this->companion_qty,
+            'companions' => GuestCompanionResource::collection($this->companions)
         ];
     }
 }
