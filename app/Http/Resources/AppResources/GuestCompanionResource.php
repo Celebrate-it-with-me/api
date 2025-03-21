@@ -17,6 +17,7 @@ class GuestCompanionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'main_guest_id' => $this->main_guest_id,
             'firstName' => $this->first_name,
             'lastName' => $this->last_name,
             'email' => $this->email ?? '',
