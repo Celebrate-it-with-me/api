@@ -29,6 +29,7 @@ class GuestCompanionObserver
      */
     public function deleted(GuestCompanion $guestCompanion): void
     {
+        Log::info('triggered deleted 123', [$guestCompanion]);
         $countCompanions = GuestCompanion::query()
             ->where('main_guest_id', $guestCompanion->main_guest_id)
             ->count();

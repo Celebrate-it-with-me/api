@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\app\StoreGuestCompanionRequest;
 use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\CompanionServices;
 use App\Models\GuestCompanion;
+use App\Models\MainGuest;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
@@ -25,6 +27,26 @@ class CompanionController extends Controller
             return response()->json([
                 'message' => 'Companion deleted successfully.',
                 'data' => $this->companionServices->removeCompanion($guestCompanion)
+            ]);
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    /**
+     * Handles the storage of a new companion for the given main guest.
+     *
+     * @param StoreGuestCompanionRequest $request The request instance containing validation logic and input data for creating a companion.
+     * @param MainGuest $guest The main guest instance associated with the companion to be created.
+     *
+     * @return JsonResponse A JSON response indicating whether the companion creation was successful or if an error occurred.
+     */
+    public function store(StoreGuestCompanionRequest $request, MainGuest $guest): JsonResponse
+    {
+        try {
+            return response()->json([
+                'message' => 'Companion created successfully.',
+                'data' => $this->companionServices->createCompanion($guest)
             ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);

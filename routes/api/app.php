@@ -30,6 +30,12 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
     
+    Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
+        ->name('guest.updateCompanion');
+    
+    Route::post('guest/{guest}/companion', [CompanionController::class, 'store'])
+        ->name('guest.storeCompanion');
+    
     Route::delete('companion/{guestCompanion}', [CompanionController::class, 'destroy'])
         ->name('companion.destroy');
     
