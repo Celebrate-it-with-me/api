@@ -84,6 +84,7 @@ class EventsServices
             'rsvp' => $this->request->input('rsvp') ?? false,
             'gallery' => $this->request->input('gallery') ?? false,
             'music' => $this->request->input('music') ?? false,
+            'background_music' => $this->request->input('backgroundMusic') ?? false,
             'seats_accommodation' => $this->request->input('seatsAccommodation') ?? false,
             'preview' => $this->request->input('preview') ?? false,
             'budget' => $this->request->input('budget') ?? false,
@@ -115,6 +116,7 @@ class EventsServices
         $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
         $this->event->eventFeature->gallery = $this->request->input('gallery') ?? false;
         $this->event->eventFeature->music = $this->request->input('music') ?? false;
+        $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
         $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
         $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
         $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;

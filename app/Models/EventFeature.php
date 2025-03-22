@@ -19,6 +19,7 @@ class EventFeature extends Model
         'rsvp',
         'gallery',
         'music',
+        'background_music',
         'seats_accommodation',
         'preview',
         'budget',
