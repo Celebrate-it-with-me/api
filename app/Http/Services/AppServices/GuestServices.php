@@ -32,6 +32,14 @@ class GuestServices
         $pageSelected = $this->request->input('pageSelected', 1);
         
         return Mainguest::query()
+            ->when($this->request->filled('searchValue'), function (Builder $query) {
+                $searchValue = $this->request->input('searchValue');
+                $query->where(function (Builder $innerQuery) use ($searchValue) {
+                    $innerQuery->where('first_name', 'like', "%$searchValue%")
+                        ->orWhere('last_name', 'like', "%$searchValue%")
+                        ->orWhere('email', 'like', "%$searchValue%");
+                });
+            })
             ->where('event_id', $event->id)
             ->paginate($perPage, ['*'], 'guests', $pageSelected);
     }
