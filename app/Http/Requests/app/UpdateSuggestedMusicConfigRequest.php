@@ -27,7 +27,6 @@ class UpdateSuggestedMusicConfigRequest extends FormRequest
             'mainColor' => 'required|string|max:255',
             'secondaryColor' => 'required|string|max:255',
             'usePreview' => 'required|boolean',
-            'useSuggestedMusic' => 'required|boolean',
             'useVoteSystem' => 'required|boolean',
             'searchLimit' => 'numeric',
         ];
