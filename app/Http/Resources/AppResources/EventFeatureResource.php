@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\AppResources;
 
-use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,6 +21,7 @@ class EventFeatureResource extends JsonResource
             'rsvp' => $this->rsvp,
             'gallery' => $this->gallery,
             'music' => $this->music,
+            'backgroundMusic' => $this->background_music,
             'seatsAccommodation' => $this->seats_accommodation,
             'preview' => $this->preview,
             'budget' => $this->budget,
