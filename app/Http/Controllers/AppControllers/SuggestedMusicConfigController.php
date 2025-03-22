@@ -28,7 +28,16 @@ class SuggestedMusicConfigController extends Controller
     public function index(Events $event): JsonResponse|SuggestedMusicConfigResource
     {
         try {
-            return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->getSuggestedMusicConfig($event));
+            $config = $this->suggestedMusicConfigServices->getSuggestedMusicConfig($event);
+            
+            if ($config !== null) {
+                return SuggestedMusicConfigResource::make($config);
+            }
+            
+            return response()->json([
+                'message' => 'No suggested music configuration exists for the given event',
+                'data' => []
+            ], 404);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(). ' '.$th->getFile(). ' ' . $th->getLine() , 'data' => []], 500);
         }
