@@ -22,6 +22,7 @@ class EventFeatureResource extends JsonResource
             'rsvp' => $this->rsvp,
             'gallery' => $this->gallery,
             'music' => $this->music,
+            'backgroundMusic' => $this->backgroundMusic,
             'seatsAccommodation' => $this->seats_accommodation,
             'preview' => $this->preview,
             'budget' => $this->budget,
