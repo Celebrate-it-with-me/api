@@ -36,6 +36,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('guest/{guest}/companion', [CompanionController::class, 'store'])
         ->name('guest.storeCompanion');
     
+    Route::put('companion/{companion}', [CompanionController::class, 'update'])
+        ->name('companion.update');
+    
     Route::delete('companion/{guestCompanion}', [CompanionController::class, 'destroy'])
         ->name('companion.destroy');
     
