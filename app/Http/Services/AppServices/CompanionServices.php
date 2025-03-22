@@ -44,15 +44,43 @@ class CompanionServices
      *
      * @param MainGuest $mainGuest The main guest to associate with the companion.
      * @return GuestCompanion The newly created guest companion.
+     * @throws Exception
      */
     public function createCompanion(MainGuest $mainGuest): GuestCompanion
     {
-        return GuestCompanion::query()->create([
+        $guestCompanion = GuestCompanion::query()->create([
             'main_guest_id' => $mainGuest->id,
             'first_name' => $this->request->input('firstName'),
             'last_name' => $this->request->input('lastName'),
             'email' => $this->request->input('email'),
             'phone_number' => $this->request->input('phoneNumber'),
         ]);
+        
+        if (!$guestCompanion) {
+            throw new Exception("Failed to create guest companion");
+        }
+        
+        $mainGuest->companion_qty = GuestCompanion::query()
+            ->where('main_guest_id', $mainGuest->id)
+            ->count();
+        
+        $mainGuest->save();
+        return $guestCompanion;
+    }
+    
+    /**
+     * Updates the details of an existing guest companion.
+     *
+     * @param mixed $guestCompanion The guest companion record to be updated.
+     * @return mixed The updated guest companion record.
+     */
+    public function updateCompanion(GuestCompanion $guestCompanion): mixed
+    {
+        $guestCompanion->first_name = $this->request->input('firstName');
+        $guestCompanion->last_name = $this->request->input('lastName');
+        $guestCompanion->email = $this->request->input('email');
+        $guestCompanion->phone_number = $this->request->input('phoneNumber');
+        $guestCompanion->save();
+        return $guestCompanion;
     }
 }

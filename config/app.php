@@ -187,5 +187,9 @@ return [
         'Image' => Intervention\Image\Facades\Image::class,
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
+    
+    'frontend_app' => [
+        'url' => env('APP_FRONT_URL'),
+    ]
 
 ];
