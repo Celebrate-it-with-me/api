@@ -116,6 +116,7 @@ class EventsServices
         $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
         $this->event->eventFeature->gallery = $this->request->input('gallery') ?? false;
         $this->event->eventFeature->music = $this->request->input('music') ?? false;
+        $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
         $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
         $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
         $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;
