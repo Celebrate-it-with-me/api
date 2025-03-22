@@ -84,6 +84,7 @@ class EventsServices
             'rsvp' => $this->request->input('rsvp') ?? false,
             'gallery' => $this->request->input('gallery') ?? false,
             'music' => $this->request->input('music') ?? false,
+            'background_music' => $this->request->input('backgroundMusic') ?? false,
             'seats_accommodation' => $this->request->input('seatsAccommodation') ?? false,
             'preview' => $this->request->input('preview') ?? false,
             'budget' => $this->request->input('budget') ?? false,

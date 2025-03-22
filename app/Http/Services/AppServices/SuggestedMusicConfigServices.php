@@ -4,7 +4,6 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
 use App\Models\SuggestedMusicConfig;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 
 class SuggestedMusicConfigServices
