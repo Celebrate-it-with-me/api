@@ -15,7 +15,6 @@ class BackgroundMusicServices
         $this->request = $request;
     }
     
-    
     /**
      * Create a new background music configuration for the given event.
      *
@@ -27,7 +26,7 @@ class BackgroundMusicServices
         $songPath = null;
         if ($this->request->hasFile('songFile') && $this->request->file('songFile')->isValid()) {
             $songPath = $this->request->file('songFile')
-                ->store("images/background-music/$event->id", 'public');
+                ->store("sound/background-music/$event->id", 'public');
         }
         
         // Create the Background music entry in the database
@@ -36,7 +35,7 @@ class BackgroundMusicServices
             'icon_size' => $this->request->input('iconSize'),
             'icon_position' => $this->request->input('iconPosition'),
             'icon_color' => $this->request->input('iconColor'),
-            'auto_play' => $this->request->input('autoplay'),
+            'auto_play' => $this->request->input('autoplay') ? 1 : 0,
             'song_url' => $songPath,
         ]);
     }
