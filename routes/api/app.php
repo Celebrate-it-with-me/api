@@ -54,7 +54,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
     
+    Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
+        ->name('index.backgroundMusic');
+    
     Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
+        ->name('store.backgroundMusic');
+    
+    Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
         ->name('store.backgroundMusic');
     
     Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
