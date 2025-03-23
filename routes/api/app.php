@@ -1,6 +1,7 @@
 <?php
-
-use App\Http\Controllers\AppControllers\CompanionController;
+    
+    use App\Http\Controllers\AppControllers\BackgroundMusicController;
+    use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
@@ -53,8 +54,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
     
-    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
+    Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
+        ->name('store.backgroundMusic');
     
+    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
     Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);

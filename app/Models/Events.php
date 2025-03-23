@@ -93,4 +93,9 @@ class Events extends Model
     {
         return $this->hasOne(SuggestedMusicConfig::class, 'event_id', 'id');
     }
+    
+    public function backgroundMusic(): HasOne
+    {
+        return $this->hasOne(BackgroundMusic::class, 'event_id', 'id');
+    }
 }
