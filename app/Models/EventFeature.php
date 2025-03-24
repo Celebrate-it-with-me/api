@@ -20,6 +20,7 @@ class EventFeature extends Model
         'gallery',
         'music',
         'background_music',
+        'event_comments',
         'seats_accommodation',
         'preview',
         'budget',
