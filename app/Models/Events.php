@@ -103,4 +103,14 @@ class Events extends Model
     {
         return $this->hasOne(BackgroundMusic::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the comments associated with the event.
+     *
+     * @return HasMany
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(EventComment::class, 'event_id', 'id');
+    }
 }
