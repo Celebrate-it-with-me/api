@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class EventConfigComment extends Model
 {
     /** @use HasFactory<\Database\Factories\EventsFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'event_config_comment';
 

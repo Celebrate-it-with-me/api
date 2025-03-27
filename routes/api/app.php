@@ -63,6 +63,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
         ->name('store.backgroundMusic');
     
+    Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
+        ->name('index.configComments');
+    
     Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
         ->name('store.configComments');
     
