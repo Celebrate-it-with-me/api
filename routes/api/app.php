@@ -69,6 +69,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
         ->name('store.configComments');
     
+    Route::put('event/{event}/comments-config/{commentConfig}', [EventConfigCommentsController::class, 'update'])
+        ->name('update.configComments');
+    
     
     Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
     Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);

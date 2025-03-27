@@ -7,6 +7,7 @@ use App\Http\Requests\app\StoreEventConfigCommentRequest;
 use App\Http\Resources\AppResources\EventConfigCommentResource;
 use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventConfigCommentsServices;
+use App\Models\EventConfigComment;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -41,4 +42,20 @@ class EventConfigCommentsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
+    
+    /**
+     * Update event comments configuration.
+     * @param StoreEventConfigCommentRequest $request
+     * @param Events $event
+     * @return JsonResponse|EventResource
+     */
+    public function update(StoreEventConfigCommentRequest $request, Events $event, EventConfigComment $commentConfig): JsonResponse|EventConfigCommentResource
+    {
+        try {
+            return EventConfigCommentResource::make($this->eventConfigCommentsServices->updateEventConfigComment($commentConfig));
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
 }
