@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('sub_title');
             $table->string('background_color');
             $table->string('comments_title');
+            $table->string('button_color');
+            $table->string('button_text');
             $table->integer('max_comments');
             $table->timestamps();
         });

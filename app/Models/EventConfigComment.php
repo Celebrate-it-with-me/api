@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EventConfigComment extends Model
 {
@@ -20,6 +19,8 @@ class EventConfigComment extends Model
         'sub_title',
         'background_color',
         'comments_title',
+        'button_color',
+        'button_text',
         'max_comments',
     ];
   
