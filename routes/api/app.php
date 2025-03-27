@@ -2,7 +2,9 @@
     
     use App\Http\Controllers\AppControllers\BackgroundMusicController;
     use App\Http\Controllers\AppControllers\CompanionController;
-use App\Http\Controllers\AppControllers\EventsController;
+    use App\Http\Controllers\AppControllers\EventCommentsController;
+    use App\Http\Controllers\AppControllers\EventConfigCommentsController;
+    use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
@@ -56,12 +58,17 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
         ->name('index.backgroundMusic');
-    
     Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
         ->name('store.backgroundMusic');
-    
     Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
         ->name('store.backgroundMusic');
+    
+    Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
+        ->name('index.configComments');
+    
+    Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
+        ->name('store.configComments');
+    
     
     Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
     Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
