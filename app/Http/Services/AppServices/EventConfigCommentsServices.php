@@ -16,11 +16,6 @@ class EventConfigCommentsServices
         $this->request = $request;
     }
     
-    public function getEventConfigComment(Events $event)
-    {
-    
-    }
-    
     /**
      * Create comments configurations
      * @param Events $event

@@ -4,14 +4,11 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreEventConfigCommentRequest;
-use App\Http\Requests\app\StoreEventsRequest;
-use App\Http\Resources\AppResources\EventCommentResource;
 use App\Http\Resources\AppResources\EventConfigCommentResource;
 use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventConfigCommentsServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
 
 class EventConfigCommentsController extends Controller
@@ -21,11 +18,10 @@ class EventConfigCommentsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Events $event): AnonymousResourceCollection|JsonResponse
+    public function index(Events $event): EventConfigCommentResource|JsonResponse
     {
         try {
-            return EventCommentResource::collection($this->eventConfigCommentsServices->getEventConfigComment($event))
-                ->response()->getData(true);
+            return EventConfigCommentResource::make($event->eventConfigComment);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
