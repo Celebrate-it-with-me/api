@@ -113,4 +113,14 @@ class Events extends Model
     {
         return $this->hasMany(EventComment::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the event configuration comment associated with the event.
+     *
+     * @return HasOne
+     */
+    public function eventConfigComment() : HasOne
+    {
+        return $this->hasOne(EventConfigComment::class, 'event_id', 'id');
+    }
 }
