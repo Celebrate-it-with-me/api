@@ -22,6 +22,10 @@ class EventConfigCommentsController extends Controller
     public function index(Events $event): EventConfigCommentResource|JsonResponse
     {
         try {
+            if (!$event->eventConfigComment()->exists()) {
+                return response()->json(['data' => [], 'message' => 'Event config comment not found'], 404);
+            }
+            
             return EventConfigCommentResource::make($event->eventConfigComment);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
@@ -47,6 +51,7 @@ class EventConfigCommentsController extends Controller
      * Update event comments configuration.
      * @param StoreEventConfigCommentRequest $request
      * @param Events $event
+     * @param EventConfigComment $commentConfig
      * @return JsonResponse|EventResource
      */
     public function update(StoreEventConfigCommentRequest $request, Events $event, EventConfigComment $commentConfig): JsonResponse|EventConfigCommentResource

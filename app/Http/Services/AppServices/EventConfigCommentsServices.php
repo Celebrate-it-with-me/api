@@ -29,6 +29,8 @@ class EventConfigCommentsServices
             'sub_title' => $this->request->get('subTitle'),
             'background_color' => $this->request->get('backgroundColor'),
             'comments_title' => $this->request->get('commentsTitle'),
+            'button_color' => $this->request->get('buttonColor'),
+            'button_text' => $this->request->get('buttonText'),
             'max_comments' => $this->request->get('maxComments'),
         ]);
     }
@@ -45,6 +47,8 @@ class EventConfigCommentsServices
       $eventConfigComment->sub_title = $this->request->get('subTitle');
       $eventConfigComment->background_color = $this->request->get('backgroundColor');
       $eventConfigComment->comments_title = $this->request->get('commentsTitle');
+      $eventConfigComment->button_color = $this->request->get('buttonColor');
+      $eventConfigComment->button_text = $this->request->get('buttonText');
       $eventConfigComment->max_comments = $this->request->get('maxComments');
       
       $eventConfigComment->save();

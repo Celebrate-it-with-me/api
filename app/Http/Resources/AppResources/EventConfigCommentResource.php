@@ -20,6 +20,8 @@ class EventConfigCommentResource extends JsonResource
             'subTitle' => $this->sub_title,
             'backgroundColor' => $this->background_color,
             'commentsTitle' => $this->comments_title,
+            'buttonColor' => $this->button_color,
+            'buttonText' => $this->button_text,
             'maxComments' => $this->max_comments,
             'created_at' => $this->created_at->diffForHumans(),
             'updated_at' => $this->updated_at->diffForHumans(),

@@ -26,6 +26,8 @@ class StoreEventConfigCommentRequest extends FormRequest
             'subTitle' => 'required|string',
             'backgroundColor' => 'required|string',
             'commentsTitle' => 'required|string',
+            'buttonColor' => 'required|string',
+            'buttonText' => 'required|string',
             'maxComments' => 'required|numeric',
         ];
     }
