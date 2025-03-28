@@ -23,8 +23,8 @@ class StoreEventCommentRequest extends FormRequest
     {
         return [
             'comment' => 'required|string',
-            'createdById' => 'required|string',
-            'mode' => 'required|string'
+            'userId' => 'required|numeric',
+            'origin' => 'required|string'
         ];
     }
 }
