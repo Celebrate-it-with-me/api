@@ -1,10 +1,10 @@
 <?php
-    
-    use App\Http\Controllers\AppControllers\BackgroundMusicController;
-    use App\Http\Controllers\AppControllers\CompanionController;
-    use App\Http\Controllers\AppControllers\EventCommentsController;
-    use App\Http\Controllers\AppControllers\EventConfigCommentsController;
-    use App\Http\Controllers\AppControllers\EventsController;
+
+use App\Http\Controllers\AppControllers\BackgroundMusicController;
+use App\Http\Controllers\AppControllers\CompanionController;
+use App\Http\Controllers\AppControllers\EventCommentsController;
+use App\Http\Controllers\AppControllers\EventConfigCommentsController;
+use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
@@ -65,12 +65,15 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
         ->name('index.configComments');
-    
     Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
         ->name('store.configComments');
-    
     Route::put('event/{event}/comments-config/{commentConfig}', [EventConfigCommentsController::class, 'update'])
         ->name('update.configComments');
+    
+    Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
+        ->name('index.EventComments');
+    Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
+        ->name('store.EventComments');
     
     
     Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);

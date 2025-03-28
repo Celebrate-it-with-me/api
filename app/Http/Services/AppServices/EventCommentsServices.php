@@ -8,6 +8,7 @@ use App\Models\MainGuest;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class EventCommentsServices
 {
@@ -27,8 +28,10 @@ class EventCommentsServices
     public function getEventComments(Events $event): Paginator
     {
         $commentsQuery = $event->comments()->latest();
-        $perPage = 5;
+        $perPage = $event->eventConfigComment->max_comments ?? 5;
         $page = $this->request->query('page', 1);
+        
+        Log::info('checking pagination data', ['paginate' => $commentsQuery->paginate($perPage, ['*'], 'page', $page)]);
         
         return $commentsQuery->paginate($perPage, ['*'], 'page', $page);
     }
@@ -36,14 +39,14 @@ class EventCommentsServices
     public function createEventComment(Events $event): EventComment
     {
         $createdByClass = MainGuest::class;
-        if ($this->request->input('mode') === 'creator') {
+        if ($this->request->input('origin') === 'admin') {
             $createdByClass = User::class;
         }
         
         return EventComment::query()->create([
             'event_id' => $event->id,
             'created_by_class' => $createdByClass,
-            'created_by_id' => $this->request->input('created_by_id'),
+            'created_by_id' => $this->request->input('userId'),
             'comment' => $this->request->input('comment'),
             'is_approved' => 1,
         ]);
