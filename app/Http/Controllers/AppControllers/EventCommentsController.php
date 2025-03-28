@@ -10,17 +10,17 @@ use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventCommentsServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
 
 class EventCommentsController extends Controller
 {
     public function __construct(private readonly EventCommentsServices $eventCommentsServices) {}
-
+    
     /**
-     * Display a listing of the resource.
+     * @param Events $event
+     * @return JsonResponse|mixed
      */
-    public function index(Events $event): AnonymousResourceCollection|JsonResponse
+    public function index(Events $event): mixed
     {
         try {
             return EventCommentResource::collection($this->eventCommentsServices->getEventComments($event))
@@ -32,7 +32,8 @@ class EventCommentsController extends Controller
     
     /**
      * Store user event.
-     * @param StoreeventsRequest $request
+     * @param StoreEventCommentRequest $request
+     * @param Events $event
      * @return JsonResponse|EventResource
      */
     public function store(StoreEventCommentRequest $request, Events $event): JsonResponse|EventCommentResource
