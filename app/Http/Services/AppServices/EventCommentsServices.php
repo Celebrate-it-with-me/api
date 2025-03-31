@@ -31,8 +31,6 @@ class EventCommentsServices
         $perPage = $event->eventConfigComment->max_comments ?? 5;
         $page = $this->request->query('page', 1);
         
-        Log::info('checking pagination data', ['paginate' => $commentsQuery->paginate($perPage, ['*'], 'page', $page)]);
-        
         return $commentsQuery->paginate($perPage, ['*'], 'page', $page);
     }
     

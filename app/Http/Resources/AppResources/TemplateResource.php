@@ -50,7 +50,8 @@ class TemplateResource extends JsonResource
                 'createdAt' => $this->created_at->toDateTimeString(),
                 'updatedAt' => $this->updated_at->toDateTimeString(),
                 'selected' => false,
-                'saveTheDate' => SaveTheDateResource::make($this->saveTheDate)
+                'saveTheDate' => SaveTheDateResource::make($this->saveTheDate),
+                'commentsConfig' => $this->getCommentsConfig()
             ],
             'mainGuest' => [
                 'id' => $this->mainGuest->id,
@@ -70,5 +71,17 @@ class TemplateResource extends JsonResource
                 'companions' => GuestCompanionResource::collection($this->mainGuest->companions)
             ]
         ];
+    }
+    
+    /**
+     * Get comments config.
+     */
+    private function getCommentsConfig(): EventConfigCommentResource|array
+    {
+        if ($this->eventConfigComment) {
+            return EventConfigCommentResource::make($this->eventConfigComment);
+        }
+        
+        return [];
     }
 }
