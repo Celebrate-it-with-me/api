@@ -4,7 +4,6 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreEventCommentRequest;
-use App\Http\Requests\app\StoreEventsRequest;
 use App\Http\Resources\AppResources\EventCommentResource;
 use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventCommentsServices;
