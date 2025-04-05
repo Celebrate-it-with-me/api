@@ -11,7 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE main_guests MODIFY email VARCHAR(255) NULL;");
+        Schema::table('main_guests', function(Blueprint $table) {
+           $table->string('email')->nullable()->change();
+        });
+        
     }
 
     /**
@@ -19,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE main_guests MODIFY email VARCHAR(255) NOT NULL;");
+        Schema::table('main_guests', function(Blueprint $table) {
+           $table->string('email')->nullable(false)->change();
+        });
     }
 };
