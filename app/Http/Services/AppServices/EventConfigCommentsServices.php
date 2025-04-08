@@ -28,7 +28,7 @@ class EventConfigCommentsServices
             'title' => $this->request->get('title'),
             'sub_title' => $this->request->get('subTitle'),
             'background_color' => $this->request->get('backgroundColor'),
-            'comments_title' => $this->request->get('commentsTitle'),
+            'comments_title' => $this->request->get('commentsTitle') ?? '',
             'button_color' => $this->request->get('buttonColor'),
             'button_text' => $this->request->get('buttonText'),
             'max_comments' => $this->request->get('maxComments'),
