@@ -123,4 +123,14 @@ class Events extends Model
     {
         return $this->hasOne(EventConfigComment::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the sweet memories configuration for the event.
+     *
+     * @return HasOne
+     */
+    public function sweetMemoriesConfig(): HasOne
+    {
+        return $this->hasOne(SweetMemoriesConfig::class, 'event_id', 'id');
+    }
 }

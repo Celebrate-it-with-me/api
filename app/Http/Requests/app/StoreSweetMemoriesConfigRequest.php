@@ -4,7 +4,7 @@ namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreEventConfigCommentRequest extends FormRequest
+class StoreSweetMemoriesConfigRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,12 +23,9 @@ class StoreEventConfigCommentRequest extends FormRequest
     {
         return [
             'title' => 'required|string',
-            'subTitle' => 'required|string',
-            'backgroundColor' => 'required|string',
-            'commentsTitle' => 'nullable|string',
-            'buttonColor' => 'required|string',
-            'buttonText' => 'required|string',
-            'maxComments' => 'required|numeric',
+            'subTitle' => 'nullable|string',
+            'backgroundColor' => 'nullable|string',
+            'maxPictures' => 'required|numeric',
         ];
     }
 }
