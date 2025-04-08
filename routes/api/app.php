@@ -10,7 +10,8 @@ use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
-use App\Http\Controllers\AppControllers\TemplateController;
+    use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+    use App\Http\Controllers\AppControllers\TemplateController;
 use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -69,6 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('store.configComments');
     Route::put('event/{event}/comments-config/{commentConfig}', [EventConfigCommentsController::class, 'update'])
         ->name('update.configComments');
+    
+    Route::get('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'index'])
+        ->name('index.sweetMemoriesConfig');
+    Route::post('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'store'])
+        ->name('store.sweetMemoriesConfig');
     
     Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
         ->name('index.EventComments');

@@ -25,7 +25,7 @@ class UpdateSweetMemoriesConfigRequest extends FormRequest
             'title' => 'required|string',
             'subTitle' => 'nullable|string',
             'backgroundColor' => 'nullable|string',
-            'maxPictures' => 'required|string',
+            'maxPictures' => 'required|numeric',
         ];
     }
 }
