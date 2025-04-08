@@ -11,7 +11,7 @@ class SweetMemoriesConfig extends Model
     /** @use HasFactory<\Database\Factories\SuggestedMusicConfigFactory> */
     use HasFactory;
     
-    protected $table = 'sweet';
+    protected $table = 'sweet_memories_config';
     
     protected $fillable = [
         'event_id',

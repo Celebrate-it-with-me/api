@@ -20,12 +20,12 @@ class SweetMemoriesConfigServices
    
     
     /**
-     * Create a new suggested music configuration for the given event.
+     * Create a new sweet configuration for the given event.
      *
      * @param Events $event
-     * @return SuggestedMusicConfig
+     * @return SweetMemoriesConfig
      */
-    public function create(Events $event): SuggestedMusicConfig
+    public function create(Events $event): SweetMemoriesConfig
     {
         return SweetMemoriesConfig::query()->create([
             'event_id' => $event->id,
