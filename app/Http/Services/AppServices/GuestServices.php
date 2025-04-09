@@ -32,6 +32,14 @@ class GuestServices
         $pageSelected = $this->request->input('pageSelected', 1);
         
         return Mainguest::query()
+            ->when($this->request->filled('searchValue'), function (Builder $query) {
+                $searchValue = $this->request->input('searchValue');
+                $query->where(function (Builder $innerQuery) use ($searchValue) {
+                    $innerQuery->where('first_name', 'like', "%$searchValue%")
+                        ->orWhere('last_name', 'like', "%$searchValue%")
+                        ->orWhere('email', 'like', "%$searchValue%");
+                });
+            })
             ->where('event_id', $event->id)
             ->paginate($perPage, ['*'], 'guests', $pageSelected);
     }
@@ -104,6 +112,52 @@ class GuestServices
         $code .= $randomNumber;
         
         return $code;
+    }
+    
+    /**
+     * Updates the companion type for the specified main guest.
+     *
+     * @param MainGuest $mainGuest The main guest instance whose companion type is being updated.
+     * @param Request $request The HTTP request containing the data for the companion type update.
+     *
+     * @return MainGuest The updated main guest instance.
+     */
+    public function updateCompanionType(MainGuest $mainGuest, Request $request): MainGuest
+    {
+        $requestArray = $request->all();
+        
+        if (count($requestArray)) {
+            foreach ($requestArray as $key => $value) {
+                $snakeCaseKey = Str::snake($key);
+                $mainGuest->{$snakeCaseKey} = $value;
+                
+                if ($snakeCaseKey === 'companionType') {
+                    $this->deleteCompanions($value, $mainGuest);
+                }
+            }
+        }
+        
+        $mainGuest->save();
+        
+        $mainGuest->refresh();
+        return $mainGuest;
+    }
+    
+    /**
+     * Deletes the companions associated with the specified main guest based on the companion type.
+     *
+     * @param string $companionType The type of companion to evaluate for deletion.
+     * @param MainGuest $mainGuest The main guest instance whose companions may be deleted.
+     *
+     * @return void
+     */
+    private function deleteCompanions(string $companionType, MainGuest $mainGuest): void
+    {
+        if ($companionType === 'no_named') {
+            GuestCompanion::query()
+                ->where('main_guest_id', $mainGuest->id)
+                ->delete();
+        }
     }
 
 }

@@ -4,7 +4,7 @@ namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreSuggestedMusicConfigRequest extends FormRequest
+class StoreGuestCompanionRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,13 +22,10 @@ class StoreSuggestedMusicConfigRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'string|max:255',
-            'subTitle' => 'string|max:255',
-            'mainColor' => 'required|string|max:255',
-            'secondaryColor' => 'required|string|max:255',
-            'usePreview' => 'required|boolean',
-            'useVoteSystem' => 'required|boolean',
-            'searchLimit' => 'numeric',
+            'firstName' => 'required|string|max:255',
+            'lastName' => 'required|string|max:255',
+            'email' => 'nullable|string|email|max:255',
+            'phoneNumber' => 'nullable|string|max:255',
         ];
     }
 }

@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('main_guests', function(Blueprint $table) {
-           $table->string('email')->nullable()->change();
+        Schema::table('suggested_music_configs', function (Blueprint $table) {
+            $table->dropColumn('use_suggested_music');
         });
-        
     }
 
     /**
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('main_guests', function(Blueprint $table) {
-           $table->string('email')->nullable(false)->change();
+        Schema::table('suggested_music_configs', function (Blueprint $table) {
+            $table->tinyInteger('use_suggested_music')->default(0)->after('secondary_color');
         });
     }
 };

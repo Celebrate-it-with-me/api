@@ -1,13 +1,17 @@
 <?php
 
+use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\CompanionController;
+use App\Http\Controllers\AppControllers\EventCommentsController;
+use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
-use App\Http\Controllers\AppControllers\TemplateController;
+    use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+    use App\Http\Controllers\AppControllers\TemplateController;
 use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -30,6 +34,15 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
     
+    Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
+        ->name('guest.updateCompanion');
+    
+    Route::post('guest/{guest}/companion', [CompanionController::class, 'store'])
+        ->name('guest.storeCompanion');
+    
+    Route::put('companion/{companion}', [CompanionController::class, 'update'])
+        ->name('companion.update');
+    
     Route::delete('companion/{guestCompanion}', [CompanionController::class, 'destroy'])
         ->name('companion.destroy');
     
@@ -44,8 +57,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
     
-    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
+    Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
+        ->name('index.backgroundMusic');
+    Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
+        ->name('store.backgroundMusic');
+    Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
+        ->name('store.backgroundMusic');
     
+    Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
+        ->name('index.configComments');
+    Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
+        ->name('store.configComments');
+    Route::put('event/{event}/comments-config/{commentConfig}', [EventConfigCommentsController::class, 'update'])
+        ->name('update.configComments');
+    
+    Route::get('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'index'])
+        ->name('index.sweetMemoriesConfig');
+    Route::post('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'store'])
+        ->name('store.sweetMemoriesConfig');
+    
+    Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
+        ->name('index.EventComments');
+    Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
+        ->name('store.EventComments');
+    
+    
+    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
     Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
