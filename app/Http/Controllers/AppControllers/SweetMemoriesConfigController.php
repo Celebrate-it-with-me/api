@@ -70,7 +70,11 @@ class SweetMemoriesConfigController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateSweetMemoriesConfigRequest $request, SweetMemoriesConfig $sweetMemoriesConfig): SweetMemoriesConfigResource|JsonResponse
+    public function update(
+        UpdateSweetMemoriesConfigRequest $request,
+        Events $event,
+        SweetMemoriesConfig $sweetMemoriesConfig
+    ): SweetMemoriesConfigResource|JsonResponse
     {
         try {
             return SweetMemoriesConfigResource::make(
