@@ -75,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('index.sweetMemoriesConfig');
     Route::post('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'store'])
         ->name('store.sweetMemoriesConfig');
+    Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
+        ->name('update.sweetMemoriesConfig');
     
     Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
         ->name('index.EventComments');
