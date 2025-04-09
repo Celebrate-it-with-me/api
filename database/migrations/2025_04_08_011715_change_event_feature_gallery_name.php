@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('main_guests', function(Blueprint $table) {
-           $table->string('email')->nullable()->change();
+        Schema::table('event_features', function (Blueprint $table) {
+            $table->renameColumn('gallery', 'sweet_memories');
         });
-        
     }
 
     /**
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('main_guests', function(Blueprint $table) {
-           $table->string('email')->nullable(false)->change();
+        Schema::table('event_features', function (Blueprint $table) {
+           $table->renameColumn('sweet_memories', 'gallery');
         });
     }
 };

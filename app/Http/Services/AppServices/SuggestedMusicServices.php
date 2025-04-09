@@ -6,6 +6,7 @@ use App\Models\Events;
 use App\Models\MainGuest;
 use App\Models\SaveTheDate;
 use App\Models\SuggestedMusic;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -45,11 +46,17 @@ class SuggestedMusicServices
      */
     public function create(Events $event): Model|SuggestedMusic
     {
-        $mainGuest = MainGuest::query()
-            ->where('access_code', $this->request->input('accessCode'))
-            ->first();
+        if ($this->request->input('accessCode') === 'organizer') {
+            $suggestedBy = $this->request->user();
+            $suggestedByEntity = User::class;
+        } else {
+            $suggestedBy = MainGuest::query()
+                ->where('access_code', $this->request->input('accessCode'))
+                ->first();
+            $suggestedByEntity = MainGuest::class;
+        }
         
-        if (!$mainGuest) {
+        if (!$suggestedBy) {
             throw ValidationException::withMessages(['message' => 'Invalid access code!']);
         }
         
@@ -61,7 +68,8 @@ class SuggestedMusicServices
             'platformId' => $this->request->get('platformId'),
             'platform'  => 'spotify',
             'thumbnailUrl' => $this->request->get('thumbnailUrl'),
-            'suggested_by' => $mainGuest->id,
+            'suggested_by_entity' => $suggestedByEntity,
+            'suggested_by_id' => $suggestedBy->id,
         ]);
     }
     

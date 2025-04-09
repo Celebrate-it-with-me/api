@@ -6,33 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class EventFeature extends Model
+class EventConfigComment extends Model
 {
     /** @use HasFactory<\Database\Factories\EventsFactory> */
     use HasFactory;
 
-    protected $table = 'event_features';
+    protected $table = 'event_config_comment';
 
     protected $fillable = [
         'event_id',
-        'save_the_date',
-        'rsvp',
-        'gallery',
-        'music',
-        'background_music',
-        'event_comments',
-        'seats_accommodation',
-        'preview',
-        'budget',
-        'analytics'
+        'title',
+        'sub_title',
+        'background_color',
+        'comments_title',
+        'button_color',
+        'button_text',
+        'max_comments',
     ];
-    
-    /**
-     * Define a relationship to the Events model.
-     * @return BelongsTo
-     */
+  
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
+    
 }

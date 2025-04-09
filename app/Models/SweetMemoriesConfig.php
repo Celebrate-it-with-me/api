@@ -6,29 +6,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class EventFeature extends Model
+class SweetMemoriesConfig extends Model
 {
-    /** @use HasFactory<\Database\Factories\EventsFactory> */
+    /** @use HasFactory<\Database\Factories\SuggestedMusicConfigFactory> */
     use HasFactory;
-
-    protected $table = 'event_features';
-
+    
+    protected $table = 'sweet_memories_config';
+    
     protected $fillable = [
         'event_id',
-        'save_the_date',
-        'rsvp',
-        'gallery',
-        'music',
-        'background_music',
-        'event_comments',
-        'seats_accommodation',
-        'preview',
-        'budget',
-        'analytics'
+        'title',
+        'sub_title',
+        'background_color',
+        'max_pictures',
     ];
     
     /**
-     * Define a relationship to the Events model.
+     * Defines the relationship between the current model and the Events model.
+     * This indicates that the current model belongs to an event.
+     *
      * @return BelongsTo
      */
     public function event(): BelongsTo

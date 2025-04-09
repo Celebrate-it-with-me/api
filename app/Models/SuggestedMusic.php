@@ -18,7 +18,8 @@ class SuggestedMusic extends Model
         'platform',
         'platformId',
         'thumbnailUrl',
-        'suggested_by'
+        'suggested_by_entity',
+        'suggested_by_id'
     ];
     
     /**
