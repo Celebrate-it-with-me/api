@@ -16,6 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('event_id');
             $table->string('image_path');
             $table->string('image_name');
+            $table->string('image_original_name');
+            $table->string('image_size');
             $table->string('thumbnail_path')->nullable();
             $table->string('thumbnail_name')->nullable();
             $table->timestamps();

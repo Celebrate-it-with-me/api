@@ -133,4 +133,9 @@ class Events extends Model
     {
         return $this->hasOne(SweetMemoriesConfig::class, 'event_id', 'id');
     }
+    
+    public function sweetMemoriesImages(): HasMany
+    {
+        return $this->hasMany(SweetMemoriesImage::class, 'event_id', 'id');
+    }
 }

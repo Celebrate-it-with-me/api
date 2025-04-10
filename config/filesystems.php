@@ -63,7 +63,7 @@ return [
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
             'region' => env('AWS_DEFAULT_REGION'),
             'bucket' => env('AWS_BUCKET'),
-            'root' => env('SWEET_MEMORIES_ROOT', storage_path('app/sweet-memories')),
+            'root' => env('SWEET_MEMORIES_ROOT', storage_path('app/public/sweet-memories')),
             'url' => env('SWEET_MEMORIES_URL', env('APP_URL').'/storage/sweet-memories'),
             'visibility' => 'public',
             'throw' => true,
