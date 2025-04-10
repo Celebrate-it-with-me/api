@@ -3,6 +3,7 @@
 namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class StoreSweetMemoriesImageRequest extends FormRequest
 {
@@ -23,7 +24,6 @@ class StoreSweetMemoriesImageRequest extends FormRequest
     {
         return [
             'files' => ['required', 'array'],
-            'files.*' => ['file', 'image'],
         ];
     }
 }

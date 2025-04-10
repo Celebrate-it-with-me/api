@@ -11,6 +11,7 @@ use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
     use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+    use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
     use App\Http\Controllers\AppControllers\TemplateController;
 use App\Http\Controllers\AuthenticationController;
 
@@ -77,6 +78,19 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('store.sweetMemoriesConfig');
     Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
         ->name('update.sweetMemoriesConfig');
+    
+    Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
+        ->name('store.sweetMemoriesImages');
+    Route::get('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'index'])
+        ->name('index.sweetMemoriesImages');
+    Route::put('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'update'])
+        ->name('update.sweetMemoriesImages');
+    Route::delete('event/{event}/sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'destroy'])
+        ->name('destroy.sweetMemoriesImages');
+    
+    Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
+        ->name('update.sweetMemoriesImages');
+    
     
     Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
         ->name('index.EventComments');
