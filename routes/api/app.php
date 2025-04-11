@@ -11,11 +11,15 @@ use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
     use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+    use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
     use App\Http\Controllers\AppControllers\TemplateController;
 use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
+
+Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
+Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -75,15 +79,26 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('index.sweetMemoriesConfig');
     Route::post('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'store'])
         ->name('store.sweetMemoriesConfig');
+    Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
+        ->name('update.sweetMemoriesConfig');
+    
+    Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
+        ->name('store.sweetMemoriesImages');
+    Route::get('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'index'])
+        ->name('index.sweetMemoriesImages');
+    Route::put('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'update'])
+        ->name('update.sweetMemoriesImages');
+    Route::delete('event/{event}/sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'destroy'])
+        ->name('destroy.sweetMemoriesImages');
+    
+    Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
+        ->name('update.sweetMemoriesImages');
+    
     
     Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
         ->name('index.EventComments');
     Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
         ->name('store.EventComments');
-    
-    
-    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
-    Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
