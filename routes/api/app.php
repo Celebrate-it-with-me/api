@@ -18,6 +18,9 @@ use App\Http\Controllers\AuthenticationController;
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
 
+Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
+Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('event', [EventsController::class, 'store']);
@@ -96,10 +99,6 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('index.EventComments');
     Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
         ->name('store.EventComments');
-    
-    
-    Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
-    Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
