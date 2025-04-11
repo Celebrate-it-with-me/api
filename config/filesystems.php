@@ -56,7 +56,20 @@ return [
             'visibility' => 'public',
             'throw' => true,
         ],
-
+        
+        'sweet-memories' => [
+            'driver' => env('SWEET_MEMORIES_DRIVER', 'local'),
+            'key' => env('AWS_ACCESS_KEY_ID'), // Fix this to use the correct key
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => env('SWEET_MEMORIES_DRIVER') === 'local'
+                ? env('SWEET_MEMORIES_ROOT', storage_path('app/public/sweet-memories'))
+                : null,
+            'url' => env('AWS_URL', env('APP_URL').'/storage/sweet-memories'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'throw' => true,
+        ]
     ],
 
     /*
