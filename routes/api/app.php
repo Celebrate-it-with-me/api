@@ -23,8 +23,10 @@ Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsv
 
 Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
     ->name('index.EventComments');
+
 Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
-    ->name('store.EventComments');
+    ->name('store.EventComments')
+;
 Route::post('event/{event}/suggest-music', [SuggestedMusicController::class, 'store']);
 Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
 
