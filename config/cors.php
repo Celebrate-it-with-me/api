@@ -1,5 +1,10 @@
 <?php
 
+$allowedOrigins = array_merge(
+    ['https://*' . env('SESSION_DOMAIN'), 'http://*'. env('SESSION_DOMAIN')],
+    explode(',', env('ALLOWED_SPA_DOMAINS', ''))
+);
+
 return [
 
     /*
@@ -19,7 +24,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => $allowedOrigins,
 
     'allowed_origins_patterns' => [],
 
