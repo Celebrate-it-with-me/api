@@ -51,7 +51,10 @@ class TemplateResource extends JsonResource
                 'updatedAt' => $this->updated_at->toDateTimeString(),
                 'selected' => false,
                 'saveTheDate' => SaveTheDateResource::make($this->saveTheDate),
-                'commentsConfig' => $this->getCommentsConfig()
+                'commentsConfig' => $this->getCommentsConfig(),
+                'eventFeature' => EventFeatureResource::make($this->eventFeature),
+                'sweetMemoriesImages' => SweetMemoriesImageResource::collection($this->sweetMemoriesImages),
+                'sweetMemoriesConfig' => SweetMemoriesConfigResource::make($this->sweetMemoriesConfig),
             ],
             'mainGuest' => [
                 'id' => $this->mainGuest->id,
