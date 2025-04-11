@@ -10,9 +10,9 @@ use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
-    use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
-    use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
-    use App\Http\Controllers\AppControllers\TemplateController;
+use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
+use App\Http\Controllers\AppControllers\TemplateController;
 use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -20,6 +20,13 @@ Route::post('login', [AuthenticationController::class, 'appLogin']);
 
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
 Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
+
+Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
+    ->name('index.EventComments');
+Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
+    ->name('store.EventComments');
+Route::post('event/{event}/suggest-music', [SuggestedMusicController::class, 'store']);
+Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -49,9 +56,6 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::delete('companion/{guestCompanion}', [CompanionController::class, 'destroy'])
         ->name('companion.destroy');
-    
-    Route::post('event/{event}/suggest-music', [SuggestedMusicController::class, 'store']);
-    Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
     
     Route::delete('suggest-music/{suggestedMusic}', [SuggestedMusicController::class, 'destroy']);
     Route::post('suggest-music/{suggestedMusic}/vote', [SuggestedMusicController::class, 'storeOrUpdate']);
@@ -93,12 +97,6 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
         ->name('update.sweetMemoriesImages');
-    
-    
-    Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
-        ->name('index.EventComments');
-    Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
-        ->name('store.EventComments');
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
