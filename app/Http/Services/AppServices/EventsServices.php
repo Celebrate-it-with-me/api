@@ -82,7 +82,7 @@ class EventsServices
            'event_id' => $event->id,
             'save_the_date' => $this->request->input('saveTheDate') ?? false,
             'rsvp' => $this->request->input('rsvp') ?? false,
-            'gallery' => $this->request->input('gallery') ?? false,
+            'sweet_memories' => $this->request->input('sweetMemories') ?? false,
             'music' => $this->request->input('music') ?? false,
             'background_music' => $this->request->input('backgroundMusic') ?? false,
             'event_comments' => $this->request->input('eventComments') ?? false,
