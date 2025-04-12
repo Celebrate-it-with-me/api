@@ -1,9 +1,6 @@
 <?php
 
-$allowedOrigins = array_merge(
-    ['https://*' . env('SESSION_DOMAIN'), 'http://*'. env('SESSION_DOMAIN')],
-    explode(',', env('ALLOWED_SPA_DOMAINS', ''))
-);
+$allowedOrigins = explode(',', env('ALLOWED_SPA_DOMAINS', ''));
 
 return [
 
