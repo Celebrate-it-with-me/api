@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
+use App\Events\UserRegistered;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
@@ -43,12 +44,14 @@ class AuthenticationController extends Controller
     public function appRegister(AppRegisterRequest $request): JsonResponse
     {
         $user = User::query()->create([
-            'name' => "$request->firstName $request->lastName",
+            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
         $user->assignRole('appUser');
+        
+        event(new UserRegistered($user));
 
         return response()->json([
            'message' => 'User registered successfully!',
