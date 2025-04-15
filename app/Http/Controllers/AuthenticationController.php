@@ -58,6 +58,28 @@ class AuthenticationController extends Controller
            'user' => $user,
         ], 201);
     }
+    
+    /**
+     * Confirm the user's email address.
+     * @param Request $request
+     * @param User $user
+     * @return JsonResponse
+     */
+    public function confirmEmail(Request $request, User $user): JsonResponse
+    {
+        if (!$request->hasValidSignature() || !$request->user) {
+            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+        }
+        
+        $user = User::query()->find($request->user);
+        
+        if (!$user || !$user->hasVerifiedEmail()) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+        
+        return response()->json(['message' => 'Email verified successfully!']);
+    }
 
     /**
      * Authenticates the user for the mobile application login.
@@ -73,6 +95,7 @@ class AuthenticationController extends Controller
         $user = User::query()
             ->with('lastLoginSession')
             ->where('email', $request->input('email'))
+            ->whereNotNull('email_verified_at')
             ->first();
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
