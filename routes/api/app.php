@@ -20,7 +20,14 @@ Route::post('login', [AuthenticationController::class, 'appLogin']);
 Route::post('confirm-email', [AuthenticationController::class, 'confirmEmail'])
     ->name('confirm.email')
     ->middleware('signed');
-    
+
+Route::post('forgot-password', [AuthenticationController::class, 'forgotPassword'])
+    ->name('forgot.password');
+Route::post('check-password-link', [AuthenticationController::class, 'checkPasswordLink'])
+    ->name('check.password')
+    ->middleware('signed');
+Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
+    ->name('reset.password');
     
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
 Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);

@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Events\ResetPasswordEvent;
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
 use App\Listeners\SendConfirmationEmail;
+use App\Listeners\SendResetPasswordLink;
 use App\Listeners\UserLoggedInListener;
 use App\Listeners\UserLoggedOutListener;
 use App\Models\GuestCompanion;
@@ -37,6 +39,10 @@ class EventServiceProvider extends ServiceProvider
         
         UserRegistered::class => [
             SendConfirmationEmail::class,
+        ],
+        
+        ResetPasswordEvent::class => [
+            SendResetPasswordLink::class,
         ]
     ];
 
