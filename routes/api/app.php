@@ -17,7 +17,18 @@ use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
+Route::post('confirm-email', [AuthenticationController::class, 'confirmEmail'])
+    ->name('confirm.email')
+    ->middleware('signed');
 
+Route::post('forgot-password', [AuthenticationController::class, 'forgotPassword'])
+    ->name('forgot.password');
+Route::post('check-password-link', [AuthenticationController::class, 'checkPasswordLink'])
+    ->name('check.password')
+    ->middleware('signed');
+Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
+    ->name('reset.password');
+    
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
 Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
 
@@ -29,6 +40,8 @@ Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
 ;
 Route::post('event/{event}/suggest-music', [SuggestedMusicController::class, 'store']);
 Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
+
+
 
 
 Route::middleware('auth:sanctum')->group(function () {

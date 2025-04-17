@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ResetPasswordEvent;
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
+use App\Events\UserRegistered;
+use App\Http\Requests\app\ForgotPasswordRequest;
+use App\Http\Requests\app\ResetPasswordRequest;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
-use Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticationController extends Controller
@@ -43,17 +45,92 @@ class AuthenticationController extends Controller
     public function appRegister(AppRegisterRequest $request): JsonResponse
     {
         $user = User::query()->create([
-            'name' => "$request->firstName $request->lastName",
+            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
         $user->assignRole('appUser');
+        
+        event(new UserRegistered($user));
 
         return response()->json([
            'message' => 'User registered successfully!',
            'user' => $user,
         ], 201);
+    }
+    
+    /**
+     * Confirm the user's email address.
+     * @param Request $request
+     * @param User $user
+     * @return JsonResponse
+     */
+    public function confirmEmail(Request $request, User $user): JsonResponse
+    {
+        if (!$request->hasValidSignature() || !$request->user) {
+            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+        }
+        
+        $user = User::query()->find($request->user);
+        
+        if (!$user || !$user->hasVerifiedEmail()) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+        
+        return response()->json(['message' => 'Email verified successfully!']);
+    }
+    
+    /**
+     * Forgot Password functionality.
+     * @param ForgotPasswordRequest $request
+     * @return JsonResponse
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $user = User::query()->where('email', $request->input('email'))->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Password reset link sent successfully!']);
+        }
+
+        ResetPasswordEvent::dispatch($user);
+
+        return response()->json(['message' => 'Password reset link sent successfully!']);
+    }
+    
+    /**
+     * Check reset password link.
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function checkPasswordLink(Request $request): JsonResponse
+    {
+        if (!$request->hasValidSignature() || !$request->user) {
+            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+        }
+        
+        return response()->json([
+            'message' => 'Password Link is Valid!',
+            'data' => User::find($request->user),
+        ]);
+    }
+    
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $user = User::query()
+            ->where('email', $request->input('email'))
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        $user->password = Hash::make($request->input('password'));
+        $user->save();
+
+        return response()->json(['message' => 'Password reset successfully!']);
     }
 
     /**
@@ -70,6 +147,7 @@ class AuthenticationController extends Controller
         $user = User::query()
             ->with('lastLoginSession')
             ->where('email', $request->input('email'))
+            ->whereNotNull('email_verified_at')
             ->first();
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
