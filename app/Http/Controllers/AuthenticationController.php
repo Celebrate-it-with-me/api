@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ResetPasswordEvent;
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
+use App\Http\Requests\app\ForgotPasswordRequest;
+use App\Http\Requests\app\ResetPasswordRequest;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
-use Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticationController extends Controller
@@ -79,6 +80,57 @@ class AuthenticationController extends Controller
         }
         
         return response()->json(['message' => 'Email verified successfully!']);
+    }
+    
+    /**
+     * Forgot Password functionality.
+     * @param ForgotPasswordRequest $request
+     * @return JsonResponse
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $user = User::query()->where('email', $request->input('email'))->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Password reset link sent successfully!']);
+        }
+
+        ResetPasswordEvent::dispatch($user);
+
+        return response()->json(['message' => 'Password reset link sent successfully!']);
+    }
+    
+    /**
+     * Check reset password link.
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function checkPasswordLink(Request $request): JsonResponse
+    {
+        if (!$request->hasValidSignature() || !$request->user) {
+            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+        }
+        
+        return response()->json([
+            'message' => 'Password Link is Valid!',
+            'data' => User::find($request->user),
+        ]);
+    }
+    
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $user = User::query()
+            ->where('email', $request->input('email'))
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        $user->password = Hash::make($request->input('password'));
+        $user->save();
+
+        return response()->json(['message' => 'Password reset successfully!']);
     }
 
     /**
