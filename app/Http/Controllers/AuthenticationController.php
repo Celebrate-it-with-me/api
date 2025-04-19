@@ -145,7 +145,7 @@ class AuthenticationController extends Controller
     public function appLogin(AppLoginRequest $request): JsonResponse
     {
         $user = User::query()
-            ->with('lastLoginSession')
+            ->with(['lastLoginSession', 'activeEvent'])
             ->where('email', $request->input('email'))
             ->whereNotNull('email_verified_at')
             ->first();
