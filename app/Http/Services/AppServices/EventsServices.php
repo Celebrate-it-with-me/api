@@ -29,11 +29,29 @@ class EventsServices
      * Get user logged events.
      * @return Collection
      */
-    public function getUserEvents(): Collection
+    public function getUserEvents(): array
     {
-        return Events::query()
-            ->where('organizer_id', $this->request->user()->id)
+        $user = $this->request->user();
+        
+        if (!$user) {
+            throw new Exception('User not authenticated');
+        }
+        
+        if ($user->last_active_event_id) {
+            $lastActiveEvent = Events::query()
+                ->where('id', $user->last_active_event_id)
+                ->where('organizer_id', $user->id)
+                ->first();
+        }
+        
+        $events = Events::query()
+            ->where('organizer_id', $user->id)
             ->get();
+        
+        return [
+            $events,
+            $lastActiveEvent ?? null,
+        ];
     }
     
     /**
