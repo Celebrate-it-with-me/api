@@ -158,7 +158,14 @@ class AuthenticationController extends Controller
             return response()->json(['message' => 'Access Denied. You are not authorized to access this page.'], 403);
         }
 
-        $token = $user->createToken($request->input('device'))->plainTextToken;
+        $remember = $request->input('remember', false);
+        $expiration = $remember ? now()->addDays(30) : now()->addhours(5);
+        
+        $token = $user->createToken(
+            $request->input('device'),
+            ['*'],
+            $expiration
+        )->plainTextToken;
 
         UserLoggedInEvent::dispatch($user, $request);
         
