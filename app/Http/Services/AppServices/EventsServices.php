@@ -80,8 +80,6 @@ class EventsServices
      */
     public function create(): Model|Builder
     {
-        Log::info('start date', [$this->request->input('startDate')]);
-        
         $event = Events::query()->create([
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
@@ -113,9 +111,9 @@ class EventsServices
             'analytics' => $this->request->input('analytics') ?? false,
         ]);
         
-        if (request()->user) {
+        if (request()->user()) {
             $user = User::query()
-                ->where('id', request()->user->id)
+                ->where('id', request()->user()->id)
                 ->first();
             
             if ($user) {
@@ -147,7 +145,7 @@ class EventsServices
         
         $this->event->eventFeature->save_the_date = $this->request->input('saveTheDate') ?? false;
         $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
-        $this->event->eventFeature->gallery = $this->request->input('gallery') ?? false;
+        $this->event->eventFeature->sweet_memories = $this->request->input('sweetMemories') ?? false;
         $this->event->eventFeature->music = $this->request->input('music') ?? false;
         $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
         $this->event->eventFeature->event_comments = $this->request->input('eventComments') ?? false;

@@ -46,8 +46,8 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('event', [EventsController::class, 'store']);
-    Route::patch('event/activeEvent', [EventsController::class, 'activeEvent'])
-        ->name('event.activeEvent');
+    Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
+        ->name('event.active-event');
     
     Route::get('events', [EventsController::class, 'index']);
     
