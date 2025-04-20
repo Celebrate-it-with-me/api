@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class EventsServices
@@ -88,7 +89,9 @@ class EventsServices
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
             'status' => $this->request->input('status'),
-            'custom_url_slug' => $this->request->input('customUrlSlug'),
+            'custom_url_slug' => $this->request->input('customUrlSlug') ?? Str::slug(
+                    $this->request->input('eventName')
+                ) . '-' . (Events::query()->max('id') + 1),
             'visibility' => $this->request->input('visibility'),
         ]);
         
@@ -109,6 +112,17 @@ class EventsServices
             'budget' => $this->request->input('budget') ?? false,
             'analytics' => $this->request->input('analytics') ?? false,
         ]);
+        
+        if (request()->user) {
+            $user = User::query()
+                ->where('id', request()->user->id)
+                ->first();
+            
+            if ($user) {
+                $user->last_active_event_id = $event->id;
+                $user->save();
+            }
+        }
         
         return $event;
     }
