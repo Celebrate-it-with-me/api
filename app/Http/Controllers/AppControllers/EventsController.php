@@ -49,11 +49,10 @@ class EventsController extends Controller
             $user = $request->user();
             $event = Events::query()
                 ->where('id', $request->input('eventId'))
-                ->where('organizer_id', $user->id)
                 ->first();
             
             if (!$event) {
-                return response()->json(['message' => 'Event not found.'], 404);
+                return response()->json(['message' => 'Event not found 123.'], 404);
             }
             
             $user->last_active_event_id = $event->id;
