@@ -48,7 +48,7 @@ class EventsController extends Controller
         try {
             $user = $request->user();
             $event = Events::query()
-                ->where('id', $request->input('event_id'))
+                ->where('id', $request->input('eventId'))
                 ->where('organizer_id', $user->id)
                 ->first();
             
