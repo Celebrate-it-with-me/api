@@ -76,6 +76,10 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
     
+    protected $appends = [
+      'avatar_url'
+    ];
+    
     /**
      * Relation with user login sessions.
      * @return HasMany
@@ -106,5 +110,18 @@ class User extends Authenticatable
     public function activeEvent(): HasOne
     {
         return $this->hasOne(Events::class, 'organizer_id', 'id');
+    }
+    
+    /**
+     * Getting the user avatar URL.
+     * @property string|null $avatar
+     * @method string userAvatarAttribute()
+     * @mixin Eloquent
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        return $this->avatar
+            ? asset('storage/' . $this->avatar)
+            : '';
     }
 }

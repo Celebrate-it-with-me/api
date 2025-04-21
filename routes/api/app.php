@@ -13,7 +13,8 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
-use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\AppControllers\UserSettingsController;
+    use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -117,6 +118,12 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
         ->name('update.sweetMemoriesImages');
+    
+    Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
+        ->name('user.updateProfile');
+    
+    Route::get('user', [UserSettingsController::class, 'getUser'])
+        ->name('user.show');
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
