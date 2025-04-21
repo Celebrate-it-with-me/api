@@ -13,6 +13,7 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
+    use App\Http\Controllers\AppControllers\UserPreferenceController;
     use App\Http\Controllers\AppControllers\UserSettingsController;
     use App\Http\Controllers\AuthenticationController;
 
@@ -121,6 +122,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
         ->name('user.updateProfile');
+    Route::get('user/preferences', [UserPreferenceController::class, 'showPreferences'])
+        ->name('user.preferences');
+    Route::post('user/preferences', [UserPreferenceController::class, 'updatePreferences'])
+        ->name('user.updatePreferences');
     
     Route::get('user', [UserSettingsController::class, 'getUser'])
         ->name('user.show');
