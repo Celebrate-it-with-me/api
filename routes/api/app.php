@@ -13,7 +13,8 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
-use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\AppControllers\UserSettingsController;
+    use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -46,8 +47,8 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('event', [EventsController::class, 'store']);
-    Route::patch('event/activeEvent', [EventsController::class, 'activeEvent'])
-        ->name('event.activeEvent');
+    Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
+        ->name('event.active-event');
     
     Route::get('events', [EventsController::class, 'index']);
     
@@ -117,6 +118,12 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
         ->name('update.sweetMemoriesImages');
+    
+    Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
+        ->name('user.updateProfile');
+    
+    Route::get('user', [UserSettingsController::class, 'getUser'])
+        ->name('user.show');
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
