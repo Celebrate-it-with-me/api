@@ -4,6 +4,7 @@ namespace App\Http\Services\AppServices;
 
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 class UserSettingsServices
@@ -40,6 +41,34 @@ class UserSettingsServices
         } catch (Exception $ex) {
             // Handle exception
             Log::error('Error updating profile: ' . $ex->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Updates the password of the authenticated user. The new password is hashed
+     * before being saved. Throws an exception if the user is not authenticated.
+     *
+     * @param Request $request The incoming HTTP request containing the new password.
+     * @return bool Returns true if the password update is successful, otherwise false.
+     * @throws Exception If the user is not authenticated.
+     */
+    public function updatePassword(Request $request): bool
+    {
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                throw new Exception('User not authenticated');
+            }
+            
+            $user->password = Hash::make($request->input('password'));
+            $user->save();
+            
+            return true;
+        } catch (Exception $ex) {
+            // Handle exception
+            Log::error('Error updating password: ' . $ex->getMessage());
             return false;
         }
     }
