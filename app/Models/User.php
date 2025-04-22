@@ -124,4 +124,14 @@ class User extends Authenticatable
             ? asset('storage/' . $this->avatar)
             : '';
     }
+    
+    /**
+     * Relation with user preferences.
+     * @return HasOne
+     * @property-read UserPreference|null $preferences
+     */
+    public function preferences(): HasOne
+    {
+        return $this->hasOne(UserPreference::class, 'user_id', 'id');
+    }
 }
