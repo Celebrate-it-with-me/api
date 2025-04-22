@@ -126,6 +126,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('user.preferences');
     Route::post('user/preferences', [UserPreferenceController::class, 'updatePreferences'])
         ->name('user.updatePreferences');
+    Route::post('user/update-password', [UserSettingsController::class, 'updatePassword'])
+        ->name('user.updatePassword');
     
     Route::get('user', [UserSettingsController::class, 'getUser'])
         ->name('user.show');
