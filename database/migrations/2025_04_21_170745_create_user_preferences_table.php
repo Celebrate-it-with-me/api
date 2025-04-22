@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('language')->default('en');
             $table->string('timezone')->default('America/New_York');
-            $table->boolean('dark_mode')->default(false);
+            $table->string('visual_theme')->default('system');
             $table->string('date_format')->default('MM/DD/YYYY');
             
             $table->boolean('notify_by_email')->default(true);

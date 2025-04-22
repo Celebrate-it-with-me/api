@@ -17,7 +17,7 @@ class UserPreferencesResource extends JsonResource
         return [
             'language' => $this->language,
             'timezone' => $this->timezone,
-            'darkMode' => $this->dark_mode,
+            'visualTheme' => $this->visual_theme,
             'dateFormat' => $this->date_format,
             'notifyByEmail' => $this->notify_by_email,
             'notifyBySms' => $this->notify_by_sms,

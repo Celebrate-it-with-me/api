@@ -13,7 +13,7 @@ class UserPreference extends Model
         'user_id',
         'language',
         'timezone',
-        'dark_mode',
+        'visual_theme',
         'date_format',
         
         'notify_by_email',
