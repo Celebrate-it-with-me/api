@@ -31,7 +31,7 @@ class UserPreferencesServices
             [
                 'language' => $validated['language'] ?? null,
                 'timezone' => $validated['timezone'] ?? null,
-                'dark_mode' => $validated['darkMode'] ?? null,
+                'visual_theme' => $validated['visualTheme'] ?? null,
                 'date_format' => $validated['dateFormat'] ?? null,
                 
                 'notify_by_email' => $validated['notifyByEmail'] ?? null,

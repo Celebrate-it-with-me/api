@@ -59,7 +59,7 @@ class UserPreferenceController extends Controller
         $validated = $request->validate([
             'language' => 'string|nullable',
             'timezone' => 'string|nullable',
-            'darkMode' => 'boolean|nullable',
+            'visualTheme' => 'string|nullable',
             'dateFormat' => 'string|nullable',
             'notifyByEmail' => 'boolean|nullable',
             'notifyBySms' => 'boolean|nullable',
