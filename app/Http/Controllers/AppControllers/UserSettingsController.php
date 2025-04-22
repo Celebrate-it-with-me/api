@@ -55,4 +55,29 @@ class UserSettingsController extends Controller
         ]);
     }
     
+    /**
+     * Updates the user's password based on the provided request data.
+     *
+     * @param Request $request The HTTP request containing password update data.
+     * @return JsonResponse Returns a JSON response indicating success or failure of the operation.
+     * @throws \Exception
+     */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $request->merge([
+            'newPassword_confirmation' => $request->input('newPasswordConfirmation')
+        ]);
+        
+        $request->validate([
+            'currentPassword' => 'required|string',
+            'newPassword' => 'required|string|confirmed|min:8',
+        ]);
+        
+        if ($this->userSettingsServices->updatePassword($request)) {
+            return response()->json(['message' => 'Password updated successfully.']);
+        }
+        
+        return response()->json(['message' => 'Failed to update password.'], 500);
+    }
+    
 }
