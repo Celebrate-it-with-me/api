@@ -15,6 +15,7 @@ use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
     use App\Http\Controllers\AppControllers\UserPreferenceController;
     use App\Http\Controllers\AppControllers\UserSettingsController;
+    use App\Http\Controllers\AppControllers\UserTwoFAController;
     use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -128,6 +129,19 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('user.updatePreferences');
     Route::post('user/update-password', [UserSettingsController::class, 'updatePassword'])
         ->name('user.updatePassword');
+    
+    Route::prefix('user/2fa')
+        ->name('user.2fa.')
+        ->group(function () {
+            Route::get('setup', [UserTwoFAController::class, 'setup'])->name('setup');
+            Route::post('enable', [UserTwoFAController::class, 'enable'])->name('enable');
+            Route::post('disable', [UserTwoFAController::class, 'disable'])->name('disable');
+            Route::post('verify', [UserTwoFAController::class, 'verify'])->name('verify');
+            Route::get('status', [UserTwoFAController::class, 'status'])->name('status');
+            Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
+        });
+    
+    
     
     Route::get('user', [UserSettingsController::class, 'getUser'])
         ->name('user.show');

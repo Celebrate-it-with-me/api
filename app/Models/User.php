@@ -74,6 +74,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'two_factor_recovery_codes' => 'array',
     ];
     
     protected $appends = [
