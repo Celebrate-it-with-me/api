@@ -62,7 +62,11 @@ class UserSettingsServices
                 throw new Exception('User not authenticated');
             }
             
-            $user->password = Hash::make($request->input('password'));
+            if (!Hash::check($request->input('currentPassword'), $user->password)) {
+                throw new Exception('Current password is incorrect');
+            }
+            
+            $user->password = Hash::make($request->input('newPassword'));
             $user->save();
             
             return true;
