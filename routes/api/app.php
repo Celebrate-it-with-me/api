@@ -64,9 +64,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('save-the-date/{saveTheDate}', [SaveTheDateController::class, 'update']);
     
     Route::post('event/{event}/guest', [GuestController::class, 'store']);
-    Route::get('event/{event}/guest', [GuestController::class, 'index']);
+    
     
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
+    
+    Route::get('event/{event}/guest', [GuestController::class, 'index'])
+        ->name('index.guests');
+    Route::post('event/{event}/guests', [GuestController::class, 'store'])
+        ->name('guests.store');
     
     Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
         ->name('guest.updateCompanion');
