@@ -44,7 +44,7 @@ class GuestServices
                         ->orWhere('phone', 'like', "%{$searchValue}%");
                 });
             })
-            ->withCount('companions') // Suponiendo que tienes una relación companions()
+            ->withCount('companions')
             ->orderBy('created_at', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
     }
