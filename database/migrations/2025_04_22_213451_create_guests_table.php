@@ -18,12 +18,14 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
+            $table->boolean('is_vip')->default(false);
             $table->string('rsvp_status')->default('pending');
             $table->string('meal_preference')->nullable();
             $table->string('allergies')->nullable();
             $table->string('seat_number')->nullable();
             $table->string('code')->nullable();
             $table->text('notes')->nullable();
+            $table->json('tags')->nullable();
             $table->timestamps();
         });
     }

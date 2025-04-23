@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Guest extends Model
 {
@@ -18,7 +19,9 @@ class Guest extends Model
         'phone',
         'rsvp_status',
         'code',
-        'notes'
+        'notes',
+        'is_vip',
+        'tags'
     ];
     
     /**
@@ -37,5 +40,14 @@ class Guest extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Guest::class, 'parent_id', 'id');
+    }
+    
+    /**
+     * Get the companions of this guest.
+     * @return HasMany
+     */
+    public function companions(): HasMany
+    {
+        return $this->hasMany(Guest::class, 'parent_id', 'id');
     }
 }
