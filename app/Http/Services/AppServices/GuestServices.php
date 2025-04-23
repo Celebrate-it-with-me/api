@@ -180,5 +180,16 @@ class GuestServices
                 ->delete();
         }
     }
+    
+    /**
+     * Deletes the specified guest from the database.
+     *
+     * @param Guest $guest The guest instance to be deleted.
+     * @return void
+     */
+    public function delete(Guest $guest): void
+    {
+        $guest->delete();
+    }
 
 }
