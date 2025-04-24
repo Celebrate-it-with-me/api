@@ -50,4 +50,24 @@ class Guest extends Model
     {
         return $this->hasMany(Guest::class, 'parent_id', 'id');
     }
+    
+    /**
+     * Define a one-to-many relationship with the GuestRsvpLog model.
+     *
+     * @return HasMany
+     */
+    public function rsvpLogs(): HasMany
+    {
+        return $this->hasMany(GuestRsvpLog::class, 'guest_id', 'id');
+    }
+    
+    /**
+     * Define a one-to-many relationship with the GuestInvitation model.
+     *
+     * @return HasMany
+     */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(GuestInvitation::class, 'guest_id', 'id');
+    }
 }

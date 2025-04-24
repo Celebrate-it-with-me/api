@@ -8,9 +8,7 @@ use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Services\AppServices\GuestServices;
 use App\Models\Events;
 use App\Models\Guest;
-use App\Models\MainGuest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Throwable;
 
 class GuestController extends Controller
@@ -63,15 +61,15 @@ class GuestController extends Controller
     
     
     /**
-     * Update the companion type for a main guest.
-     * @param Request $request
-     * @param MainGuest $guest
-     * @return GuestResource|JsonResponse
+     * Show the event guest and all the relations.
+     * @param Events $event
+     * @param Guest $guest
+     * @return JsonResponse|GuestResource
      */
-    public function updateCompanion(Request $request, MainGuest $guest): GuestResource|JsonResponse
+    public function show(Events $event, Guest $guest): JsonResponse | GuestResource
     {
         try {
-            return GuestResource::make($this->guestServices->updateCompanionType($guest, $request));
+            return GuestResource::make($this->guestServices->showGuest($guest));
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
