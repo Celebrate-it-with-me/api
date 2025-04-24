@@ -44,7 +44,7 @@ class GuestServices
                         ->orWhere('phone', 'like', "%{$searchValue}%");
                 });
             })
-            ->withCount('companions') // Suponiendo que tienes una relación companions()
+            ->withCount('companions')
             ->orderBy('created_at', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
     }
@@ -190,6 +190,22 @@ class GuestServices
     public function delete(Guest $guest): void
     {
         $guest->delete();
+    }
+    
+    public function showGuest(Guest $guest): Guest
+    {
+        return $guest->load([
+            'companions' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'event',
+            'invitations' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'rsvpLogs' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+        ]);
     }
 
 }

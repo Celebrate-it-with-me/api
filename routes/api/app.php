@@ -47,7 +47,7 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 
 
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
@@ -72,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('guests.store');
     Route::delete('event/{event}/guests/{guest}', [GuestController::class, 'destroy'])
         ->name('guests.destroy');
+    Route::get('event/{event}/guests/{guest}', [GuestController::class, 'show'])
+        ->name('guests.show');
     
     Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
         ->name('guest.updateCompanion');
