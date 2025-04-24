@@ -191,5 +191,21 @@ class GuestServices
     {
         $guest->delete();
     }
+    
+    public function showGuest(Guest $guest): Guest
+    {
+        return $guest->load([
+            'companions' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'event',
+            'invitations' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'rsvpLogs' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+        ]);
+    }
 
 }
