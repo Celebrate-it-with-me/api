@@ -35,7 +35,6 @@ class GuestResource extends JsonResource
             'notes' => $this->notes,
             'code' => $isMainGuest ? $this->code : null,
             
-            // 🎯 Añadimos ambos campos solo si es el guest principal
             'invitationUrl' => $invitationUrl,
             'invitationQR' => $isMainGuest && $invitationUrl
                 ? base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
@@ -44,6 +43,14 @@ class GuestResource extends JsonResource
             'companions' => $this->when(
                 $isMainGuest,
                 GuestResource::collection($this->companions)
+            ),
+            'invitations' => $this->when(
+                $isMainGuest,
+                GuestInvitationResource::collection($this->rsvpLogs)
+            ),
+            'rsvpLogs' => $this->when(
+                $isMainGuest,
+                GuestRsvpLogResource::collection($this->rsvpLogs)
             ),
         ];
     }
