@@ -6,6 +6,7 @@
 /storage/*.key
 /vendor
 .env
+../code-agents/.env.codex
 .env.backup
 .env.production
 .phpunit.result.cache
