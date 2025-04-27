@@ -4,6 +4,7 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\EventComment;
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\MainGuest;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\Paginator;
@@ -36,7 +37,7 @@ class EventCommentsServices
     
     public function createEventComment(Events $event): EventComment
     {
-        $createdByClass = MainGuest::class;
+        $createdByClass = Guest::class;
         if ($this->request->input('origin') === 'admin') {
             $createdByClass = User::class;
         }
