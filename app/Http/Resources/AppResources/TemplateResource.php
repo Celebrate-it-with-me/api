@@ -3,14 +3,14 @@
 namespace App\Http\Resources\AppResources;
 
 use App\Http\Resources\UserResource;
-use App\Models\GuestCompanion;
+use App\Models\Guest;
 use App\Models\MainGuest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class TemplateResource extends JsonResource
 {
-    private MainGuest $mainGuest;
+    private Guest $mainGuest;
     
     public function __construct($resource, string $guestCode)
     {
@@ -23,10 +23,10 @@ class TemplateResource extends JsonResource
      * @param string $guestCode
      * @return MainGuest
      */
-    private function initMainGuest(string $guestCode): MainGuest
+    private function initMainGuest(string $guestCode): Guest
     {
-        return MainGuest::query()
-            ->where('access_code', $guestCode)
+        return Guest::query()
+            ->where('code', $guestCode)
             ->first();
     }
     
@@ -37,6 +37,8 @@ class TemplateResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $companionQty = Guest::query()->where('parent_id', $this->mainGuest->id)->count();
+        
         return [
             'event' => [
                 'id' => $this->id,
@@ -59,19 +61,16 @@ class TemplateResource extends JsonResource
             'mainGuest' => [
                 'id' => $this->mainGuest->id,
                 'eventId' => $this->mainGuest->event_id,
-                'firstName' => $this->mainGuest->first_name,
-                'lastName' => $this->mainGuest->last_name,
+                'name' => $this->mainGuest->name,
                 'email' => $this->mainGuest->email,
-                'phoneNumber' => $this->mainGuest->phone_number,
+                'phoneNumber' => $this->mainGuest->phone,
                 'mealPreference' => $this->mainGuest->meal_preference,
-                'accessCode' => $this->mainGuest->access_code,
-                'codeUsedTimes' => $this->mainGuest->code_used_times,
-                'confirmed' => $this->mainGuest->confirmed,
-                'rsvpCompleted' => $this->mainGuest->confirmed !== 'unused',
-                'confirmedDate' => $this->mainGuest->confirmed_date,
-                'companionType' => $this->mainGuest->companion_type,
-                'companionQty' => $this->mainGuest->companion_qty,
-                'companions' => GuestCompanionResource::collection($this->mainGuest->companions)
+                'accessCode' => $this->mainGuest->code,
+                'rsvpStatus' => $this->mainGuest->rsvp_status,
+                'notes' => $this->mainGuest->notes,
+                'tags' => $this->mainGuest->tags,
+                'companionQty' => $companionQty,
+                'companions' => GuestResource::collection($this->mainGuest->companions)
             ]
         ];
     }
