@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class EventsServices
@@ -29,11 +30,29 @@ class EventsServices
      * Get user logged events.
      * @return Collection
      */
-    public function getUserEvents(): Collection
+    public function getUserEvents(): array
     {
-        return Events::query()
-            ->where('organizer_id', $this->request->user()->id)
+        $user = $this->request->user();
+        
+        if (!$user) {
+            throw new Exception('User not authenticated');
+        }
+        
+        if ($user->last_active_event_id) {
+            $lastActiveEvent = Events::query()
+                ->where('id', $user->last_active_event_id)
+                ->where('organizer_id', $user->id)
+                ->first();
+        }
+        
+        $events = Events::query()
+            ->where('organizer_id', $user->id)
             ->get();
+        
+        return [
+            $events,
+            $lastActiveEvent ?? null,
+        ];
     }
     
     /**
@@ -61,8 +80,6 @@ class EventsServices
      */
     public function create(): Model|Builder
     {
-        Log::info('start date', [$this->request->input('startDate')]);
-        
         $event = Events::query()->create([
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
@@ -70,7 +87,9 @@ class EventsServices
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
             'status' => $this->request->input('status'),
-            'custom_url_slug' => $this->request->input('customUrlSlug'),
+            'custom_url_slug' => $this->request->input('customUrlSlug') ?? Str::slug(
+                    $this->request->input('eventName')
+                ) . '-' . (Events::query()->max('id') + 1),
             'visibility' => $this->request->input('visibility'),
         ]);
         
@@ -91,6 +110,17 @@ class EventsServices
             'budget' => $this->request->input('budget') ?? false,
             'analytics' => $this->request->input('analytics') ?? false,
         ]);
+        
+        if (request()->user()) {
+            $user = User::query()
+                ->where('id', request()->user()->id)
+                ->first();
+            
+            if ($user) {
+                $user->last_active_event_id = $event->id;
+                $user->save();
+            }
+        }
         
         return $event;
     }
@@ -115,7 +145,7 @@ class EventsServices
         
         $this->event->eventFeature->save_the_date = $this->request->input('saveTheDate') ?? false;
         $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
-        $this->event->eventFeature->gallery = $this->request->input('gallery') ?? false;
+        $this->event->eventFeature->sweet_memories = $this->request->input('sweetMemories') ?? false;
         $this->event->eventFeature->music = $this->request->input('music') ?? false;
         $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
         $this->event->eventFeature->event_comments = $this->request->input('eventComments') ?? false;

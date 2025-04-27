@@ -9,6 +9,7 @@ use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventCommentsServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class EventCommentsController extends Controller
@@ -40,6 +41,11 @@ class EventCommentsController extends Controller
         try {
             return EventCommentResource::make($this->eventCommentsServices->createEventComment($event));
         } catch (Throwable $th) {
+            Log::error('Comment Error info', [
+                'message' => $th->getMessage(),
+                'request' => $request->all(),
+                'event_id' => $event->id,
+            ]);
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }

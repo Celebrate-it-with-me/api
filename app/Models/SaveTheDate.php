@@ -11,15 +11,15 @@ class SaveTheDate extends Model
     /** @use HasFactory<\Database\Factories\SaveTheDateFactory> */
     use HasFactory;
     
-    protected $table = 'save_the_date';
+    protected $table = 'save_the_dates';
     
     protected $fillable = [
         'event_id',
-        'std_title',
-        'std_subtitle',
-        'background_color',
-        'image_url',
-        'use_countdown',
+        'title',
+        'message',
+        'image_path',
+        'video_url',
+        'show_countdown',
         'use_add_to_calendar',
         'is_enabled'
     ];

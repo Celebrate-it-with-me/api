@@ -22,13 +22,22 @@ class StoreGuestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'firstName' => 'required|string|max:255',
-            'lastName' => 'required|string|max:255',
-            'email' => 'nullable|string|email|max:255',
-            'phoneNumber' => 'nullable|string|max:255',
-            'companionType' => 'nullable|string|max:255',
-            'companionQty' => 'nullable|numeric',
-            'companionList' => 'nullable|array',
+            'guest' => ['required', 'array'],
+            'guest.name' => ['required', 'string', 'max:255'],
+            'guest.email' => ['nullable', 'email', 'max:255'],
+            'guest.phone' => ['nullable', 'string', 'max:20'],
+            
+            'namedCompanions' => ['nullable', 'array'],
+            'namedCompanions.*.name' => ['required_with:namedCompanions', 'string', 'max:255'],
+            'namedCompanions.*.email' => ['nullable', 'email', 'max:255'],
+            'namedCompanions.*.phone' => ['nullable', 'string', 'max:20'],
+            
+            'unnamedCompanions' => ['nullable', 'integer', 'min:0'],
+            
+            'preferences' => ['nullable', 'array'],
+            'preferences.meal_preference' => ['nullable', 'string', 'max:255'],
+            'preferences.allergies' => ['nullable', 'string', 'max:255'],
+            'preferences.notes' => ['nullable', 'string'],
         ];
     }
 }

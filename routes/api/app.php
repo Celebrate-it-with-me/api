@@ -13,7 +13,10 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
-use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\AppControllers\UserPreferenceController;
+    use App\Http\Controllers\AppControllers\UserSettingsController;
+    use App\Http\Controllers\AppControllers\UserTwoFAController;
+    use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -29,7 +32,8 @@ Route::post('check-password-link', [AuthenticationController::class, 'checkPassw
 Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
     ->name('reset.password');
     
-Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
+Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
+    ->name('template.event.guest');
 Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
 
 Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
@@ -42,11 +46,14 @@ Route::post('event/{event}/suggest-music', [SuggestedMusicController::class, 'st
 Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
 
 
-
-
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event', [EventsController::class, 'store']);
-    Route::get('event', [EventsController::class, 'index']);
+    Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
+        ->name('event.active-event');
+    
+    Route::get('events', [EventsController::class, 'index']);
+    
+    
     Route::get('event/filters', [EventsController::class, 'filterEvents']);
     Route::delete('event/{event}', [EventsController::class, 'destroy']);
     Route::put('event/{event}', [EventsController::class, 'update']);
@@ -55,10 +62,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('event/{event}/save-the-date', [SaveTheDateController::class, 'store']);
     Route::put('save-the-date/{saveTheDate}', [SaveTheDateController::class, 'update']);
     
-    Route::post('event/{event}/guest', [GuestController::class, 'store']);
-    Route::get('event/{event}/guest', [GuestController::class, 'index']);
     
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
+    
+    Route::get('event/{event}/guests', [GuestController::class, 'index'])
+        ->name('index.guests');
+    Route::post('event/{event}/guests', [GuestController::class, 'store'])
+        ->name('guests.store');
+    Route::delete('event/{event}/guests/{guest}', [GuestController::class, 'destroy'])
+        ->name('guests.destroy');
+    Route::get('event/{event}/guests/{guest}', [GuestController::class, 'show'])
+        ->name('guests.show');
     
     Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
         ->name('guest.updateCompanion');
@@ -112,6 +126,31 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
         ->name('update.sweetMemoriesImages');
+    
+    Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
+        ->name('user.updateProfile');
+    Route::get('user/preferences', [UserPreferenceController::class, 'showPreferences'])
+        ->name('user.preferences');
+    Route::post('user/preferences', [UserPreferenceController::class, 'updatePreferences'])
+        ->name('user.updatePreferences');
+    Route::post('user/update-password', [UserSettingsController::class, 'updatePassword'])
+        ->name('user.updatePassword');
+    
+    Route::prefix('user/2fa')
+        ->name('user.2fa.')
+        ->group(function () {
+            Route::get('setup', [UserTwoFAController::class, 'setup'])->name('setup');
+            Route::post('enable', [UserTwoFAController::class, 'enable'])->name('enable');
+            Route::post('disable', [UserTwoFAController::class, 'disable'])->name('disable');
+            Route::post('verify', [UserTwoFAController::class, 'verify'])->name('verify');
+            Route::get('status', [UserTwoFAController::class, 'status'])->name('status');
+            Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
+        });
+    
+    
+    
+    Route::get('user', [UserSettingsController::class, 'getUser'])
+        ->name('user.show');
     
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });

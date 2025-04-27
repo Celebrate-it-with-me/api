@@ -24,11 +24,50 @@ class EventsController extends Controller
     public function index(): JsonResponse|AnonymousResourceCollection
     {
         try {
-            return EventResource::collection($this->eventsServices->getUserEvents());
+            [$events, $lastActiveEvent] = $this->eventsServices->getUserEvents();
+            
+            return response()->json([
+                'message' => 'Events retrieved successfully.',
+                'data' => [
+                    'events' => EventResource::collection($events),
+                    'last_active_event' => $lastActiveEvent ? EventResource::make($lastActiveEvent) : null,
+                ]
+            ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
+    
+    /**
+     * Set the active event for the user.
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function activeEvent(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $event = Events::query()
+                ->where('id', $request->input('eventId'))
+                ->first();
+            
+            if (!$event) {
+                return response()->json(['message' => 'Event not found 123.'], 404);
+            }
+            
+            $user->last_active_event_id = $event->id;
+            $user->save();
+            
+            return response()->json([
+                'message' => 'Event activated successfully.',
+                'data' => EventResource::make($event)
+            ]);
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    
     
     /**
      * Filtering events.
