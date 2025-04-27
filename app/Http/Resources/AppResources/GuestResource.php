@@ -4,6 +4,7 @@ namespace App\Http\Resources\AppResources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Log;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class GuestResource extends JsonResource
@@ -20,6 +21,8 @@ class GuestResource extends JsonResource
         $invitationUrl = $isMainGuest
             ? config('app.frontend_app.url') . "event/{$this->event_id}/guest/{$this->code}"
             : null;
+        
+        Log::info('checking status rsvp', [$this]);
         
         return [
             'id' => $this->id,

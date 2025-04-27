@@ -32,7 +32,8 @@ Route::post('check-password-link', [AuthenticationController::class, 'checkPassw
 Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
     ->name('reset.password');
     
-Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData']);
+Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
+    ->name('template.event.guest');
 Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
 
 Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
