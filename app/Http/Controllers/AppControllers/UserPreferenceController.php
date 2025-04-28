@@ -39,7 +39,7 @@ class UserPreferenceController extends Controller
             return UserPreferencesResource::make($preferences);
         }
         
-        return response()->json(['message' => 'User preferences not found.'], 404);
+        return response()->json(['data' => []]);
     }
     
     /**
