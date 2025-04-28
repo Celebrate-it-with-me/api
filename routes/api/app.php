@@ -13,10 +13,10 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
-    use App\Http\Controllers\AppControllers\UserPreferenceController;
-    use App\Http\Controllers\AppControllers\UserSettingsController;
-    use App\Http\Controllers\AppControllers\UserTwoFAController;
-    use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\AppControllers\UserPreferenceController;
+use App\Http\Controllers\AppControllers\UserSettingsController;
+use App\Http\Controllers\AppControllers\UserTwoFAController;
+use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);

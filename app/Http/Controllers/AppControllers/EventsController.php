@@ -23,6 +23,7 @@ class EventsController extends Controller
      */
     public function index(): JsonResponse|AnonymousResourceCollection
     {
+        Log::info('is here');
         try {
             [$events, $lastActiveEvent] = $this->eventsServices->getUserEvents();
             
