@@ -9,7 +9,7 @@ use App\Http\Resources\AppResources\EventLocationResource;
 use App\Models\EventLocation;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -18,10 +18,26 @@ class EventLocationController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Events $events): JsonResponse|AnonymousResourceCollection
+    public function index(Request $request, Events $events)
     {
+        $perPage = $request->input('perPage', 10);
+        $page = $request->input('page', 1);
+        $searchValue = $request->input('searchValue');
+        
         try {
-            return EventLocationResource::collection(EventLocation::all());
+            $locations = EventLocation::query()
+                ->where('event_id', $events->id)
+                ->when($searchValue, function ($query) use ($searchValue) {
+                    $query->where(function ($q) use ($searchValue) {
+                        $q->where('name', 'like', "%{$searchValue}%")
+                            ->orWhere('address', 'like', "%{$searchValue}%")
+                            ->orWhere('city', 'like', "%{$searchValue}%");
+                    });
+                })
+                ->paginate($perPage, ['*'], 'page', $page);
+            
+            return EventLocationResource::collection($locations)
+                ->response()->getData(true);
         } catch (Throwable $th) {
             Log::error($th->getMessage());
             return response()->json([
@@ -90,7 +106,7 @@ class EventLocationController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(EventLocation $eventLocation)
+    public function destroy(EventLocation $eventLocation): JsonResponse
     {
         try {
             $eventLocation->delete();
