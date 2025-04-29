@@ -138,4 +138,14 @@ class Events extends Model
     {
         return $this->hasMany(SweetMemoriesImage::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the locations associated with the event.
+     *
+     * @return HasMany
+     */
+    public function locations(): HasMany
+    {
+        return $this->hasMany(EventLocation::class, 'event_id', 'id');
+    }
 }
