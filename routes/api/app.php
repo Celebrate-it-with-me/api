@@ -4,7 +4,8 @@ use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
-use App\Http\Controllers\AppControllers\EventsController;
+    use App\Http\Controllers\AppControllers\EventLocationController;
+    use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
@@ -13,10 +14,10 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
-    use App\Http\Controllers\AppControllers\UserPreferenceController;
-    use App\Http\Controllers\AppControllers\UserSettingsController;
-    use App\Http\Controllers\AppControllers\UserTwoFAController;
-    use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\AppControllers\UserPreferenceController;
+use App\Http\Controllers\AppControllers\UserSettingsController;
+use App\Http\Controllers\AppControllers\UserTwoFAController;
+use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -115,6 +116,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
         ->name('update.sweetMemoriesConfig');
     
+    Route::get('event/{event}/locations', [EventLocationController::class, 'index'])
+        ->name('index.eventLocations');
+    
     Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
         ->name('store.sweetMemoriesImages');
     Route::get('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'index'])
@@ -147,11 +151,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
         });
     
-    
-    
     Route::get('user', [UserSettingsController::class, 'getUser'])
         ->name('user.show');
-    
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
 
