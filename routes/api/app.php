@@ -118,6 +118,11 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     
     Route::get('event/{event}/locations', [EventLocationController::class, 'index'])
         ->name('index.eventLocations');
+    Route::post('event/{event}/locations', [EventLocationController::class, 'store'])
+        ->name('store.eventLocations');
+    Route::delete('event/{event}/locations/{location}', [EventLocationController::class, 'destroy'])
+        ->name('destroy.eventLocations');
+    
     
     Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
         ->name('store.sweetMemoriesImages');

@@ -11,9 +11,17 @@ class StoreEventLocationRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
-
+    
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'isDefault' => filter_var($this->isDefault, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+        ]);
+    }
+    
+    
     /**
      * Get the validation rules that apply to the request.
      *
@@ -26,11 +34,13 @@ class StoreEventLocationRequest extends FormRequest
             'address' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'state' => 'required|string|max:255',
-            'zip_code' => 'required|string|max:10',
+            'zipCode' => 'required|string|max:10',
             'country' => 'required|string|max:255',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'is_default' => 'required|boolean',
+            'isDefault' => 'nullable|boolean',
+            'images.*' => 'nullable|image|max:2048',
+            'google_photos' => 'nullable|string',
         ];
     }
 }
