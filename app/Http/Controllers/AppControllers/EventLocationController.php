@@ -10,7 +10,9 @@ use App\Models\EventLocation;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class EventLocationController extends Controller
@@ -18,7 +20,7 @@ class EventLocationController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request, Events $events)
+    public function index(Request $request, Events $event)
     {
         $perPage = $request->input('perPage', 10);
         $page = $request->input('page', 1);
@@ -26,7 +28,7 @@ class EventLocationController extends Controller
         
         try {
             $locations = EventLocation::query()
-                ->where('event_id', $events->id)
+                ->where('event_id', $event->id)
                 ->when($searchValue, function ($query) use ($searchValue) {
                     $query->where(function ($q) use ($searchValue) {
                         $q->where('name', 'like', "%{$searchValue}%")
@@ -52,16 +54,55 @@ class EventLocationController extends Controller
      */
     public function store(StoreEventLocationRequest $request, Events $event): JsonResponse | EventLocationResource
     {
+        $validated = $request->validated();
+        
         try {
-            $eventLocation = EventLocation::query()
-                ->create([
-                    ...$request->validated(),
-                    'event_id' => $event->id,
-                ]);
+            DB::beginTransaction();
+            $eventLocation = EventLocation::create([
+                'event_id' => $event->id,
+                'name' => $validated['name'],
+                'address' => $validated['address'],
+                'city' => $validated['city'],
+                'state' => $validated['state'],
+                'zip_code' => $validated['zipCode'] ?? null,
+                'country' => $validated['country'],
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+                'is_default' => $validated['isDefault'] ?? false,
+            ]);
+            
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
+                    $path = $image->store('locations/images', 'public');
+                    
+                    $eventLocation->eventLocationImages()->create([
+                        'path' =>  Storage::disk('public')->url($path),
+                        'caption' => null,
+                        'order' => 0,
+                        'source' => 'uploaded',
+                    ]);
+                }
+            }
+            
+            if ($request->filled('google_photos')) {
+                $googlePhotos = json_decode($request->input('google_photos'), true);
+                
+                foreach ($googlePhotos as $url) {
+                    $eventLocation->eventLocationImages()->create([
+                        'path' => $url,
+                        'caption' => null,
+                        'order' => 0,
+                        'source' => 'google',
+                    ]);
+                }
+            }
+            
+            DB::commit();
             
             return EventLocationResource::make($eventLocation);
         } catch (Throwable $th) {
-            Log::error($th->getMessage());
+            DB::rollBack();
+            Log::error('que fallo', [$th->getMessage(), $th->getLine(), $th->getFile()]);
             return response()->json([
                 'error' => 'An error occurred while creating event location.',
                 'message' => $th->getMessage(),
@@ -106,10 +147,10 @@ class EventLocationController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(EventLocation $eventLocation): JsonResponse
+    public function destroy(Events $event, EventLocation $location): JsonResponse
     {
         try {
-            $eventLocation->delete();
+            $location->delete();
             return response()->json([
                 'message' => 'Event location deleted successfully.',
             ], 200);
