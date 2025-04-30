@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('state'); // State or province
             $table->string('zip_code'); // Postal code
             $table->string('country'); // Country
-            $table->string('image_path')->nullable(); // Path to an image of the location
             $table->text('notes')->nullable(); // Additional notes about the location
             $table->string('phone')->nullable(); // Phone number for the location
             $table->decimal('latitude', 10, 8)->nullable(); // Latitude for geolocation

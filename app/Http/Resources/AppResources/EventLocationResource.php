@@ -4,8 +4,7 @@ namespace App\Http\Resources\AppResources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Log;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
 
 class EventLocationResource extends JsonResource
 {
@@ -23,11 +22,11 @@ class EventLocationResource extends JsonResource
             'address' => $this->address,
             'city' => $this->city,
             'state' => $this->state,
-            'zip_code' => $this->zip_code,
+            'zipCode' => $this->zip_code,
             'country' => $this->country,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'is_default' => $this->is_default,
+            'isDefault' => $this->is_default,
         ];
     }
     
