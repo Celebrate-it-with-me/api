@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Guest extends Model
@@ -69,5 +70,14 @@ class Guest extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(GuestInvitation::class, 'guest_id', 'id');
+    }
+    
+    /**
+     * Define a one-to-many relationship with the GuestMenu model.
+     * @return BelongsToMany
+     */
+    public function selectedMenuItems(): BelongsToMany
+    {
+        return $this->belongsToMany(MenuItem::class, 'guest_menu')->withTimestamps();
     }
 }
