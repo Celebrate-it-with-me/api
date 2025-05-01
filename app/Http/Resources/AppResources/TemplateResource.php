@@ -57,6 +57,7 @@ class TemplateResource extends JsonResource
                 'eventFeature' => EventFeatureResource::make($this->eventFeature),
                 'sweetMemoriesImages' => SweetMemoriesImageResource::collection($this->sweetMemoriesImages),
                 'sweetMemoriesConfig' => SweetMemoriesConfigResource::make($this->sweetMemoriesConfig),
+                'eventLocations' => EventLocationResource::collection($this->locations),
             ],
             'mainGuest' => [
                 'id' => $this->mainGuest->id,
