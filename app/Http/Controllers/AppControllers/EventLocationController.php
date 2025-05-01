@@ -113,10 +113,10 @@ class EventLocationController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(EventLocation $eventLocation): JsonResponse|EventLocationResource
+    public function show(EventLocation $location): JsonResponse|EventLocationResource
     {
         try {
-            return EventLocationResource::make($eventLocation);
+            return EventLocationResource::make($location);
         } catch (Throwable $th) {
             Log::error($th->getMessage());
             return response()->json([

@@ -27,6 +27,9 @@ class EventLocationResource extends JsonResource
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'isDefault' => $this->is_default,
+            
+            'images' => EventLocationImageResource::collection($this->eventLocationImages),
+            
         ];
     }
     
