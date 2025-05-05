@@ -25,6 +25,8 @@ class Guest extends Model
         'tags'
     ];
     
+    protected $dates = ['rsvp_status_date'];
+    
     /**
      * Get the event that this guest belongs to.
      * @return BelongsTo
