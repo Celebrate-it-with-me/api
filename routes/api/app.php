@@ -4,8 +4,9 @@ use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
-    use App\Http\Controllers\AppControllers\EventLocationController;
-    use App\Http\Controllers\AppControllers\EventsController;
+use App\Http\Controllers\AppControllers\EventLocationController;
+use App\Http\Controllers\AppControllers\EventsController;
+use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
@@ -65,6 +66,16 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     
     
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
+    Route::get('event/{event}/rsvp/guests', [RsvpController::class, 'getRsvpUsersList'])
+        ->name('rsvp.guests');
+    Route::get('event/{event}/rsvp/guests/totals', [RsvpController::class, 'getRsvpUsersTotals'])
+        ->name('rsvp.guests.totals');
+    
+    Route::get('event/{event}/rsvp/guests/download', [ExportController::class, 'handleExportRequest'])
+        ->name('rsvp.request.export');
+    
+    Route::get('exports/download', [ExportController::class, 'exportsDownload'])
+        ->name('exports.download');
     
     Route::get('event/{event}/guests', [GuestController::class, 'index'])
         ->name('index.guests');
