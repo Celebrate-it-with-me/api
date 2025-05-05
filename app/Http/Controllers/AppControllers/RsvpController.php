@@ -5,9 +5,11 @@ namespace App\Http\Controllers\AppControllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreRsvpRequest;
 use App\Http\Requests\app\UpdateRsvpRequest;
+use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Resources\AppResources\RsvpResource;
 use App\Http\Services\AppServices\RsvpServices;
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\Rsvp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,6 +59,97 @@ class RsvpController extends Controller
             $this->rsvpService->saveRsvp();
             
             return response()->json(['message' => 'Rsvp saved.']);
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    
+    /**
+     * Retrieve a list of RSVP users for a specific event.
+     * Filters can be applied based on RSVP status and search value.
+     * Supports pagination.
+     */
+    public function getRsvpUsersList(Request $request, Events $event)
+    {
+        try {
+            $perPage = $request->input('perPage', 15);
+            $status = $request->input('status');
+            $search = $request->input('search');
+            
+            $guest = Guest::query()
+                ->where('event_id', $event->id)
+                ->whereNull('parent_id')
+                    ->with('companions')
+                ->when($status, fn ($q) => $q->where('rsvp_status', $status))
+                ->when($search, function ($q) use ($search) {
+                    $q->where(function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhereHas('companions', function ($sub) use ($search) {
+                                $sub->where('name', 'like', "%{$search}%")
+                                    ->orWhere('email', 'like', "%{$search}%")
+                                    ->orWhere('phone', 'like', "%{$search}%");
+                            });
+                    });
+                })
+                ->orderByDesc('created_at')
+                ->paginate($perPage ?? 10);
+            
+                return GuestResource::collection($guest)
+                    ->response()->getData(true);
+                
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    /**
+     * Retrieve RSVP user totals for a specific event.
+     */
+    public function getRsvpUsersTotals(Request $request, Events $event)
+    {
+        try {
+            $totalGuests = Guest::query()
+                ->where('event_id', $event->id)
+                ->count();
+            
+            $totalMainGuests = Guest::query()
+                ->where('event_id', $event->id)
+                ->whereNull('parent_id')
+                ->count();
+            $totalCompanions = Guest::query()
+                ->where('event_id', $event->id)
+                ->whereNotNull('parent_id')
+                ->count();
+            
+            $totalPending = Guest::query()
+                ->where('event_id', $event->id)
+                ->where('rsvp_status', 'pending')
+                ->count();
+            
+            $totalConfirmed = Guest::query()
+                ->where('event_id', $event->id)
+                ->where('rsvp_status', 'confirmed')
+                ->count();
+            
+            $totalDeclined = Guest::query()
+                ->where('event_id', $event->id)
+                ->where('rsvp_status', 'declined')
+                ->count();
+            
+            return response()->json([
+                'message' => 'Rsvp totals retrieved.',
+                'data' => [
+                    'totalGuests' => $totalGuests,
+                    'totalMainGuests' => $totalMainGuests,
+                    'totalCompanions' => $totalCompanions,
+                    'totalPending' => $totalPending,
+                    'totalConfirmed' => $totalConfirmed,
+                    'totalDeclined' => $totalDeclined,
+                ],
+                ]);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
