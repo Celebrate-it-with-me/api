@@ -36,16 +36,25 @@ class AuthenticationController extends Controller
 
         return $user->createToken($request->input('device'))->plainTextToken;
     }
-
+    
     /**
      * Register a new user based on the provided request data.
      *
      * @param AppRegisterRequest $request The request object containing user data to be validated and registered.
      *
      * @return JsonResponse A JSON response containing a message and the registered user data with HTTP status code 201.
+     * @throws ConnectionException
      */
     public function appRegister(AppRegisterRequest $request): JsonResponse
     {
+        if (config('services.hcaptcha.enabled')) {
+            $token = $request->input('hcaptcha_token');
+            
+            if (!$token || !$this->verifyHCaptcha($token) ) {
+                return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
+            }
+        }
+        
         $user = User::query()->create([
             'name' => $request->name,
             'email' => $request->email,
