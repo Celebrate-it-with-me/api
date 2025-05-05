@@ -34,6 +34,11 @@ return [
     'twilio' => [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_AUTH_TOKEN')
-    ]
+    ],
+    
+    'hcaptcha' => [
+        'site_key' => env('HCAPTCHA_SECRET'),
+        'secret' => env('HCAPTCHA_ENABLED', false),
+    ],
 
 ];
