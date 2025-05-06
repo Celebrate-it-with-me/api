@@ -4,13 +4,11 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreRsvpRequest;
-use App\Http\Requests\app\UpdateRsvpRequest;
 use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Resources\AppResources\RsvpResource;
 use App\Http\Services\AppServices\RsvpServices;
 use App\Models\Events;
 use App\Models\Guest;
-use App\Models\Rsvp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +20,6 @@ class RsvpController extends Controller
     {
         $this->rsvpService = $rsvpService;
     }
-    
     
     /**
      * Display a listing of the resource.
@@ -59,6 +56,36 @@ class RsvpController extends Controller
             $this->rsvpService->saveRsvp();
             
             return response()->json(['message' => 'Rsvp saved.']);
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    /**
+     * Revert the RSVP confirmation status of a guest and their companions.
+     * @param Request $request
+     * @param Events $event
+     * @param Guest $guest
+     * @return JsonResponse
+     */
+    public function revertConfirmation(Request $request, Events $event, Guest $guest): JsonResponse
+    {
+        try {
+            $guest->update([
+                'rsvp_status' => 'pending',
+                'rsvp_status_date' => null,
+            ]);
+            
+            if ($guest->companions) {
+                foreach ($guest->companions as $companion) {
+                    $companion->update([
+                        'rsvp_status' => 'pending',
+                        'rsvp_status_date' => null,
+                    ]);
+                }
+            }
+            
+            return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
