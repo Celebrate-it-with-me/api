@@ -3,6 +3,7 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\GuestCompanion;
 use App\Models\MainGuest;
 use App\Models\Rsvp;
@@ -43,12 +44,12 @@ class RsvpServices
         try {
             $requestGuest = $this->request->input('guest');
             
-            $mainGuest = MainGuest::query()->findOrFail($requestGuest['id']);
+            $mainGuest = Guest::query()->findOrFail($requestGuest['id']);
             $this->saveGuest($requestGuest, $mainGuest);
             
             if (isset($requestGuest['companions'])) {
                 foreach ($requestGuest['companions'] as $companion) {
-                    $guestCompanion = GuestCompanion::query()->findOrFail($companion['id']);
+                    $guestCompanion = Guest::query()->findOrFail($companion['id']);
                     
                     $this->saveGuest($companion, $guestCompanion);
                 }
@@ -65,14 +66,15 @@ class RsvpServices
      * @param Model|Collection|GuestCompanion|null $guestCompanion
      * @return void
      */
-    private function saveGuest(mixed $companion, Model|Collection|GuestCompanion|null $guestCompanion): void {
-        $guestCompanion->first_name = $companion['firstName'];
-        $guestCompanion->last_name = $companion['lastName'];
-        $guestCompanion->email = $companion['email'];
-        $guestCompanion->phone_number = $companion['phoneNumber'];
-        $guestCompanion->confirmed = $companion['confirmed'];
-        $guestCompanion->meal_preference = $companion['mealPreference'];
+    private function saveGuest(array $guestData, Guest $guest): void {
+        $guest->name = $guestData['name'];
+        $guest->email = $guestData['email'];
+        $guest->phone = $guestData['phone'];
+        $guest->rsvp_status = $guestData['rsvpStatus'];
+        $guest->rsvp_status_date = now();
         
-        $guestCompanion->save();
+        // $guest->meal_preference = $companion['mealPreference']; todo: Add this when is ready.
+        
+        $guest->save();
     }
 }

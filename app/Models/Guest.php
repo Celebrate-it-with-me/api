@@ -25,7 +25,9 @@ class Guest extends Model
         'tags'
     ];
     
-    protected $dates = ['rsvp_status_date'];
+    protected $casts = [
+        'rsvp_status_date' => 'datetime',
+    ];
     
     /**
      * Get the event that this guest belongs to.

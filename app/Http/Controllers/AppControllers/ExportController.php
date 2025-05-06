@@ -26,8 +26,6 @@ class ExportController extends Controller
             return response()->json(['message' => 'Invalid export type'], 422);
         }
         
-        Log::info('checking the event', [$event]);
-        
         $filename = "rsvp_export_{$event->id}." . ($type === 'excel' ? 'xlsx' : 'pdf');
         
         if ($type === 'excel') {
