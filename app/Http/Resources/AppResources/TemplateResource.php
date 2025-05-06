@@ -64,7 +64,7 @@ class TemplateResource extends JsonResource
                 'eventId' => $this->mainGuest->event_id,
                 'name' => $this->mainGuest->name,
                 'email' => $this->mainGuest->email,
-                'phoneNumber' => $this->mainGuest->phone,
+                'phone' => $this->mainGuest->phone,
                 'mealPreference' => $this->mainGuest->meal_preference,
                 'accessCode' => $this->mainGuest->code,
                 'rsvpStatus' => $this->mainGuest->rsvp_status,
