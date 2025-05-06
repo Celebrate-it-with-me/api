@@ -131,12 +131,12 @@ class RsvpController extends Controller
             
             $totalConfirmed = Guest::query()
                 ->where('event_id', $event->id)
-                ->where('rsvp_status', 'confirmed')
+                ->where('rsvp_status', 'attending')
                 ->count();
             
             $totalDeclined = Guest::query()
                 ->where('event_id', $event->id)
-                ->where('rsvp_status', 'declined')
+                ->where('rsvp_status', 'not-attending')
                 ->count();
             
             return response()->json([
@@ -149,7 +149,7 @@ class RsvpController extends Controller
                     'totalConfirmed' => $totalConfirmed,
                     'totalDeclined' => $totalDeclined,
                 ],
-                ]);
+            ]);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }

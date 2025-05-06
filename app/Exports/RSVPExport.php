@@ -10,15 +10,15 @@ class RSVPExport implements FromCollection, WithHeadings
 {
     
     public int $eventId;
-    public string $status;
-    public string $search;
+    public ?string $status;
+    public ?string $search;
     public int $perPage;
     public int $page;
     
     public function __construct(
         int $eventId,
-        string $status,
-        string $search,
+        ?string $status,
+        ?string $search,
         int $perPage = 10,
         int $page = 1
     )
@@ -46,22 +46,34 @@ class RSVPExport implements FromCollection, WithHeadings
                 });
             })
             ->orderBy('name')
-            ->forPage($this->page, $this->perPage)
             ->get()
-            ->map(function ($guest) {
-                $companions = $guest->companions->map(fn ($c) => $c->name)->join(', ');
-                return [
+            ->flatMap(function ($guest) {
+                $rows = collect();
+                
+                $rows->push([
+                    'Type' => 'Main Guest',
                     'Name' => $guest->name,
                     'Email' => $guest->email,
                     'Phone' => $guest->phone,
-                    'Status' => $guest->rsvp_status,
-                    'Companions' => $companions,
-                ];
+                    'Status' => ucfirst($guest->rsvp_status),
+                ]);
+                
+                foreach ($guest->companions as $companion) {
+                    $rows->push([
+                        'Type' => 'Companion of ' . $guest->name,
+                        'Name' => '↳ ' . $companion->name,
+                        'Email' => $companion->email ?? '',
+                        'Phone' => $companion->phone ?? '',
+                        'Status' => ucfirst($companion->rsvp_status ?? 'Pending'),
+                    ]);
+                }
+                
+                return $rows;
             });
     }
     
     public function headings(): array
     {
-        return ['Name', 'Email', 'Phone', 'Status', 'Companions'];
+        return ['Guest Type', 'Name', 'Email', 'Phone', 'Status'];
     }
 }
