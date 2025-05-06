@@ -37,7 +37,9 @@ class TemplateResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $companionQty = Guest::query()->where('parent_id', $this->mainGuest->id)->count();
+        $companionQty = Guest::query()
+            ->where('parent_id', $this->mainGuest->id)
+            ->count();
         
         return [
             'event' => [
