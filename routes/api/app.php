@@ -73,6 +73,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('rsvp.guests');
     Route::get('event/{event}/rsvp/guests/totals', [RsvpController::class, 'getRsvpUsersTotals'])
         ->name('rsvp.guests.totals');
+    Route::post('event/{event}/rsvp/guests/{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
+        ->name('rsvp.revertConfirmation');
+    
     
     Route::get('event/{event}/rsvp/guests/download', [ExportController::class, 'handleExportRequest'])
         ->name('rsvp.request.export');

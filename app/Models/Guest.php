@@ -19,6 +19,7 @@ class Guest extends Model
         'email',
         'phone',
         'rsvp_status',
+        'rsvp_status_date',
         'code',
         'notes',
         'is_vip',
