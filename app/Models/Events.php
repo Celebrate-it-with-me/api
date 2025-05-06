@@ -157,4 +157,14 @@ class Events extends Model
     {
         return $this->hasOne(Menu::class);
     }
+    
+    /**
+     * Get the event plan associated with the event.
+     *
+     * @return BelongsTo
+     */
+    public function eventPlan(): BelongsTo
+    {
+        return $this->belongsTo(EventPlan::class);
+    }
 }
