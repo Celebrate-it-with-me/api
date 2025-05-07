@@ -91,6 +91,19 @@ class RsvpController extends Controller
         }
     }
     
+    /**
+     * Retrieve RSVP summary for a specific event.
+     * @param Events $event
+     * @return JsonResponse
+     */
+    public function summary(Events $event): JsonResponse
+    {
+        try {
+            return response()->json($this->rsvpService->summary($event));
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
     
     /**
      * Retrieve a list of RSVP users for a specific event.
