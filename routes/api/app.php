@@ -55,6 +55,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
+    Route::get('event/{event}/suggestions', [EventsController::class, 'suggestions'])
+        ->name('event.suggestions');
     
     Route::get('events', [EventsController::class, 'index']);
     

@@ -201,4 +201,57 @@ class EventsServices
     {
         return EventPlan::query()->get();
     }
+    
+    public function getEventSuggestions(Events $event): array
+    {
+        $suggestions = [];
+        $maxGuests = $event->eventPlan->max_guests;
+        $eventGuestsCount = $event->guests()->count();
+        
+        if ($maxGuests !== 0) {
+            $remainingGuests = $maxGuests - $eventGuestsCount;
+            if ($eventGuestsCount === 0) {
+                $suggestions[] = [
+                    'name' => 'Invite Guests',
+                    'description' => 'You can invite guests to your event.',
+                    'url' => '/dashboard/invite-guests',
+                ];
+            } elseif ($eventGuestsCount < $maxGuests) {
+                $suggestions[] = [
+                    'name' => 'Invite Guests',
+                    'description' => "You can invite {$remainingGuests} more guests.",
+                    'url' => '/dashboard/invite-guests',
+                ];
+            } else {
+                $suggestions[] = [
+                    'name' => 'Upgrade Plan',
+                    'description' => 'You have reached the maximum number of guests for your current plan.',
+                    'url' => '/dashboard/upgrade-plan',
+                ];
+            }
+        }
+        
+        if ($maxGuests === 0) {
+            $suggestions[] = [
+                'name' => 'Invite more guests',
+                'description' => 'Base on your event plan you can continue inviting. Unlimited Guests',
+                'url' => '/dashboard/guests/create',
+            ];
+        }
+        
+        
+        if (!$event->saveTheDate) {
+            $suggestions[] = [
+                'name' => 'Save the Date',
+                'description' => 'Create a save the date page for your event.',
+                'url' => '/dashboard/save-the-date',
+            ];
+            
+        }
+        
+        // Todo: Work on the rests of suggestions later.
+        
+        return $suggestions;
+    }
+    
 }

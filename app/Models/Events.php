@@ -47,6 +47,16 @@ class Events extends Model
     }
     
     /**
+     * Get the main guest associated with the event.
+     *
+     * @return HasMany
+     */
+    public function guests(): HasMany
+    {
+        return $this->hasMany(Guest::class, 'event_id', 'id');
+    }
+    
+    /**
      * Relation with event feature.
      * @return HasOne
      */
