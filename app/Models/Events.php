@@ -20,6 +20,7 @@ class Events extends Model
         'event_name',
         'event_description',
         'event_type_id',
+        'event_plan_id',
         'start_date',
         'end_date',
         'organizer_id',

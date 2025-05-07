@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('description')->nullable();
+            $table->integer('max_guests')->default(100);
             $table->string('slug')->nullable();
             
             // Plans Features available
