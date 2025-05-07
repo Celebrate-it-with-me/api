@@ -58,6 +58,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     
     Route::get('events', [EventsController::class, 'index']);
     
+    Route::get('events/load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
+        ->name('events.loanEventsPlansAndType');
+    
     
     Route::get('event/filters', [EventsController::class, 'filterEvents']);
     Route::delete('event/{event}', [EventsController::class, 'destroy']);
