@@ -77,4 +77,29 @@ class RsvpServices
         
         $guest->save();
     }
+    
+    /**
+     * Revert the RSVP confirmation status of a guest and their companions.
+     * @param Events $event
+     * @return array
+     */
+    public function summary(Events $event): array
+    {
+        $guests = Guest::query()
+            ->where('event_id',  $event->id)
+            ->get(['id', 'event_id','parent_id', 'rsvp_status']);
+        
+        $selectedPlan = $event->eventPlan;
+        
+        
+        return [
+            'totalGuests' => $guests->count(),
+            'confirmed' => $guests->where('rsvp_status', 'attending')->count(),
+            'declined' => $guests->where('rsvp_status',  'not-attending')->count(),
+            'pending' => $guests->where('rsvp_status',  'pending')->count(),
+            'mainGuests' => $guests->whereNull('parent_id')->count(),
+            'companions' => $guests->whereNotNull('parent_id')->count(),
+            'totalAllowed' => $selectedPlan->max_guests,
+        ];
+    }
 }

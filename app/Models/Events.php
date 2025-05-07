@@ -17,14 +17,16 @@ class Events extends Model
     protected $table = 'events';
 
     protected $fillable = [
-      'event_name',
-      'event_description',
-      'start_date',
-      'end_date',
-      'organizer_id',
-      'status',
-      'custom_url_slug',
-      'visibility'
+        'event_name',
+        'event_description',
+        'event_type_id',
+        'event_plan_id',
+        'start_date',
+        'end_date',
+        'organizer_id',
+        'status',
+        'custom_url_slug',
+        'visibility'
     ];
     
     protected $dates = ['deleted_at'];
@@ -42,6 +44,16 @@ class Events extends Model
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'organizer_id', 'id');
+    }
+    
+    /**
+     * Get the main guest associated with the event.
+     *
+     * @return HasMany
+     */
+    public function guests(): HasMany
+    {
+        return $this->hasMany(Guest::class, 'event_id', 'id');
     }
     
     /**
@@ -166,5 +178,15 @@ class Events extends Model
     public function eventPlan(): BelongsTo
     {
         return $this->belongsTo(EventPlan::class);
+    }
+    
+    /**
+     * Get the event type associated with the event.
+     *
+     * @return BelongsTo
+     */
+    public function eventType(): BelongsTo
+    {
+        return $this->belongsTo(EventType::class, 'event_type_id', 'id');
     }
 }

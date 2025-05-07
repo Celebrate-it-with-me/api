@@ -55,11 +55,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
+    Route::get('event/{event}/suggestions', [EventsController::class, 'suggestions'])
+        ->name('event.suggestions');
     
     Route::get('events', [EventsController::class, 'index']);
     
     Route::get('events/load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
         ->name('events.loanEventsPlansAndType');
+    Route::get('event/{event}/rsvp/summary', [RsvpController::class, 'summary'])
+        ->name('rsvp.summary');
     
     
     Route::get('event/filters', [EventsController::class, 'filterEvents']);

@@ -15,7 +15,7 @@ class EventPlan extends Model
     protected $table = 'event_plans';
 
     protected $fillable = [
-        'name', 'description', 'slug', 'has_gallery', 'has_music', 'has_custom_design',
+        'name', 'description', 'max_guest', 'slug', 'has_gallery', 'has_music', 'has_custom_design',
         'has_drag_editor', 'has_ai_assistant', 'has_invitations', 'has_sms',
         'has_gift_registry', 'support_level'
     ];
