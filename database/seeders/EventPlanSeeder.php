@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\EventPlan;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class EventPlanSeeder extends Seeder
 {
@@ -12,11 +13,18 @@ class EventPlanSeeder extends Seeder
      */
     public function run(): void
     {
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        
+        EventPlan::query()->truncate();
+        
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        
         EventPlan::query()->insert([
             [
                 'name' => 'Basic',
                 'slug' => 'basic',
                 'description' => 'Up to 100 guests. Core features only.',
+                'max_guests' => 100,
                 'has_gallery' => false,
                 'has_music' => false,
                 'has_custom_design' => false,
@@ -33,6 +41,7 @@ class EventPlanSeeder extends Seeder
                 'name' => 'Premium',
                 'slug' => 'premium',
                 'description' => 'Up to 200 guests. Includes gallery and music.',
+                'max_guests' => 200,
                 'has_gallery' => true,
                 'has_music' => true,
                 'has_custom_design' => true,
@@ -49,6 +58,7 @@ class EventPlanSeeder extends Seeder
                 'name' => 'Lux',
                 'slug' => 'lux',
                 'description' => 'Unlimited guests. All features unlocked.',
+                'max_guests' => 0,
                 'has_gallery' => true,
                 'has_music' => true,
                 'has_custom_design' => true,

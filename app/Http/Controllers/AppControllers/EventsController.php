@@ -161,4 +161,20 @@ class EventsController extends Controller
         }
     }
     
+    /**
+     * Retrieve event suggestions.
+     * @param Events $event
+     * @return JsonResponse
+     */
+    public function suggestions(Events $event): JsonResponse
+    {
+        try {
+            $suggestions = $this->eventsServices->getEventSuggestions($event);
+            
+            return response()->json($suggestions);
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
 }
