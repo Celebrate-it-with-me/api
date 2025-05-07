@@ -86,6 +86,7 @@ class EventsServices
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
             'event_type_id' => $this->request->input('eventType'),
+            'event_plan_id' => $this->request->input('eventPlan') ?? 3,
             'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
@@ -139,6 +140,8 @@ class EventsServices
 
         $this->event->event_name = $this->request->input('eventName');
         $this->event->event_description = $this->request->input('eventDescription');
+        $this->event->event_type_id = $this->request->input('eventType');
+        $this->event->event_plan_id = $this->request->input('eventPlan') ?? 3;
         $this->event->start_date = $this->request->input('startDate');
         $this->event->end_date = $this->request->input('endDate');
         $this->event->status = $this->request->input('status');
