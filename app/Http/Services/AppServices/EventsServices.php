@@ -3,7 +3,9 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\EventFeature;
+use App\Models\EventPlan;
 use App\Models\Events;
+use App\Models\EventType;
 use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
@@ -173,5 +175,26 @@ class EventsServices
             Log::error($e->getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Retrieve all event types.
+     * @return Collection
+     */
+    public function getEventTypes(): Collection
+    {
+        return EventType::query()
+            ->select('id', 'name', 'slug', 'icon')
+            ->get();
+    }
+    
+    /**
+     * Retrieve all event plans.
+     *
+     * @return Collection
+     */
+    public function getEventPlans(): Collection
+    {
+        return EventPlan::query()->get();
     }
 }
