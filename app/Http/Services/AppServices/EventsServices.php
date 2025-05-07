@@ -85,6 +85,7 @@ class EventsServices
         $event = Events::query()->create([
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
+            'event_type_id' => $this->request->input('eventType'),
             'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
@@ -100,7 +101,7 @@ class EventsServices
         }
         
         EventFeature::query()->create([
-           'event_id' => $event->id,
+            'event_id' => $event->id,
             'save_the_date' => $this->request->input('saveTheDate') ?? false,
             'rsvp' => $this->request->input('rsvp') ?? false,
             'sweet_memories' => $this->request->input('sweetMemories') ?? false,
