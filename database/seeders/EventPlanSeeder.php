@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\EventPlan;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class EventPlanSeeder extends Seeder
