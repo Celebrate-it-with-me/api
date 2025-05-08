@@ -3,7 +3,9 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\EventFeature;
+use App\Models\EventPlan;
 use App\Models\Events;
+use App\Models\EventType;
 use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
@@ -83,6 +85,8 @@ class EventsServices
         $event = Events::query()->create([
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
+            'event_type_id' => $this->request->input('eventType'),
+            'event_plan_id' => $this->request->input('eventPlan') ?? 3,
             'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'organizer_id' => $this->request->user()->id,
@@ -98,7 +102,7 @@ class EventsServices
         }
         
         EventFeature::query()->create([
-           'event_id' => $event->id,
+            'event_id' => $event->id,
             'save_the_date' => $this->request->input('saveTheDate') ?? false,
             'rsvp' => $this->request->input('rsvp') ?? false,
             'sweet_memories' => $this->request->input('sweetMemories') ?? false,
@@ -136,6 +140,8 @@ class EventsServices
 
         $this->event->event_name = $this->request->input('eventName');
         $this->event->event_description = $this->request->input('eventDescription');
+        $this->event->event_type_id = $this->request->input('eventType');
+        $this->event->event_plan_id = $this->request->input('eventPlan') ?? 3;
         $this->event->start_date = $this->request->input('startDate');
         $this->event->end_date = $this->request->input('endDate');
         $this->event->status = $this->request->input('status');
@@ -174,4 +180,78 @@ class EventsServices
             return false;
         }
     }
+    
+    /**
+     * Retrieve all event types.
+     * @return Collection
+     */
+    public function getEventTypes(): Collection
+    {
+        return EventType::query()
+            ->select('id', 'name', 'slug', 'icon')
+            ->get();
+    }
+    
+    /**
+     * Retrieve all event plans.
+     *
+     * @return Collection
+     */
+    public function getEventPlans(): Collection
+    {
+        return EventPlan::query()->get();
+    }
+    
+    public function getEventSuggestions(Events $event): array
+    {
+        $suggestions = [];
+        $maxGuests = $event->eventPlan->max_guests;
+        $eventGuestsCount = $event->guests()->count();
+        
+        if ($maxGuests !== 0) {
+            $remainingGuests = $maxGuests - $eventGuestsCount;
+            if ($eventGuestsCount === 0) {
+                $suggestions[] = [
+                    'name' => 'Invite Guests',
+                    'description' => 'You can invite guests to your event.',
+                    'url' => '/dashboard/invite-guests',
+                ];
+            } elseif ($eventGuestsCount < $maxGuests) {
+                $suggestions[] = [
+                    'name' => 'Invite Guests',
+                    'description' => "You can invite {$remainingGuests} more guests.",
+                    'url' => '/dashboard/invite-guests',
+                ];
+            } else {
+                $suggestions[] = [
+                    'name' => 'Upgrade Plan',
+                    'description' => 'You have reached the maximum number of guests for your current plan.',
+                    'url' => '/dashboard/upgrade-plan',
+                ];
+            }
+        }
+        
+        if ($maxGuests === 0) {
+            $suggestions[] = [
+                'name' => 'Invite more guests',
+                'description' => 'Base on your event plan you can continue inviting. Unlimited Guests',
+                'url' => '/dashboard/guests/create',
+            ];
+        }
+        
+        
+        if (!$event->saveTheDate) {
+            $suggestions[] = [
+                'name' => 'Save the Date',
+                'description' => 'Create a save the date page for your event.',
+                'url' => '/dashboard/save-the-date',
+            ];
+            
+        }
+        
+        // Todo: Work on the rests of suggestions later.
+        
+        return $suggestions;
+    }
+    
 }

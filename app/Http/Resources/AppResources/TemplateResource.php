@@ -37,7 +37,9 @@ class TemplateResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $companionQty = Guest::query()->where('parent_id', $this->mainGuest->id)->count();
+        $companionQty = Guest::query()
+            ->where('parent_id', $this->mainGuest->id)
+            ->count();
         
         return [
             'event' => [
@@ -57,16 +59,20 @@ class TemplateResource extends JsonResource
                 'eventFeature' => EventFeatureResource::make($this->eventFeature),
                 'sweetMemoriesImages' => SweetMemoriesImageResource::collection($this->sweetMemoriesImages),
                 'sweetMemoriesConfig' => SweetMemoriesConfigResource::make($this->sweetMemoriesConfig),
+                'eventLocations' => EventLocationResource::collection($this->locations),
             ],
             'mainGuest' => [
                 'id' => $this->mainGuest->id,
                 'eventId' => $this->mainGuest->event_id,
                 'name' => $this->mainGuest->name,
                 'email' => $this->mainGuest->email,
-                'phoneNumber' => $this->mainGuest->phone,
+                'phone' => $this->mainGuest->phone,
                 'mealPreference' => $this->mainGuest->meal_preference,
                 'accessCode' => $this->mainGuest->code,
                 'rsvpStatus' => $this->mainGuest->rsvp_status,
+                'rsvpStatusDate' => $this->mainGuest->rsvp_status_date
+                    ? $this->mainGuest->rsvp_status_date->diffForHumans()
+                    : null,
                 'notes' => $this->mainGuest->notes,
                 'tags' => $this->mainGuest->tags,
                 'companionQty' => $companionQty,

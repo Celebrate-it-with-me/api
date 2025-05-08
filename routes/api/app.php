@@ -4,7 +4,9 @@ use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
+use App\Http\Controllers\AppControllers\EventLocationController;
 use App\Http\Controllers\AppControllers\EventsController;
+use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
@@ -13,10 +15,10 @@ use App\Http\Controllers\AppControllers\SuggestedMusicController;
 use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
 use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
 use App\Http\Controllers\AppControllers\TemplateController;
-    use App\Http\Controllers\AppControllers\UserPreferenceController;
-    use App\Http\Controllers\AppControllers\UserSettingsController;
-    use App\Http\Controllers\AppControllers\UserTwoFAController;
-    use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\AppControllers\UserPreferenceController;
+use App\Http\Controllers\AppControllers\UserSettingsController;
+use App\Http\Controllers\AppControllers\UserTwoFAController;
+use App\Http\Controllers\AuthenticationController;
 
 Route::post('register', [AuthenticationController::class, 'appRegister']);
 Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -32,9 +34,16 @@ Route::post('check-password-link', [AuthenticationController::class, 'checkPassw
 Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
     ->name('reset.password');
     
+
+
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
     ->name('template.event.guest');
-Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp']);
+
+Route::get('template/event/{event}/guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
+    ->name('template.event.guest.data');
+
+Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp'])
+    ->name('template.event.save-rsvp');
 
 Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
     ->name('index.EventComments');
@@ -50,8 +59,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
+    Route::get('event/{event}/suggestions', [EventsController::class, 'suggestions'])
+        ->name('event.suggestions');
     
     Route::get('events', [EventsController::class, 'index']);
+    
+    Route::get('events/load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
+        ->name('events.loanEventsPlansAndType');
+    Route::get('event/{event}/rsvp/summary', [RsvpController::class, 'summary'])
+        ->name('rsvp.summary');
     
     
     Route::get('event/filters', [EventsController::class, 'filterEvents']);
@@ -64,6 +80,19 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     
     
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
+    Route::get('event/{event}/rsvp/guests', [RsvpController::class, 'getRsvpUsersList'])
+        ->name('rsvp.guests');
+    Route::get('event/{event}/rsvp/guests/totals', [RsvpController::class, 'getRsvpUsersTotals'])
+        ->name('rsvp.guests.totals');
+    Route::post('event/{event}/rsvp/guests/{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
+        ->name('rsvp.revertConfirmation');
+    
+    
+    Route::get('event/{event}/rsvp/guests/download', [ExportController::class, 'handleExportRequest'])
+        ->name('rsvp.request.export');
+    
+    Route::get('exports/download', [ExportController::class, 'exportsDownload'])
+        ->name('exports.download');
     
     Route::get('event/{event}/guests', [GuestController::class, 'index'])
         ->name('index.guests');
@@ -115,6 +144,16 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
         ->name('update.sweetMemoriesConfig');
     
+    Route::get('event/{event}/locations', [EventLocationController::class, 'index'])
+        ->name('index.eventLocations');
+    Route::post('event/{event}/locations', [EventLocationController::class, 'store'])
+        ->name('store.eventLocations');
+    Route::delete('event/{event}/locations/{location}', [EventLocationController::class, 'destroy'])
+        ->name('destroy.eventLocations');
+    Route::get('event/{event}/locations/{location}', [EventLocationController::class, 'show'])
+        ->name('show.eventLocations');
+    
+    
     Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
         ->name('store.sweetMemoriesImages');
     Route::get('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'index'])
@@ -147,11 +186,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
         });
     
-    
-    
     Route::get('user', [UserSettingsController::class, 'getUser'])
         ->name('user.show');
-    
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
 });
 

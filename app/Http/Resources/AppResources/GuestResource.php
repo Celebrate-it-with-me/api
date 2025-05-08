@@ -32,6 +32,9 @@ class GuestResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'rsvpStatus' => $this->rsvp_status,
+            'rsvpStatusDate' => $this->rsvp_status_date
+                ? $this->rsvp_status_date->diffForHumans()
+                : null,
             'mealPreference' => $this->meal_preference,
             'allergies' => $this->allergies,
             'seatNumber' => $this->seat_number,

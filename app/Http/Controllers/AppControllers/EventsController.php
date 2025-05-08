@@ -5,7 +5,9 @@ namespace App\Http\Controllers\AppControllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreEventsRequest;
 use App\Http\Requests\app\UpdateEventsRequest;
+use App\Http\Resources\AppResources\EventPlansResource;
 use App\Http\Resources\AppResources\EventResource;
+use App\Http\Resources\AppResources\EventTypesResource;
 use App\Http\Services\AppServices\EventsServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
@@ -136,4 +138,43 @@ class EventsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
+    
+    /**
+     * Retrieve event types and loan plans.
+     * @return JsonResponse
+     */
+    public function loanEventsPlansAndType(): JsonResponse
+    {
+        try {
+            $eventTypes = $this->eventsServices->getEventTypes();
+            $eventPlans = $this->eventsServices->getEventPlans();
+            
+            return response()->json([
+                'message' => 'Event types and loan plans retrieved successfully.',
+                'data' => [
+                    'eventTypes' =>  EventTypesResource::collection($eventTypes),
+                    'eventPlans' => EventPlansResource::collection($eventPlans),
+                ]
+            ]);
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    /**
+     * Retrieve event suggestions.
+     * @param Events $event
+     * @return JsonResponse
+     */
+    public function suggestions(Events $event): JsonResponse
+    {
+        try {
+            $suggestions = $this->eventsServices->getEventSuggestions($event);
+            
+            return response()->json($suggestions);
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
 }
