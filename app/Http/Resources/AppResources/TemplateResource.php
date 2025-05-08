@@ -70,6 +70,9 @@ class TemplateResource extends JsonResource
                 'mealPreference' => $this->mainGuest->meal_preference,
                 'accessCode' => $this->mainGuest->code,
                 'rsvpStatus' => $this->mainGuest->rsvp_status,
+                'rsvpStatusDate' => $this->mainGuest->rsvp_status_date
+                    ? $this->mainGuest->rsvp_status_date->diffForHumans()
+                    : null,
                 'notes' => $this->mainGuest->notes,
                 'tags' => $this->mainGuest->tags,
                 'companionQty' => $companionQty,
