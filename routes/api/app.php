@@ -164,7 +164,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('destroy.sweetMemoriesImages');
     
     Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
-        ->name('update.sweetMemoriesImages');
+        ->name('update.sweetMemoriesImages.name');
     
     Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
         ->name('user.updateProfile');
