@@ -3,6 +3,7 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\MainGuest;
 use App\Models\SaveTheDate;
 use App\Models\SuggestedMusic;
@@ -50,10 +51,10 @@ class SuggestedMusicServices
             $suggestedBy = $this->request->user();
             $suggestedByEntity = User::class;
         } else {
-            $suggestedBy = MainGuest::query()
-                ->where('access_code', $this->request->input('accessCode'))
+            $suggestedBy = Guest::query()
+                ->where('code', $this->request->input('accessCode'))
                 ->first();
-            $suggestedByEntity = MainGuest::class;
+            $suggestedByEntity = Guest::class;
         }
         
         if (!$suggestedBy) {

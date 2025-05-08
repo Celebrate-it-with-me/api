@@ -1,5 +1,7 @@
 <?php
 
+$allowedOrigins = explode(',', env('ALLOWED_SPA_DOMAINS', ''));
+
 return [
 
     /*
@@ -19,7 +21,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => $allowedOrigins,
 
     'allowed_origins_patterns' => [],
 

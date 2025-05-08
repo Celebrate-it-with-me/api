@@ -2,10 +2,9 @@
 
 namespace App\Http\Resources\AppResources;
 
-use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Matrix\Decomposition\QR;
+use Illuminate\Support\Facades\Log;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class GuestResource extends JsonResource
@@ -17,27 +16,49 @@ class GuestResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $mainAppUrl = config('app.frontend_app.url');
-        $invitationUrl = "$mainAppUrl/event/$this->event_id/guest/$this->access_code";
-        $qrImage = QrCode::format('png')->size(200)->generate($invitationUrl);
+        $isMainGuest = is_null($this->parent_id);
+        
+        $invitationUrl = $isMainGuest
+            ? config('app.frontend_app.url') . "event/{$this->event_id}/guest/{$this->code}"
+            : null;
+        
+        Log::info('checking status rsvp', [$this]);
         
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
-            'firstName' => $this->first_name,
-            'lastName' => $this->last_name,
+            'parentId' => $this->parent_id,
+            'name' => $this->name,
             'email' => $this->email,
-            'phoneNumber' => $this->phone_number,
-            'phoneConfirmed' => $this->phone_confirmed,
-            'extraPhone' => $this->extra_phone,
-            'confirmed' => $this->confirmed,
-            'confirmedDate' => $this->confirmed_date,
-            'accessCode' => $this->access_code,
-            'codeUsedTimes' => $this->code_used_times,
-            'companionType' => $this->companion_type,
-            'companionQty' => $this->companion_qty,
-            'companions' => GuestCompanionResource::collection($this->companions),
-            'invitationQR' => base64_encode($qrImage)
+            'phone' => $this->phone,
+            'rsvpStatus' => $this->rsvp_status,
+            'rsvpStatusDate' => $this->rsvp_status_date
+                ? $this->rsvp_status_date->diffForHumans()
+                : null,
+            'mealPreference' => $this->meal_preference,
+            'allergies' => $this->allergies,
+            'seatNumber' => $this->seat_number,
+            'notes' => $this->notes,
+            'code' => $isMainGuest ? $this->code : null,
+            
+            'invitationUrl' => $invitationUrl,
+            'invitationQR' => $isMainGuest && $invitationUrl
+                ? base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
+                : null,
+            
+            'companions' => $this->when(
+                $isMainGuest,
+                GuestResource::collection($this->companions)
+            ),
+            'invitations' => $this->when(
+                $isMainGuest,
+                GuestInvitationResource::collection($this->rsvpLogs)
+            ),
+            'rsvpLogs' => $this->when(
+                $isMainGuest,
+                GuestRsvpLogResource::collection($this->rsvpLogs)
+            ),
         ];
     }
+    
 }

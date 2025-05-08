@@ -3,6 +3,7 @@
 namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\GuestCompanion;
 use App\Models\MainGuest;
 use Exception;
@@ -10,6 +11,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class GuestServices
@@ -29,20 +31,24 @@ class GuestServices
     public function getEventsGuests(Events $event): LengthAwarePaginator
     {
         $perPage = $this->request->input('perPage', 10);
-        $pageSelected = $this->request->input('pageSelected', 1);
+        $page = $this->request->input('page', 1);
+        $searchValue = $this->request->input('searchValue');
         
-        return Mainguest::query()
-            ->when($this->request->filled('searchValue'), function (Builder $query) {
-                $searchValue = $this->request->input('searchValue');
-                $query->where(function (Builder $innerQuery) use ($searchValue) {
-                    $innerQuery->where('first_name', 'like', "%$searchValue%")
-                        ->orWhere('last_name', 'like', "%$searchValue%")
-                        ->orWhere('email', 'like', "%$searchValue%");
+        return Guest::query()
+            ->where('event_id', $event->id)
+            ->whereNull('parent_id') // Solo invitados principales
+            ->when($searchValue, function (Builder $query, $searchValue) {
+                $query->where(function (Builder $q) use ($searchValue) {
+                    $q->where('name', 'like', "%{$searchValue}%")
+                        ->orWhere('email', 'like', "%{$searchValue}%")
+                        ->orWhere('phone', 'like', "%{$searchValue}%");
                 });
             })
-            ->where('event_id', $event->id)
-            ->paginate($perPage, ['*'], 'guests', $pageSelected);
+            ->withCount('companions')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
     }
+    
     
     /**
      * Create event guest.
@@ -52,44 +58,60 @@ class GuestServices
      */
     public function create(Events $event): Model|Builder
     {
-        $companionsQty = $this->request->input('companionType') === 'no_name'
-            ? $this->request->input('companionQty')
-            : count($this->request->input('companionList'));
+        $guestData = $this->request->input('guest');
+        $preferences = $this->request->input('preferences', []);
+        $namedCompanions = $this->request->input('namedCompanions', []);
+        $unnamedCompanions = (int) $this->request->input('unnamedCompanions', 0);
         
-        $mainGuest =  MainGuest::query()->create([
+        Log::info('checking guest data', [$guestData['name']]);
+        
+        $mainGuest = Guest::query()->create([
             'event_id' => $event->id,
-            'first_name' => $this->request->input('firstName'),
-            'last_name' => $this->request->input('lastName'),
-            'email' => $this->request->input('email'),
-            'phone_number' => $this->request->input('phoneNumber'),
-            'access_code' => $this->calculateAccessCode(),
-            'code_used_times' => 0,
-            'confirmed' => 'unused',
-            'confirmed_date' => null,
-            'companion_type' => $this->request->input('companionType') ?? 'no_companion',
-            'companion_qty' => $companionsQty,
+            'name' => $guestData['name'],
+            'email' => $guestData['email'] ?? null,
+            'phone' => $guestData['phone'] ?? null,
+            'meal_preference' => $preferences['meal_preference'] ?? null,
+            'allergies' => $preferences['allergies'] ?? null,
+            'notes' => $preferences['notes'] ?? null,
+            'rsvp_status' => 'pending',
+            'code' => $this->calculateAccessCode(),
         ]);
         
         if (!$mainGuest) {
-            throw new Exception('Error creating the main guest!');
+            throw new \Exception('Failed to create the main guest.');
         }
         
-        $partyMembers = $this->request->input('companionList');
-        if (count($partyMembers)) {
-            foreach ($partyMembers as $member) {
-                GuestCompanion::query()->create([
-                    'main_guest_id' => $mainGuest->id,
-                    'first_name' => $member['firstName'],
-                    'last_name' => $member['lastName'],
-                    'email' => $member['email'],
-                    'phone_number' => $member['phoneNumber'],
-                    'confirmed' => 'pending',
-                    'confirmed_date' => null,
+        if (count($namedCompanions) > 0) {
+            foreach ($namedCompanions as $companion) {
+                Guest::query()->create([
+                    'event_id' => $event->id,
+                    'parent_id' => $mainGuest->id,
+                    'name' => $companion['name'],
+                    'email' => $companion['email'] ?? null,
+                    'phone' => $companion['phone'] ?? null,
+                    'rsvp_status' => 'pending',
                 ]);
             }
         }
+        
+        
+        if ($unnamedCompanions > 0) {
+            for ($i = 0; $i < $unnamedCompanions; $i++) {
+                Guest::query()->create([
+                    'event_id' => $event->id,
+                    'parent_id' => $mainGuest->id,
+                    'name' => 'Unnamed',
+                    'email' => null,
+                    'phone' => null,
+                    'rsvp_status' => 'pending',
+                ]);
+            }
+        }
+        
+        
         return $mainGuest;
     }
+    
     
     /**
      * Auto generate access code.
@@ -97,21 +119,20 @@ class GuestServices
      */
     private function calculateAccessCode(): string
     {
-        $code = Str::upper(Str::substr($this->request->input('firstName'), 0, 1));
-        
-        $code .= Str::upper(Str::substr($this->request->input('lastName'), 0, 1));
+        $code = Str::upper(Str::random(2)); // Dos letras aleatorias
+        $eventId = $this->request->input('eventId');
         
         do {
             $randomNumber = random_int(1000, 9999);
-            $isUnique = !MainGuest::query()
-                ->where('event_id', $this->request->input('eventId'))
-                ->where('access_code', $code . $randomNumber)
+            $fullCode = $code . $randomNumber;
+            
+            $isUnique = !Guest::query()
+                ->where('event_id', $eventId)
+                ->where('code', $fullCode)
                 ->exists();
         } while (!$isUnique);
         
-        $code .= $randomNumber;
-        
-        return $code;
+        return $fullCode;
     }
     
     /**
@@ -158,6 +179,33 @@ class GuestServices
                 ->where('main_guest_id', $mainGuest->id)
                 ->delete();
         }
+    }
+    
+    /**
+     * Deletes the specified guest from the database.
+     *
+     * @param Guest $guest The guest instance to be deleted.
+     * @return void
+     */
+    public function delete(Guest $guest): void
+    {
+        $guest->delete();
+    }
+    
+    public function showGuest(Guest $guest): Guest
+    {
+        return $guest->load([
+            'companions' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'event',
+            'invitations' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'rsvpLogs' => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+        ]);
     }
 
 }
