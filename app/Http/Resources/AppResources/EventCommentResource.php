@@ -4,6 +4,7 @@ namespace App\Http\Resources\AppResources;
 
 use App\Http\Resources\MainGuestResource;
 use App\Http\Resources\UserResource;
+use App\Models\Guest;
 use App\Models\MainGuest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,14 +22,11 @@ class EventCommentResource extends JsonResource
     public function toArray(Request $request): array
     {
         $created = $this->getCreatedBy();
-        if ($created instanceof MainGuest) {
-            $createdBy = MainGuestResource::make($created);
-            $author = "$created->first_name $created->last_name";
-        } else {
-            $createdBy = UserResource::make($created);
-            $author = $created->name;
-        }
+        $createdBy = ($created instanceof Guest)
+            ? GuestResource::make($created)
+            : UserResource::make($created);
         
+        $author = $createdBy->name;
         
         return [
             'id' => $this->id,
@@ -55,6 +53,6 @@ class EventCommentResource extends JsonResource
             return User::find($this->created_by_id);
         }
         
-        return MainGuest::find($this->created_by_id);
+        return Guest::find($this->created_by_id);
     }
 }
