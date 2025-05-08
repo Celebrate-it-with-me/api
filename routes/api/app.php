@@ -38,6 +38,10 @@ Route::post('reset-password', [AuthenticationController::class, 'resetPassword']
 
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
     ->name('template.event.guest');
+
+Route::get('template/event/{event}/guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
+    ->name('template.event.guest.data');
+
 Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp'])
     ->name('template.event.save-rsvp');
 
