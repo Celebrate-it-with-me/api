@@ -128,7 +128,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
         ->name('store.backgroundMusic');
     Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
-        ->name('store.backgroundMusic');
+        ->name('update.backgroundMusic');
     
     Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
         ->name('index.configComments');
