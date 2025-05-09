@@ -167,7 +167,7 @@ class Events extends Model
      */
     public function menu(): HasOne
     {
-        return $this->hasOne(Menu::class);
+        return $this->hasOne(Menu::class, 'event_id', 'id');
     }
     
     /**

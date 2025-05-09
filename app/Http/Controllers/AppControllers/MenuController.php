@@ -6,9 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MenuController extends Controller
 {
+    /**
+     * Getting menu from this event.
+     * @param Request $request
+     * @param Events $event
+     * @return JsonResponse
+     */
+    public function index(Request $request, Events $event): JsonResponse
+    {
+        try {
+            $menus = $event->menu()->with('menuItems')->get();
+            return response()->json($menus);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+    
+    
     /**
      * Display the menu for the given event.
      *
@@ -17,7 +35,7 @@ class MenuController extends Controller
      */
     public function show(Events $event): JsonResponse
     {
-        $menu = $event->menu()->with('items')->first();
+        $menu = $event->menu()->with('menuItems')->first();
         return response()->json($menu);
     }
     
@@ -31,7 +49,7 @@ class MenuController extends Controller
     public function store(Request $request, Events $event): JsonResponse
     {
         $data = $request->validate([
-           'title' => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'allowMultipleChoices' => 'boolean',
             'allowCustomRequests' => 'boolean',
@@ -40,8 +58,8 @@ class MenuController extends Controller
         $menu = $event->menu()->create([
             'title' => $data['title'],
             'description' => $data['description'],
-            'allow_multiple_choices' => $data['allowMultipleChoices'],
-            'allow_custom_requests' => $data['allowCustomRequests'],
+            'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
+            'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
         ]);
         
         return response()->json($menu, 201);
