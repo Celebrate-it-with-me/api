@@ -8,8 +8,9 @@ use App\Http\Controllers\AppControllers\EventLocationController;
 use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
-    use App\Http\Controllers\AppControllers\MenuController;
-    use App\Http\Controllers\AppControllers\RsvpController;
+use App\Http\Controllers\AppControllers\MenuController;
+use App\Http\Controllers\AppControllers\MenuItemController;
+use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
@@ -128,6 +129,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('index.menu');
     Route::post('event/{event}/menu', [MenuController::class, 'store'])
         ->name('store.menu');
+    
+    Route::post('event/{event}/menu/{menu}/menu-item', [MenuItemController::class, 'store'])
+        ->name('store.menuItem');
     
     
     Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
