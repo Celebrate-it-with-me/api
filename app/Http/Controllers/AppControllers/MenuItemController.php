@@ -26,7 +26,7 @@ class MenuItemController extends Controller
             'type' => $data['itemType'],
             'diet_type' => $data['dietType'],
             'image_path' => $data['imagePath'] ?? null,
-            'notes' => $data['notes'],
+            'notes' => $data['notes'] ?? '',
         ]);
         
         return response()->json($item, 201);
@@ -51,7 +51,7 @@ class MenuItemController extends Controller
         return response()->json($menuItem);
     }
     
-    public function destroy(MenuItem $menuItem): JsonResponse
+    public function destroy(Events $event, Menu $menu, MenuItem $menuItem): JsonResponse
     {
         $menuItem->delete();
         

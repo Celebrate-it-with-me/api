@@ -129,9 +129,17 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('index.menu');
     Route::post('event/{event}/menu', [MenuController::class, 'store'])
         ->name('store.menu');
+    Route::put('event/{event}/menu/{menu}', [MenuController::class, 'update'])
+        ->name('update.menu');
+    Route::delete('event/{event}/menu/{menu}', [MenuController::class, 'destroy'])
+        ->name('destroy.menu');
+    Route::get('event/{event}/menu/{menu}', [MenuController::class, 'show'])
+        ->name('show.menu');
     
     Route::post('event/{event}/menu/{menu}/menu-item', [MenuItemController::class, 'store'])
         ->name('store.menuItem');
+    Route::delete('event/{event}/menu/{menu}/menu-item/{menuItem}', [MenuItemController::class, 'destroy'])
+        ->name('destroy.menuItem');
     
     
     Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
