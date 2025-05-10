@@ -4,20 +4,48 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Events;
+use App\Models\Menu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MenuController extends Controller
 {
+    /**
+     * Getting menu from this event.
+     * @param Request $request
+     * @param Events $event
+     * @return JsonResponse
+     */
+    public function index(Request $request, Events $event): JsonResponse
+    {
+        try {
+            $menu = $event->menu;
+            if ($menu) {
+                $menu->load('menuItems');
+            } else {
+                return response()->json(['message' => 'There is no menu for this event.'], 404);
+            }
+            Log::info('MenuController@index', [
+                'event_id' => $event->id,
+                'menus' => $menu,
+            ]);
+            return response()->json($menu);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+    
+    
     /**
      * Display the menu for the given event.
      *
      * @param Events $event
      * @return JsonResponse
      */
-    public function show(Events $event): JsonResponse
+    public function show(Events $event, Menu $menu): JsonResponse
     {
-        $menu = $event->menu()->with('items')->first();
+        $menu = $menu->load('menuItems');
         return response()->json($menu);
     }
     
@@ -31,7 +59,7 @@ class MenuController extends Controller
     public function store(Request $request, Events $event): JsonResponse
     {
         $data = $request->validate([
-           'title' => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'allowMultipleChoices' => 'boolean',
             'allowCustomRequests' => 'boolean',
@@ -40,8 +68,8 @@ class MenuController extends Controller
         $menu = $event->menu()->create([
             'title' => $data['title'],
             'description' => $data['description'],
-            'allow_multiple_choices' => $data['allowMultipleChoices'],
-            'allow_custom_requests' => $data['allowCustomRequests'],
+            'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
+            'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
         ]);
         
         return response()->json($menu, 201);
@@ -54,29 +82,27 @@ class MenuController extends Controller
      * @param Events $event
      * @return JsonResponse
      */
-    public function update(Request $request, Events $event): JsonResponse
+    public function update(Request $request, Events $event, Menu $menu): JsonResponse
     {
-        $data = $request->validate([
-            'title' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'allowMultipleChoices' => 'boolean',
-            'allowCustomRequests' => 'boolean',
-        ]);
-        
-        $menu = $event->menu;
-        
-        if ($menu) {
+        try {
+            $data = $request->validate([
+                'title' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'allowMultipleChoices' => 'boolean',
+                'allowCustomRequests' => 'boolean',
+            ]);
+            
             $menu->update([
                 'title' => $data['title'],
                 'description' => $data['description'],
-                'allow_multiple_choices' => $data['allowMultipleChoices'],
-                'allow_custom_requests' => $data['allowCustomRequests'],
+                'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
+                'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
             ]);
             
             return response()->json($menu);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
         }
-        
-        return response()->json(['message' => 'Menu not found'], 404);
     }
     
     /**
@@ -85,15 +111,13 @@ class MenuController extends Controller
      * @param Events $event
      * @return JsonResponse
      */
-    public function destroy(Events $event): JsonResponse
+    public function destroy(Events $event, Menu $menu): JsonResponse
     {
-        $menu = $event->menu;
-        
-        if ($menu) {
+        try {
             $menu->delete();
             return response()->json(['message' => 'Menu deleted successfully']);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Menu not found'], 404);
         }
-        
-        return response()->json(['message' => 'Menu not found'], 404);
     }
 }

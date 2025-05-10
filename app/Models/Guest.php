@@ -85,4 +85,9 @@ class Guest extends Model
     {
         return $this->belongsToMany(MenuItem::class, 'guest_menu')->withTimestamps();
     }
+    
+    public function menuItems(): BelongsToMany
+    {
+        return $this->belongsToMany(MenuItem::class, 'guest_menu')->withTimestamps();
+    }
 }
