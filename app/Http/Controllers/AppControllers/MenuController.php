@@ -20,17 +20,15 @@ class MenuController extends Controller
     public function index(Request $request, Events $event): JsonResponse
     {
         try {
-            $menu = $event->menu;
-            if ($menu) {
-                $menu->load('menuItems');
-            } else {
-                return response()->json(['message' => 'There is no menu for this event.'], 404);
+            $menus = $event->menus()->with('menuItems')->get();
+            if (!$menus)  {
+                return response()->json(['message' => 'There is no menus for this event.'], 404);
             }
             Log::info('MenuController@index', [
                 'event_id' => $event->id,
-                'menus' => $menu,
+                'menus' => $menus,
             ]);
-            return response()->json($menu);
+            return response()->json($menus);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -63,13 +61,21 @@ class MenuController extends Controller
             'description' => 'nullable|string',
             'allowMultipleChoices' => 'boolean',
             'allowCustomRequests' => 'boolean',
+            'isDefault' => 'boolean',
         ]);
         
-        $menu = $event->menu()->create([
+        if ($data['isDefault']) {
+            $event->menus()->update([
+                'is_default' => false,
+            ]);
+        }
+        
+        $menu = $event->menus()->create([
             'title' => $data['title'],
             'description' => $data['description'],
             'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
             'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
+            'is_default' => $data['isDefault'] ?? false,
         ]);
         
         return response()->json($menu, 201);
