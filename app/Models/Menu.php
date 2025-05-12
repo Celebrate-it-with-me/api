@@ -20,6 +20,7 @@ class Menu extends Model
         'description',
         'allow_multiple_choices',
         'allow_custom_request',
+        'is_default',
     ];
     
     /**
