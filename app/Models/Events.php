@@ -163,11 +163,10 @@ class Events extends Model
     
     /**
      * Get the main guest associated with the event.
-     * @return HasOne
      */
-    public function menu(): HasOne
+    public function menus(): HasMany
     {
-        return $this->hasOne(Menu::class, 'event_id', 'id');
+        return $this->hasMany(Menu::class, 'event_id', 'id');
     }
     
     /**

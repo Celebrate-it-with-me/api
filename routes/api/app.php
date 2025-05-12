@@ -125,15 +125,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
     
-    Route::get('event/{event}/menu', [MenuController::class, 'index'])
+    Route::get('event/{event}/menus', [MenuController::class, 'index'])
         ->name('index.menu');
-    Route::post('event/{event}/menu', [MenuController::class, 'store'])
+    Route::post('event/{event}/menus', [MenuController::class, 'store'])
         ->name('store.menu');
-    Route::put('event/{event}/menu/{menu}', [MenuController::class, 'update'])
+    Route::put('event/{event}/menus/{menu}', [MenuController::class, 'update'])
         ->name('update.menu');
-    Route::delete('event/{event}/menu/{menu}', [MenuController::class, 'destroy'])
+    Route::delete('event/{event}/menus/{menu}', [MenuController::class, 'destroy'])
         ->name('destroy.menu');
-    Route::get('event/{event}/menu/{menu}', [MenuController::class, 'show'])
+    Route::get('event/{event}/menus/{menu}', [MenuController::class, 'show'])
         ->name('show.menu');
     
     Route::post('event/{event}/menu/{menu}/menu-item', [MenuItemController::class, 'store'])
