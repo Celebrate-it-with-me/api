@@ -70,9 +70,6 @@ class MenuController extends Controller
             ]);
         }
         
-        
-        Log::info('MenuController@store', [ $data['isDefault'], 'checking' => $request->all()]);
-        
         $menu = $event->menus()->create([
             'title' => $data['title'],
             'description' => $data['description'],
