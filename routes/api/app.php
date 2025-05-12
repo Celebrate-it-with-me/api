@@ -136,7 +136,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::get('event/{event}/menus/{menu}', [MenuController::class, 'show'])
         ->name('show.menu');
     
-    Route::post('event/{event}/menu/{menu}/menu-item', [MenuItemController::class, 'store'])
+    Route::post('event/{event}/menus/{menu}/menu-item', [MenuItemController::class, 'store'])
         ->name('store.menuItem');
     Route::delete('event/{event}/menu/{menu}/menu-item/{menuItem}', [MenuItemController::class, 'destroy'])
         ->name('destroy.menuItem');
