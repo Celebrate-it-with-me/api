@@ -105,6 +105,7 @@ class EventsServices
             'event_id' => $event->id,
             'save_the_date' => $this->request->input('saveTheDate') ?? false,
             'rsvp' => $this->request->input('rsvp') ?? false,
+            'menu' => $this->request->input('menu') ?? false,
             'sweet_memories' => $this->request->input('sweetMemories') ?? false,
             'music' => $this->request->input('music') ?? false,
             'background_music' => $this->request->input('backgroundMusic') ?? false,
@@ -151,6 +152,7 @@ class EventsServices
         
         $this->event->eventFeature->save_the_date = $this->request->input('saveTheDate') ?? false;
         $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
+        $this->event->eventFeature->menu = $this->request->input('menu') ?? false;
         $this->event->eventFeature->sweet_memories = $this->request->input('sweetMemories') ?? false;
         $this->event->eventFeature->music = $this->request->input('music') ?? false;
         $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
