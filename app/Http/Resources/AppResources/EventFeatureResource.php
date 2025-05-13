@@ -19,6 +19,7 @@ class EventFeatureResource extends JsonResource
             'eventId' => $this->event_id,
             'saveTheDate' => $this->save_the_date,
             'rsvp' => $this->rsvp,
+            'menu' => $this->menu,
             'sweetMemories' => $this->sweet_memories,
             'music' => $this->music,
             'backgroundMusic' => $this->background_music,

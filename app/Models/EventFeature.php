@@ -17,6 +17,7 @@ class EventFeature extends Model
         'event_id',
         'save_the_date',
         'rsvp',
+        'menu',
         'sweet_memories',
         'music',
         'background_music',

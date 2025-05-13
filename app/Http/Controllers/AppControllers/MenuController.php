@@ -75,10 +75,25 @@ class MenuController extends Controller
             'description' => $data['description'],
             'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
             'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
-            'is_default' => $data['isDefault'] ?? false,
+            'is_default' => $data['isDefault'] ?? $this->getIsDefaultMenu($event),
         ]);
         
         return response()->json($menu, 201);
+    }
+    
+    /**
+     * Check if the menu is default.
+     * @param Events $event
+     * @return bool
+     */
+    private function getIsDefaultMenu(Events $event): bool
+    {
+        $menus = $event->menus()->where('is_default',  true)->get();
+        if ($menus->isEmpty()) {
+            return true;
+        }
+        
+        return false;
     }
     
     /**
