@@ -70,6 +70,7 @@ class GuestServices
             'name' => $guestData['name'],
             'email' => $guestData['email'] ?? null,
             'phone' => $guestData['phone'] ?? null,
+            'assigned_menu_id' => $guestData['menuSelected'] ?? null,
             'meal_preference' => $preferences['meal_preference'] ?? null,
             'allergies' => $preferences['allergies'] ?? null,
             'notes' => $preferences['notes'] ?? null,
@@ -89,6 +90,7 @@ class GuestServices
                     'name' => $companion['name'],
                     'email' => $companion['email'] ?? null,
                     'phone' => $companion['phone'] ?? null,
+                    'assigned_menu_id' => $guestData['menuSelected'] ?? null,
                     'rsvp_status' => 'pending',
                 ]);
             }
