@@ -51,6 +51,8 @@ class EventResource extends JsonResource
             $eventFeaturesArray = $this->eventFeature->toArray();
             unset($eventFeaturesArray['id']);
             unset($eventFeaturesArray['event_id']);
+            unset($eventFeaturesArray['created_at']);
+            unset($eventFeaturesArray['updated_at']);
             
             foreach ($eventFeaturesArray as $key => $eventFeature) {
                 $eventFeatures[] = [
