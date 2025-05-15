@@ -11,6 +11,7 @@ use App\Http\Resources\AppResources\TemplateResource;
 use App\Http\Services\AppServices\EventsServices;
 use App\Models\Events;
 use App\Models\Guest;
+use App\Models\Menu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
@@ -67,6 +68,7 @@ class TemplateController extends Controller
                         : null,
                     'notes' => $mainGuest->notes,
                     'tags' => $mainGuest->tags,
+                    'menuSelected' => $this->getGuestMenuWithItems($mainGuest),
                     'companionQty' => $companionQty,
                     'companions' => GuestResource::collection($mainGuest->companions)
                 ]
@@ -79,6 +81,32 @@ class TemplateController extends Controller
                 'message' => $e->getMessage(). ' ' .$e->getLine()
             ], 500);
         }
+    }
+    
+    private function getGuestMenuWithItems($mainGuest): array
+    {
+        if (!$mainGuest->assigned_menu_id) {
+            return [];
+        }
+        
+        $menu = Menu::query()
+            ->with('menuItems')
+            ->where('id', $mainGuest->assigned_menu_id)
+            ->where('event_id', $mainGuest->event_id)
+            ->first();
+        
+        if (!$menu) {
+            return [];
+        }
+        
+        $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
+            return $items->values()->toArray();
+        });
+        
+        return [
+            'menu' => $menu->toArray(),
+            'menuItems' => $groupedItems
+        ];
     }
     
 }
