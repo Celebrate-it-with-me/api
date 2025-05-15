@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\Menu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Log;
 
 class MenuController extends Controller
@@ -30,6 +33,30 @@ class MenuController extends Controller
             ]);
             return response()->json($menus);
         } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+    
+    /**
+     *
+     * @param Request $request
+     * @param Events $event
+     * @return JsonResponse|AnonymousResourceCollection
+     */
+    public function getGuestsMenu(Request $request, Events $event): JsonResponse | AnonymousResourceCollection
+    {
+        try {
+            $guests = Guest::query()
+                ->with(['selectedMenuItems'])
+                ->where('event_id', $event->id)
+                ->paginate($request->get('per_page', 10));
+            
+            if (!$guests->count()) {
+                return response()->json(['message' => 'There is no guests for this event.'], 404);
+            }
+            
+            return GuestMenuConfirmationResource::collection($guests);
+        } catch (\Throwable $e)    {
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }

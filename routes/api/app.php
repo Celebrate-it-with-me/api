@@ -127,6 +127,10 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     
     Route::get('event/{event}/menus', [MenuController::class, 'index'])
         ->name('index.menu');
+    Route::get('event/{event}/menus/guests', [MenuController::class, 'getGuestsMenu'])
+        ->name('index.menu.guests');
+    Route::get('/event/{event}/menus/guests/download', [ExportController::class, 'exportGuestMenuSelections'])
+        ->name('export.guest.menu-export');
     Route::post('event/{event}/menus', [MenuController::class, 'store'])
         ->name('store.menu');
     Route::put('event/{event}/menus/{menu}', [MenuController::class, 'update'])
