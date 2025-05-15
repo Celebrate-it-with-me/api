@@ -90,6 +90,6 @@ class Guest extends Model
     
     public function menuAssigned(): HasOne
     {
-        return $this->hasOne(Menu::class, 'menu_id', 'id');
+        return $this->hasOne(Menu::class, 'id', 'assigned_menu_id');
     }
 }
