@@ -15,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class EventsServices
 {
@@ -110,6 +109,7 @@ class EventsServices
             'music' => $this->request->input('music') ?? false,
             'background_music' => $this->request->input('backgroundMusic') ?? false,
             'event_comments' => $this->request->input('eventComments') ?? false,
+            'location' => $this->request->input('location') ?? false,
             'seats_accommodation' => $this->request->input('seatsAccommodation') ?? false,
             'preview' => $this->request->input('preview') ?? false,
             'budget' => $this->request->input('budget') ?? false,
@@ -157,6 +157,7 @@ class EventsServices
         $this->event->eventFeature->music = $this->request->input('music') ?? false;
         $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
         $this->event->eventFeature->event_comments = $this->request->input('eventComments') ?? false;
+        $this->event->eventFeature->location = $this->request->input('location') ?? false;
         $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
         $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
         $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;
