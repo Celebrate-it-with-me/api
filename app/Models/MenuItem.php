@@ -15,8 +15,9 @@ class MenuItem extends Model
     protected $table = 'menu_items';
     
     protected $fillable = [
-       'menu_id',
-         'name',
+        'menu_id',
+        'name',
+        'type',
         'diet_type',
         'image_path',
         'notes'
@@ -29,7 +30,7 @@ class MenuItem extends Model
      */
     public function menu(): BelongsTo
     {
-        return $this->belongsTo(Menu::class, 'event_id', 'id');
+        return $this->belongsTo(Menu::class, 'menu_id', 'id');
     }
     
     /**

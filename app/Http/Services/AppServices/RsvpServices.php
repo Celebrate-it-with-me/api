@@ -76,6 +76,12 @@ class RsvpServices
         // $guest->meal_preference = $companion['mealPreference']; todo: Add this when is ready.
         
         $guest->save();
+        
+        if (isset($guestData['menusSelections']) && is_array($guestData['menusSelections'])) {
+            $menuItemIds = array_values($guestData['menusSelections']); // solo los IDs
+            $guest->selectedMenuItems()->sync($menuItemIds);
+        }
+        
     }
     
     /**
