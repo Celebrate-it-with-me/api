@@ -25,7 +25,8 @@ class EventFeature extends Model
         'seats_accommodation',
         'preview',
         'budget',
-        'analytics'
+        'analytics',
+        'location'
     ];
     
     /**
