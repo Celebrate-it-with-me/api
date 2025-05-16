@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\AppControllers;
 
+use App\Exports\GuestMenuExport;
 use App\Exports\RSVPExport;
 use App\Http\Controllers\Controller;
 use App\Models\Events;
@@ -46,6 +47,16 @@ class ExportController extends Controller
             'Content-Type' => 'application/pdf',
         ]);
     
+    }
+    
+    public function exportGuestMenuSelections(Events $event)
+    {
+        $filename = "guest_menu_selections_event_{$event->id}.xlsx";
+        
+        return Excel::download(
+            new GuestMenuExport($event),
+            $filename
+        );
     }
     
     private function getFilteredGuests(Events $event, $status = null, $search = null, $perPage = 15, $currentPage = 1): Collection

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\AppResources;
 
+use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Log;
@@ -40,7 +41,7 @@ class GuestResource extends JsonResource
             'seatNumber' => $this->seat_number,
             'notes' => $this->notes,
             'code' => $isMainGuest ? $this->code : null,
-            
+            'menuSelected' => $this->getGuestMenuWithItems(),
             'invitationUrl' => $invitationUrl,
             'invitationQR' => $isMainGuest && $invitationUrl
                 ? base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
@@ -58,6 +59,32 @@ class GuestResource extends JsonResource
                 $isMainGuest,
                 GuestRsvpLogResource::collection($this->rsvpLogs)
             ),
+        ];
+    }
+    
+    private function getGuestMenuWithItems(): array
+    {
+        if (!$this->assigned_menu_id) {
+            return [];
+        }
+        
+        $menu = Menu::query()
+            ->with('menuItems')
+            ->where('id', $this->assigned_menu_id)
+            ->where('event_id', $this->event_id)
+            ->first();
+        
+        if (!$menu) {
+            return [];
+        }
+        
+        $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
+            return $items->values()->toArray();
+        });
+        
+        return [
+            'menu' => $menu->toArray(),
+            'menuItems' => $groupedItems
         ];
     }
     
