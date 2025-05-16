@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Guest extends Model
 {
@@ -20,6 +21,7 @@ class Guest extends Model
         'phone',
         'rsvp_status',
         'rsvp_status_date',
+        'assigned_menu_id',
         'code',
         'notes',
         'is_vip',
@@ -84,5 +86,10 @@ class Guest extends Model
     public function selectedMenuItems(): BelongsToMany
     {
         return $this->belongsToMany(MenuItem::class, 'guest_menu')->withTimestamps();
+    }
+    
+    public function menuAssigned(): HasOne
+    {
+        return $this->hasOne(Menu::class, 'id', 'assigned_menu_id');
     }
 }

@@ -8,6 +8,8 @@ use App\Http\Controllers\AppControllers\EventLocationController;
 use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
+use App\Http\Controllers\AppControllers\MenuController;
+use App\Http\Controllers\AppControllers\MenuItemController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
@@ -122,6 +124,27 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::post('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'store']);
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
+    
+    Route::get('event/{event}/menus', [MenuController::class, 'index'])
+        ->name('index.menu');
+    Route::get('event/{event}/menus/guests', [MenuController::class, 'getGuestsMenu'])
+        ->name('index.menu.guests');
+    Route::get('/event/{event}/menus/guests/download', [ExportController::class, 'exportGuestMenuSelections'])
+        ->name('export.guest.menu-export');
+    Route::post('event/{event}/menus', [MenuController::class, 'store'])
+        ->name('store.menu');
+    Route::put('event/{event}/menus/{menu}', [MenuController::class, 'update'])
+        ->name('update.menu');
+    Route::delete('event/{event}/menus/{menu}', [MenuController::class, 'destroy'])
+        ->name('destroy.menu');
+    Route::get('event/{event}/menus/{menu}', [MenuController::class, 'show'])
+        ->name('show.menu');
+    
+    Route::post('event/{event}/menus/{menu}/menu-item', [MenuItemController::class, 'store'])
+        ->name('store.menuItem');
+    Route::delete('event/{event}/menu/{menu}/menu-item/{menuItem}', [MenuItemController::class, 'destroy'])
+        ->name('destroy.menuItem');
+    
     
     Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
         ->name('index.backgroundMusic');

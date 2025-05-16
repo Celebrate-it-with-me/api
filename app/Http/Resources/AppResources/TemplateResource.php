@@ -5,6 +5,7 @@ namespace App\Http\Resources\AppResources;
 use App\Http\Resources\UserResource;
 use App\Models\Guest;
 use App\Models\MainGuest;
+use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -56,6 +57,8 @@ class TemplateResource extends JsonResource
                 'selected' => false,
                 'saveTheDate' => SaveTheDateResource::make($this->saveTheDate),
                 'commentsConfig' => $this->getCommentsConfig(),
+                'hasMenu' => $this->hasMenu(),
+                'mainMenu' => $this->getEventMainMenu(),
                 'eventFeature' => EventFeatureResource::make($this->eventFeature),
                 'sweetMemoriesImages' => SweetMemoriesImageResource::collection($this->sweetMemoriesImages),
                 'sweetMemoriesConfig' => SweetMemoriesConfigResource::make($this->sweetMemoriesConfig),
@@ -75,11 +78,66 @@ class TemplateResource extends JsonResource
                     : null,
                 'notes' => $this->mainGuest->notes,
                 'tags' => $this->mainGuest->tags,
+                'menuSelected' => $this->getGuestMenuWithItems(),
                 'companionQty' => $companionQty,
                 'companions' => GuestResource::collection($this->mainGuest->companions)
             ]
         ];
     }
+    
+    private function hasMenu(): bool
+    {
+        return $this->eventFeature->menu ?? false;
+    }
+    
+    
+    private function getEventMainMenu(): array
+    {
+        $menu = Menu::query()
+            ->where('event_id', $this->id)
+            ->where('is_default', true)
+            ->first();
+        
+        if (!$menu) {
+            return [];
+        }
+        
+        $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
+            return $items->values()->toArray();
+        });
+        
+        return [
+            'menu' => $menu->toArray(),
+            'menuItems' => $groupedItems
+        ];
+    }
+    
+    private function getGuestMenuWithItems(): array
+    {
+        if (!$this->mainGuest->assigned_menu_id) {
+            return [];
+        }
+        
+        $menu = Menu::query()
+            ->with('menuItems')
+            ->where('id', $this->mainGuest->assigned_menu_id)
+            ->where('event_id', $this->id)
+            ->first();
+        
+        if (!$menu) {
+            return [];
+        }
+        
+        $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
+            return $items->values()->toArray();
+        });
+        
+        return [
+            'menu' => $menu->toArray(),
+            'menuItems' => $groupedItems
+        ];
+    }
+    
     
     /**
      * Get comments config.
