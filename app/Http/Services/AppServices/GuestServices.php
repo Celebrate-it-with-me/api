@@ -36,7 +36,7 @@ class GuestServices
         
         return Guest::query()
             ->where('event_id', $event->id)
-            ->whereNull('parent_id') // Solo invitados principales
+            ->whereNull('parent_id')
             ->when($searchValue, function (Builder $query, $searchValue) {
                 $query->where(function (Builder $q) use ($searchValue) {
                     $q->where('name', 'like', "%{$searchValue}%")

@@ -134,4 +134,14 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserPreference::class, 'user_id', 'id');
     }
+    
+    /**
+     * Relation with user events.
+     *
+     * @return HasMany
+     */
+    public function organizedEvents(): HasMany
+    {
+        return $this->hasMany(Events::class, 'organizer_id', 'id');
+    }
 }

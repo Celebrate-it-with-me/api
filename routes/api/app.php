@@ -8,7 +8,8 @@ use App\Http\Controllers\AppControllers\EventLocationController;
 use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
-use App\Http\Controllers\AppControllers\MenuController;
+    use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
+    use App\Http\Controllers\AppControllers\MenuController;
 use App\Http\Controllers\AppControllers\MenuItemController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
@@ -58,6 +59,11 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 
 
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
+    
+    Route::get('user/hydrate/{user}', [HydrateController::class, 'hydrate'])
+        ->name('user.hydrate');
+    
+    
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
