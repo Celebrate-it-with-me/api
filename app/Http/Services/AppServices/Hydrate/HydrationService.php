@@ -47,7 +47,7 @@ class HydrationService
         
         return response()->json([
             'events' => $events ? EventResource::collection($events) : null,
-            'activeEvent' => $activeEvent ? EventResource::make($activeEvent) : null,
+            'activeEvent' => EventResource::make($activeEvent),
             'menus' => $menus ? $menus : null, // Todo create MenuResource
             'eventFeatures' => $eventFeatures ? EventFeatureResource::make($eventFeatures) : null,
             'guests' => $guests ? GuestResource::collection($guests)->response()->getData(true) : null,
