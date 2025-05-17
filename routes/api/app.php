@@ -59,6 +59,7 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 
 
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
+    
     Route::get('user/hydrate/{user}', [HydrateController::class, 'hydrate'])
         ->name('user.hydrate');
     
