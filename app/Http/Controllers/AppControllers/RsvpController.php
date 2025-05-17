@@ -76,14 +76,20 @@ class RsvpController extends Controller
                 'rsvp_status_date' => null,
             ]);
             
+            $guest->selectedMenuItems()->detach();
+            
             if ($guest->companions) {
                 foreach ($guest->companions as $companion) {
                     $companion->update([
                         'rsvp_status' => 'pending',
                         'rsvp_status_date' => null,
                     ]);
+                    
+                    $companion->selectedMenuItems()->detach();
                 }
             }
+            
+            
             
             return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
