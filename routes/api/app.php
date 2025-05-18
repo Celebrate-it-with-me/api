@@ -36,7 +36,7 @@ Route::post('check-password-link', [AuthenticationController::class, 'checkPassw
     ->middleware('signed');
 Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
     ->name('reset.password');
-    
+
 
 
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
@@ -61,31 +61,31 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::get('user/hydrate/{user}', [HydrateController::class, 'hydrate'])
         ->name('user.hydrate');
-    
-    
+
+
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
     Route::get('event/{event}/suggestions', [EventsController::class, 'suggestions'])
         ->name('event.suggestions');
-    
+
     Route::get('events', [EventsController::class, 'index']);
-    
+
     Route::get('events/load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
         ->name('events.loanEventsPlansAndType');
     Route::get('event/{event}/rsvp/summary', [RsvpController::class, 'summary'])
         ->name('rsvp.summary');
-    
-    
+
+
     Route::get('event/filters', [EventsController::class, 'filterEvents']);
     Route::delete('event/{event}', [EventsController::class, 'destroy']);
     Route::put('event/{event}', [EventsController::class, 'update']);
-    
+
     Route::get('event/{event}/save-the-date', [SaveTheDateController::class, 'index']);
     Route::post('event/{event}/save-the-date', [SaveTheDateController::class, 'store']);
     Route::put('save-the-date/{saveTheDate}', [SaveTheDateController::class, 'update']);
-    
-    
+
+
     Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
     Route::get('event/{event}/rsvp/guests', [RsvpController::class, 'getRsvpUsersList'])
         ->name('rsvp.guests');
@@ -93,14 +93,14 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('rsvp.guests.totals');
     Route::post('event/{event}/rsvp/guests/{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
         ->name('rsvp.revertConfirmation');
-    
-    
+
+
     Route::get('event/{event}/rsvp/guests/download', [ExportController::class, 'handleExportRequest'])
         ->name('rsvp.request.export');
-    
+
     Route::get('exports/download', [ExportController::class, 'exportsDownload'])
         ->name('exports.download');
-    
+
     Route::get('event/{event}/guests', [GuestController::class, 'index'])
         ->name('index.guests');
     Route::post('event/{event}/guests', [GuestController::class, 'store'])
@@ -109,27 +109,27 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('guests.destroy');
     Route::get('event/{event}/guests/{guest}', [GuestController::class, 'show'])
         ->name('guests.show');
-    
+
     Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
         ->name('guest.updateCompanion');
-    
+
     Route::post('guest/{guest}/companion', [CompanionController::class, 'store'])
         ->name('guest.storeCompanion');
-    
+
     Route::put('companion/{companion}', [CompanionController::class, 'update'])
         ->name('companion.update');
-    
+
     Route::delete('companion/{guestCompanion}', [CompanionController::class, 'destroy'])
         ->name('companion.destroy');
-    
+
     Route::delete('suggest-music/{suggestedMusic}', [SuggestedMusicController::class, 'destroy']);
     Route::post('suggest-music/{suggestedMusic}/vote', [SuggestedMusicController::class, 'storeOrUpdate']);
-    
+
     Route::get('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'index']);
     Route::post('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'store']);
     Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
     Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
-    
+
     Route::get('event/{event}/menus', [MenuController::class, 'index'])
         ->name('index.menu');
     Route::get('event/{event}/menus/guests', [MenuController::class, 'getGuestsMenu'])
@@ -144,34 +144,35 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('destroy.menu');
     Route::get('event/{event}/menus/{menu}', [MenuController::class, 'show'])
         ->name('show.menu');
-    
+
     Route::post('event/{event}/menus/{menu}/menu-item', [MenuItemController::class, 'store'])
         ->name('store.menuItem');
-    Route::delete('event/{event}/menu/{menu}/menu-item/{menuItem}', [MenuItemController::class, 'destroy'])
+
+    Route::delete('event/{event}/menus/{menu}/menu-item/{menuItem}', [MenuItemController::class, 'destroy'])
         ->name('destroy.menuItem');
-    
-    
+
+
     Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
         ->name('index.backgroundMusic');
     Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
         ->name('store.backgroundMusic');
     Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
         ->name('update.backgroundMusic');
-    
+
     Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
         ->name('index.configComments');
     Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
         ->name('store.configComments');
     Route::put('event/{event}/comments-config/{commentConfig}', [EventConfigCommentsController::class, 'update'])
         ->name('update.configComments');
-    
+
     Route::get('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'index'])
         ->name('index.sweetMemoriesConfig');
     Route::post('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'store'])
         ->name('store.sweetMemoriesConfig');
     Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
         ->name('update.sweetMemoriesConfig');
-    
+
     Route::get('event/{event}/locations', [EventLocationController::class, 'index'])
         ->name('index.eventLocations');
     Route::post('event/{event}/locations', [EventLocationController::class, 'store'])
@@ -180,8 +181,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('destroy.eventLocations');
     Route::get('event/{event}/locations/{location}', [EventLocationController::class, 'show'])
         ->name('show.eventLocations');
-    
-    
+
+
     Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
         ->name('store.sweetMemoriesImages');
     Route::get('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'index'])
@@ -190,10 +191,10 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('update.sweetMemoriesImages');
     Route::delete('event/{event}/sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'destroy'])
         ->name('destroy.sweetMemoriesImages');
-    
+
     Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
         ->name('update.sweetMemoriesImages.name');
-    
+
     Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
         ->name('user.updateProfile');
     Route::get('user/preferences', [UserPreferenceController::class, 'showPreferences'])
@@ -202,7 +203,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('user.updatePreferences');
     Route::post('user/update-password', [UserSettingsController::class, 'updatePassword'])
         ->name('user.updatePassword');
-    
+
     Route::prefix('user/2fa')
         ->name('user.2fa.')
         ->group(function () {
@@ -213,7 +214,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             Route::get('status', [UserTwoFAController::class, 'status'])->name('status');
             Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
         });
-    
+
     Route::get('user', [UserSettingsController::class, 'getUser'])
         ->name('user.show');
     Route::post('logout', [AuthenticationController::class, 'appLogout']);
