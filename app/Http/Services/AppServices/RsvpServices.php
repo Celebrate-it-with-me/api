@@ -73,15 +73,18 @@ class RsvpServices
         $guest->rsvp_status = $guestData['rsvpStatus'];
         $guest->rsvp_status_date = now();
         
-        // $guest->meal_preference = $companion['mealPreference']; todo: Add this when is ready.
-        
         $guest->save();
         
         if (isset($guestData['menusSelections']) && is_array($guestData['menusSelections'])) {
-            $menuItemIds = array_values($guestData['menusSelections']); // solo los IDs
+            $menuItemIds = collect($guestData['menusSelections'])
+                ->filter(fn($value) => is_numeric($value) && $value > 0)
+                ->map(fn($id) => (int) $id)
+                ->values()
+                ->toArray();
+            
+            
             $guest->selectedMenuItems()->sync($menuItemIds);
         }
-        
     }
     
     /**
