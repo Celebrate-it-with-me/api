@@ -40,5 +40,10 @@ return [
         'site_key' => env('HCAPTCHA_SECRET'),
         'secret' => env('HCAPTCHA_ENABLED', false),
     ],
+    
+    'google' => [
+        'url' => env('GOOGLE_MAPS_API_URL'),
+        'map_key' => env('GOOGLE_MAPS_API_KEY')
+    ]
 
 ];
