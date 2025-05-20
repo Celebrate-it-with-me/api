@@ -10,6 +10,7 @@ use App\Models\Rsvp;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 
 class RsvpServices
@@ -110,5 +111,40 @@ class RsvpServices
             'companions' => $guests->whereNotNull('parent_id')->count(),
             'totalAllowed' => $selectedPlan->max_guests,
         ];
+    }
+    
+    /**
+     * Retrieves a paginated list of RSVP guests for a specific event with optional
+     * filtering by status and search term.
+     *
+     * @param Request $request
+     * @param Events $event
+     * @return LengthAwarePaginator
+     */
+    public function getRsvpGuests(Events $event): LengthAwarePaginator
+    {
+        $perPage = $this->request->input('perPage', 15);
+        $status = $this->request->input('status');
+        $search = $this->request->input('search');
+        
+        return Guest::query()
+            ->where('event_id', $event->id)
+            ->whereNull('parent_id')
+            ->with('companions')
+            ->when($status, fn ($q) => $q->where('rsvp_status', $status))
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhereHas('companions', function ($sub) use ($search) {
+                            $sub->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->orderByDesc('created_at')
+            ->paginate($perPage ?? 10);
     }
 }

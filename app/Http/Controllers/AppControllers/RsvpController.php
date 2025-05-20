@@ -119,32 +119,14 @@ class RsvpController extends Controller
     public function getRsvpUsersList(Request $request, Events $event)
     {
         try {
-            $perPage = $request->input('perPage', 15);
-            $status = $request->input('status');
-            $search = $request->input('search');
+            $guests = $this->rsvpService->getRsvpGuests($event);
             
-            $guest = Guest::query()
-                ->where('event_id', $event->id)
-                ->whereNull('parent_id')
-                    ->with('companions')
-                ->when($status, fn ($q) => $q->where('rsvp_status', $status))
-                ->when($search, function ($q) use ($search) {
-                    $q->where(function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%")
-                            ->orWhereHas('companions', function ($sub) use ($search) {
-                                $sub->where('name', 'like', "%{$search}%")
-                                    ->orWhere('email', 'like', "%{$search}%")
-                                    ->orWhere('phone', 'like', "%{$search}%");
-                            });
-                    });
-                })
-                ->orderByDesc('created_at')
-                ->paginate($perPage ?? 10);
+            if (!$guests->count()) {
+                return response()->json(['message' => 'There are no guests for this event.'], 200);
+            }
             
-                return GuestResource::collection($guest)
-                    ->response()->getData(true);
+            return GuestResource::collection($guests)
+                ->response()->getData(true);
                 
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
