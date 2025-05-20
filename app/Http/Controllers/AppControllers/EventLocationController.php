@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventLocationRequest;
 use App\Http\Requests\UpdateEventLocationRequest;
 use App\Http\Resources\AppResources\EventLocationResource;
+use App\Http\Services\AppServices\LocationsServices;
 use App\Models\EventLocation;
 use App\Models\Events;
 use App\Models\PlacePhoto;
@@ -21,29 +22,27 @@ use Throwable;
 
 class EventLocationController extends Controller
 {
+    private LocationsServices $locationsServices;
+    
+    public function __construct(LocationsServices $locationsServices)
+    {
+        $this->locationsServices = $locationsServices;
+    }
+    
+    
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request, Events $event)
     {
-        $perPage = $request->input('perPage', 10);
-        $page = $request->input('page', 1);
-        $searchValue = $request->input('searchValue');
-        
         try {
-            $locations = EventLocation::query()
-                ->where('event_id', $event->id)
-                ->when($searchValue, function ($query) use ($searchValue) {
-                    $query->where(function ($q) use ($searchValue) {
-                        $q->where('name', 'like', "%{$searchValue}%")
-                            ->orWhere('address', 'like', "%{$searchValue}%")
-                            ->orWhere('city', 'like', "%{$searchValue}%");
-                    });
-                })
-                ->paginate($perPage, ['*'], 'page', $page);
+            $locations = $this->locationsServices->getEventLocations($event);
             
-            return EventLocationResource::collection($locations)
-                ->response()->getData(true);
+            if ($locations->isEmpty()) {
+                return response()->json(['message' => 'There are no locations for this event.'], 404);
+            }
+            
+            return EventLocationResource::collection($locations);
         } catch (Throwable $th) {
             Log::error($th->getMessage());
             return response()->json([
