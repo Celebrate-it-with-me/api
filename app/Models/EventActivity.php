@@ -91,15 +91,48 @@ class EventActivity extends Model
     public function getMessageAttribute(): object|array|string|null
     {
         return match ($this->type) {
-            'event_created' => __("Event :name has been created by :user", [
+            'event_created' => __("Event :name, has been created by :user", [
+                'name' => $this->payload['event_name'] ?? '',
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'event_updated' => __('Event :name, has been updated by :user', [
+                'name' => $this->payload['event_name'] ?? '',
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'guest_created' => __('Guest :name, has been created by :user', [
                 'name' => $this->payload['name'],
                 'user' => $this->actor ? $this->actor->name : 'System',
             ]),
-            'event_updated' => __('Event :name has been updated by :user', [
+            'guest_updated' => __('Guest :name, has been updated by :user', [
                 'name' => $this->payload['name'],
                 'user' => $this->actor ? $this->actor->name : 'System',
             ]),
-            'guest_confirmed' => __('Guest :name has confirmed their attendance.', ['name' => $this->payload['name']]),
+            'guest_deleted' => __('Guest :name, has been deleted by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'menu_created' => __('Menu :name, has been created by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'menu_updated' => __('Menu :name, has been updated by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'menu_item_created' => __('Menu item :name, has been created by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'menu_item_updated' => __('Menu item :name, has been updated by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'menu_item_deleted' => __('Menu item :name, has been deleted by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            
+            'guest_confirmed' => __('Guest :name, has confirmed their attendance.', ['name' => $this->payload['name']]),
             'photo_uploaded' => __('Photo uploaded by :name.', ['name' => $this->payload['name']]),
             'music_added' => __('Music added by :name.', ['name' => $this->payload['name']]),
             default => __('Activity logged.'),
@@ -110,11 +143,14 @@ class EventActivity extends Model
     {
         return match ($this->type) {
             'event_created' => 'party-popper',
+            'event_updated' => 'edit',
+            'guest_created', 'guest_added' => 'user-plus',
+            'guest_updated' => 'user-check',
+            'guest_deleted' => 'user-minus',
             'guest_confirmed' => 'user-round',
             'guest_declined' => 'user-x',
-            'guest_added' => 'user-plus',
             'menu_created' => 'utensils',
-            'menu_item_added' => 'plus-circle',
+            'menu_item_created' => 'plus-circle',
             'menu_item_deleted' => 'trash-2',
             'photo_uploaded' => 'image',
             'music_added' => 'music',
@@ -127,14 +163,13 @@ class EventActivity extends Model
     {
         return match ($this->type) {
             'event_created' => 'indigo',
-            'guest_confirmed' => 'green',
-            'guest_declined' => 'red',
-            'guest_added' => 'blue',
+            'event_updated', 'guest_added' => 'blue',
+            'guest_created', 'guest_confirmed', 'menu_item_created' => 'green',
+            'guest_updated', 'music_added' => 'yellow',
+            'guest_deleted', 'guest_declined' => 'red',
             'menu_created' => 'orange',
-            'menu_item_added' => 'emerald',
             'menu_item_deleted' => 'rose',
             'photo_uploaded' => 'pink',
-            'music_added' => 'yellow',
             'location_added' => 'cyan',
             default => 'gray',
         };
