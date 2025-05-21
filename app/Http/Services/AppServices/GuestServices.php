@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\GuestCompanion;
@@ -11,7 +12,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class GuestServices
@@ -63,8 +64,6 @@ class GuestServices
         $namedCompanions = $this->request->input('namedCompanions', []);
         $unnamedCompanions = (int) $this->request->input('unnamedCompanions', 0);
         
-        Log::info('checking guest data', [$guestData['name']]);
-        
         $mainGuest = Guest::query()->create([
             'event_id' => $event->id,
             'name' => $guestData['name'],
@@ -110,6 +109,22 @@ class GuestServices
             }
         }
         
+        EventActivityLogger::log(
+            $event->id,
+            'guest_created',
+            Auth::user(),
+            $mainGuest,
+            [
+                'name' => $mainGuest->name,
+                'email' => $mainGuest->email,
+                'phone' => $mainGuest->phone,
+                'code' => $mainGuest->code,
+                'companions' => [
+                    'named' => count($namedCompanions),
+                    'unnamed' => $unnamedCompanions,
+                ],
+            ]
+        );
         
         return $mainGuest;
     }
@@ -121,7 +136,7 @@ class GuestServices
      */
     private function calculateAccessCode(): string
     {
-        $code = Str::upper(Str::random(2)); // Dos letras aleatorias
+        $code = Str::upper(Str::random(2));
         $eventId = $this->request->input('eventId');
         
         do {
@@ -191,6 +206,20 @@ class GuestServices
      */
     public function delete(Guest $guest): void
     {
+     
+        EventActivityLogger::log(
+            $guest->event_id,
+            'guest_deleted',
+            Auth::user(),
+            $guest,
+            [
+                'name' => $guest->name,
+                'email' => $guest->email,
+                'phone' => $guest->phone,
+                'code' => $guest->code,
+            ]
+        );
+        
         $guest->delete();
     }
     

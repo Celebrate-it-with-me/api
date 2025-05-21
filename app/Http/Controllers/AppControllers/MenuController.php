@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\Menu;
@@ -105,6 +106,20 @@ class MenuController extends Controller
             'is_default' => $data['isDefault'] ?? $this->getIsDefaultMenu($event),
         ]);
         
+        EventActivityLogger::log(
+            $event->id,
+            'menu_created',
+            auth()->user(),
+            $menu,
+            [
+                'title' => $menu->title,
+                'description' => $menu->description,
+                'allow_multiple_choices' => $menu->allow_multiple_choices,
+                'allow_custom_requests' => $menu->allow_custom_requests,
+                'is_default' => $menu->is_default,
+            ]
+        );
+        
         return response()->json($menu, 201);
     }
     
@@ -147,6 +162,19 @@ class MenuController extends Controller
                 'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
             ]);
             
+            EventActivityLogger::log(
+                $event->id,
+                'menu_updated',
+                auth()->user(),
+                $menu,
+                [
+                    'title' => $menu->title,
+                    'description' => $menu->description,
+                    'allow_multiple_choices' => $menu->allow_multiple_choices,
+                    'allow_custom_requests' => $menu->allow_custom_requests,
+                ]
+            );
+            
             return response()->json($menu);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
@@ -163,6 +191,20 @@ class MenuController extends Controller
     {
         try {
             $menu->delete();
+            
+            EventActivityLogger::log(
+                $event->id,
+                'menu_deleted',
+                auth()->user(),
+                $menu,
+                [
+                    'title' => $menu->title,
+                    'description' => $menu->description,
+                    'allow_multiple_choices' => $menu->allow_multiple_choices,
+                    'allow_custom_requests' => $menu->allow_custom_requests,
+                ]
+            );
+            
             return response()->json(['message' => 'Menu deleted successfully']);
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Menu not found'], 404);
