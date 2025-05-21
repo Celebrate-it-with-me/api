@@ -2,7 +2,8 @@
 
 use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\CompanionController;
-use App\Http\Controllers\AppControllers\EventCommentsController;
+    use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
+    use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventLocationController;
 use App\Http\Controllers\AppControllers\EventsController;
@@ -59,10 +60,11 @@ Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'ind
 
 
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
+    Route::get('/event/{event}/dashboard-logs', [EventActivityController::class, 'dashboardLogs'])
+        ->name('event.dashboard-logs');
     
     Route::get('user/hydrate/{user}', [HydrateController::class, 'hydrate'])
         ->name('user.hydrate');
-
 
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])

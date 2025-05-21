@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\AppControllers;
 
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 
 class MenuItemController extends Controller
 {
@@ -29,10 +31,24 @@ class MenuItemController extends Controller
             'notes' => $data['notes'] ?? '',
         ]);
         
+        EventActivityLogger::log(
+            $event->id,
+            'menu_item_created',
+            Auth::user(),
+            $item,
+            [
+                'name' => $item->name,
+                'type' => $item->type,
+                'diet_type' => $item->diet_type,
+                'image_path' => $item->image_path,
+                'notes' => $item->notes,
+            ]
+        );
+        
         return response()->json($item, 201);
     }
     
-    public function update(Request $request, MenuItem $menuItem): JsonResponse
+    public function update(Request $request, Events $event, MenuItem $menuItem): JsonResponse
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -48,12 +64,40 @@ class MenuItemController extends Controller
             'notes' => $data['notes'],
         ]);
         
+        EventActivityLogger::log(
+            $event->id,
+            'menu_item_updated',
+            Auth::user(),
+            $menuItem,
+            [
+                'name' => $menuItem->name,
+                'type' => $menuItem->type,
+                'diet_type' => $menuItem->diet_type,
+                'image_path' => $menuItem->image_path,
+                'notes' => $menuItem->notes,
+            ]
+        );
+        
         return response()->json($menuItem);
     }
     
     public function destroy(Events $event, Menu $menu, MenuItem $menuItem): JsonResponse
     {
         $menuItem->delete();
+        
+        EventActivityLogger::log(
+            $event->id,
+            'menu_item_deleted',
+            Auth::user(),
+            $menuItem,
+            [
+                'name' => $menuItem->name,
+                'type' => $menuItem->type,
+                'diet_type' => $menuItem->diet_type,
+                'image_path' => $menuItem->image_path,
+                'notes' => $menuItem->notes,
+            ]
+        );
         
         return response()->json(['message' => 'Menu item deleted']);
     }

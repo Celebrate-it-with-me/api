@@ -80,4 +80,64 @@ class EventActivity extends Model
         ]);
     }
     
+    /**
+     * Get the message attribute based on the activity type.
+     *
+     * This method dynamically generates a message based on the type of activity
+     * and the associated payload data.
+     *
+     * @return object|array|string|null
+     */
+    public function getMessageAttribute(): object|array|string|null
+    {
+        return match ($this->type) {
+            'event_created' => __("Event :name has been created by :user", [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'event_updated' => __('Event :name has been updated by :user', [
+                'name' => $this->payload['name'],
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'guest_confirmed' => __('Guest :name has confirmed their attendance.', ['name' => $this->payload['name']]),
+            'photo_uploaded' => __('Photo uploaded by :name.', ['name' => $this->payload['name']]),
+            'music_added' => __('Music added by :name.', ['name' => $this->payload['name']]),
+            default => __('Activity logged.'),
+        };
+    }
+    
+    public function getIconAttribute(): string
+    {
+        return match ($this->type) {
+            'event_created' => 'party-popper',
+            'guest_confirmed' => 'user-round',
+            'guest_declined' => 'user-x',
+            'guest_added' => 'user-plus',
+            'menu_created' => 'utensils',
+            'menu_item_added' => 'plus-circle',
+            'menu_item_deleted' => 'trash-2',
+            'photo_uploaded' => 'image',
+            'music_added' => 'music',
+            'location_added' => 'map-pin',
+            default => 'activity',
+        };
+    }
+    
+    public function getColorAttribute(): string
+    {
+        return match ($this->type) {
+            'event_created' => 'indigo',
+            'guest_confirmed' => 'green',
+            'guest_declined' => 'red',
+            'guest_added' => 'blue',
+            'menu_created' => 'orange',
+            'menu_item_added' => 'emerald',
+            'menu_item_deleted' => 'rose',
+            'photo_uploaded' => 'pink',
+            'music_added' => 'yellow',
+            'location_added' => 'cyan',
+            default => 'gray',
+        };
+    }
+    
 }
