@@ -2,11 +2,13 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
 use App\Models\User;
+use Auth;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -116,16 +118,30 @@ class EventsServices
             'analytics' => $this->request->input('analytics') ?? false,
         ]);
         
-        if (request()->user()) {
-            $user = User::query()
-                ->where('id', request()->user()->id)
-                ->first();
-            
-            if ($user) {
-                $user->last_active_event_id = $event->id;
-                $user->save();
-            }
+        $actor = request()->user();
+        
+        if ($actor) {
+            $actor->last_active_event_id = $event->id;
+            $actor->save();
         }
+        
+        EventActivityLogger::log(
+            $event->id,
+            'event_created',
+            $actor ?? null,
+            $event,
+            [
+                'event_name' => $event->event_name,
+                'event_description' => $event->event_description,
+                'event_type_id' => $event->event_type_id,
+                'event_plan_id' => $event->event_plan_id,
+                'start_date' => $event->start_date,
+                'end_date' => $event->end_date,
+                'status' => $event->status,
+                'custom_url_slug' => $event->custom_url_slug,
+                'visibility' => $event->visibility,
+            ]
+        );
         
         return $event;
     }
@@ -165,6 +181,30 @@ class EventsServices
         $this->event->eventFeature->save();
         
 
+        $actor = request()->user();
+        if ($actor) {
+            $actor->last_active_event_id = $event->id;
+            $actor->save();
+        }
+        
+        EventActivityLogger::log(
+            $event->id,
+            'event_updated',
+            $actor ?? null,
+            $event,
+            [
+                'event_name' => $this->event->event_name,
+                'event_description' => $this->event->event_description,
+                'event_type_id' => $this->event->event_type_id,
+                'event_plan_id' => $this->event->event_plan_id,
+                'start_date' => $this->event->start_date,
+                'end_date' => $this->event->end_date,
+                'status' => $this->event->status,
+                'custom_url_slug' => $this->event->custom_url_slug,
+                'visibility' => $this->event->visibility,
+            ]
+        );
+        
         return $this->event;
     }
     
