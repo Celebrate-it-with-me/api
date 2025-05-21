@@ -117,7 +117,6 @@ class RsvpServices
      * Retrieves a paginated list of RSVP guests for a specific event with optional
      * filtering by status and search term.
      *
-     * @param Request $request
      * @param Events $event
      * @return LengthAwarePaginator
      */
