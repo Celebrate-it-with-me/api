@@ -188,4 +188,14 @@ class Events extends Model
     {
         return $this->belongsTo(EventType::class, 'event_type_id', 'id');
     }
+    
+    /**
+     * Get the activities associated with the event.
+     *
+     * @return HasMany
+     */
+    public function activities(): HasMany
+    {
+        return $this->hasMany(EventActivity::class, 'event_id', 'id');
+    }
 }

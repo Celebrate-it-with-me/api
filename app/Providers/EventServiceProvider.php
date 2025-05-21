@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Events\GooglePlacePhotosQueued;
+use App\Events\LogActivityEvent;
 use App\Events\ResetPasswordEvent;
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
 use App\Listeners\DispatchProcessGooglePlacePhotos;
+use App\Listeners\LogActivityListener;
 use App\Listeners\SendConfirmationEmail;
 use App\Listeners\SendResetPasswordLink;
 use App\Listeners\UserLoggedInListener;
@@ -49,6 +51,10 @@ class EventServiceProvider extends ServiceProvider
         
         GooglePlacePhotosQueued::class => [
             DispatchProcessGooglePlacePhotos::class
+        ],
+        
+        LogActivityEvent::class => [
+            LogActivityListener::class,
         ]
     ];
 
