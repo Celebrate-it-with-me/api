@@ -144,4 +144,46 @@ class User extends Authenticatable
     {
         return $this->hasMany(Events::class, 'organizer_id', 'id');
     }
+    
+    /**
+     * Check if the user has a specific role for the given event.
+     *
+     * @param Events $event The event instance.
+     * @param string $roleSlug The slug of the role to check.
+     *
+     * @return bool True if the user has the specified role for the event, otherwise false.
+     */
+    public function hasEventRole(Events $event, string $roleSlug): bool
+    {
+        return EventUserRole::query()
+            ->where('event_id', $event->id)
+            ->where('user_id', $this->id)
+            ->whereHas('role', fn ($query) => $query->where('name', $roleSlug))
+            ->exists();
+    }
+    
+    /**
+     * Check if the user has a specific permission for the given event.
+     *
+     * @param Events $event
+     * @param string $permissionSlug
+     * @return bool
+     */
+    public function hasEventPermission(Events $event, string $permissionSlug): bool
+    {
+        $eventUserRole = EventUserRole::query()
+            ->where('event_id', $event->id)
+            ->where('user_id', $this->id)
+            ->first();
+        
+        if (!$eventUserRole) {
+            return false;
+        }
+        
+        return $eventUserRole->role
+            ->permissions()
+            ->where('name', $permissionSlug)
+            ->exists();
+    }
+    
 }

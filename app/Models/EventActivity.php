@@ -64,8 +64,6 @@ class EventActivity extends Model
     
     /**
      * Define a relationship to the User model.
-     *
-     * @return BelongsTo
      */
     public static function logActivity($eventId, $type, $actor = null, $target = null, $payload = [])
     {
