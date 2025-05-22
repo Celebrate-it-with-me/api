@@ -7,11 +7,11 @@ use App\Http\Resources\AppResources\EventResource;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
 use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Resources\AppResources\MenuResource;
-use App\Http\Resources\AppResources\RsvpResource;
 use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Services\AppServices\GuestServices;
 use App\Http\Services\AppServices\LocationsServices;
 use App\Http\Services\AppServices\RsvpServices;
+use App\Http\Services\Permissions\EventPermissionService;
 use App\Models\Guest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -20,9 +20,16 @@ use Illuminate\Support\Facades\Log;
 class HydrationService
 {
     private LocationsServices $locationsServices;
+    private EventPermissionService $eventPermissionService;
     
-    public function __construct(LocationsServices $locationsServices)
+    /**
+     * HydrationService constructor.
+     * @param LocationsServices $locationsServices
+     * @param EventPermissionService $eventPermissionService
+     */
+    public function __construct(LocationsServices $locationsServices, EventPermissionService $eventPermissionService)
     {
+        $this->eventPermissionService = $eventPermissionService;
         $this->locationsServices = $locationsServices;
     }
     
@@ -38,6 +45,14 @@ class HydrationService
             'rsvp',
             'saveTheDate'
         ])->first();
+        
+        if (!$activeEvent || !$user->hasEventRole($activeEvent)) {
+            return response()->json([
+                'message' => 'You do not have permission to access this event. Please contact the event organizer.',
+            ], 403);
+        }
+        
+        $userLoggedPermissions = $user->getEventPermissions($activeEvent);
         
         if (!$activeEvent) {
             return response()->json([
@@ -85,7 +100,7 @@ class HydrationService
             'rsvp' => $rsvp,
             'saveTheDate' => $saveTheDate ? SaveTheDateResource::make($saveTheDate) : null,
             'locations' => $locations,
+            'userPermissions' => $userLoggedPermissions,
         ]);
-        
     }
 }
