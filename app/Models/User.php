@@ -153,12 +153,16 @@ class User extends Authenticatable
      *
      * @return bool True if the user has the specified role for the event, otherwise false.
      */
-    public function hasEventRole(Events $event, string $roleSlug): bool
+    public function hasEventRole(Events $event, string $roleSlug = null): bool
     {
         return EventUserRole::query()
             ->where('event_id', $event->id)
             ->where('user_id', $this->id)
-            ->whereHas('role', fn ($query) => $query->where('name', $roleSlug))
+            ->when($roleSlug, function ($query, $roleSlug) {
+                return $query->whereHas('role', function ($query) use ($roleSlug) {
+                    $query->where('name', $roleSlug);
+                });
+            })
             ->exists();
     }
     
@@ -184,6 +188,31 @@ class User extends Authenticatable
             ->permissions()
             ->where('name', $permissionSlug)
             ->exists();
+    }
+    
+    public function eventRoles(): HasMany
+    {
+        return $this->hasMany(EventUserRole::class, 'user_id', 'id');
+    }
+    
+    /**
+     * Retrieves the permissions associated with a specific event for the current user.
+     *
+     * @param Events $event The event instance for which to retrieve permissions.
+     * @return array An array containing the names of the permissions.
+     */
+    public function getEventPermissions(Events $event): array
+    {
+        $eventUserRole = $this->eventRoles()
+            ->where('event_id', $event->id)
+            ->with('role.permissions')
+            ->first();
+        
+        if (!$eventUserRole || !$eventUserRole->role) {
+            return [];
+        }
+        
+        return $eventUserRole->role->permissions->pluck('name')->toArray();
     }
     
 }

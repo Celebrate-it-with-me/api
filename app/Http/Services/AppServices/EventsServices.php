@@ -7,6 +7,7 @@ use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
+use App\Models\EventUserRole;
 use App\Models\User;
 use Auth;
 use Exception;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class EventsServices
 {
@@ -142,6 +144,13 @@ class EventsServices
                 'visibility' => $event->visibility,
             ]
         );
+        
+        EventUserRole::query()->firstOrCreate([
+            'event_id' => $event->id,
+            'user_id' => $this->request->user()->id,
+        ], [
+            'role' => Role::query()->where('name', 'owner')->first()->id,
+        ]);
         
         return $event;
     }
