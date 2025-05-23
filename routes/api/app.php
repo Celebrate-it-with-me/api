@@ -6,7 +6,8 @@ use App\Http\Controllers\AppControllers\CompanionController;
     use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventLocationController;
-use App\Http\Controllers\AppControllers\EventsController;
+    use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
+    use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
@@ -66,6 +67,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     Route::get('user/hydrate/{user}', [HydrateController::class, 'hydrate'])
         ->name('user.hydrate');
 
+    Route::get('event/{event}/permissions', [EventPermissionsController::class, 'index'])
+        ->name('event.permissions');
+    
     Route::post('event', [EventsController::class, 'store']);
     Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
         ->name('event.active-event');
