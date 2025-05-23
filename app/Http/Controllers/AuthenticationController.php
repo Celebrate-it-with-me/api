@@ -61,8 +61,6 @@ class AuthenticationController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $user->assignRole('appUser');
-        
         event(new UserRegistered($user));
 
         return response()->json([
