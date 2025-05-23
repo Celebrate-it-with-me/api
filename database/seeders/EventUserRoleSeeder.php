@@ -2,29 +2,42 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class EventUserRoleSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
         
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        
+        DB::table('role_has_permissions')->truncate();
+        DB::table('model_has_roles')->truncate();
+        DB::table('model_has_permissions')->truncate();
+        DB::table('permissions')->truncate();
+        DB::table('roles')->truncate();
+        
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        
         $permissions = [
+            // Global/Admin
+            'manage',
+            
             // Event
-            'view_event', 'edit_event', 'delete_event',
+            'view_events', 'view_event', 'create_event', 'edit_event', 'delete_event',
             
             // Guest
-            'add_guest', 'edit_guest', 'delete_guest', 'view_guest_list',
+            'view_guests', 'create_guest', 'delete_guest', 'edit_guest',
             
             // Menu
-            'add_menu', 'edit_menu', 'delete_menu', 'view_menu',
+            'view_menus', 'create_menu', 'edit_menu', 'view_menu',
             
             // Menu Items
             'add_menu_item', 'edit_menu_item', 'delete_menu_item',
@@ -46,39 +59,49 @@ class EventUserRoleSeeder extends Seeder
         ];
         
         foreach ($permissions as $permission) {
-            Permission::query()->firstOrCreate(['name' => $permission]);
+            Permission::create(['name' => $permission]);
         }
         
-        $owner = Role::query()->firstOrCreate(['name' => 'owner']);
-        $editor = Role::query()->firstOrCreate(['name' => 'editor']);
-        $viewer = Role::query()->firstOrCreate(['name' => 'viewer']);
+        // ✅ Roles base
+        $owner = Role::create(['name' => 'owner']);
+        $editor = Role::create(['name' => 'editor']);
+        $viewer = Role::create(['name' => 'viewer']);
         
         $owner->syncPermissions(Permission::all());
         
         $editor->syncPermissions([
-            'view_event', 'edit_event',
-            
-            'add_guest', 'edit_guest', 'delete_guest', 'view_guest_list',
-            
-            'add_menu', 'edit_menu', 'delete_menu', 'view_menu',
+            'view_events', 'view_event', 'create_event', 'edit_event', 'delete_event',
+            'view_guests', 'create_guest', 'delete_guest', 'edit_guest',
+            'view_menus', 'create_menu', 'edit_menu', 'view_menu',
             'add_menu_item', 'edit_menu_item', 'delete_menu_item',
-            
             'upload_photo', 'delete_photo', 'view_gallery',
-            
             'add_song', 'delete_song', 'manage_playlist',
-            
             'edit_location', 'add_location_photo',
-            
-            'manage_rsvp', 'view_rsvp'
+            'manage_rsvp', 'view_rsvp', 'manage'
         ]);
         
         $viewer->syncPermissions([
             'view_event',
-            'view_guest_list',
-            'view_menu',
+            'view_guests',
+            'view_menus',
             'view_gallery',
             'view_rsvp'
         ]);
         
+        $admin = Role::create(['name' => 'admin']);
+        $admin->givePermissionTo(['manage']);
+        
+        $user = User::firstOrCreate(
+            ['email' => 'henrycarmenateg@gmail.com'],
+            [
+                'name' => 'Henry Carmenate',
+                'password' => Hash::make('password'),
+            ]
+        );
+        
+        $user->assignRole('admin');
+        
+        $this->command->info('✅ Roles and permissions seeded successfully!');
     }
 }
+
