@@ -141,7 +141,7 @@ class AuthenticationController extends Controller
 
         return response()->json(['message' => 'Password reset successfully!']);
     }
-
+    
     /**
      * Authenticates the user for the mobile application login.
      *
@@ -150,6 +150,7 @@ class AuthenticationController extends Controller
      * @return JsonResponse Returns a JSON response with the authentication token, user data, and a success message if login is successful.
      * If authentication fails due to incorrect credentials, returns a JSON response with an error message and status code 401 (Unauthorized).
      * If the user does not have the required role for the app login, returns a JSON response with an error message and status code 403 (Forbidden).
+     * @throws ConnectionException
      */
     public function appLogin(AppLoginRequest $request): JsonResponse
     {
@@ -169,10 +170,6 @@ class AuthenticationController extends Controller
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid Credentials'], 401);
-        }
-
-        if (!$user->hasRole('appUser')) {
-            return response()->json(['message' => 'Access Denied. You are not authorized to access this page.'], 403);
         }
 
         $remember = $request->input('remember', false);
