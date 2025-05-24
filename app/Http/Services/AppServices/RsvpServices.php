@@ -99,8 +99,8 @@ class RsvpServices
             ->where('event_id',  $event->id)
             ->get(['id', 'event_id','parent_id', 'rsvp_status']);
         
-        $selectedPlan = $event->eventPlan;
         
+        $selectedPlan = $event->eventPlan;
         
         return [
             'totalGuests' => $guests->count(),

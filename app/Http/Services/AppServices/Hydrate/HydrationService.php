@@ -69,14 +69,14 @@ class HydrationService
      */
     public function hydrate(User $user): JsonResponse
     {
-        Log::info('Hydrating user data', ['user_id' => $user->id]);
-
         // Load user's events
         $user->load(['activeEvent', 'organizedEvents']);
         $events = $user->organizedEvents;
 
         // Get active event with related data
         $activeEvent = $this->getActiveEvent($user);
+        
+        Log::info('Hydrating activeEvent', [$activeEvent]);
 
         // If no active event or user doesn't have permission, return appropriate response
         if (!$activeEvent) {
@@ -112,13 +112,10 @@ class HydrationService
      */
     private function getActiveEvent(User $user): ?Events
     {
-        return $user->activeEvent()->with([
-            'menus',
-            'eventFeature',
-            'guests',
-            'rsvp',
-            'saveTheDate'
-        ])->first();
+        return Events::query()
+            ->with(['menus', 'eventFeature', 'guests', 'rsvp', 'saveTheDate'])
+            ->where('id', $user->last_active_event_id)
+            ->first();
     }
 
     /**
