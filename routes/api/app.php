@@ -2,12 +2,12 @@
 
 use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\CompanionController;
-    use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
-    use App\Http\Controllers\AppControllers\EventCommentsController;
+use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
+use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventLocationController;
-    use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
-    use App\Http\Controllers\AppControllers\EventsController;
+use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
+use App\Http\Controllers\AppControllers\EventsController;
 use App\Http\Controllers\AppControllers\ExportController;
 use App\Http\Controllers\AppControllers\GuestController;
 use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
@@ -25,199 +25,67 @@ use App\Http\Controllers\AppControllers\UserSettingsController;
 use App\Http\Controllers\AppControllers\UserTwoFAController;
 use App\Http\Controllers\AuthenticationController;
 
-Route::post('register', [AuthenticationController::class, 'appRegister']);
-Route::post('login', [AuthenticationController::class, 'appLogin']);
-Route::post('confirm-email', [AuthenticationController::class, 'confirmEmail'])
-    ->name('confirm.email')
-    ->middleware('signed');
+// Authentication Routes
+Route::prefix('')->name('auth.')->group(function () {
+    Route::post('register', [AuthenticationController::class, 'appRegister']);
+    Route::post('login', [AuthenticationController::class, 'appLogin']);
+    Route::post('confirm-email', [AuthenticationController::class, 'confirmEmail'])
+        ->name('confirm.email')
+        ->middleware('signed');
+    Route::post('forgot-password', [AuthenticationController::class, 'forgotPassword'])
+        ->name('forgot.password');
+    Route::post('check-password-link', [AuthenticationController::class, 'checkPasswordLink'])
+        ->name('check.password')
+        ->middleware('signed');
+    Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
+        ->name('reset.password');
+});
 
-Route::post('forgot-password', [AuthenticationController::class, 'forgotPassword'])
-    ->name('forgot.password');
-Route::post('check-password-link', [AuthenticationController::class, 'checkPasswordLink'])
-    ->name('check.password')
-    ->middleware('signed');
-Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
-    ->name('reset.password');
+// Template Routes
+Route::prefix('template')->name('template.')->group(function () {
+    Route::prefix('event/{event}')->name('event.')->group(function () {
+        Route::get('guest/{guestCode}', [TemplateController::class, 'getEventData'])
+            ->name('guest');
+        Route::get('guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
+            ->name('guest.data');
+        Route::post('save-rsvp', [RsvpController::class, 'saveRsvp'])
+            ->name('save-rsvp');
+    });
+});
 
+// Public Event Routes
+Route::prefix('event/{event}')->name('event.')->group(function () {
+    Route::get('comments', [EventCommentsController::class, 'index'])
+        ->name('comments.index');
+    Route::post('comments', [EventCommentsController::class, 'store'])
+        ->name('comments.store');
 
+    Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
+        Route::post('', [SuggestedMusicController::class, 'store'])->name('store');
+        Route::get('', [SuggestedMusicController::class, 'index'])->name('index');
+    });
+});
 
-Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
-    ->name('template.event.guest');
-
-Route::get('template/event/{event}/guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
-    ->name('template.event.guest.data');
-
-Route::post('template/event/{event}/save-rsvp', [RsvpController::class, 'saveRsvp'])
-    ->name('template.event.save-rsvp');
-
-Route::get('event/{event}/comments', [EventCommentsController::class, 'index'])
-    ->name('index.EventComments');
-
-Route::post('event/{event}/comments', [EventCommentsController::class, 'store'])
-    ->name('store.EventComments')
-;
-Route::post('event/{event}/suggest-music', [SuggestedMusicController::class, 'store']);
-Route::get('event/{event}/suggest-music', [SuggestedMusicController::class, 'index']);
-
-
+// Protected Routes
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
-    Route::get('/event/{event}/dashboard-logs', [EventActivityController::class, 'dashboardLogs'])
-        ->name('event.dashboard-logs');
-    
-    Route::get('user/hydrate/{user}', [HydrateController::class, 'hydrate'])
-        ->name('user.hydrate');
 
-    Route::get('event/{event}/permissions', [EventPermissionsController::class, 'index'])
-        ->name('event.permissions');
-    
-    Route::post('event', [EventsController::class, 'store']);
-    Route::patch('event/active-event', [EventsController::class, 'activeEvent'])
-        ->name('event.active-event');
-    Route::get('event/{event}/suggestions', [EventsController::class, 'suggestions'])
-        ->name('event.suggestions');
+    // User Routes
+    Route::prefix('user')->name('user.')->group(function () {
+        Route::get('hydrate/{user}', [HydrateController::class, 'hydrate'])
+            ->name('hydrate');
+        Route::post('update-profile', [UserSettingsController::class, 'updateProfile'])
+            ->name('updateProfile');
+        Route::get('preferences', [UserPreferenceController::class, 'showPreferences'])
+            ->name('preferences');
+        Route::post('preferences', [UserPreferenceController::class, 'updatePreferences'])
+            ->name('updatePreferences');
+        Route::post('update-password', [UserSettingsController::class, 'updatePassword'])
+            ->name('updatePassword');
+        Route::get('', [UserSettingsController::class, 'getUser'])
+            ->name('show');
 
-    Route::get('events', [EventsController::class, 'index']);
-
-    Route::get('events/load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
-        ->name('events.loanEventsPlansAndType');
-    Route::get('event/{event}/rsvp/summary', [RsvpController::class, 'summary'])
-        ->name('rsvp.summary');
-
-
-    Route::get('event/filters', [EventsController::class, 'filterEvents']);
-    Route::delete('event/{event}', [EventsController::class, 'destroy']);
-    Route::put('event/{event}', [EventsController::class, 'update']);
-
-    Route::get('event/{event}/save-the-date', [SaveTheDateController::class, 'index']);
-    Route::post('event/{event}/save-the-date', [SaveTheDateController::class, 'store']);
-    Route::put('save-the-date/{saveTheDate}', [SaveTheDateController::class, 'update']);
-
-
-    Route::get('event/{event}/rsvp', [RsvpController::class, 'index']);
-    Route::get('event/{event}/rsvp/guests', [RsvpController::class, 'getRsvpUsersList'])
-        ->name('rsvp.guests');
-    Route::get('event/{event}/rsvp/guests/totals', [RsvpController::class, 'getRsvpUsersTotals'])
-        ->name('rsvp.guests.totals');
-    Route::post('event/{event}/rsvp/guests/{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
-        ->name('rsvp.revertConfirmation');
-
-
-    Route::get('event/{event}/rsvp/guests/download', [ExportController::class, 'handleExportRequest'])
-        ->name('rsvp.request.export');
-
-    Route::get('exports/download', [ExportController::class, 'exportsDownload'])
-        ->name('exports.download');
-
-    Route::get('event/{event}/guests', [GuestController::class, 'index'])
-        ->name('index.guests');
-    Route::post('event/{event}/guests', [GuestController::class, 'store'])
-        ->name('guests.store');
-    Route::delete('event/{event}/guests/{guest}', [GuestController::class, 'destroy'])
-        ->name('guests.destroy');
-    Route::get('event/{event}/guests/{guest}', [GuestController::class, 'show'])
-        ->name('guests.show');
-
-    Route::patch('guest/{guest}', [GuestController::class, 'updateCompanion'])
-        ->name('guest.updateCompanion');
-
-    Route::post('guest/{guest}/companion', [CompanionController::class, 'store'])
-        ->name('guest.storeCompanion');
-
-    Route::put('companion/{companion}', [CompanionController::class, 'update'])
-        ->name('companion.update');
-
-    Route::delete('companion/{guestCompanion}', [CompanionController::class, 'destroy'])
-        ->name('companion.destroy');
-
-    Route::delete('suggest-music/{suggestedMusic}', [SuggestedMusicController::class, 'destroy']);
-    Route::post('suggest-music/{suggestedMusic}/vote', [SuggestedMusicController::class, 'storeOrUpdate']);
-
-    Route::get('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'index']);
-    Route::post('event/{event}/suggest-music-config', [SuggestedMusicConfigController::class, 'store']);
-    Route::put('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update']);
-    Route::delete('suggest-music-config/{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy']);
-
-    Route::get('event/{event}/menus', [MenuController::class, 'index'])
-        ->name('index.menu');
-    Route::get('event/{event}/menus/guests', [MenuController::class, 'getGuestsMenu'])
-        ->name('index.menu.guests');
-    Route::get('/event/{event}/menus/guests/download', [ExportController::class, 'exportGuestMenuSelections'])
-        ->name('export.guest.menu-export');
-    Route::post('event/{event}/menus', [MenuController::class, 'store'])
-        ->name('store.menu');
-    Route::put('event/{event}/menus/{menu}', [MenuController::class, 'update'])
-        ->name('update.menu');
-    Route::delete('event/{event}/menus/{menu}', [MenuController::class, 'destroy'])
-        ->name('destroy.menu');
-    Route::get('event/{event}/menus/{menu}', [MenuController::class, 'show'])
-        ->name('show.menu');
-
-    Route::post('event/{event}/menus/{menu}/menu-item', [MenuItemController::class, 'store'])
-        ->name('store.menuItem');
-
-    Route::delete('event/{event}/menus/{menu}/menu-item/{menuItem}', [MenuItemController::class, 'destroy'])
-        ->name('destroy.menuItem');
-
-
-    Route::get('event/{event}/background-music', [BackgroundMusicController::class, 'index'])
-        ->name('index.backgroundMusic');
-    Route::post('event/{event}/background-music', [BackgroundMusicController::class, 'store'])
-        ->name('store.backgroundMusic');
-    Route::post('background-music/{backgroundMusic}', [BackgroundMusicController::class, 'update'])
-        ->name('update.backgroundMusic');
-
-    Route::get('event/{event}/comments-config', [EventConfigCommentsController::class, 'index'])
-        ->name('index.configComments');
-    Route::post('event/{event}/comments-config', [EventConfigCommentsController::class, 'store'])
-        ->name('store.configComments');
-    Route::put('event/{event}/comments-config/{commentConfig}', [EventConfigCommentsController::class, 'update'])
-        ->name('update.configComments');
-
-    Route::get('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'index'])
-        ->name('index.sweetMemoriesConfig');
-    Route::post('event/{event}/sweet-memories-config', [SweetMemoriesConfigController::class, 'store'])
-        ->name('store.sweetMemoriesConfig');
-    Route::put('event/{event}/sweet-memories-config/{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])
-        ->name('update.sweetMemoriesConfig');
-
-    Route::get('event/{event}/locations', [EventLocationController::class, 'index'])
-        ->name('index.eventLocations');
-    Route::post('event/{event}/locations', [EventLocationController::class, 'store'])
-        ->name('store.eventLocations');
-    Route::delete('event/{event}/locations/{location}', [EventLocationController::class, 'destroy'])
-        ->name('destroy.eventLocations');
-    Route::get('event/{event}/locations/{location}', [EventLocationController::class, 'show'])
-        ->name('show.eventLocations');
-    
-    Route::get('event/{event}/locations/{placeId}/images', [EventLocationController::class, 'getLocationImages'])
-        ->name('show.eventLocations.images');
-    Route::post('event/{event}/locations/{location}/images', [EventLocationController::class, 'storeImages'])
-        ->name('store.eventLocations.images');
-
-    Route::post('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'store'])
-        ->name('store.sweetMemoriesImages');
-    Route::get('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'index'])
-        ->name('index.sweetMemoriesImages');
-    Route::put('event/{event}/sweet-memories-images', [SweetMemoriesImageController::class, 'update'])
-        ->name('update.sweetMemoriesImages');
-    Route::delete('event/{event}/sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'destroy'])
-        ->name('destroy.sweetMemoriesImages');
-
-    Route::patch('sweet-memories-images/{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
-        ->name('update.sweetMemoriesImages.name');
-
-    Route::post('user/update-profile', [UserSettingsController::class, 'updateProfile'])
-        ->name('user.updateProfile');
-    Route::get('user/preferences', [UserPreferenceController::class, 'showPreferences'])
-        ->name('user.preferences');
-    Route::post('user/preferences', [UserPreferenceController::class, 'updatePreferences'])
-        ->name('user.updatePreferences');
-    Route::post('user/update-password', [UserSettingsController::class, 'updatePassword'])
-        ->name('user.updatePassword');
-
-    Route::prefix('user/2fa')
-        ->name('user.2fa.')
-        ->group(function () {
+        // 2FA Routes
+        Route::prefix('2fa')->name('2fa.')->group(function () {
             Route::get('setup', [UserTwoFAController::class, 'setup'])->name('setup');
             Route::post('enable', [UserTwoFAController::class, 'enable'])->name('enable');
             Route::post('disable', [UserTwoFAController::class, 'disable'])->name('disable');
@@ -225,9 +93,172 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             Route::get('status', [UserTwoFAController::class, 'status'])->name('status');
             Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
         });
+    });
 
-    Route::get('user', [UserSettingsController::class, 'getUser'])
-        ->name('user.show');
-    Route::post('logout', [AuthenticationController::class, 'appLogout']);
+    // Events Routes
+    Route::prefix('events')->name('events.')->group(function () {
+        Route::get('', [EventsController::class, 'index'])->name('index');
+        Route::get('load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
+            ->name('loanEventsPlansAndType');
+    });
+
+    // Event Routes
+    Route::prefix('event')->name('event.')->group(function () {
+        // Event CRUD
+        Route::post('', [EventsController::class, 'store'])->name('store');
+        Route::get('filters', [EventsController::class, 'filterEvents'])->name('filters');
+
+        Route::prefix('{event}')->group(function () {
+            Route::get('dashboard-logs', [EventActivityController::class, 'dashboardLogs'])
+                ->name('dashboard-logs');
+            Route::get('permissions', [EventPermissionsController::class, 'index'])
+                ->name('permissions');
+            Route::get('suggestions', [EventsController::class, 'suggestions'])
+                ->name('suggestions');
+            Route::delete('', [EventsController::class, 'destroy'])->name('destroy');
+            Route::put('', [EventsController::class, 'update'])->name('update');
+
+            // Save The Date
+            Route::prefix('save-the-date')->name('save-the-date.')->group(function () {
+                Route::get('', [SaveTheDateController::class, 'index'])->name('index');
+                Route::post('', [SaveTheDateController::class, 'store'])->name('store');
+            });
+
+            // RSVP
+            Route::prefix('rsvp')->name('rsvp.')->group(function () {
+                Route::get('', [RsvpController::class, 'index'])->name('index');
+                Route::get('summary', [RsvpController::class, 'summary'])->name('summary');
+
+                Route::prefix('guests')->name('guests.')->group(function () {
+                    Route::get('', [RsvpController::class, 'getRsvpUsersList'])->name('list');
+                    Route::get('totals', [RsvpController::class, 'getRsvpUsersTotals'])->name('totals');
+                    Route::get('download', [ExportController::class, 'handleExportRequest'])->name('export');
+                    Route::post('{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
+                        ->name('revert-confirmation');
+                });
+            });
+
+            // Guests
+            Route::prefix('guests')->name('guests.')->group(function () {
+                Route::get('', [GuestController::class, 'index'])->name('index');
+                Route::post('', [GuestController::class, 'store'])->name('store');
+                Route::delete('{guest}', [GuestController::class, 'destroy'])->name('destroy');
+                Route::get('{guest}', [GuestController::class, 'show'])->name('show');
+            });
+
+            // Menus
+            Route::prefix('menus')->name('menus.')->group(function () {
+                Route::get('', [MenuController::class, 'index'])->name('index');
+                Route::post('', [MenuController::class, 'store'])->name('store');
+                Route::get('guests', [MenuController::class, 'getGuestsMenu'])->name('guests');
+                Route::get('guests/download', [ExportController::class, 'exportGuestMenuSelections'])->name('guests.export');
+
+                Route::prefix('{menu}')->group(function () {
+                    Route::put('', [MenuController::class, 'update'])->name('update');
+                    Route::delete('', [MenuController::class, 'destroy'])->name('destroy');
+                    Route::get('', [MenuController::class, 'show'])->name('show');
+
+                    Route::prefix('menu-item')->name('item.')->group(function () {
+                        Route::post('', [MenuItemController::class, 'store'])->name('store');
+                        Route::delete('{menuItem}', [MenuItemController::class, 'destroy'])->name('destroy');
+                    });
+                });
+            });
+
+            // Background Music
+            Route::prefix('background-music')->name('background-music.')->group(function () {
+                Route::get('', [BackgroundMusicController::class, 'index'])->name('index');
+                Route::post('', [BackgroundMusicController::class, 'store'])->name('store');
+            });
+
+            // Comments Config
+            Route::prefix('comments-config')->name('comments-config.')->group(function () {
+                Route::get('', [EventConfigCommentsController::class, 'index'])->name('index');
+                Route::post('', [EventConfigCommentsController::class, 'store'])->name('store');
+                Route::put('{commentConfig}', [EventConfigCommentsController::class, 'update'])->name('update');
+            });
+
+            // Suggest Music Config
+            Route::prefix('suggest-music-config')->name('suggest-music-config.')->group(function () {
+                Route::get('', [SuggestedMusicConfigController::class, 'index'])->name('index');
+                Route::post('', [SuggestedMusicConfigController::class, 'store'])->name('store');
+            });
+
+            // Sweet Memories Config
+            Route::prefix('sweet-memories-config')->name('sweet-memories-config.')->group(function () {
+                Route::get('', [SweetMemoriesConfigController::class, 'index'])->name('index');
+                Route::post('', [SweetMemoriesConfigController::class, 'store'])->name('store');
+                Route::put('{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])->name('update');
+            });
+
+            // Sweet Memories Images
+            Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->group(function () {
+                Route::get('', [SweetMemoriesImageController::class, 'index'])->name('index');
+                Route::post('', [SweetMemoriesImageController::class, 'store'])->name('store');
+                Route::put('', [SweetMemoriesImageController::class, 'update'])->name('update');
+                Route::delete('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'destroy'])->name('destroy');
+            });
+
+            // Locations
+            Route::prefix('locations')->name('locations.')->group(function () {
+                Route::get('', [EventLocationController::class, 'index'])->name('index');
+                Route::post('', [EventLocationController::class, 'store'])->name('store');
+                Route::delete('{location}', [EventLocationController::class, 'destroy'])->name('destroy');
+                Route::get('{location}', [EventLocationController::class, 'show'])->name('show');
+
+                Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
+                Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
+            });
+        });
+
+        // Special event routes
+        Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');
+    });
+
+    // Guest Routes
+    Route::prefix('guest')->name('guest.')->group(function () {
+        Route::patch('{guest}', [GuestController::class, 'updateCompanion'])->name('updateCompanion');
+        Route::post('{guest}/companion', [CompanionController::class, 'store'])->name('storeCompanion');
+    });
+
+    // Companion Routes
+    Route::prefix('companion')->name('companion.')->group(function () {
+        Route::put('{companion}', [CompanionController::class, 'update'])->name('update');
+        Route::delete('{guestCompanion}', [CompanionController::class, 'destroy'])->name('destroy');
+    });
+
+    // Suggest Music Routes
+    Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
+        Route::delete('{suggestedMusic}', [SuggestedMusicController::class, 'destroy'])->name('destroy');
+        Route::post('{suggestedMusic}/vote', [SuggestedMusicController::class, 'storeOrUpdate'])->name('vote');
+    });
+
+    // Suggest Music Config Routes
+    Route::prefix('suggest-music-config')->name('suggest-music-config.')->group(function () {
+        Route::put('{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'update'])->name('update');
+        Route::delete('{suggestedMusicConfig}', [SuggestedMusicConfigController::class, 'destroy'])->name('destroy');
+    });
+
+    // Background Music Routes
+    Route::prefix('background-music')->name('background-music.')->group(function () {
+        Route::post('{backgroundMusic}', [BackgroundMusicController::class, 'update'])->name('update');
+    });
+
+    // Save The Date Routes
+    Route::prefix('save-the-date')->name('save-the-date.')->group(function () {
+        Route::put('{saveTheDate}', [SaveTheDateController::class, 'update'])->name('update');
+    });
+
+    // Sweet Memories Images Routes
+    Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->group(function () {
+        Route::patch('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])->name('update-name');
+    });
+
+    // Exports Routes
+    Route::prefix('exports')->name('exports.')->group(function () {
+        Route::get('download', [ExportController::class, 'exportsDownload'])->name('download');
+    });
+
+    // Logout Route
+    Route::post('logout', [AuthenticationController::class, 'appLogout'])->name('logout');
 });
-
