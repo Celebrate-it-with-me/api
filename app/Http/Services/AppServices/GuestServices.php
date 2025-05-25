@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class GuestServices
@@ -34,6 +35,13 @@ class GuestServices
         $perPage = $this->request->input('perPage', 10);
         $page = $this->request->input('page', 1);
         $searchValue = $this->request->input('searchValue');
+        
+        Log::info('checking guests', [
+            'event_id' => $event->id,
+            'perPage' => $perPage,
+            'page' => $page,
+            'searchValue' => $searchValue,
+        ]);
         
         return Guest::query()
             ->where('event_id', $event->id)
