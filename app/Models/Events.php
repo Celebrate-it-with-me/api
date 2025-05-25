@@ -198,4 +198,14 @@ class Events extends Model
     {
         return $this->hasMany(EventActivity::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the event collaboration invites associated with the event.
+     *
+     * @return HasMany
+     */
+    public function collaborators(): HasMany
+    {
+        return $this->hasMany(EventCollaborationInvite::class, 'event_id', 'id');
+    }
 }
