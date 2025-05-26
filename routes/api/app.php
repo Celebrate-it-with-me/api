@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\AppControllers\BackgroundMusicController;
-use App\Http\Controllers\AppControllers\CompanionController;
+    use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
+    use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
@@ -209,7 +210,13 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
             });
+            
+            Route::prefix('collaborators')->name('collaborators.')->group(function () {
+                Route::post('', [InviteCollaboratorController::class, 'invite'])->name('store');
+                Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])->name('destroy');
+            });
         });
+        
 
         // Special event routes
         Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');

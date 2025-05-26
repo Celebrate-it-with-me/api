@@ -22,7 +22,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'accepted', 'expired'])->default('pending');
             
             $table->foreignId('invited_by_user_id')->constrained('users')->cascadeOnDelete();
-            
+            $table->unsignedTinyInteger('resend_count')->default(0);
+            $table->timestamp('sent_at')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });

@@ -12,7 +12,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Schedule commands to run periodically.
+        $schedule->command('invites:send-initial')->everyTenMinutes();
+        $schedule->command('invites:resend')->dailyAt('08:00');
+        $schedule->command('invites:expire')->dailyAt('01:00');
     }
 
     /**
