@@ -49,13 +49,14 @@ class EventUserRoleSeeder extends Seeder
             'add_song', 'delete_song', 'manage_playlist',
             
             // Location
-            'edit_location', 'add_location_photo',
+            'view_event_locations', 'create_event_locations', 'edit_event_locations',
             
             // RSVP
             'manage_rsvp', 'view_rsvp',
             
             // Collaboration
-            'manage_collaborators'
+            'manage_collaborators',
+            
         ];
         
         foreach ($permissions as $permission) {
@@ -76,7 +77,7 @@ class EventUserRoleSeeder extends Seeder
             'add_menu_item', 'edit_menu_item', 'delete_menu_item',
             'upload_photo', 'delete_photo', 'view_gallery',
             'add_song', 'delete_song', 'manage_playlist',
-            'edit_location', 'add_location_photo',
+            'view_event_locations', 'create_event_locations', 'edit_event_locations',
             'manage_rsvp', 'view_rsvp', 'manage'
         ]);
         

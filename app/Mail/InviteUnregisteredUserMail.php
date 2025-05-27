@@ -40,10 +40,10 @@ class InviteUnregisteredUserMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.invite-unregistered-user',
+            view: 'emails.invite-unregistered-user',
             with: [
                 'invite' => $this->invite,
-                'acceptUrl' => config('app.frontend_app.url'). "/invite?token={$this->invite->token}",
+                'acceptUrl' => config('app.frontend_app.url'). "event/{$this->invite->event->id}/invite?token={$this->invite->token}",
             ],
         );
     }

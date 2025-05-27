@@ -25,7 +25,7 @@ class SendConfirmationEmail
         $user = $event->user;
         
         $confirmUrl = URL::temporarySignedRoute(
-            'confirm.email',
+            'auth.confirm.email',
             now()->addDay(),
             ['user' => $user->id]
         );
