@@ -67,6 +67,15 @@ Route::prefix('event/{event}')->name('event.')->group(function () {
     });
 });
 
+// Collaborators Routes
+Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])
+    ->name('collaborators.checkToken');
+Route::post('event/{event}/collaborators/invite/{token}/decline', [InviteCollaboratorController::class, 'declineInvite'])
+    ->name('collaborators.declineInvite');
+Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, 'eventTokens'])
+    ->name('collaborators.eventTokens');
+
+
 // Protected Routes
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
 

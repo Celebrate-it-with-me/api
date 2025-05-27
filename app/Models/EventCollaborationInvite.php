@@ -83,6 +83,19 @@ class EventCollaborationInvite extends Model
     }
     
     /**
+     * Marks the current instance as declined by updating its status.
+     *
+     * @return void
+     */
+    public function markAsDeclined(): void
+    {
+        $this->update([
+            'status' => 'declined',
+        ]);
+    }
+    
+    
+    /**
      * Determines if the current instance is expired.
      *
      * @return bool True if expired, otherwise false.

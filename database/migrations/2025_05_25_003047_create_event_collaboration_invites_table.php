@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('role')->default('viewer');
             
             $table->string('token')->unique();
-            $table->enum('status', ['pending', 'accepted', 'expired'])->default('pending');
+            $table->enum('status', ['pending', 'accepted', 'declined', 'expired'])->default('pending');
             
             $table->foreignId('invited_by_user_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedTinyInteger('resend_count')->default(0);
