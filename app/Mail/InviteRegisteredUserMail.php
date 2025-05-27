@@ -40,10 +40,10 @@ class InviteRegisteredUserMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.invite-registered-user',
+            view: 'emails.invite-registered-user',
             with: [
                 'invite' => $this->invite,
-                'eventUrl' => config('app.frontend_app.url'). "/dashboard/events/{$this->invite->event_id}",
+                'eventUrl' => config('app.frontend_app.url'). "dashboard/events/{$this->invite->event_id}",
             ],
         );
     }
