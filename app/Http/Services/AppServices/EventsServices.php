@@ -45,14 +45,16 @@ class EventsServices
         
         if ($user->last_active_event_id) {
             $lastActiveEvent = Events::query()
+                ->with(['userRoles.user', 'userRoles.role'])
                 ->where('id', $user->last_active_event_id)
-                ->where('organizer_id', $user->id)
                 ->first();
         }
         
         $events = Events::query()
-            ->where('organizer_id', $user->id)
-            ->get();
+            ->with(['userRoles.user', 'userRoles.role'])
+            ->whereHas('userRoles', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->get();
         
         return [
             $events,

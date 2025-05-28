@@ -56,7 +56,6 @@ class HydrationService
         RsvpServices $rsvpServices
     ) {
         $this->locationsServices = $locationsServices;
-        $this->eventPermissionService = $eventPermissionService;
         $this->guestServices = $guestServices;
         $this->rsvpServices = $rsvpServices;
     }
@@ -69,31 +68,21 @@ class HydrationService
      */
     public function hydrate(User $user): JsonResponse
     {
-        // Load user's events
-        $user->load(['activeEvent', 'organizedEvents']);
-        $events = $user->organizedEvents;
-
-        // Get active event with related data
+        $events = $user->accessibleEvents();
         $activeEvent = $this->getActiveEvent($user);
         
-        Log::info('Hydrating activeEvent', [$activeEvent]);
-
-        // If no active event or user doesn't have permission, return appropriate response
         if (!$activeEvent) {
             return $this->createEmptyResponse($events);
         }
-
-        if (!$user->hasEventRole($activeEvent)) {
+        
+        if (!$user->hasEventPermission($activeEvent, 'view_event')) {
             return $this->createUnauthorizedResponse();
         }
-
-        // Get user permissions for the active event
+        
         $userLoggedPermissions = $user->getEventPermissions($activeEvent);
-
-        // Load all required data for the response
+        
         $data = $this->loadEventData($activeEvent);
-
-        // Create and return the response
+        
         return response()->json(array_merge(
             [
                 'events' => $events ? EventResource::collection($events) : null,
