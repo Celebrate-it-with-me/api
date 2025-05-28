@@ -5,9 +5,14 @@ namespace App\Http\Controllers\AppControllers\Collaborators;
 use App\Http\Controllers\Controller;
 use App\Models\EventCollaborationInvite;
 use App\Models\Events;
+use App\Models\EventUserRole;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Role;
+use Throwable;
 
 class InviteCollaboratorController extends Controller
 {
@@ -133,26 +138,61 @@ class InviteCollaboratorController extends Controller
      * @param $token
      * @return JsonResponse A JSON response indicating the success or failure of the operation.
      */
-    public function accept(Request $request, $token): JsonResponse
+    public function accept(Events $event, string $id, Request $request): JsonResponse
     {
+        $user = $request->user();
         $invite = EventCollaborationInvite::query()
-            ->where('token', $token)
-            ->valid()
+            ->where('event_id', $event->id)
+            ->where('id', $id)
             ->first();
+        
+        Log::info('Accepting invite for user: ' . $user->email . ' with token: ' . $id, [
+            $event->id,
+            $id,
+            $invite
+        ]);
         
         if (!$invite) {
             return response()->json(['message' => 'Invalid or expired invitation.'], 404);
         }
         
-        if (auth()->user()->email !== $invite->email) {
+        if ($invite->email !== $user->email) {
             return response()->json(['message' => 'You are not authorized to accept this invitation.'], 400);
         }
         
-        $invite->event->collaborators()->attach(auth()->user()->id, ['role' => $invite->role]);
+        DB::beginTransaction();
         
-        $invite->markAsAccepted();
-        
-        return response()->json(['message' => 'You have been added as a collaborator.']);
+        try {
+            
+            EventUserRole::query()->firstOrCreate([
+                'event_id' => $event->id,
+                'user_id' => $user->id,
+            ], [
+                'role_id' => Role::query()->where('name', $invite->role)->first()->id,
+            ]);
+            
+            $invite->update([
+                'status' => 'accepted',
+            ]);
+            
+            $user->last_active_event_id = $event->id;
+            $user->save();
+            
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Invitation accepted.',
+                'event' => $event->only(['id', 'event_name']),
+                'role' => $invite->role,
+            ]);
+            
+        } catch (Throwable $th) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'An error occurred while accepting the invitation.',
+                'error' => $th->getMessage(),
+            ], 500);
+        }
     }
     
     /**
