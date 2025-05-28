@@ -23,7 +23,7 @@ class EventResource extends JsonResource
             'eventType' => $this->event_type_id,
             'startDate' => $this->start_date?->format('m/d/Y H:i'),
             'endDate' => $this->end_date?->format('m/d/Y H:i'),
-            'organizer' => UserResource::make($this->organizer),
+            'organizer' => $this->getOwner(),
             'status' => $this->status,
             'customUrlSlug' => $this->custom_url_slug,
             'visibility' => $this->visibility,
@@ -32,6 +32,13 @@ class EventResource extends JsonResource
             'selected' => false,
             'eventFeatures' => $this->transformFeatures()
         ];
+    }
+    
+    private function getOwner(): UserResource
+    {
+        return UserResource::make(
+            optional($this->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user
+        );
     }
     
     /**
