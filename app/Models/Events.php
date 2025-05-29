@@ -208,4 +208,14 @@ class Events extends Model
     {
         return $this->hasMany(EventCollaborationInvite::class, 'event_id', 'id');
     }
+    
+    /**
+     * Get the event budget associated with the event.
+     *
+     * @return HasOne
+     */
+    public function budget(): HasOne
+    {
+        return $this->hasOne(EventBudget::class, 'event_id', 'id');
+    }
 }

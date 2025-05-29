@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AppControllers\BackgroundMusicController;
-use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
+    use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
+    use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
+    use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
 use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
@@ -220,11 +222,27 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
             });
             
+            // Event Collaborators
             Route::prefix('collaborators')->name('collaborators.')->group(function () {
                 Route::post('', [InviteCollaboratorController::class, 'invite'])->name('store');
                 Route::post('invite/{id}/accept', [InviteCollaboratorController::class, 'accept'])
                     ->name('accept');
                 Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])->name('destroy');
+            });
+            
+            // Event Budgets
+            Route::prefix('budget')->name('budget.')->group(function () {
+                Route::get('', [EventBudgetController::class, 'show'])->name('show');
+                Route::post('', [EventBudgetController::class, 'store'])->name('store');
+                Route::delete('{eventBudget}', [EventBudgetController::class, 'destroy'])->name('destroy');
+                
+                // Budget Items
+                Route::prefix('{eventBudget}/items')->group(function () {
+                    Route::get('', [BudgetItemController::class, 'index'])->name('budgetItems.index');
+                    Route::post('', [BudgetItemController::class, 'store'])->name('budgetItems.store');
+                    Route::put('{budgetItem}', [BudgetItemController::class, 'update'])->name('budgetItems.update');
+                    Route::delete('{budgetItem}', [BudgetItemController::class, 'destroy'])->name('budgetItems.destroy');
+                });
             });
         });
         
