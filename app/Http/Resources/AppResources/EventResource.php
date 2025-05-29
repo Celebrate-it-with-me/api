@@ -24,6 +24,7 @@ class EventResource extends JsonResource
             'startDate' => $this->start_date?->format('m/d/Y H:i'),
             'endDate' => $this->end_date?->format('m/d/Y H:i'),
             'organizer' => $this->getOwner(),
+            'userRole' => $this->getUserRole($request->user()),
             'status' => $this->status,
             'customUrlSlug' => $this->custom_url_slug,
             'visibility' => $this->visibility,
@@ -32,6 +33,17 @@ class EventResource extends JsonResource
             'selected' => false,
             'eventFeatures' => $this->transformFeatures()
         ];
+    }
+    
+    private function getUserRole($user): ?string
+    {
+        if (!$user || !$this->userRoles) {
+            return null;
+        }
+        
+        $role = $this->userRoles->firstWhere('user_id', $user->id)?->role;
+        
+        return $role?->name;
     }
     
     private function getOwner(): UserResource
