@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -109,7 +110,7 @@ class User extends Authenticatable
      */
     public function activeEvent(): HasOne
     {
-        return $this->hasOne(Events::class, 'organizer_id', 'id');
+        return $this->hasOne(Events::class, 'id', 'last_active_event_id');
     }
     
     /**
@@ -136,13 +137,24 @@ class User extends Authenticatable
     }
     
     /**
-     * Relation with user events.
-     *
-     * @return HasMany
+     * Retrieves all events that the user has access to.
+     * @return Collection
      */
-    public function organizedEvents(): HasMany
+    public function accessibleEvents(): Collection
     {
-        return $this->hasMany(Events::class, 'organizer_id', 'id');
+        return Events::query()->whereHas('userRoles', function ($query) {
+            $query->where('user_id', $this->id);
+        })->with('userRoles.role')->get();
+    }
+    
+    public function ownedEvents(): Collection
+    {
+        return Events::query()->whereHas('userRoles', function ($query) {
+            $query->where('user_id', $this->id)
+                ->whereHas('role', function ($q) {
+                    $q->where('name', 'owner');
+                });
+        })->get();
     }
     
     /**

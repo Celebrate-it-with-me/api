@@ -36,7 +36,9 @@ class EventsController extends Controller
                 ]
             ]);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            return response()->json(['message' => $th->getMessage(), 'data' => [
+                'trace' => $th->getTraceAsString()
+            ]], 500);
         }
     }
     

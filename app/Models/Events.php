@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\EventsFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Events extends Model
 {
-    /** @use HasFactory<\Database\Factories\EventsFactory> */
+    /** @use HasFactory<EventsFactory> */
     use HasFactory, SoftDeletes;
 
     protected $table = 'events';
@@ -23,7 +24,6 @@ class Events extends Model
         'event_plan_id',
         'start_date',
         'end_date',
-        'organizer_id',
         'status',
         'custom_url_slug',
         'visibility'
@@ -37,13 +37,13 @@ class Events extends Model
     ];
     
     /**
-     * Get the user that is the organizer of this event.
+     * Get the organizer associated with the event.
      *
-     * @return BelongsTo
+     * @return HasMany
      */
-    public function organizer(): BelongsTo
+    public function userRoles(): HasMany
     {
-        return $this->belongsTo(User::class, 'organizer_id', 'id');
+        return $this->hasMany(EventUserRole::class, 'event_id');
     }
     
     /**
@@ -207,5 +207,15 @@ class Events extends Model
     public function collaborators(): HasMany
     {
         return $this->hasMany(EventCollaborationInvite::class, 'event_id', 'id');
+    }
+    
+    /**
+     * Get the event budget associated with the event.
+     *
+     * @return HasOne
+     */
+    public function budget(): HasOne
+    {
+        return $this->hasOne(EventBudget::class, 'event_id', 'id');
     }
 }
