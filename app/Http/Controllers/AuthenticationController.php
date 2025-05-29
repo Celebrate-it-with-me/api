@@ -167,7 +167,7 @@ class AuthenticationController extends Controller
             ->where('email', $request->input('email'))
             ->whereNotNull('email_verified_at')
             ->first();
-
+        
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid Credentials'], 401);
         }
