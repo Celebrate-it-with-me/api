@@ -25,7 +25,7 @@ class EventBudgetController extends Controller
         try {
             $eventBudget = $this->eventBudgetServices->getEventBudget($event);
             if (!$eventBudget) {
-                return response()->json(['message' => 'Budget not found for this event.'], 404);
+                return response()->json(['message' => 'Budget not found for this event.']);
             }
             
             return EventBudgetResource::make($eventBudget);

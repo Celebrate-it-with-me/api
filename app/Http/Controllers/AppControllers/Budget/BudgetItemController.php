@@ -29,7 +29,7 @@ class BudgetItemController extends Controller
             $budgetItems = $this->budgetItemServices->getBudgetItems($eventBudget);
             
             if (!$budgetItems->count()) {
-                return response()->json(['message' => 'No budget items found for this event.'], 422);
+                return response()->json(['message' => 'No budget items found for this event.']);
             }
             
             return BudgetItemResource::collection($budgetItems);

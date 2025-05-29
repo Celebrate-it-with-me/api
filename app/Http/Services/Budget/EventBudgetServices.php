@@ -26,7 +26,7 @@ class EventBudgetServices
     {
         $event->budget()->updateOrCreate(
             ['event_id' => $event->id],
-            $budgetData
+            ['budget_cap' => $budgetData['budgetCap']]
         );
         
         return $event->budget;
