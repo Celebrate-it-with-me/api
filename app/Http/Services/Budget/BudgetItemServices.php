@@ -37,7 +37,7 @@ class BudgetItemServices
             'description' => $data['description'] ?? null,
             'estimated_cost' => $data['estimatedCost'],
             'actual_cost' => $data['actualCost'] ?? null,
-            'is_paid' => $data['isPaid'],
+            'is_paid' => $data['isPaid'] ?? false,
             'due_date' => $data['dueDate'] ?? null,
         ]);
     }
