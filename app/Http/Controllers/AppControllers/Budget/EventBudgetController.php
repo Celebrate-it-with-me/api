@@ -67,6 +67,33 @@ class EventBudgetController extends Controller
     /**
      * Update the budget for a specific event.
      *
+     * @param Request $request
+     * @param Events $event
+     * @param EventBudget $eventBudget
+     * @return EventBudgetResource|JsonResponse
+     */
+    public function update(Request $request, Events $event, EventBudget $eventBudget): EventBudgetResource|JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'budgetCap' => 'required|numeric|min:0',
+            ]);
+            
+            $updatedBudget = $this->eventBudgetServices->updateEventBudget($eventBudget, $data);
+            if (!$updatedBudget) {
+                return response()->json(['message' => 'Failed to update budget for this event.'], 500);
+            }
+            
+            return EventBudgetResource::make($updatedBudget);
+            
+        } catch (\Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
+    /**
+     * Update the budget for a specific event.
+     *
      * @param Events $event
      * @param EventBudget $eventBudget
      * @return JsonResponse

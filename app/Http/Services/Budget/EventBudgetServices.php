@@ -31,4 +31,22 @@ class EventBudgetServices
         
         return $event->budget;
     }
+    
+    /**
+     * Update the budget for a given event.
+     *
+     * @param $eventBudget
+     * @param $budgetData
+     * @return mixed
+     */
+    public function updateEventBudget($eventBudget, $budgetData): mixed
+    {
+        if (!$eventBudget) {
+            return null;
+        }
+        
+        $eventBudget->update(['budget_cap' => $budgetData['budgetCap']]);
+        
+        return $eventBudget;
+    }
 }

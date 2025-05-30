@@ -234,6 +234,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             Route::prefix('budget')->name('budget.')->group(function () {
                 Route::get('', [EventBudgetController::class, 'show'])->name('show');
                 Route::post('', [EventBudgetController::class, 'store'])->name('store');
+                Route::put('{eventBudget}', [EventBudgetController::class, 'update'])->name('update');
                 Route::delete('{eventBudget}', [EventBudgetController::class, 'destroy'])->name('destroy');
                 
                 // Budget Items
