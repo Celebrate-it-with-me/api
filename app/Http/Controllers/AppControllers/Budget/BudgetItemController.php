@@ -43,11 +43,11 @@ class BudgetItemController extends Controller
      * Store a newly created resource in storage.
      *
      * @param Request $request
-     * @param Events $eventId
+     * @param Events $event
      * @param EventBudget $eventBudget
      * @return BudgetItemResource|JsonResponse
      */
-    public function store(Request $request, Events $eventId, EventBudget $eventBudget): BudgetItemResource | JsonResponse
+    public function store(Request $request, Events $event, EventBudget $eventBudget): BudgetItemResource | JsonResponse
     {
         try {
             $data = $request->validate([
@@ -56,7 +56,7 @@ class BudgetItemController extends Controller
                 'description' => 'nullable|string|max:1000',
                 'estimatedCost' => 'required|numeric|min:0',
                 'actualCost' => 'nullable|numeric|min:0',
-                'isPaid' => 'required|boolean',
+                'isPaid' => 'nullable|boolean',
                 'dueDate' => 'nullable|date',
             ]);
             
@@ -114,7 +114,7 @@ class BudgetItemController extends Controller
      * @param BudgetItem $budgetItem
      * @return BudgetItemResource|JsonResponse
      */
-    public function destroy(Events $event, BudgetItem $budgetItem): BudgetItemResource | JsonResponse
+    public function destroy(Events $event, EventBudget $eventBudget, BudgetItem $budgetItem): BudgetItemResource | JsonResponse
     {
         try {
             $budgetItem->delete();

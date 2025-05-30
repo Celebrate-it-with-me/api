@@ -14,7 +14,6 @@ class BudgetItem extends Model
     
     protected $table = 'budget_items';
     
-
     protected $fillable = [
         'event_budget_id',
         'category_id',
@@ -24,6 +23,13 @@ class BudgetItem extends Model
         'actual_cost',
         'is_paid',
         'due_date'
+    ];
+    
+    protected $casts = [
+        'due_date' => 'datetime',
+        'is_paid' => 'boolean',
+        'estimated_cost' => 'float',
+        'actual_cost' => 'float',
     ];
     
     /**
