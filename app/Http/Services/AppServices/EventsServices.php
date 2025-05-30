@@ -151,7 +151,7 @@ class EventsServices
             'event_id' => $event->id,
             'user_id' => $this->request->user()->id,
         ], [
-            'role' => Role::query()->where('name', 'owner')->first()->id,
+            'role_id' => Role::query()->where('name', 'owner')->first()->id,
         ]);
 
         return $event;
