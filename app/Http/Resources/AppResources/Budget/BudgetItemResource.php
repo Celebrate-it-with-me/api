@@ -23,7 +23,7 @@ class BudgetItemResource extends JsonResource
             'estimatedCost' => $this->estimated_cost,
             'actualCost' => $this->actual_cost,
             'isPaid' => $this->is_paid,
-            'dueDate' => $this->due_date?->format('Y-m-d'),
+            'dueDate' => $this->due_date?->format('m/d/Y'),
         ];
     }
 }
