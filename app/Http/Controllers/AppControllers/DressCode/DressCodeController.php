@@ -116,7 +116,7 @@ class DressCodeController extends Controller
             
             if (!$dressCode) {
                 return response()->json([
-                    'message' => 'Failed to create dress code.'
+                    'message' => 'Failed to update dress code.'
                 ], 400);
             }
             
