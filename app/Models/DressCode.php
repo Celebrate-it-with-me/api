@@ -26,7 +26,7 @@ class DressCode extends Model
     ];
     
     /**
-     * Define a one-to-many relationship with the Events model.
+     * Define a relationship to the Events model.
      *
      * @return BelongsTo
      */
