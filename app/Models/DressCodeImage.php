@@ -20,9 +20,9 @@ class DressCodeImage extends Model
     ];
     
     /**
-     * Define a one-to-many relationship with the Events model.
+     * Define a one-to-many relationship with the DressCode model.
      *
-     * @return HasMany
+     * @return BelongsTo
      */
     public function dressCode(): BelongsTo
     {

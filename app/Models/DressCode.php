@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DressCode extends Model
@@ -27,11 +28,11 @@ class DressCode extends Model
     /**
      * Define a one-to-many relationship with the Events model.
      *
-     * @return HasMany
+     * @return BelongsTo
      */
-    public function events(): HasMany
+    public function event(): BelongsTo
     {
-        return $this->hasMany(Events::class, 'event_id', 'id');
+        return $this->belongsTo(Events::class, 'event_id');
     }
     
     public function dressCodeImages(): HasMany
