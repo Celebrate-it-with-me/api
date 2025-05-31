@@ -16,8 +16,11 @@ class DressCodeResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'dressCodeId' => $this->dress_code_id,
-            'imagePath' => $this->image_path,
+            'eventId' => $this->event_id,
+            'dressCodeType' => $this->dress_code_type,
+            'description' => $this->description,
+            'reservedColors' => $this->reserved_colors,
+            'dressCodeImages' => DressCodeImageResource::collection($this->whenLoaded('dressCodeImages')),
         ];
     }
 }
