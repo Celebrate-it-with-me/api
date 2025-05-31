@@ -26,13 +26,15 @@ class DressCodeServices
      * @param $data
      * @return DressCode|Model
      */
-    public function createDressCode($events, $data): Model|DressCode
+    public function createDressCode($event, $data): Model|DressCode
     {
+       
         $dressCode = DressCode::query()->create([
-            'event_id' => $events->id,
+            'event_id' => $event->id,
             'dress_code_type' => $data['dressCodeType'],
             'description' => $data['description'] ?? null,
-            'reserved_colors' => $data['reservedColors'] ?? [],
+            'reserved_colors' => isset($data['reservedColors'])
+                ? json_decode($data['reservedColors'], true) : [],
         ]);
         
         if (isset($data['dressCodeImages']) && is_array($data['dressCodeImages'])) {
@@ -54,34 +56,44 @@ class DressCodeServices
         $dressCode->update([
             'dress_code_type' => $data['dressCodeType'],
             'description' => $data['description'] ?? null,
-            'reserved_colors' => $data['reservedColors'] ?? [],
+            'reserved_colors' => json_decode($data['reservedColors'], true) ?? [],
         ]);
+        
+        // Process images
+        $imagesToKeep = [];
+        
+        // Handle existing images to keep
+        if (isset($data['existingImageIds']) && is_string($data['existingImageIds'])) {
+            $imagesToKeep = json_decode($data['existingImageIds'], true) ?? [] ;
+        }
+        
+        // Get existing images that need to be deleted
+        $imagesToDelete = $dressCode->dressCodeImages()
+            ->whereNotIn('id', $imagesToKeep)
+            ->get();
+        
+        // Delete unwanted images from storage and database
+        foreach ($imagesToDelete as $imageToDelete) {
+            $disk = 'public';
+            
+            // Delete the file from storage if it exists
+            if (Storage::disk($disk)->exists($imageToDelete->image_path)) {
+                Storage::disk($disk)->delete($imageToDelete->image_path);
+            }
+            
+            // Delete the database record
+            $imageToDelete->delete();
+        }
         
         // Process new images if they exist
         if (isset($data['dressCodeImages']) && is_array($data['dressCodeImages'])) {
-            // Get existing images to delete
-            $existingImages = $dressCode->dressCodeImages;
-            
-            // Delete existing images from storage
-            foreach ($existingImages as $existingImage) {
-                // Determine which disk the image is stored on
-                $disk = config('app.env') === 'local' ? 'local' : 's3';
-                
-                // Delete the file from storage if it exists
-                if (Storage::disk($disk)->exists($existingImage->image_path)) {
-                    Storage::disk($disk)->delete($existingImage->image_path);
-                }
-            }
-            
-            // Delete all associated images from the database
-            $dressCode->dressCodeImages()->delete();
-            
             // Add new images
             $this->addNewImages($data['dressCodeImages'], $dressCode);
         }
         
         return $dressCode;
     }
+    
     
     /**
      * @param $dressCodeImages
@@ -91,7 +103,7 @@ class DressCodeServices
     private function addNewImages($dressCodeImages, DressCode $dressCode): void
     {
         foreach ($dressCodeImages as $image) {
-            $disk = config('app.env') === 'local' ? 'local' : 's3';
+            $disk = 'public';
             
             // Generate a unique filename if it's a file upload
             if ($image instanceof UploadedFile) {
@@ -124,7 +136,7 @@ class DressCodeServices
             // Delete image files from storage
             foreach ($dressCodeImages as $image) {
                 // Determine which disk the image is stored on
-                $disk = config('app.env') === 'local' ? 'local' : 's3';
+                $disk = 'public';
                 
                 // Delete the file from storage if it exists
                 if (Storage::disk($disk)->exists($image->image_path)) {
