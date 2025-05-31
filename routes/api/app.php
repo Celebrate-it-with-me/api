@@ -5,7 +5,8 @@ use App\Http\Controllers\AppControllers\BackgroundMusicController;
     use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
     use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
 use App\Http\Controllers\AppControllers\CompanionController;
-use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
+    use App\Http\Controllers\AppControllers\DressCode\DressCodeController;
+    use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventLocationController;
@@ -245,6 +246,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                     Route::delete('{budgetItem}', [BudgetItemController::class, 'destroy'])->name('budgetItems.destroy');
                 });
             });
+            
+            // Dress Code
+            Route::prefix('dress-code')->name('dress-code.')->group(function () {
+                Route::get('', [DressCodeController::class, 'getDressCode'])->name('index');
+                Route::post('', [DressCodeController::class, 'storeDressCode'])->name('store');
+                Route::put('{dressCode}', [DressCodeController::class, 'updateDressCode'])->name('update');
+                Route::delete('{dressCode}', [DressCodeController::class, 'destroyDressCode'])->name('destroy');
+            });
+            
         });
         
 

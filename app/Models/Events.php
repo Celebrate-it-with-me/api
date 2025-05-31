@@ -218,4 +218,9 @@ class Events extends Model
     {
         return $this->hasOne(EventBudget::class, 'event_id', 'id');
     }
+    
+    public function dressCode(): HasOne
+    {
+        return $this->hasOne(DressCode::class, 'event_id', 'id');
+    }
 }
