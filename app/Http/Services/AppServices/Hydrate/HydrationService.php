@@ -3,7 +3,9 @@
 namespace App\Http\Services\AppServices\Hydrate;
 
 use App\Http\Resources\AppResources\EventFeatureResource;
+use App\Http\Resources\AppResources\EventPlansResource;
 use App\Http\Resources\AppResources\EventResource;
+use App\Http\Resources\AppResources\EventTypesResource;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
 use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Resources\AppResources\MenuResource;
@@ -12,7 +14,9 @@ use App\Http\Services\AppServices\GuestServices;
 use App\Http\Services\AppServices\LocationsServices;
 use App\Http\Services\AppServices\RsvpServices;
 use App\Http\Services\Permissions\EventPermissionService;
+use App\Models\EventPlan;
 use App\Models\Events;
+use App\Models\EventType;
 use App\Models\Guest;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -158,6 +162,10 @@ class HydrationService
         $menus = $event->menus ?? null;
         $eventFeatures = $event->eventFeatures ?? null;
         $saveTheDate = $event->saveTheDate ?? null;
+        
+        // Get event plans and event types
+        $eventPlans = EventPlan::query()->get();
+        $eventTypes = EventType::query()->get();
 
         return [
             'menus' => $menus ? MenuResource::collection($menus) : null,
@@ -167,6 +175,8 @@ class HydrationService
             'rsvp' => $rsvp,
             'saveTheDate' => $saveTheDate ? SaveTheDateResource::make($saveTheDate) : null,
             'locations' => $locations,
+            'eventPlans' => EventPlansResource::collection($eventPlans),
+            'eventTypes' => EventTypesResource::collection($eventTypes),
         ];
     }
 

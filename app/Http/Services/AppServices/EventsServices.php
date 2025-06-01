@@ -4,11 +4,8 @@ namespace App\Http\Services\AppServices;
 
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\EventFeature;
-use App\Models\EventPlan;
 use App\Models\Events;
-use App\Models\EventType;
 use App\Models\EventUserRole;
-use App\Models\User;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -231,24 +228,13 @@ class EventsServices
         }
     }
 
+    
     /**
-     * Retrieve all event types.
+     * Get event suggestions based on the current event state.
+     *
+     * @param  Events  $event
+     * @return array
      */
-    public function getEventTypes(): Collection
-    {
-        return EventType::query()
-            ->select('id', 'name', 'slug', 'icon')
-            ->get();
-    }
-
-    /**
-     * Retrieve all event plans.
-     */
-    public function getEventPlans(): Collection
-    {
-        return EventPlan::query()->get();
-    }
-
     public function getEventSuggestions(Events $event): array
     {
         $suggestions = [];

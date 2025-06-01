@@ -132,27 +132,7 @@ class EventsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-
-    /**
-     * Retrieve event types and loan plans.
-     */
-    public function loanEventsPlansAndType(): JsonResponse
-    {
-        try {
-            $eventTypes = $this->eventsServices->getEventTypes();
-            $eventPlans = $this->eventsServices->getEventPlans();
-
-            return response()->json([
-                'message' => 'Event types and loan plans retrieved successfully.',
-                'data' => [
-                    'eventTypes' => EventTypesResource::collection($eventTypes),
-                    'eventPlans' => EventPlansResource::collection($eventPlans),
-                ],
-            ]);
-        } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
-        }
-    }
+    
 
     /**
      * Retrieve event suggestions.
