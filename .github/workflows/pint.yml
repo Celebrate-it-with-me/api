@@ -25,6 +25,12 @@ jobs:
       - name: 🧱 Install dependencies
         run: composer install --no-progress --prefer-dist
 
+      - name: ⚙️ Copy .env
+        run: cp .env.example .env
+
+      - name: 🔐 Generate Laravel APP_KEY
+        run: php artisan key:generate
+
       - name: ✅ Run Laravel Pint
         run: ./vendor/bin/pint --test
 
