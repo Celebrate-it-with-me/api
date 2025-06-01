@@ -23,6 +23,6 @@ class ExampleTest extends TestCase
      */
     public function testing_connection()
     {
-    
+        $this->assertTrue(true);
     }
 }
