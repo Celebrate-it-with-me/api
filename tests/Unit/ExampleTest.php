@@ -2,8 +2,6 @@
 
 namespace Tests\Unit;
 
-use Aws\Exception\AwsException;
-use Aws\S3\S3Client;
 use PHPUnit\Framework\TestCase;
 
 class ExampleTest extends TestCase
