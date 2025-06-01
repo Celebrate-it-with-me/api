@@ -7,7 +7,6 @@ use App\Http\Resources\MainGuestResource;
 use App\Http\Resources\UserResource;
 use App\Http\Services\MainGuestServices;
 use App\Models\MainGuest;
-use App\Models\User;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,7 +55,6 @@ class MainGuestController extends Controller
     /**
      * Update Main Guest info.
      *
-     * @param  User  $user
      * @return UserResource|JsonResponse
      */
     public function update(CreateMainGuestRequest $request, MainGuest $mainGuest): MainGuestResource|JsonResponse

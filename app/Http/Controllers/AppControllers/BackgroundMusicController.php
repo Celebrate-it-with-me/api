@@ -19,9 +19,6 @@ class BackgroundMusicController extends Controller
 {
     public function __construct(private readonly BackgroundMusicServices $suggestedMusicServices) {}
 
-    /**
-     * @param  Events  $events
-     */
     public function index(Request $request, Events $event): JsonResponse|BackgroundMusicResource
     {
         try {

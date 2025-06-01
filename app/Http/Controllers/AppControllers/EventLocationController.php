@@ -108,10 +108,11 @@ class EventLocationController extends Controller
                     'source' => 'google',
                 ]);
 
-                $saved->push([
-                    'url' => $placePhoto->path,
-                    'source' => $placePhoto->source,
-                ]
+                $saved->push(
+                    [
+                        'url' => $placePhoto->path,
+                        'source' => $placePhoto->source,
+                    ]
                 );
             }
         }

@@ -75,7 +75,8 @@ class EventsController extends Controller
     {
         try {
             return EventResource::collection($this->eventsServices->getFilteredEvents(
-                $request->input('query') ?? ''));
+                $request->input('query') ?? ''
+            ));
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }

@@ -38,7 +38,8 @@ class UserLoggedInEvent
 
         $device = $agent->isDesktop()
             ? 'Desktop'
-            : ($agent->isMobile()
+            : (
+                $agent->isMobile()
                 ? 'Mobile'
                 : ($agent->isTablet()
                     ? 'Tablet'

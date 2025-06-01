@@ -128,7 +128,6 @@ class InviteCollaboratorController extends Controller
      * updates the invite status as accepted.
      *
      * @param  Request  $request  The HTTP request instance containing the invite token.
-     * @param  $token
      * @return JsonResponse A JSON response indicating the success or failure of the operation.
      */
     public function accept(Events $event, string $id, Request $request): JsonResponse

@@ -22,10 +22,11 @@ class S3ObjectsController extends Controller
                 return response()->json(['message' => "Invalid folder $folder."], 400);
             }
 
-            return response()->json([
-                'result' => $folderObjects['result'],
-                'message' => $folderObjects['message'],
-            ],
+            return response()->json(
+                [
+                    'result' => $folderObjects['result'],
+                    'message' => $folderObjects['message'],
+                ],
                 $folderObjects['status']
             );
 

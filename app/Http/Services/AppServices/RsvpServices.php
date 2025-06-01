@@ -4,10 +4,7 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
 use App\Models\Guest;
-use App\Models\GuestCompanion;
 use App\Models\Rsvp;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -61,10 +58,6 @@ class RsvpServices
         }
     }
 
-    /**
-     * @param  mixed  $companion
-     * @param  Model|Collection|GuestCompanion|null  $guestCompanion
-     */
     private function saveGuest(array $guestData, Guest $guest): void
     {
         $guest->name = $guestData['name'];

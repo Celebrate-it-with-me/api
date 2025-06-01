@@ -25,8 +25,6 @@ class DressCodeServices
 
     /**
      * Create a new dress code for the specified event with the provided data.
-     *
-     * @param  $events
      */
     public function createDressCode($event, $data): Model|DressCode
     {

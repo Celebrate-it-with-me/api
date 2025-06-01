@@ -47,7 +47,7 @@ class EventUserRolPolicy
         return false;
     }
 
-     /**
+    /**
      * Determine whether the user can restore the model.
      */
     public function restore(User $user, EventUserRole $eventUserRol): bool

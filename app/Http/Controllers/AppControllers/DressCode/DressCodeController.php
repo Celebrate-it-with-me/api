@@ -56,7 +56,6 @@ class DressCodeController extends Controller
      * JSON response with an error message is returned.
      *
      * @param  Request  $request  The HTTP request containing the dress code data.
-     * @param  Events  $events  The event for which the dress code is being created.
      * @return DressCodeResource|JsonResponse The created dress code resource on success or a JSON response in case of failure.
      *
      * @throws Exception If an error occurs during the process.
