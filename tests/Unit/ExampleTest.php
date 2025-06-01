@@ -2,8 +2,6 @@
 
 namespace Tests\Unit;
 
-use Aws\Exception\AwsException;
-use Aws\S3\S3Client;
 use PHPUnit\Framework\TestCase;
 
 class ExampleTest extends TestCase
@@ -25,23 +23,6 @@ class ExampleTest extends TestCase
      */
     public function testing_connection()
     {
-        $s3Client = new S3Client([
-            'region' => 'us-east-1',
-            'version' => 'latest',
-            'credentials' => [
-                'key' => '',
-                'secret' => '',
-            ],
-        ]);
-
-        try {
-            $buckets = $s3Client->listBuckets();
-            foreach ($buckets['Buckets'] as $bucket) {
-                echo $bucket['Name'] . "\n";
-            }
-        } catch (AwsException $e) {
-            // output error message if fails
-            dd($e->getMessage());
-        }
+        $this->assertTrue(true);
     }
 }

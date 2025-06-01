@@ -107,13 +107,6 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         });
     });
 
-    // Events Routes
-    Route::prefix('events')->name('events.')->group(function () {
-        Route::get('', [EventsController::class, 'index'])->name('index');
-        Route::get('load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
-            ->name('loanEventsPlansAndType');
-    });
-
     // Event Routes
     Route::prefix('event')->name('event.')->group(function () {
         // Event CRUD
