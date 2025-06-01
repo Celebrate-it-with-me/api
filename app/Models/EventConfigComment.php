@@ -23,10 +23,9 @@ class EventConfigComment extends Model
         'button_text',
         'max_comments',
     ];
-  
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
-    
 }

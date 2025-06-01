@@ -16,12 +16,11 @@ class GuestInvitation extends Model
         'status',
         'message_preview',
         'response_payload',
-        'attempted_by'
+        'attempted_by',
     ];
-    
+
     /**
      * Get the guest that this invitation belongs to.
-     * @return BelongsTo
      */
     public function guest(): BelongsTo
     {

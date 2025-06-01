@@ -14,18 +14,17 @@ use Illuminate\Support\Facades\Hash;
 class UsersServices
 {
     protected Request $request;
+
     protected Authenticatable $user;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->user = new User();
+        $this->user = new User;
     }
 
     /**
      * Get User resource.
-     * @param User $user
-     * @return UserResource
      */
     public function getUser(User $user): UserResource
     {
@@ -34,7 +33,6 @@ class UsersServices
 
     /**
      * Get All users.
-     * @return AnonymousResourceCollection
      */
     public function getUsersWithPagination(): AnonymousResourceCollection
     {
@@ -44,7 +42,7 @@ class UsersServices
         $userBuild = User::query();
 
         if ($search) {
-            $userBuild = $userBuild->where(function($query) use ($search){
+            $userBuild = $userBuild->where(function ($query) use ($search) {
                 $query->where('name', 'LIKE', "%$search%")
                     ->orWhere('email', 'LIKE', "%$search%");
             });
@@ -55,7 +53,6 @@ class UsersServices
 
     /**
      * Create user function.
-     * @return Model|Builder
      */
     public function create(): Model|Builder
     {
@@ -68,8 +65,6 @@ class UsersServices
 
     /**
      * Update user info;
-     * @param User $user
-     * @return User|Authenticatable
      */
     public function update(User $user): User|Authenticatable
     {
@@ -89,8 +84,6 @@ class UsersServices
 
     /**
      * Delete user from db.
-     * @param User $user
-     * @return User
      */
     public function destroy(User $user): User
     {

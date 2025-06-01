@@ -5,7 +5,6 @@ namespace App\Http\Resources\AppResources;
 use App\Http\Resources\MainGuestResource;
 use App\Http\Resources\UserResource;
 use App\Models\Guest;
-use App\Models\MainGuest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -25,9 +24,9 @@ class EventCommentResource extends JsonResource
         $createdBy = ($created instanceof Guest)
             ? GuestResource::make($created)
             : UserResource::make($created);
-        
+
         $author = $createdBy->name;
-        
+
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
@@ -40,7 +39,7 @@ class EventCommentResource extends JsonResource
             'updatedAt' => $this->updated_at->diffForHumans(),
         ];
     }
-    
+
     /**
      * Retrieves the creator of this resource and returns it as either a UserResource or MainGuestResource
      * based on the class type of the creator.
@@ -52,7 +51,7 @@ class EventCommentResource extends JsonResource
         if ($this->created_by_class === User::class) {
             return User::find($this->created_by_id);
         }
-        
+
         return Guest::find($this->created_by_id);
     }
 }

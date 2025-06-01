@@ -24,18 +24,18 @@ class UpdateSaveTheDateRequest extends FormRequest
     public function rules(): array
     {
         Log::info('request from std', [$this->all()]);
-        
+
         return [
             'stdTitle' => 'required|string|max:255',
             'stdSubTitle' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'backgroundColor' => ['nullable', 'string', new ColorRule()],
+            'backgroundColor' => ['nullable', 'string', new ColorRule],
             'useCountdown' => 'required|boolean',
             'useAddToCalendar' => 'required|boolean',
             'isEnabled' => 'required|boolean',
         ];
     }
-    
+
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -44,10 +44,9 @@ class UpdateSaveTheDateRequest extends FormRequest
             'isEnabled' => $this->convertToBoolean($this->input('isEnabled')),
         ]);
     }
-    
+
     private function convertToBoolean($value): bool
     {
         return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
-    
 }

@@ -5,7 +5,6 @@ namespace App\Http\Resources\AppResources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-
 class EventLocationResource extends JsonResource
 {
     /**
@@ -27,10 +26,9 @@ class EventLocationResource extends JsonResource
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'isDefault' => $this->is_default,
-            
+
             'images' => EventLocationImageResource::collection($this->eventLocationImages),
-            
+
         ];
     }
-    
 }

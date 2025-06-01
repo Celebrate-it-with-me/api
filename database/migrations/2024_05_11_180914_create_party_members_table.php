@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('main_guest_id');
             $table->string('name');
-            $table->enum('confirmed',['unused','yes', 'no', 'maybe']);
+            $table->enum('confirmed', ['unused', 'yes', 'no', 'maybe']);
             $table->timestamp('confirmed_date')->nullable();
             $table->timestamps();
         });

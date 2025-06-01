@@ -13,7 +13,6 @@ use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class EventsController extends Controller
@@ -27,25 +26,23 @@ class EventsController extends Controller
     {
         try {
             [$events, $lastActiveEvent] = $this->eventsServices->getUserEvents();
-            
+
             return response()->json([
                 'message' => 'Events retrieved successfully.',
                 'data' => [
                     'events' => EventResource::collection($events),
                     'last_active_event' => $lastActiveEvent ? EventResource::make($lastActiveEvent) : null,
-                ]
+                ],
             ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => [
-                'trace' => $th->getTraceAsString()
+                'trace' => $th->getTraceAsString(),
             ]], 500);
         }
     }
-    
+
     /**
      * Set the active event for the user.
-     * @param Request $request
-     * @return JsonResponse
      */
     public function activeEvent(Request $request): JsonResponse
     {
@@ -54,29 +51,25 @@ class EventsController extends Controller
             $event = Events::query()
                 ->where('id', $request->input('eventId'))
                 ->first();
-            
-            if (!$event) {
+
+            if (! $event) {
                 return response()->json(['message' => 'Event not found 123.'], 404);
             }
-            
+
             $user->last_active_event_id = $event->id;
             $user->save();
-            
+
             return response()->json([
                 'message' => 'Event activated successfully.',
-                'data' => EventResource::make($event)
+                'data' => EventResource::make($event),
             ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
-    
-    
+
     /**
      * Filtering events.
-     * @param Request $request
-     * @return JsonResponse|AnonymousResourceCollection
      */
     public function filterEvents(Request $request): JsonResponse|AnonymousResourceCollection
     {
@@ -90,8 +83,6 @@ class EventsController extends Controller
 
     /**
      * Store user event.
-     * @param StoreeventsRequest $request
-     * @return JsonResponse|EventResource
      */
     public function store(StoreEventsRequest $request): JsonResponse|EventResource
     {
@@ -134,49 +125,45 @@ class EventsController extends Controller
         try {
             return response()->json([
                 'message' => 'Event deleted successfully.',
-                'data' => $this->eventsServices->destroy($event)
+                'data' => $this->eventsServices->destroy($event),
             ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve event types and loan plans.
-     * @return JsonResponse
      */
     public function loanEventsPlansAndType(): JsonResponse
     {
         try {
             $eventTypes = $this->eventsServices->getEventTypes();
             $eventPlans = $this->eventsServices->getEventPlans();
-            
+
             return response()->json([
                 'message' => 'Event types and loan plans retrieved successfully.',
                 'data' => [
-                    'eventTypes' =>  EventTypesResource::collection($eventTypes),
+                    'eventTypes' => EventTypesResource::collection($eventTypes),
                     'eventPlans' => EventPlansResource::collection($eventPlans),
-                ]
+                ],
             ]);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve event suggestions.
-     * @param Events $event
-     * @return JsonResponse
      */
     public function suggestions(Events $event): JsonResponse
     {
         try {
             $suggestions = $this->eventsServices->getEventSuggestions($event);
-            
+
             return response()->json($suggestions);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
 }

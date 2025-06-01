@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('main_guests', function(Blueprint $table) {
-           $table->string('email')->nullable()->change();
+        Schema::table('main_guests', function (Blueprint $table) {
+            $table->string('email')->nullable()->change();
         });
-        
+
     }
 
     /**
@@ -22,8 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('main_guests', function(Blueprint $table) {
-           $table->string('email')->nullable(false)->change();
+        Schema::table('main_guests', function (Blueprint $table) {
+            $table->string('email')->nullable(false)->change();
         });
     }
 };

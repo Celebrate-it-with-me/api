@@ -20,11 +20,11 @@ class TwilioServices
     public function sendSMS($to, $message): void
     {
         $this->client->messages->create(
-        // Where to send a text message (your cell phone?)
+            // Where to send a text message (your cell phone?)
             $to,
             [
                 'from' => 'Your_Twilio_Number',
-                'body' => $message
+                'body' => $message,
             ]
         );
     }

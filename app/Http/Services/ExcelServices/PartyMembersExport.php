@@ -9,8 +9,7 @@ class PartyMembersExport extends TotalExportHandle
     /**
      * Initialize data for the application.
      *
-     * @param mixed ...$args The arguments for the method.
-     * @return void
+     * @param  mixed  ...$args  The arguments for the method.
      */
     public function initData(...$args): void
     {
@@ -20,17 +19,17 @@ class PartyMembersExport extends TotalExportHandle
         $data = [];
 
         $headers = [
-            'Name', 'Main Guest', 'Confirmed'
+            'Name', 'Main Guest', 'Confirmed',
         ];
 
         $data[] = $headers;
 
-        $partyMembers->each(function($member) use(&$data){
-           $data[] = [
-               $member->name,
-               "{$member->mainGuest->first_name} {$member->mainGuest->last_name}",
-               $member->confirmed,
-           ];
+        $partyMembers->each(function ($member) use (&$data) {
+            $data[] = [
+                $member->name,
+                "{$member->mainGuest->first_name} {$member->mainGuest->last_name}",
+                $member->confirmed,
+            ];
         });
 
         $this->data = $data;

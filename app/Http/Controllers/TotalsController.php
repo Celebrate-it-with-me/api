@@ -20,13 +20,11 @@ class TotalsController extends Controller
 
     /**
      * Get the totals.
-     *
-     * @return JsonResponse
      */
     public function getTotals(): JsonResponse
     {
         try {
-            return response()->json(['totals' => (new TotalsServices())->totals()]);
+            return response()->json(['totals' => (new TotalsServices)->totals()]);
         } catch (Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -34,13 +32,11 @@ class TotalsController extends Controller
 
     /**
      * Get the total details.
-     *
-     * @return JsonResponse
      */
     public function totalDetails(string $type): JsonResponse
     {
         try {
-            return response()->json(['totals' => (new TotalsServices())->details($type)]);
+            return response()->json(['totals' => (new TotalsServices)->details($type)]);
         } catch (Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -49,7 +45,7 @@ class TotalsController extends Controller
     /**
      * Export excel file based on the given type
      *
-     * @param string $type The type of export (e.g. 'sales', 'orders')
+     * @param  string  $type  The type of export (e.g. 'sales', 'orders')
      * @return \Illuminate\Http\BinaryFileResponse|\Illuminate\Http\JsonResponse
      */
     public function exportExcel(string $type): BinaryFileResponse|JsonResponse

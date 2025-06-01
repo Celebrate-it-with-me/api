@@ -14,27 +14,28 @@ class UserLoggedInEvent
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public User $user;
+
     public Request $request;
+
     public array $agentData;
-    
+
     /**
      * Create a new event instance.
      */
-    public function __construct(User $user, Request $request )
+    public function __construct(User $user, Request $request)
     {
         $this->user = $user;
         $this->request = $request;
         $this->agentData = $this->initAgentData();
     }
-    
+
     /**
      * Init Agent data.
-     * @return array
      */
     private function initAgentData(): array
     {
-        $agent = new Agent();
-        
+        $agent = new Agent;
+
         $device = $agent->isDesktop()
             ? 'Desktop'
             : ($agent->isMobile()
@@ -45,14 +46,14 @@ class UserLoggedInEvent
             );
         $browser = $agent->browser();
         $platform = $agent->platform();
-        
+
         return [
-          'browser' => $browser,
-          'platform' => $platform,
-          'device' => $device,
+            'browser' => $browser,
+            'platform' => $platform,
+            'device' => $device,
         ];
     }
-    
+
     /**
      * Get the channels the event should broadcast on.
      *

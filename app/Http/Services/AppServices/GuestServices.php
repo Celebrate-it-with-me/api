@@ -19,12 +19,13 @@ use Illuminate\Support\Str;
 class GuestServices
 {
     protected Request $request;
+
     protected MainGuest $guest;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->guest = new MainGuest();
+        $this->guest = new MainGuest;
     }
 
     /**
@@ -35,14 +36,14 @@ class GuestServices
         $perPage = $this->request->input('perPage', 10);
         $page = $this->request->input('page', 1);
         $searchValue = $this->request->input('searchValue');
-        
+
         Log::info('checking guests', [
             'event_id' => $event->id,
             'perPage' => $perPage,
             'page' => $page,
             'searchValue' => $searchValue,
         ]);
-        
+
         return Guest::query()
             ->where('event_id', $event->id)
             ->whereNull('parent_id')
@@ -57,12 +58,10 @@ class GuestServices
             ->orderBy('created_at', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
     }
-    
-    
+
     /**
      * Create event guest.
-     * @param Events $event
-     * @return Model|Builder
+     *
      * @throws Exception
      */
     public function create(Events $event): Model|Builder
@@ -71,7 +70,7 @@ class GuestServices
         $preferences = $this->request->input('preferences', []);
         $namedCompanions = $this->request->input('namedCompanions', []);
         $unnamedCompanions = (int) $this->request->input('unnamedCompanions', 0);
-        
+
         $mainGuest = Guest::query()->create([
             'event_id' => $event->id,
             'name' => $guestData['name'],
@@ -84,11 +83,11 @@ class GuestServices
             'rsvp_status' => 'pending',
             'code' => $this->calculateAccessCode(),
         ]);
-        
-        if (!$mainGuest) {
+
+        if (! $mainGuest) {
             throw new \Exception('Failed to create the main guest.');
         }
-        
+
         if (count($namedCompanions) > 0) {
             foreach ($namedCompanions as $companion) {
                 Guest::query()->create([
@@ -102,8 +101,7 @@ class GuestServices
                 ]);
             }
         }
-        
-        
+
         if ($unnamedCompanions > 0) {
             for ($i = 0; $i < $unnamedCompanions; $i++) {
                 Guest::query()->create([
@@ -116,7 +114,7 @@ class GuestServices
                 ]);
             }
         }
-        
+
         EventActivityLogger::log(
             $event->id,
             'guest_created',
@@ -133,69 +131,65 @@ class GuestServices
                 ],
             ]
         );
-        
+
         return $mainGuest;
     }
-    
-    
+
     /**
      * Auto generate access code.
-     * @return string
      */
     private function calculateAccessCode(): string
     {
         $code = Str::upper(Str::random(2));
         $eventId = $this->request->input('eventId');
-        
+
         do {
             $randomNumber = random_int(1000, 9999);
             $fullCode = $code . $randomNumber;
-            
-            $isUnique = !Guest::query()
+
+            $isUnique = ! Guest::query()
                 ->where('event_id', $eventId)
                 ->where('code', $fullCode)
                 ->exists();
-        } while (!$isUnique);
-        
+        } while (! $isUnique);
+
         return $fullCode;
     }
-    
+
     /**
      * Updates the companion type for the specified main guest.
      *
-     * @param MainGuest $mainGuest The main guest instance whose companion type is being updated.
-     * @param Request $request The HTTP request containing the data for the companion type update.
-     *
+     * @param  MainGuest  $mainGuest  The main guest instance whose companion type is being updated.
+     * @param  Request  $request  The HTTP request containing the data for the companion type update.
      * @return MainGuest The updated main guest instance.
      */
     public function updateCompanionType(MainGuest $mainGuest, Request $request): MainGuest
     {
         $requestArray = $request->all();
-        
+
         if (count($requestArray)) {
             foreach ($requestArray as $key => $value) {
                 $snakeCaseKey = Str::snake($key);
                 $mainGuest->{$snakeCaseKey} = $value;
-                
+
                 if ($snakeCaseKey === 'companionType') {
                     $this->deleteCompanions($value, $mainGuest);
                 }
             }
         }
-        
+
         $mainGuest->save();
-        
+
         $mainGuest->refresh();
+
         return $mainGuest;
     }
-    
+
     /**
      * Deletes the companions associated with the specified main guest based on the companion type.
      *
-     * @param string $companionType The type of companion to evaluate for deletion.
-     * @param MainGuest $mainGuest The main guest instance whose companions may be deleted.
-     *
-     * @return void
+     * @param  string  $companionType  The type of companion to evaluate for deletion.
+     * @param  MainGuest  $mainGuest  The main guest instance whose companions may be deleted.
      */
     private function deleteCompanions(string $companionType, MainGuest $mainGuest): void
     {
@@ -205,16 +199,15 @@ class GuestServices
                 ->delete();
         }
     }
-    
+
     /**
      * Deletes the specified guest from the database.
      *
-     * @param Guest $guest The guest instance to be deleted.
-     * @return void
+     * @param  Guest  $guest  The guest instance to be deleted.
      */
     public function delete(Guest $guest): void
     {
-     
+
         EventActivityLogger::log(
             $guest->event_id,
             'guest_deleted',
@@ -227,10 +220,10 @@ class GuestServices
                 'code' => $guest->code,
             ]
         );
-        
+
         $guest->delete();
     }
-    
+
     public function showGuest(Guest $guest): Guest
     {
         return $guest->load([
@@ -246,5 +239,4 @@ class GuestServices
             },
         ]);
     }
-
 }

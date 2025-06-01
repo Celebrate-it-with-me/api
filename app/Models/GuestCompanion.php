@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-
 class GuestCompanion extends Model
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -26,13 +25,11 @@ class GuestCompanion extends Model
         'phone_number',
         'confirmed',
         'confirmed_at',
-        'meal_preference'
+        'meal_preference',
     ];
-    
+
     /**
      * Define a relationship to the MainGuest model.
-     *
-     * @return BelongsTo
      */
     public function mainGuest(): BelongsTo
     {

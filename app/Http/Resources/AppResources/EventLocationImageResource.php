@@ -5,7 +5,6 @@ namespace App\Http\Resources\AppResources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-
 class EventLocationImageResource extends JsonResource
 {
     /**
@@ -24,5 +23,4 @@ class EventLocationImageResource extends JsonResource
             'source' => $this->source,
         ];
     }
-    
 }

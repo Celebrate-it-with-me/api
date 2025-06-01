@@ -11,14 +11,12 @@ use App\Http\Services\AppServices\SuggestedMusicServices;
 use App\Models\Events;
 use App\Models\SuggestedMusic;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Throwable;
 
 class SuggestedMusicController extends Controller
 {
-    
-    public function __construct(private readonly SuggestedMusicServices  $suggestedMusicServices) {}
-    
+    public function __construct(private readonly SuggestedMusicServices $suggestedMusicServices) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -31,11 +29,11 @@ class SuggestedMusicController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store a newly created resource in storage.
-     * @param StoreSaveTheDateRequest $request
-     * @param Events $event
+     *
+     * @param  StoreSaveTheDateRequest  $request
      * @return SaveTheDateResource|JsonResponse
      */
     public function store(StoreSuggestedMusicRequest $request, Events $event): JsonResponse|SuggestedMusicResource

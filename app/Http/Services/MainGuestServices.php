@@ -10,24 +10,22 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class MainGuestServices
 {
     protected Request $request;
+
     private MainGuest $mainGuest;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->mainGuest = new MainGuest();
+        $this->mainGuest = new MainGuest;
     }
 
     /**
      * Get main guest resource.
-     * @param MainGuest $mainGuest
-     * @return MainGuestResource
      */
     public function getMainGuest(MainGuest $mainGuest): MainGuestResource
     {
@@ -36,7 +34,6 @@ class MainGuestServices
 
     /**
      * Get All main guests.
-     * @return AnonymousResourceCollection
      */
     public function getMainGuestWithPagination(): AnonymousResourceCollection
     {
@@ -47,18 +44,18 @@ class MainGuestServices
         $mainGuests = MainGuest::query()->with(['partyMembers']);
 
         if ($search) {
-            $mainGuests = $mainGuests->where(function($query) use ($search){
+            $mainGuests = $mainGuests->where(function ($query) use ($search) {
                 $query->where('first_name', 'LIKE', "%$search%")
                     ->orWhere('email', 'LIKE', "%$search%");
-                });
+            });
         }
 
         if ($confirmedStatus && $confirmedStatus !== 'select') {
             if ($confirmedStatus === 'ny') {
-                $mainGuests = $mainGuests->where('confirmed','unused');
+                $mainGuests = $mainGuests->where('confirmed', 'unused');
             } else {
                 $mainGuests = $mainGuests->where('confirmed', $confirmedStatus)
-                    ->orWhereHas('partyMembers', function($query) use($confirmedStatus){
+                    ->orWhereHas('partyMembers', function ($query) use ($confirmedStatus) {
                         $query->where('confirmed', $confirmedStatus);
                     });
             }
@@ -69,7 +66,7 @@ class MainGuestServices
 
     /**
      * Create main guest, function.
-     * @return Model|Builder
+     *
      * @throws \Exception
      */
     public function create(): Model|Builder
@@ -81,10 +78,10 @@ class MainGuestServices
             'phone_number' => $this->request->input('phoneNumber'),
             'confirmed' => 'unused',
             'confirmed_date' => null,
-            'access_code' => $this->calculateAccessCode()
+            'access_code' => $this->calculateAccessCode(),
         ]);
 
-        if (!$mainGuest) {
+        if (! $mainGuest) {
             throw new \Exception('Error creating the main guest!');
         }
 
@@ -93,17 +90,17 @@ class MainGuestServices
             foreach ($partyMembers as $member) {
                 PartyMember::query()->create([
                     'main_guest_id' => $mainGuest->id,
-                    'name'  => $member->name,
+                    'name' => $member->name,
                     'confirmed' => 'unused',
                 ]);
             }
         }
+
         return $mainGuest;
     }
 
     /**
      * Auto generate access code.
-     * @return string
      */
     private function calculateAccessCode(): string
     {
@@ -118,7 +115,7 @@ class MainGuestServices
 
     /**
      * Update Main guest info;
-     * @param MainGuest $mainGuest
+     *
      * @return Collection|Builder|Builder[]|Model
      */
     public function update(MainGuest $mainGuest): Builder|array|Collection|Model
@@ -151,8 +148,6 @@ class MainGuestServices
 
     /**
      * Delete Main Guest from db.
-     * @param MainGuest $mainGuest
-     * @return MainGuest
      */
     public function destroy(MainGuest $mainGuest): MainGuest
     {

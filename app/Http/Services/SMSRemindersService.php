@@ -2,10 +2,8 @@
 
 namespace App\Http\Services;
 
-use App\Http\Resources\MainGuestResource;
 use App\Http\Resources\SmsReminderResource;
 use App\Models\MainGuest;
-use App\Models\PartyMember;
 use App\Models\SmsReminder;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,18 +24,17 @@ class SMSRemindersService
 
     /**
      * Get main guest name and phone confirmed.
-     * @return Collection|null
      */
     public function getRecipients(): ?Collection
     {
         $mainGuests = MainGuest::query()->get();
 
-        $mainGuests = $mainGuests?->filter(function($guest) {
-            return !!$this->getPhoneNumber($guest);
-        })->map(function($guest) {
+        $mainGuests = $mainGuests?->filter(function ($guest) {
+            return (bool) $this->getPhoneNumber($guest);
+        })->map(function ($guest) {
             return [
                 'name' => "$guest->first_name $guest->last_name",
-                'phoneNumber' => $this->getPhoneNumber($guest)
+                'phoneNumber' => $this->getPhoneNumber($guest),
             ];
         });
 
@@ -49,12 +46,12 @@ class SMSRemindersService
     /**
      * Get the phone number of a guest.
      *
-     * @param MainGuest $guest The guest object.
-     * @return string  The phone number.
+     * @param  MainGuest  $guest  The guest object.
+     * @return string The phone number.
      */
     private function getPhoneNumber(MainGuest $guest): string
     {
-        if($guest->phone_confirmed) {
+        if ($guest->phone_confirmed) {
             if ($guest->extra_phone) {
                 return $guest->extra_phone;
             }
@@ -67,7 +64,6 @@ class SMSRemindersService
 
     /**
      * Getting SMS reminders with Pagination.
-     * @return AnonymousResourceCollection
      */
     public function getRemindersWithPagination(): AnonymousResourceCollection
     {
@@ -77,7 +73,6 @@ class SMSRemindersService
 
         return SmsReminderResource::collection($smsReminders->paginate($perPage));
     }
-
 
     /**
      * @throws Exception
@@ -90,7 +85,7 @@ class SMSRemindersService
             'send_date' => Carbon::parse($this->request->input('sendDate')),
         ]);
 
-        if (!$smsReminder) {
+        if (! $smsReminder) {
             throw new Exception('Ups, something went wrong, please try again later!');
         }
 
@@ -100,7 +95,7 @@ class SMSRemindersService
     /**
      * Update an SMS reminder.
      *
-     * @param SmsReminder $smsReminder The SMS reminder object to be updated.
+     * @param  SmsReminder  $smsReminder  The SMS reminder object to be updated.
      * @return SmsReminder The updated SMS reminder.
      */
     public function update(SmsReminder $smsReminder): SmsReminder
@@ -119,7 +114,7 @@ class SMSRemindersService
     /**
      * Destroy an SMS reminder.
      *
-     * @param SmsReminder $smsReminder The SMS reminder to be destroyed.
+     * @param  SmsReminder  $smsReminder  The SMS reminder to be destroyed.
      * @return SmsReminder The destroyed SMS reminder.
      */
     public function destroy(SmsReminder $smsReminder): SmsReminder

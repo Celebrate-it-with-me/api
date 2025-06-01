@@ -4,7 +4,7 @@ namespace App\Http\Services\ExcelServices;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 
-abstract class TotalExportHandle implements FromArray, Exportable
+abstract class TotalExportHandle implements Exportable, FromArray
 {
     protected array $data;
 
@@ -17,8 +17,6 @@ abstract class TotalExportHandle implements FromArray, Exportable
 
     /**
      * Get the data.
-     *
-     * @return array
      */
     public function array(): array
     {

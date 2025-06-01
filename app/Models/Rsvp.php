@@ -10,17 +10,17 @@ class Rsvp extends Model
 {
     /** @use HasFactory<\Database\Factories\RsvpFactory> */
     use HasFactory;
-    
+
     protected $table = 'rsvps';
-    
+
     protected $fillable = [
         'event_id',
         'title',
         'description',
         'custom_fields',
-        'confirmation_deadline'
+        'confirmation_deadline',
     ];
-    
+
     /**
      * Defines the relationship between this model and the Events model, establishing
      * a "belongs to" association using the event_id foreign key.

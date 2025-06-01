@@ -12,8 +12,9 @@ class GooglePlacePhotosQueued implements ShouldQueue
     use Dispatchable, SerializesModels;
 
     public EventLocation $eventLocation;
+
     public array $photosReferences;
-    
+
     /**
      * Create a new event instance.
      */

@@ -17,13 +17,10 @@ use Throwable;
 
 class BackgroundMusicController extends Controller
 {
-    
-    public function __construct(private readonly BackgroundMusicServices  $suggestedMusicServices) {}
-    
+    public function __construct(private readonly BackgroundMusicServices $suggestedMusicServices) {}
+
     /**
-     * @param Request $request
-     * @param Events $events
-     * @return JsonResponse|BackgroundMusicResource
+     * @param  Events  $events
      */
     public function index(Request $request, Events $event): JsonResponse|BackgroundMusicResource
     {
@@ -33,11 +30,10 @@ class BackgroundMusicController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store a newly created resource in storage.
-     * @param BackgroundMusicRequest $request
-     * @param Events $event
+     *
      * @return SaveTheDateResource|JsonResponse
      */
     public function store(BackgroundMusicRequest $request, Events $event): JsonResponse|BackgroundMusicResource
@@ -48,17 +44,16 @@ class BackgroundMusicController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Update the specified resource in storage.
-     * @param BackgroundMusicEditRequest $request
-     * @param BackgroundMusic $backgroundMusic
-     * @return JsonResponse|BackgroundMusicResource
+     *
+     * @param  BackgroundMusicEditRequest  $request
      */
     public function update(Request $request, BackgroundMusic $backgroundMusic): JsonResponse|BackgroundMusicResource
     {
         Log::info('Checking request', ['request' => $request->all()]);
-        
+
         try {
             return BackgroundMusicResource::make($this->suggestedMusicServices->update($backgroundMusic));
         } catch (Throwable $th) {

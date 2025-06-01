@@ -3,6 +3,9 @@
     "rules": {
         "concat_space": {
             "spacing": "one"
+        },
+        "array_syntax": {
+            "syntax": "short"
         }
     }
 }

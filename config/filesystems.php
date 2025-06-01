@@ -48,11 +48,11 @@ return [
                 'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
                 'visibility' => 'public',
             ]
-            
+
             : [
                 'driver' => 'local',
                 'root' => storage_path('app/public'),
-                'url' => env('APP_URL').'/storage',
+                'url' => env('APP_URL') . '/storage',
                 'visibility' => 'public',
                 'throw' => false,
             ],
@@ -69,7 +69,7 @@ return [
             'visibility' => 'public',
             'throw' => true,
         ],
-        
+
         'sweet-memories' => [
             'driver' => env('SWEET_MEMORIES_DRIVER', 'local'),
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -80,11 +80,11 @@ return [
                 ? env('SWEET_MEMORIES_ROOT', storage_path('app/public/sweet-memories'))
                 : null,
             'url' => (env('SWEET_MEMORIES_DRIVER') === 'local')
-                ? env('APP_URL').'/storage/sweet-memories'
+                ? env('APP_URL') . '/storage/sweet-memories'
                 : env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'throw' => true,
-        ]
+        ],
     ],
 
     /*

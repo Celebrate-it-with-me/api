@@ -27,12 +27,9 @@ class GuestController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store event guest.
-     * @param StoreGuestRequest $request
-     * @param Events $event
-     * @return JsonResponse|GuestResource
      */
     public function store(StoreGuestRequest $request, Events $event): JsonResponse|GuestResource
     {
@@ -42,31 +39,25 @@ class GuestController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Remove a guest from the event.
-     * @param Events $event
-     * @param Guest $guest
-     * @return JsonResponse
      */
     public function destroy(Events $event, Guest $guest): JsonResponse
     {
         try {
             $this->guestServices->delete($guest);
+
             return response()->json(['message' => 'Guest deleted successfully', 'data' => []], 200);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
-    
+
     /**
      * Show the event guest and all the relations.
-     * @param Events $event
-     * @param Guest $guest
-     * @return JsonResponse|GuestResource
      */
-    public function show(Events $event, Guest $guest): JsonResponse | GuestResource
+    public function show(Events $event, Guest $guest): JsonResponse|GuestResource
     {
         try {
             return GuestResource::make($this->guestServices->showGuest($guest));

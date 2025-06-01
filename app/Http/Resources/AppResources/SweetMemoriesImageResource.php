@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class SweetMemoriesImageResource extends JsonResource
 {
     protected const STORAGE_DISK = 'sweet-memories';
-    
+
     /**
      * Transform the resource into an array.
      *
@@ -18,13 +18,13 @@ class SweetMemoriesImageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        Log::debug("SweetMemoriesImageResource::toArray()", [
-                'driver' => config('filesystems.disks.sweet-memories.driver'),
-                'env_value' => env('SWEET_MEMORIES_DRIVER'),
-                'filesystem_disk' => config('filesystems.default'),
-            ]
+        Log::debug('SweetMemoriesImageResource::toArray()', [
+            'driver' => config('filesystems.disks.sweet-memories.driver'),
+            'env_value' => env('SWEET_MEMORIES_DRIVER'),
+            'filesystem_disk' => config('filesystems.default'),
+        ]
         );
-        
+
         return [
             'id' => $this->id,
             'imagePath' => Storage::disk(self::STORAGE_DISK)->url($this->image_path),

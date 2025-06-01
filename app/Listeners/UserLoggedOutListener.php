@@ -5,8 +5,6 @@ namespace App\Listeners;
 use App\Events\UserLoggedOutEvent;
 use App\Models\UserLoginSession;
 use Exception;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 
 class UserLoggedOutListener
@@ -30,13 +28,13 @@ class UserLoggedOutListener
                 ->whereNull('logout_time')
                 ->orderBy('id', 'desc')
                 ->first();
-            
+
             if ($lastEvent) {
                 $lastEvent->logout_time = now();
                 $lastEvent->save();
             }
-            
-        } catch(Exception $e) {
+
+        } catch (Exception $e) {
             Log::error($e->getMessage());
         }
     }

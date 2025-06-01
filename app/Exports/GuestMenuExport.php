@@ -14,15 +14,15 @@ use PhpOffice\PhpSpreadsheet\Exception;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAutoSize, WithEvents
+class GuestMenuExport implements FromArray, ShouldAutoSize, WithEvents, WithHeadings, WithStyles
 {
     private Events $event;
-    
+
     public function __construct(Events $event)
     {
         $this->event = $event;
     }
-    
+
     public function array(): array
     {
         $guests = Guest::query()
@@ -30,7 +30,7 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
             ->where('event_id', $this->event->id)
             ->orderBy('name')
             ->get();
-        
+
         return $guests->map(function ($guest) {
             return [
                 'Name' => $guest->name,
@@ -41,12 +41,12 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
             ];
         })->toArray();
     }
-    
+
     public function headings(): array
     {
         return ['Name', 'Email', 'Starter', 'Main Course', 'Dessert'];
     }
-    
+
     /**
      * @throws Exception
      */
@@ -62,10 +62,10 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
                 'startColor' => ['rgb' => 'FCE7F3'], // soft pink
             ],
         ]);
-        
+
         return [];
     }
-    
+
     public function registerEvents(): array
     {
         return [
@@ -73,14 +73,14 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
                 $sheet = $event->sheet->getDelegate();
                 $lastRow = $sheet->getHighestRow();
                 $startRow = $lastRow + 4;
-                
+
                 $guests = Guest::query()
                     ->with('selectedMenuItems')
                     ->where('event_id', $this->event->id)
                     ->get();
-                
+
                 $flatItems = [];
-                
+
                 foreach ($guests as $guest) {
                     foreach ($guest->selectedMenuItems as $item) {
                         $flatItems[] = [
@@ -89,10 +89,10 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
                         ];
                     }
                 }
-                
+
                 $grouped = collect($flatItems)
-                    ->groupBy(fn($i) => "{$i['type']}|{$i['name']}")
-                    ->map(fn($group, $key) => [
+                    ->groupBy(fn ($i) => "{$i['type']}|{$i['name']}")
+                    ->map(fn ($group, $key) => [
                         'type' => explode('|', $key)[0],
                         'name' => explode('|', $key)[1],
                         'count' => $group->count(),
@@ -106,20 +106,20 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
                         };
                     })
                     ->values();
-                
-                $sheet->setCellValue("A" . ($startRow - 1), 'Total by Dish');
-                $sheet->getStyle("A" . ($startRow - 1))->applyFromArray([
+
+                $sheet->setCellValue('A' . ($startRow - 1), 'Total by Dish');
+                $sheet->getStyle('A' . ($startRow - 1))->applyFromArray([
                     'font' => [
                         'bold' => false,
                         'size' => 14,
                         'color' => ['rgb' => '000000'],
                     ],
                 ]);
-                
+
                 $sheet->setCellValue("A{$startRow}", 'Dish Type');
                 $sheet->setCellValue("B{$startRow}", 'Dish Name');
                 $sheet->setCellValue("C{$startRow}", 'Total Selected');
-                
+
                 $sheet->getStyle("A{$startRow}:C{$startRow}")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [
@@ -127,7 +127,7 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
                         'startColor' => ['rgb' => 'F3E8FF'],
                     ],
                 ]);
-                
+
                 foreach ($grouped as $index => $row) {
                     $r = $startRow + 1 + $index;
                     $sheet->setCellValue("A{$r}", $row['type']);
@@ -137,6 +137,4 @@ class GuestMenuExport implements FromArray, WithHeadings, WithStyles, ShouldAuto
             },
         ];
     }
-    
-    
 }

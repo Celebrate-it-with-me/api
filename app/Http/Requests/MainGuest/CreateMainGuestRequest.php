@@ -27,7 +27,7 @@ class CreateMainGuestRequest extends FormRequest
             'lastName' => 'required|string',
             'email' => 'nullable|email',
             'phoneNumber' => 'required|string',
-            'partyMembers' => 'nullable|json'
+            'partyMembers' => 'nullable|json',
         ];
     }
 }

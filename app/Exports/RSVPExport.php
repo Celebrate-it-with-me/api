@@ -8,28 +8,30 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class RSVPExport implements FromCollection, WithHeadings
 {
-    
     public int $eventId;
+
     public ?string $status;
+
     public ?string $search;
+
     public int $perPage;
+
     public int $page;
-    
+
     public function __construct(
         int $eventId,
         ?string $status,
         ?string $search,
         int $perPage = 10,
         int $page = 1
-    )
-    {
+    ) {
         $this->eventId = $eventId;
         $this->status = $status;
         $this->search = $search;
         $this->perPage = $perPage;
         $this->page = $page;
     }
-    
+
     public function collection()
     {
         return Guest::query()
@@ -49,7 +51,7 @@ class RSVPExport implements FromCollection, WithHeadings
             ->get()
             ->flatMap(function ($guest) {
                 $rows = collect();
-                
+
                 $rows->push([
                     'Type' => 'Main Guest',
                     'Name' => $guest->name,
@@ -57,7 +59,7 @@ class RSVPExport implements FromCollection, WithHeadings
                     'Phone' => $guest->phone,
                     'Status' => ucfirst($guest->rsvp_status),
                 ]);
-                
+
                 foreach ($guest->companions as $companion) {
                     $rows->push([
                         'Type' => 'Companion of ' . $guest->name,
@@ -67,11 +69,11 @@ class RSVPExport implements FromCollection, WithHeadings
                         'Status' => ucfirst($companion->rsvp_status ?? 'Pending'),
                     ]);
                 }
-                
+
                 return $rows;
             });
     }
-    
+
     public function headings(): array
     {
         return ['Guest Type', 'Name', 'Email', 'Phone', 'Status'];

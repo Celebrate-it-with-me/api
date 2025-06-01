@@ -27,7 +27,7 @@ class EventFeatureResource extends JsonResource
             'seatsAccommodation' => $this->seats_accommodation,
             'preview' => $this->preview,
             'budget' => $this->budget,
-            'analytics' => $this->analytics
+            'analytics' => $this->analytics,
         ];
     }
 }

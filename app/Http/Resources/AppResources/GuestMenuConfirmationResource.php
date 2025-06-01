@@ -2,11 +2,8 @@
 
 namespace App\Http\Resources\AppResources;
 
-use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Log;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class GuestMenuConfirmationResource extends JsonResource
 {
@@ -30,19 +27,18 @@ class GuestMenuConfirmationResource extends JsonResource
             'dessertName' => $this->getNameByMenuType('dessert'),
         ];
     }
-    
-    
+
     private function getNameByMenuType(string $type): string
     {
-        if (!$this->selectedMenuItems) {
+        if (! $this->selectedMenuItems) {
             return 'N/A';
         }
-        
+
         $starter = $this->selectedMenuItems->where('type', $type)->first();
-        if (!$starter) {
+        if (! $starter) {
             return 'N/A';
         }
-        
+
         return $starter->name;
     }
 }

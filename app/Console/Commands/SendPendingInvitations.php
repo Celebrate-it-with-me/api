@@ -34,27 +34,29 @@ class SendPendingInvitations extends Command
             ->where('status', 'pending')
             ->whereNull('sent_at')
             ->get();
-        
-        if (!$pending->count()) {
+
+        if (! $pending->count()) {
             $this->info('No pending invitations to send.');
+
             return 0;
         }
-        
+
         $pending->each(function ($invite) {
             $user = User::query()->where('email', $invite->email)->first();
-            
+
             // Send email based on whether the user is registered or not
             Mail::to($invite->email)->send(
                 $user
                     ? new InviteRegisteredUserMail($invite)
                     : new InviteUnregisteredUserMail($invite)
             );
-            
+
             $invite->sent_at = now();
             $invite->save();
         });
-        
+
         $this->info('Pending invitations sent successfully.');
+
         return 0;
     }
 }

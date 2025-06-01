@@ -19,6 +19,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get("/status", StatusController::class);
+Route::get('/status', StatusController::class);
 
 // Route::get("/testing", [S3ObjectsController::class, 'getObjects']);

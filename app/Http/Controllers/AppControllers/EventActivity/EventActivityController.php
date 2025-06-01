@@ -11,9 +11,6 @@ class EventActivityController extends Controller
 {
     /**
      * Get the latest 10 activities for the dashboard.
-     *
-     * @param Events $event
-     * @return AnonymousResourceCollection
      */
     public function dashboardLogs(Events $event): AnonymousResourceCollection
     {

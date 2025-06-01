@@ -26,14 +26,14 @@ class StoreGuestRequest extends FormRequest
             'guest.name' => ['required', 'string', 'max:255'],
             'guest.email' => ['nullable', 'email', 'max:255'],
             'guest.phone' => ['nullable', 'string', 'max:20'],
-            
+
             'namedCompanions' => ['nullable', 'array'],
             'namedCompanions.*.name' => ['required_with:namedCompanions', 'string', 'max:255'],
             'namedCompanions.*.email' => ['nullable', 'email', 'max:255'],
             'namedCompanions.*.phone' => ['nullable', 'string', 'max:20'],
-            
+
             'unnamedCompanions' => ['nullable', 'integer', 'min:0'],
-            
+
             'preferences' => ['nullable', 'array'],
             'preferences.meal_preference' => ['nullable', 'string', 'max:255'],
             'preferences.allergies' => ['nullable', 'string', 'max:255'],

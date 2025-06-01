@@ -2,9 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\EventUserRol;
+use App\Models\EventUserRole;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class EventUserRolPolicy
 {
@@ -19,7 +18,7 @@ class EventUserRolPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, EventUserRol $eventUserRol): bool
+    public function view(User $user, EventUserRole $eventUserRol): bool
     {
         return false;
     }
@@ -35,7 +34,7 @@ class EventUserRolPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, EventUserRol $eventUserRol): bool
+    public function update(User $user, EventUserRole $eventUserRol): bool
     {
         return false;
     }
@@ -43,15 +42,15 @@ class EventUserRolPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, EventUserRol $eventUserRol): bool
+    public function delete(User $user, EventUserRole $eventUserRol): bool
     {
         return false;
     }
 
-    /**
+     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, EventUserRol $eventUserRol): bool
+    public function restore(User $user, EventUserRole $eventUserRol): bool
     {
         return false;
     }
@@ -59,7 +58,7 @@ class EventUserRolPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, EventUserRol $eventUserRol): bool
+    public function forceDelete(User $user, EventUserRole $eventUserRol): bool
     {
         return false;
     }

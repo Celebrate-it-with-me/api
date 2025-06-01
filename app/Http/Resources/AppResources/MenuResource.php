@@ -2,11 +2,8 @@
 
 namespace App\Http\Resources\AppResources;
 
-use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Log;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class MenuResource extends JsonResource
 {
@@ -23,7 +20,7 @@ class MenuResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'allowMultipleChoices' => $this->allow_multiple_choices,
-            'allowCustomRequest' =>  $this->allow_custom_request,
+            'allowCustomRequest' => $this->allow_custom_request,
             'isDefault' => $this->is_default,
         ];
     }

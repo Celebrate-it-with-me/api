@@ -26,12 +26,11 @@ class EventFeature extends Model
         'preview',
         'budget',
         'analytics',
-        'location'
+        'location',
     ];
-    
+
     /**
      * Define a relationship to the Events model.
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {

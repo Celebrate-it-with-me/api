@@ -14,16 +14,16 @@ use Illuminate\Http\Request;
 class DressCodeController extends Controller
 {
     private DressCodeServices $dressCodeServices;
-    
+
     public function __construct(DressCodeServices $dressCodeServices)
     {
         $this->dressCodeServices = $dressCodeServices;
     }
-    
+
     /**
      * Fetch the dress code associated with a specific event.
      *
-     * @param Events $event The event instance to retrieve the dress code for.
+     * @param  Events  $event  The event instance to retrieve the dress code for.
      *
      * @throws \Exception If an exception occurs while retrieving the dress code.
      */
@@ -31,23 +31,23 @@ class DressCodeController extends Controller
     {
         try {
             $dressCode = $this->dressCodeServices->getDressCodeByEvent($event);
-            
-            if (!$dressCode) {
+
+            if (! $dressCode) {
                 return response()->json([
-                    'message' => 'No dress code found for this event.'
+                    'message' => 'No dress code found for this event.',
                 ]);
             }
-            
+
             return DressCodeResource::make($dressCode);
-            
+
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'An error occurred while retrieving the dress code.',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-    
+
     /**
      * Handles the creation of a dress code for an event.
      *
@@ -55,9 +55,10 @@ class DressCodeController extends Controller
      * and returns a `DressCodeResource` on success. If the creation fails or an exception occurs, an appropriate
      * JSON response with an error message is returned.
      *
-     * @param Request $request The HTTP request containing the dress code data.
-     * @param Events $events The event for which the dress code is being created.
+     * @param  Request  $request  The HTTP request containing the dress code data.
+     * @param  Events  $events  The event for which the dress code is being created.
      * @return DressCodeResource|JsonResponse The created dress code resource on success or a JSON response in case of failure.
+     *
      * @throws Exception If an error occurs during the process.
      */
     public function storeDressCode(Request $request, Events $event): DressCodeResource|JsonResponse
@@ -69,25 +70,25 @@ class DressCodeController extends Controller
                 'reservedColors' => 'nullable|string',
                 'dressCodeImages' => 'nullable|array',
             ]);
-            
+
             $dressCode = $this->dressCodeServices->createDressCode($event, $data) ?? null;
-            
-            if (!$dressCode) {
+
+            if (! $dressCode) {
                 return response()->json([
-                    'message' => 'Failed to create dress code.'
+                    'message' => 'Failed to create dress code.',
                 ], 400);
             }
-            
+
             return DressCodeResource::make($dressCode);
-            
+
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'An error occurred while creating the dress code.',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-    
+
     /**
      * Updates an existing dress code for a specific event.
      *
@@ -96,15 +97,16 @@ class DressCodeController extends Controller
      * In cases where the update fails or an exception is caught, an appropriate
      * JSON response with an error message is returned.
      *
-     * @param Request $request The HTTP request containing updated dress code details.
-     * @param Events $event The event associated with the dress code being updated.
-     * @param DressCode $dressCode The existing dress code entity to be updated.
+     * @param  Request  $request  The HTTP request containing updated dress code details.
+     * @param  Events  $event  The event associated with the dress code being updated.
+     * @param  DressCode  $dressCode  The existing dress code entity to be updated.
      * @return DressCodeResource|JsonResponse The updated dress code resource upon success or a JSON response on failure.
+     *
      * @throws Exception If an error occurs during the update operation.
      */
     public function updateDressCode(Request $request, Events $event, DressCode $dressCode): DressCodeResource|JsonResponse
     {
-       
+
         try {
             $data = $request->validate([
                 'dressCodeType' => 'required|string|max:255',
@@ -113,53 +115,80 @@ class DressCodeController extends Controller
                 'dressCodeImages' => 'nullable|array',
                 'existingImageIds' => 'nullable|string',
             ]);
-            
+
             $dressCode = $this->dressCodeServices->updateDressCode($dressCode, $data) ?? null;
-            
-            if (!$dressCode) {
+
+            if (! $dressCode) {
                 return response()->json([
-                    'message' => 'Failed to update dress code.'
+                    'message' => 'Failed to update dress code.',
                 ], 400);
             }
-            
+
             return DressCodeResource::make($dressCode);
-            
+
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'An error occurred while updating the dress code.',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-    
+
     /**
      * Deletes a dress code associated with a specific event.
      *
      * This method attempts to delete the specified dress code and returns a JSON response indicating success or failure.
      *
-     * @param Events $event
-     * @param DressCode $dressCode The dress code instance to be deleted.
+     * @param  DressCode  $dressCode  The dress code instance to be deleted.
      * @return DressCodeResource|JsonResponse A JSON response indicating the result of the deletion operation.
      */
     public function destroyDressCode(Events $event, DressCode $dressCode): DressCodeResource|JsonResponse
     {
         try {
             $dressCode = $this->dressCodeServices->deleteDressCode($dressCode);
-            
-            if (!$dressCode) {
+
+            if (! $dressCode) {
                 return response()->json([
-                    'message' => 'No dress code found for this event.'
+                    'message' => 'No dress code found for this event.',
                 ], 404);
             }
-            
+
             return response()->json([
-                'message' => 'Dress code deleted successfully.'
+                'message' => 'Dress code deleted successfully.',
             ], 200);
-            
+
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'An error occurred while deleting the dress code.',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function generateImages(Request $request, Events $event): DressCodeResource|JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'dressType' => 'required|string|max:255',
+            ]);
+
+            $dressCodeImages = $this->dressCodeServices->generateDressCodeAIImages($event, $data) ?? null;
+
+            if (! $dressCodeImages) {
+                return response()->json([
+                    'message' => 'Failed to generate dress code images.',
+                ], 400);
+            }
+
+            return response()->json([
+                'message' => 'Dress code images generated successfully.',
+                'dressCode' => $dressCodeImages,
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'An error occurred while generating dress code images.',
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

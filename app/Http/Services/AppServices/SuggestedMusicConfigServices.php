@@ -9,29 +9,25 @@ use Illuminate\Http\Request;
 class SuggestedMusicConfigServices
 {
     protected Request $request;
+
     protected SuggestedMusicConfig $suggestedMusicConfig;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->suggestedMusicConfig = new SuggestedMusicConfig();
+        $this->suggestedMusicConfig = new SuggestedMusicConfig;
     }
-    
+
     /**
      * Get event suggested music Config.
-     * @param Events $event
-     * @return mixed
      */
     public function getSuggestedMusicConfig(Events $event): mixed
     {
         return $event->suggestedMusicConfig;
     }
-    
+
     /**
      * Create a new suggested music configuration for the given event.
-     *
-     * @param Events $event
-     * @return SuggestedMusicConfig
      */
     public function create(Events $event): SuggestedMusicConfig
     {
@@ -46,17 +42,14 @@ class SuggestedMusicConfigServices
             'search_limit' => $this->request->input('searchLimit'),
         ]);
     }
-    
+
     /**
      * Update the event's suggested music configuration.
-     *
-     * @param SuggestedMusicConfig $suggestedMusicConfig
-     * @return SuggestedMusicConfig
      */
     public function update(SuggestedMusicConfig $suggestedMusicConfig): SuggestedMusicConfig
     {
         $this->suggestedMusicConfig = $suggestedMusicConfig;
-        
+
         $this->suggestedMusicConfig->title = $this->request->input('title');
         $this->suggestedMusicConfig->sub_title = $this->request->input('subTitle');
         $this->suggestedMusicConfig->main_color = $this->request->input('mainColor');
@@ -65,23 +58,20 @@ class SuggestedMusicConfigServices
         $this->suggestedMusicConfig->use_vote_system = $this->request->input('useVoteSystem');
         $this->suggestedMusicConfig->search_limit = $this->request->input('searchLimit');
         $this->suggestedMusicConfig->save();
-        
+
         $this->suggestedMusicConfig->refresh();
+
         return $this->suggestedMusicConfig;
     }
-    
+
     /**
      * Delete the specified SuggestedMusicConfig instance and return the deleted instance.
-     *
-     * @param SuggestedMusicConfig $suggestedMusicConfig
-     * @return SuggestedMusicConfig
      */
     public function destroy(SuggestedMusicConfig $suggestedMusicConfig): SuggestedMusicConfig
     {
         $tempSuggestedMusicConfig = clone $suggestedMusicConfig;
         $suggestedMusicConfig->delete();
-        
+
         return $tempSuggestedMusicConfig;
     }
-    
 }

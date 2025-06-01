@@ -11,8 +11,6 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
- *
- *
  * @property int $id
  * @property string $first_name
  * @property string $last_name
@@ -32,6 +30,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read int|null $party_members_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static Builder|MainGuest newModelQuery()
  * @method static Builder|MainGuest newQuery()
  * @method static Builder|MainGuest query()
@@ -48,6 +47,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static Builder|MainGuest wherePhoneConfirmed($value)
  * @method static Builder|MainGuest wherePhoneNumber($value)
  * @method static Builder|MainGuest whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class MainGuest extends Model
@@ -73,8 +73,6 @@ class MainGuest extends Model
         'companion_qty',
     ];
 
-
-
     /**
      * The attributes that should be cast.
      *
@@ -86,27 +84,26 @@ class MainGuest extends Model
 
     /**
      * Get the party members associated with this model.
-     *
-     * @return HasMany
      */
     public function partyMembers(): HasMany
     {
         return $this->hasMany(PartyMember::class, 'main_guest_id', 'id');
     }
-    
+
     /**
      * Companions relationship.
-     * @return HasMany
      */
     public function companions(): HasMany
     {
         return $this->hasMany(GuestCompanion::class, 'main_guest_id', 'id');
     }
-    
+
     /**
      * Relation with events model
+     *
      * @property int $event_id
      * @property-read Events $event
+     *
      * @method static Builder|Model whereEventId($value)
      */
     public function event(): BelongsTo

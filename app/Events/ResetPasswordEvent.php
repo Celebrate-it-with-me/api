@@ -13,7 +13,7 @@ class ResetPasswordEvent
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public User $user;
-    
+
     /**
      * Create a new event instance.
      */

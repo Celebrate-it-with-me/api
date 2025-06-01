@@ -25,7 +25,7 @@ class UpdateSmsReminderRequest extends FormRequest
         return [
             'message' => 'required|string',
             'sendDate' => 'required|string',
-            'recipients' => 'nullable|json'
+            'recipients' => 'nullable|json',
         ];
     }
 }

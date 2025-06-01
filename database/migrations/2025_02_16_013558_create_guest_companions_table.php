@@ -1,8 +1,8 @@
 <?php
-    
-    use App\Models\GuestCompanion;
-    use App\Models\PartyMember;
-    use Illuminate\Database\Migrations\Migration;
+
+use App\Models\GuestCompanion;
+use App\Models\PartyMember;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -24,12 +24,12 @@ return new class extends Migration
             $table->dateTime('confirmed_at')->nullable()->default(null);
             $table->timestamps();
         });
-        
+
         $partyMembers = PartyMember::query()->get();
-        
+
         foreach ($partyMembers as $partyMember) {
             $names = explode(' ', $partyMember->name, 2);
-            $guestCompanion = new GuestCompanion();
+            $guestCompanion = new GuestCompanion;
             $guestCompanion->first_name = $names[0];
             $guestCompanion->last_name = $names[1];
             $guestCompanion->main_guest_id = $partyMember->main_guest_id;
@@ -38,7 +38,7 @@ return new class extends Migration
             $guestCompanion->confirmed_at = null;
             $guestCompanion->save();
         }
-        
+
     }
 
     /**

@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::table('main_guests', function (Blueprint $table) {
             $table->unsignedBigInteger('meal_preference')->default(0)->after('companion_qty');
         });
-        
+
         Schema::table('guest_companions', function (Blueprint $table) {
-           $table->unsignedBigInteger('meal_preference')->default(0)->after('confirmed_at');
+            $table->unsignedBigInteger('meal_preference')->default(0)->after('confirmed_at');
         });
     }
 
@@ -28,7 +28,7 @@ return new class extends Migration
         Schema::table('main_guests', function (Blueprint $table) {
             $table->dropColumn('meal_preference');
         });
-        
+
         Schema::table('guest_companions', function (Blueprint $table) {
             $table->dropColumn('meal_preference');
         });

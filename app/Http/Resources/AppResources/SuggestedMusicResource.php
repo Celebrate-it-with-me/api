@@ -23,7 +23,7 @@ class SuggestedMusicResource extends JsonResource
             'album' => $this->album,
             'platform' => $this->platform,
             'thumbnailUrl' => $this->thumbnailUrl,
-            'suggestedBy' => $this->suggested_by
+            'suggestedBy' => $this->suggested_by,
         ];
     }
 }

@@ -13,8 +13,6 @@ use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
- * 
- *
  * @property int $id
  * @property string $user_name
  * @property string $image_path
@@ -25,6 +23,7 @@ use Laravel\Sanctum\PersonalAccessToken;
  * @property-read int|null $notifications_count
  * @property-read Collection<int, PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder|EventImage newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|EventImage newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|EventImage query()
@@ -34,6 +33,7 @@ use Laravel\Sanctum\PersonalAccessToken;
  * @method static \Illuminate\Database\Eloquent\Builder|EventImage whereThumbnailPath($value)
  * @method static \Illuminate\Database\Eloquent\Builder|EventImage whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|EventImage whereUserName($value)
+ *
  * @mixin \Eloquent
  */
 class EventImage extends Model
@@ -50,6 +50,6 @@ class EventImage extends Model
     protected $fillable = [
         'user_name',
         'image_path',
-        'thumbnail_path'
+        'thumbnail_path',
     ];
 }

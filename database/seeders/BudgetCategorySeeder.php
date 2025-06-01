@@ -22,17 +22,17 @@ class BudgetCategorySeeder extends Seeder
             ['name' => 'Transportation', 'slug' => 'transportation', 'description' => 'Vehicles, fuel, and transport logistics.'],
             ['name' => 'Miscellaneous', 'slug' => 'miscellaneous', 'description' => 'Other uncategorized expenses.'],
         ];
-        
+
         foreach ($categories as $category) {
             BudgetCategory::query()->firstOrCreate([
-                'slug' => $category['slug']
+                'slug' => $category['slug'],
             ], [
                 'name' => $category['name'],
                 'description' => $category['description'],
                 'is_default' => true,
             ]);
         }
-        
+
         $this->command->info('✅ Default budget categories seeded!');
     }
 }

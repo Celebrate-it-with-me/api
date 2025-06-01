@@ -23,5 +23,4 @@ class GuestRsvpLogResource extends JsonResource
             'notes' => $this->notes,
         ];
     }
-    
 }

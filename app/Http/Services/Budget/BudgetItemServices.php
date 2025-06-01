@@ -10,9 +10,6 @@ class BudgetItemServices
 {
     /**
      * Get all budget items for a given event.
-     *
-     * @param $eventBudget
-     * @return Collection
      */
     public function getBudgetItems($eventBudget): Collection
     {
@@ -21,13 +18,9 @@ class BudgetItemServices
             ->orderBy('category_id')
             ->get();
     }
-    
+
     /**
      * Create a new budget item for the given event budget.
-     *
-     * @param array $data
-     * @param EventBudget $eventBudget
-     * @return BudgetItem
      */
     public function createBudgetItem(array $data, EventBudget $eventBudget): BudgetItem
     {
@@ -41,13 +34,9 @@ class BudgetItemServices
             'due_date' => $data['dueDate'] ?? null,
         ]);
     }
-    
+
     /**
      * Update an existing budget item.
-     *
-     * @param BudgetItem $budgetItem
-     * @param array $data
-     * @return BudgetItem
      */
     public function updateBudgetItem(BudgetItem $budgetItem, array $data): BudgetItem
     {
@@ -60,8 +49,7 @@ class BudgetItemServices
             'is_paid' => $data['isPaid'],
             'due_date' => $data['dueDate'] ?? null,
         ]);
-        
+
         return $budgetItem;
     }
-    
 }

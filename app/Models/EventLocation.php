@@ -11,9 +11,9 @@ class EventLocation extends Model
 {
     /** @use HasFactory<\Database\Factories\EventLocationFactory> */
     use HasFactory;
-    
+
     protected $table = 'event_locations';
-    
+
     protected $fillable = [
         'event_id',
         'name',
@@ -24,23 +24,19 @@ class EventLocation extends Model
         'country',
         'latitude',
         'longitude',
-        'is_default'
+        'is_default',
     ];
-    
+
     /**
      * Define a relationship to the Events model.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
-    
+
     /**
      * Define a one-to-many relationship with the EventLocationImages model.
-     *
-     * @return HasMany
      */
     public function eventLocationImages(): HasMany
     {

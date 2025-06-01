@@ -17,7 +17,7 @@ return new class extends Migration
                 ->references('id')
                 ->on('event_locations')
                 ->onDelete('cascade');
-            
+
             $table->text('path');
             $table->string('caption')->nullable();
             $table->integer('order')->default(0);
