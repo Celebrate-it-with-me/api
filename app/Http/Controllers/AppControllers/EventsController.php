@@ -5,9 +5,7 @@ namespace App\Http\Controllers\AppControllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreEventsRequest;
 use App\Http\Requests\app\UpdateEventsRequest;
-use App\Http\Resources\AppResources\EventPlansResource;
 use App\Http\Resources\AppResources\EventResource;
-use App\Http\Resources\AppResources\EventTypesResource;
 use App\Http\Services\AppServices\EventsServices;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
@@ -132,7 +130,6 @@ class EventsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
 
     /**
      * Retrieve event suggestions.

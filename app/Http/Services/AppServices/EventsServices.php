@@ -228,12 +228,8 @@ class EventsServices
         }
     }
 
-    
     /**
      * Get event suggestions based on the current event state.
-     *
-     * @param  Events  $event
-     * @return array
      */
     public function getEventSuggestions(Events $event): array
     {

@@ -162,7 +162,7 @@ class HydrationService
         $menus = $event->menus ?? null;
         $eventFeatures = $event->eventFeatures ?? null;
         $saveTheDate = $event->saveTheDate ?? null;
-        
+
         // Get event plans and event types
         $eventPlans = EventPlan::query()->get();
         $eventTypes = EventType::query()->get();
