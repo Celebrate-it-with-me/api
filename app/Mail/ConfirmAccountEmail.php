@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -14,8 +13,9 @@ class ConfirmAccountEmail extends Mailable
     use Queueable, SerializesModels;
 
     public $confirmUrl;
+
     public $user;
-    
+
     /**
      * Create a new message instance.
      */

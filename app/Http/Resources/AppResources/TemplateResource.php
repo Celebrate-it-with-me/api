@@ -12,16 +12,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class TemplateResource extends JsonResource
 {
     private Guest $mainGuest;
-    
+
     public function __construct($resource, string $guestCode)
     {
         parent::__construct($resource);
         $this->mainGuest = $this->initMainGuest($guestCode);
     }
-    
+
     /**
      * Init Main Guest Data.
-     * @param string $guestCode
+     *
      * @return MainGuest
      */
     private function initMainGuest(string $guestCode): Guest
@@ -30,7 +30,7 @@ class TemplateResource extends JsonResource
             ->where('code', $guestCode)
             ->first();
     }
-    
+
     /**
      * Transform the resource into an array.
      *
@@ -41,7 +41,7 @@ class TemplateResource extends JsonResource
         $companionQty = Guest::query()
             ->where('parent_id', $this->mainGuest->id)
             ->count();
-        
+
         return [
             'event' => [
                 'id' => $this->id,
@@ -80,65 +80,63 @@ class TemplateResource extends JsonResource
                 'tags' => $this->mainGuest->tags,
                 'menuSelected' => $this->getGuestMenuWithItems(),
                 'companionQty' => $companionQty,
-                'companions' => GuestResource::collection($this->mainGuest->companions)
-            ]
+                'companions' => GuestResource::collection($this->mainGuest->companions),
+            ],
         ];
     }
-    
+
     private function hasMenu(): bool
     {
         return $this->eventFeature->menu ?? false;
     }
-    
-    
+
     private function getEventMainMenu(): array
     {
         $menu = Menu::query()
             ->where('event_id', $this->id)
             ->where('is_default', true)
             ->first();
-        
-        if (!$menu) {
+
+        if (! $menu) {
             return [];
         }
-        
+
         $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
             return $items->values()->toArray();
         });
-        
+
         return [
             'menu' => $menu->toArray(),
-            'menuItems' => $groupedItems
+            'menuItems' => $groupedItems,
         ];
     }
-    
+
     private function getGuestMenuWithItems(): array
     {
-        if (!$this->mainGuest->assigned_menu_id) {
+        if (! $this->mainGuest->assigned_menu_id) {
             return [];
         }
-        
+
         $menu = Menu::query()
             ->with('menuItems')
             ->where('id', $this->mainGuest->assigned_menu_id)
             ->where('event_id', $this->id)
             ->first();
-        
-        if (!$menu) {
+
+        if (! $menu) {
             return [];
         }
-        
+
         $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
             return $items->values()->toArray();
         });
-        
+
         return [
             'menu' => $menu->toArray(),
-            'menuItems' => $groupedItems
+            'menuItems' => $groupedItems,
         ];
     }
-    
-    
+
     /**
      * Get comments config.
      */
@@ -147,7 +145,7 @@ class TemplateResource extends JsonResource
         if ($this->eventConfigComment) {
             return EventConfigCommentResource::make($this->eventConfigComment);
         }
-        
+
         return [];
     }
 }

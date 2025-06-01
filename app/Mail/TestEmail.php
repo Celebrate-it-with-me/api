@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
@@ -13,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 class TestEmail extends Mailable
 {
     use Queueable, SerializesModels;
-    
+
     /**
      * Create a new message instance.
      */
@@ -21,7 +20,7 @@ class TestEmail extends Mailable
     {
         //
     }
-    
+
     /**
      * Get the message envelope.
      */
@@ -31,7 +30,7 @@ class TestEmail extends Mailable
             subject: 'Test Email from Celebrate it with me',
         );
     }
-    
+
     /**
      * Get the message content definition.
      */
@@ -41,7 +40,7 @@ class TestEmail extends Mailable
             view: 'emails.test',
         );
     }
-    
+
     /**
      * Get the attachments for the message.
      *

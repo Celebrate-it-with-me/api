@@ -23,7 +23,7 @@ class GalleryImageResource extends JsonResource
             'id' => $this->id,
             'url' => url(Storage::disk($disk)->url($this->image_path)),
             'thumbnail' => url(Storage::disk($disk)->url($this->thumbnail_path)),
-            'title' => 'test'
+            'title' => 'test',
         ];
     }
 }

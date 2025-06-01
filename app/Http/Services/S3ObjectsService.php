@@ -9,12 +9,10 @@ use Illuminate\Support\Facades\Storage;
 
 class S3ObjectsService
 {
-
     private string $folder;
 
     /**
      * S3ObjectsService construct
-     * @param string $folder
      */
     public function __construct(string $folder)
     {
@@ -23,20 +21,19 @@ class S3ObjectsService
 
     /**
      * Getting objects by folder
-     * @return array
      */
     public function objectsByFolder(): array
     {
         $s3ClientObject = $this->getS3Instance();
 
-        $result = $this->getListObjects($this->folder/*'vanessa'*/, $s3ClientObject);
+        $result = $this->getListObjects($this->folder/* 'vanessa' */, $s3ClientObject);
 
         if (isset($result['Contents'])) {
             $tempResult = [];
-            foreach($result['Contents'] as $content) {
-               $path = $content['Key'];
-               $filename = basename($path);
-               $tempResult[$filename][] = $content;
+            foreach ($result['Contents'] as $content) {
+                $path = $content['Key'];
+                $filename = basename($path);
+                $tempResult[$filename][] = $content;
             }
 
             return ['status' => 200, 'message' => 'Objects loaded successfully', 'result' => $tempResult];
@@ -53,34 +50,34 @@ class S3ObjectsService
     private function getS3Instance(): S3Client
     {
         return new S3Client([
-           'version' => 'latest',
-           'region' => config('filesystems.disks.s3.region'),
-           'credentials' => [
-               'key' => config('filesystems.disks.s3.key'),
-               'secret' => config('filesystems.disks.s3.secret'),
-           ]
+            'version' => 'latest',
+            'region' => config('filesystems.disks.s3.region'),
+            'credentials' => [
+                'key' => config('filesystems.disks.s3.key'),
+                'secret' => config('filesystems.disks.s3.secret'),
+            ],
         ]);
     }
 
     /**
      * Retrieves a list of objects in a specified folder from an S3 bucket using the provided S3 client instance.
      *
-     * @param string $folder The folder path within the S3 bucket.
-     * @param S3Client $client The S3Client instance to use for retrieving the list of objects.
+     * @param  string  $folder  The folder path within the S3 bucket.
+     * @param  S3Client  $client  The S3Client instance to use for retrieving the list of objects.
      * @return Result The result of the listObjects operation.
      */
     private function getListObjects(string $folder, S3Client $client): Result
     {
         return $client->listObjects([
-           'Bucket' => config('filesystems.disks.s3.bucket'),
-           'Prefix' => "event_images/$folder"
+            'Bucket' => config('filesystems.disks.s3.bucket'),
+            'Prefix' => "event_images/$folder",
         ]);
     }
 
     /**
      * Downloads a file from S3.
      *
-     * @param string $key The key of the file to download.
+     * @param  string  $key  The key of the file to download.
      * @return array The URL of the downloaded file.
      */
     public function downloadFile(string $key): array
@@ -90,21 +87,19 @@ class S3ObjectsService
         $s3Client = $this->getS3Instance();
 
         $cmd = $s3Client->getCommand('GetObject', [
-           'Bucket' => config('filesystems.disks.s3.bucket'),
-           'Key' => $fileKey
+            'Bucket' => config('filesystems.disks.s3.bucket'),
+            'Key' => $fileKey,
         ]);
 
         $request = $s3Client->createPresignedRequest($cmd, '+20 minutes');
 
-        $url = (string)$request->getUri();
+        $url = (string) $request->getUri();
 
         return ['fileUrl' => $url];
     }
 
     /**
      * Delete File.
-     * @param string $key
-     * @return bool
      */
     public function deleteFile(string $key): bool
     {
@@ -114,12 +109,12 @@ class S3ObjectsService
         $s3Client = $this->getS3Instance();
         $s3Client->deleteObject([
             'Bucket' => config('filesystems.disks.s3.bucket'),
-            'Key' => $imageKey
+            'Key' => $imageKey,
         ]);
 
         $s3Client->deleteObject([
             'Bucket' => config('filesystems.disks.s3.bucket'),
-            'Key' => $thumbnailKey
+            'Key' => $thumbnailKey,
         ]);
 
         $this->deleteInLocalDB($key);
@@ -130,13 +125,12 @@ class S3ObjectsService
     /**
      * Deletes records from the local database where the image_path column contains the given key.
      *
-     * @param string $key The key to search for in the image_path column.
-     * @return void
+     * @param  string  $key  The key to search for in the image_path column.
      */
     private function deleteInLocalDB(string $key): void
     {
         $eventImages = EventImage::query()
-            ->where('image_path', 'LIKE','%'.$key.'%');
+            ->where('image_path', 'LIKE', '%' . $key . '%');
 
         if ($eventImages->count()) {
             $eventImages->delete();

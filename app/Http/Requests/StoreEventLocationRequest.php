@@ -13,15 +13,14 @@ class StoreEventLocationRequest extends FormRequest
     {
         return true;
     }
-    
+
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'isDefault' => filter_var($this->isDefault, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            'isDefault' => filter_var($this->isDefault, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
         ]);
     }
-    
-    
+
     /**
      * Get the validation rules that apply to the request.
      *

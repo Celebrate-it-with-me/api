@@ -14,7 +14,7 @@ class StoreSaveTheDateRequest extends FormRequest
     {
         return true;
     }
-    
+
     public function prepareForValidation(): void
     {
         $this->merge([
@@ -23,8 +23,7 @@ class StoreSaveTheDateRequest extends FormRequest
             'isEnabled' => filter_var($this->isEnabled, FILTER_VALIDATE_BOOLEAN),
         ]);
     }
-    
-    
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -33,7 +32,7 @@ class StoreSaveTheDateRequest extends FormRequest
     public function rules(): array
     {
         Log::info('request from std', [$this->all()]);
-        
+
         return [
             'stdTitle' => 'required|string|max:255', // Required string with a max length of 255
             'stdSubTitle' => 'nullable|string|max:255', // Optional string with a max length of 255
@@ -43,6 +42,6 @@ class StoreSaveTheDateRequest extends FormRequest
             'useAddToCalendar' => 'required|boolean', // Required, must be true/false
             'isEnabled' => 'required|boolean', // Required, must be true/false
         ];
-        
+
     }
 }

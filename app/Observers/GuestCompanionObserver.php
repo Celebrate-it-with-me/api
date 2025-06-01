@@ -3,7 +3,6 @@
 namespace App\Observers;
 
 use App\Models\GuestCompanion;
-use Illuminate\Support\Facades\Log;
 
 class GuestCompanionObserver
 {
@@ -14,7 +13,7 @@ class GuestCompanionObserver
     {
         //
     }
-    
+
     /**
      * Handle the GuestCompanion "updated" event.
      */
@@ -22,7 +21,7 @@ class GuestCompanionObserver
     {
         //
     }
-    
+
     /**
      * Handle the GuestCompanion "deleted" event.
      * Updating companions qty if one companion is deleted.
@@ -32,11 +31,11 @@ class GuestCompanionObserver
         $countCompanions = GuestCompanion::query()
             ->where('main_guest_id', $guestCompanion->main_guest_id)
             ->count();
-        
+
         $guestCompanion->mainGuest->companion_qty = $countCompanions;
         $guestCompanion->mainGuest->save();
     }
-    
+
     /**
      * Handle the GuestCompanion "restored" event.
      */
@@ -44,7 +43,7 @@ class GuestCompanionObserver
     {
         //
     }
-    
+
     /**
      * Handle the GuestCompanion "force deleted" event.
      */

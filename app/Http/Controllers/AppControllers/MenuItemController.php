@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\AppControllers;
 
+use App\Http\Controllers\Controller;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 
 class MenuItemController extends Controller
@@ -22,7 +22,7 @@ class MenuItemController extends Controller
             'imagePath' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
-        
+
         $item = $menu->menuItems()->create([
             'name' => $data['name'],
             'type' => $data['itemType'],
@@ -30,7 +30,7 @@ class MenuItemController extends Controller
             'image_path' => $data['imagePath'] ?? null,
             'notes' => $data['notes'] ?? '',
         ]);
-        
+
         EventActivityLogger::log(
             $event->id,
             'menu_item_created',
@@ -44,10 +44,10 @@ class MenuItemController extends Controller
                 'notes' => $item->notes,
             ]
         );
-        
+
         return response()->json($item, 201);
     }
-    
+
     public function update(Request $request, Events $event, MenuItem $menuItem): JsonResponse
     {
         $data = $request->validate([
@@ -56,14 +56,14 @@ class MenuItemController extends Controller
             'imagePath' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
-        
+
         $menuItem->update([
             'name' => $data['name'],
             'diet_type' => $data['dietType'],
             'image_path' => $data['imagePath'],
             'notes' => $data['notes'],
         ]);
-        
+
         EventActivityLogger::log(
             $event->id,
             'menu_item_updated',
@@ -77,14 +77,14 @@ class MenuItemController extends Controller
                 'notes' => $menuItem->notes,
             ]
         );
-        
+
         return response()->json($menuItem);
     }
-    
+
     public function destroy(Events $event, Menu $menu, MenuItem $menuItem): JsonResponse
     {
         $menuItem->delete();
-        
+
         EventActivityLogger::log(
             $event->id,
             'menu_item_deleted',
@@ -98,8 +98,7 @@ class MenuItemController extends Controller
                 'notes' => $menuItem->notes,
             ]
         );
-        
+
         return response()->json(['message' => 'Menu item deleted']);
     }
 }
-

@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\AppControllers\BackgroundMusicController;
-    use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
-    use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
-    use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
+use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
+use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
+use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
 use App\Http\Controllers\AppControllers\CompanionController;
-    use App\Http\Controllers\AppControllers\DressCode\DressCodeController;
-    use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
+use App\Http\Controllers\AppControllers\DressCode\DressCodeController;
+use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
 use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventLocationController;
@@ -77,7 +77,6 @@ Route::post('event/{event}/collaborators/invite/{token}/decline', [InviteCollabo
     ->name('collaborators.declineInvite');
 Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, 'eventTokens'])
     ->name('collaborators.eventTokens');
-
 
 // Protected Routes
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
@@ -222,7 +221,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
             });
-            
+
             // Event Collaborators
             Route::prefix('collaborators')->name('collaborators.')->group(function () {
                 Route::post('', [InviteCollaboratorController::class, 'invite'])->name('store');
@@ -230,14 +229,14 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                     ->name('accept');
                 Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])->name('destroy');
             });
-            
+
             // Event Budgets
             Route::prefix('budget')->name('budget.')->group(function () {
                 Route::get('', [EventBudgetController::class, 'show'])->name('show');
                 Route::post('', [EventBudgetController::class, 'store'])->name('store');
                 Route::put('{eventBudget}', [EventBudgetController::class, 'update'])->name('update');
                 Route::delete('{eventBudget}', [EventBudgetController::class, 'destroy'])->name('destroy');
-                
+
                 // Budget Items
                 Route::prefix('{eventBudget}/items')->group(function () {
                     Route::get('', [BudgetItemController::class, 'index'])->name('budgetItems.index');
@@ -246,17 +245,17 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                     Route::delete('{budgetItem}', [BudgetItemController::class, 'destroy'])->name('budgetItems.destroy');
                 });
             });
-            
+
             // Dress Code
             Route::prefix('dress-code')->name('dress-code.')->group(function () {
                 Route::get('', [DressCodeController::class, 'getDressCode'])->name('index');
                 Route::post('', [DressCodeController::class, 'storeDressCode'])->name('store');
                 Route::put('{dressCode}', [DressCodeController::class, 'updateDressCode'])->name('update');
                 Route::delete('{dressCode}', [DressCodeController::class, 'destroyDressCode'])->name('destroy');
+                Route::post('/generate-images', [DressCodeController::class, 'generateImages'])->name('generateImages');
             });
-            
+
         });
-        
 
         // Special event routes
         Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');

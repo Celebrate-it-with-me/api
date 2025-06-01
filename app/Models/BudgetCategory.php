@@ -10,17 +10,13 @@ class BudgetCategory extends Model
 {
     /** @use HasFactory<\Database\Factories\MenuFactory> */
     use HasFactory;
-    
+
     protected $table = 'budget_categories';
 
     protected $fillable = ['name', 'slug', 'description', 'is_default'];
-    
-    /**
-     *
-     */
+
     public function items(): HasMany
     {
         return $this->hasMany(BudgetItem::class);
     }
-    
 }

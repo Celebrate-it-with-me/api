@@ -30,38 +30,42 @@ class AssignEventOwnerPermission extends Command
     {
         $eventId = $this->argument('eventId');
         $event = Events::query()->find($eventId);
-        
-        if (!$event) {
+
+        if (! $event) {
             $this->error("❌ Event with ID {$eventId} not found.");
+
             return 1;
         }
-        
+
         $userId = $event->organizer_id;
         $ownerRole = Role::query()->where('name', 'owner')->first();
-        
-        if (!$ownerRole) {
-            $this->error("❌ Owner role not found.");
+
+        if (! $ownerRole) {
+            $this->error('❌ Owner role not found.');
+
             return 1;
         }
-        
+
         $exists = EventUserRole::query()
             ->where('event_id', $eventId)
             ->where('user_id', $userId)
             ->where('role_id', $ownerRole->id)
             ->exists();
-        
+
         if ($exists) {
             $this->info("✅ User with ID {$userId} already has the owner role for event {$eventId}.");
+
             return 0;
         }
-        
+
         EventUserRole::query()->create([
             'event_id' => $event->id,
             'user_id' => $userId,
             'role_id' => $ownerRole->id,
         ]);
-        
+
         $this->info("🎉 'owner' role assigned to organizer (User ID {$userId}) for event {$eventId}.");
+
         return 0;
     }
 }

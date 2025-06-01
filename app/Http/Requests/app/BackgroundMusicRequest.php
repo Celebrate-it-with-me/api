@@ -14,11 +14,11 @@ class BackgroundMusicRequest extends FormRequest
     {
         return true;
     }
-    
+
     public function prepareForValidation(): void
     {
         $this->merge([
-           'autoplay' => filter_var($this->input('autoplay'), FILTER_VALIDATE_BOOLEAN)
+            'autoplay' => filter_var($this->input('autoplay'), FILTER_VALIDATE_BOOLEAN),
         ]);
     }
 

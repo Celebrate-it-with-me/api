@@ -5,14 +5,10 @@ namespace App\Listeners;
 use App\Events\UserLoggedInEvent;
 use App\Models\UserLoginSession;
 use Exception;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 
 class UserLoggedInListener
 {
-    
-    
     /**
      * Create the event listener.
      */
@@ -34,10 +30,10 @@ class UserLoggedInListener
                 'browser' => $event->agentData['browser'] ?? null,
                 'platform' => $event->agentData['platform'] ?? null,
                 'device' => $event->agentData['device'] ?? null,
-                /*'location' => , Todo create a new feature to work on this*/
-                'logout_time' => null
+                /* 'location' => , Todo create a new feature to work on this */
+                'logout_time' => null,
             ]);
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             Log::error($e->getMessage());
         }
     }

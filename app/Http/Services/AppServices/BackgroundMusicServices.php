@@ -15,12 +15,9 @@ class BackgroundMusicServices
     {
         $this->request = $request;
     }
-    
+
     /**
      * Create a new background music configuration for the given event.
-     *
-     * @param Events $event
-     * @return BackgroundMusic
      */
     public function create(Events $event): BackgroundMusic
     {
@@ -29,7 +26,7 @@ class BackgroundMusicServices
             $songPath = $this->request->file('songFile')
                 ->store("sound/background-music/$event->id", 'public');
         }
-        
+
         // Create the Background music entry in the database
         return BackgroundMusic::query()->create([
             'event_id' => $event->id,
@@ -40,40 +37,35 @@ class BackgroundMusicServices
             'song_url' => $songPath,
         ]);
     }
-    
+
     /**
      * Update an existing background music configuration.
-     *
-     * @param BackgroundMusic $backgroundMusic
-     * @return BackgroundMusic
      */
     public function update(BackgroundMusic $backgroundMusic): BackgroundMusic
     {
         $songPath = $backgroundMusic->song_url;
         if ($this->request->hasFile('songFile') && $this->request->file('songFile')->isValid()) {
-            
+
             // Delete existing image file if it exists
             if ($songPath && Storage::disk('public')->exists($songPath)) {
                 Storage::disk('public')->delete($songPath);
             }
-            
+
             $songPath = $this->request->file('songFile')
                 ->store("sound/background-music/$backgroundMusic->event_id", 'public');
         }
-        
+
         $backgroundMusic->icon_size = $this->request->input('iconSize');
         $backgroundMusic->icon_position = $this->request->input('iconPosition');
         $backgroundMusic->icon_color = $this->request->input('iconColor');
         $backgroundMusic->auto_play = $this->request->input('autoplay') ? 1 : 0;
         $backgroundMusic->song_url = $songPath;
-        
+
         \Log::info('checking new background music', [$backgroundMusic, $this->request->all()]);
-        
+
         $backgroundMusic->save();
-        
+
         return $backgroundMusic;
-        
-        
-        
+
     }
 }

@@ -13,8 +13,7 @@ class StoreSuggestedMusicRequest extends FormRequest
     {
         return true;
     }
-    
-    
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -28,6 +27,6 @@ class StoreSuggestedMusicRequest extends FormRequest
             'album' => 'required|string|max:255',
             'thumbnailUrl' => 'string|max:255',
         ];
-        
+
     }
 }

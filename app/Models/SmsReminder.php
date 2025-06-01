@@ -8,8 +8,6 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
- * 
- *
  * @property int $id
  * @property array $recipients
  * @property string $send_date
@@ -20,6 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read int|null $notifications_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder|SmsReminder newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|SmsReminder newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|SmsReminder query()
@@ -29,6 +28,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static \Illuminate\Database\Eloquent\Builder|SmsReminder whereRecipients($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SmsReminder whereSendDate($value)
  * @method static \Illuminate\Database\Eloquent\Builder|SmsReminder whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class SmsReminder extends Model
@@ -36,6 +36,7 @@ class SmsReminder extends Model
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'sms_reminders';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -48,6 +49,6 @@ class SmsReminder extends Model
     ];
 
     protected $casts = [
-        'recipients' => 'array'
+        'recipients' => 'array',
     ];
 }

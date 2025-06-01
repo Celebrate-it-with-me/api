@@ -27,7 +27,7 @@ class SentSmsReminder extends Command
     public function handle()
     {
         $smsReminders = SmsReminder::query()
-            ->where('send_date','<=', now())
+            ->where('send_date', '<=', now())
             ->get();
 
         if ($smsReminders->count()) {

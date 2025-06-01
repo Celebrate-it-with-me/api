@@ -26,141 +26,117 @@ class Events extends Model
         'end_date',
         'status',
         'custom_url_slug',
-        'visibility'
+        'visibility',
     ];
-    
+
     protected $dates = ['deleted_at'];
-    
+
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
     ];
-    
+
     /**
      * Get the organizer associated with the event.
-     *
-     * @return HasMany
      */
     public function userRoles(): HasMany
     {
         return $this->hasMany(EventUserRole::class, 'event_id');
     }
-    
+
     /**
      * Get the main guest associated with the event.
-     *
-     * @return HasMany
      */
     public function guests(): HasMany
     {
         return $this->hasMany(Guest::class, 'event_id', 'id');
     }
-    
+
     /**
      * Relation with event feature.
-     * @return HasOne
      */
     public function eventFeature(): HasOne
     {
         return $this->hasOne(EventFeature::class, 'event_id', 'id');
     }
-    
-    
+
     /**
      * Define a one-to-one relationship with the SaveTheDate model.
-     *
-     * @return HasOne
      */
     public function saveTheDate(): HasOne
     {
         return $this->hasOne(SaveTheDate::class, 'event_id', 'id');
     }
-    
+
     /**
      * Define a one-to-one relationship with the Rsvp model.
-     *
-     * @return HasOne
      */
     public function rsvp(): HasOne
     {
         return $this->hasOne(Rsvp::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the suggested music for the event.
-     *
-     * @return HasMany
      */
     public function musicSuggestions(): HasMany
     {
         return $this->hasMany(SuggestedMusic::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the suggested music configuration for the event.
-     *
-     * @return HasOne
      */
     public function suggestedMusicConfig(): HasOne
     {
         return $this->hasOne(SuggestedMusicConfig::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the background music associated with the event.
-     *
-     * @return HasOne
      */
     public function backgroundMusic(): HasOne
     {
         return $this->hasOne(BackgroundMusic::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the comments associated with the event.
-     *
-     * @return HasMany
      */
     public function comments(): HasMany
     {
         return $this->hasMany(EventComment::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the event configuration comment associated with the event.
-     *
-     * @return HasOne
      */
-    public function eventConfigComment() : HasOne
+    public function eventConfigComment(): HasOne
     {
         return $this->hasOne(EventConfigComment::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the sweet memories configuration for the event.
-     *
-     * @return HasOne
      */
     public function sweetMemoriesConfig(): HasOne
     {
         return $this->hasOne(SweetMemoriesConfig::class, 'event_id', 'id');
     }
-    
+
     public function sweetMemoriesImages(): HasMany
     {
         return $this->hasMany(SweetMemoriesImage::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the locations associated with the event.
-     *
-     * @return HasMany
      */
     public function locations(): HasMany
     {
         return $this->hasMany(EventLocation::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the main guest associated with the event.
      */
@@ -168,57 +144,47 @@ class Events extends Model
     {
         return $this->hasMany(Menu::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the event plan associated with the event.
-     *
-     * @return BelongsTo
      */
     public function eventPlan(): BelongsTo
     {
         return $this->belongsTo(EventPlan::class);
     }
-    
+
     /**
      * Get the event type associated with the event.
-     *
-     * @return BelongsTo
      */
     public function eventType(): BelongsTo
     {
         return $this->belongsTo(EventType::class, 'event_type_id', 'id');
     }
-    
+
     /**
      * Get the activities associated with the event.
-     *
-     * @return HasMany
      */
     public function activities(): HasMany
     {
         return $this->hasMany(EventActivity::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the event collaboration invites associated with the event.
-     *
-     * @return HasMany
      */
     public function collaborators(): HasMany
     {
         return $this->hasMany(EventCollaborationInvite::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the event budget associated with the event.
-     *
-     * @return HasOne
      */
     public function budget(): HasOne
     {
         return $this->hasOne(EventBudget::class, 'event_id', 'id');
     }
-    
+
     public function dressCode(): HasOne
     {
         return $this->hasOne(DressCode::class, 'event_id', 'id');

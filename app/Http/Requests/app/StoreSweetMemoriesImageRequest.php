@@ -3,7 +3,6 @@
 namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
 
 class StoreSweetMemoriesImageRequest extends FormRequest
 {

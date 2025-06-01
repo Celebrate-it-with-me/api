@@ -1,15 +1,15 @@
 <?php
-    
-    use App\Http\Controllers\AppControllers\RSVPController;
-    use App\Http\Controllers\AuthenticationController;
-    use App\Http\Controllers\GalleryController;
-    use App\Http\Controllers\MainGuestController;
-    use App\Http\Controllers\S3ObjectsController;
-    use App\Http\Controllers\SMSReminderController;
-    use App\Http\Controllers\TotalsController;
-    use App\Http\Controllers\UserController;
-    
-    Route::post('/login', [AuthenticationController::class, 'adminLogin']);
+
+use App\Http\Controllers\AppControllers\RSVPController;
+use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\GalleryController;
+use App\Http\Controllers\MainGuestController;
+use App\Http\Controllers\S3ObjectsController;
+use App\Http\Controllers\SMSReminderController;
+use App\Http\Controllers\TotalsController;
+use App\Http\Controllers\UserController;
+
+Route::post('/login', [AuthenticationController::class, 'adminLogin']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('userInfo', [UserController::class, 'userInfo']);
@@ -32,7 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('sms-reminders', SMSReminderController::class);
 });
 
-Route::prefix('rsvp')->group(function() {
+Route::prefix('rsvp')->group(function () {
     Route::get('{accessCode}', [RSVPController::class, 'checkAccessCode'])
         ->name('checkRsvpAccessCode');
 
@@ -43,13 +43,10 @@ Route::prefix('rsvp')->group(function() {
         ->name('resetCode');
 });
 
-Route::prefix('gallery')->group(function() {
+Route::prefix('gallery')->group(function () {
     Route::post('/upload-images/{userName}', [GalleryController::class, 'uploadImages'])
         ->name('upload-images');
 
     Route::post('/show-images/{userName}', [GalleryController::class, 'showImages'])
         ->name('show-images');
 });
-
-
-

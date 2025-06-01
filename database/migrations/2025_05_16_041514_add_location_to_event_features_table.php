@@ -18,7 +18,7 @@ return new class extends Migration
                 ->comment('Indicates if the event has a location feature');
         });
     }
-    
+
     /**
      * Reverse the migrations.
      */

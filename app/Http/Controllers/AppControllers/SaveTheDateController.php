@@ -14,9 +14,8 @@ use Throwable;
 
 class SaveTheDateController extends Controller
 {
-    
-    public function __construct(private readonly SaveTheDateServices  $saveTheDateServices) {}
-    
+    public function __construct(private readonly SaveTheDateServices $saveTheDateServices) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -32,12 +31,9 @@ class SaveTheDateController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store a newly created resource in storage.
-     * @param StoreSaveTheDateRequest $request
-     * @param Events $event
-     * @return SaveTheDateResource|JsonResponse
      */
     public function store(StoreSaveTheDateRequest $request, Events $event): JsonResponse|SaveTheDateResource
     {
@@ -55,7 +51,6 @@ class SaveTheDateController extends Controller
     {
         //
     }
-
 
     /**
      * Update the specified resource in storage.

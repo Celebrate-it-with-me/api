@@ -20,13 +20,13 @@ class RolesAndPermissionSeeder extends Seeder
 
         // Creating Permissions
         $permissions = [
-          'manage',
-          'app'
+            'manage',
+            'app',
         ];
 
         foreach ($permissions as $permission) {
             Permission::create([
-               'name' => $permission,
+                'name' => $permission,
             ]);
         }
 
@@ -38,7 +38,7 @@ class RolesAndPermissionSeeder extends Seeder
 
         $user = User::query()->firstOrCreate(
             [
-                'email' => 'henrycarmenateg@gmail.com'
+                'email' => 'henrycarmenateg@gmail.com',
             ],
             [
                 'name' => 'Henry Carmenate',

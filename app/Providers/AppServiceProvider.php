@@ -13,16 +13,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(ImageManager::class, function($app) {
-            return new ImageManager(new Driver());
+        $this->app->singleton(ImageManager::class, function ($app) {
+            return new ImageManager(new Driver);
         });
     }
 
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
-    {
-    
-    }
+    public function boot(): void {}
 }

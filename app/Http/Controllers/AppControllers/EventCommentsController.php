@@ -15,9 +15,8 @@ use Throwable;
 class EventCommentsController extends Controller
 {
     public function __construct(private readonly EventCommentsServices $eventCommentsServices) {}
-    
+
     /**
-     * @param Events $event
      * @return JsonResponse|mixed
      */
     public function index(Events $event): mixed
@@ -29,11 +28,10 @@ class EventCommentsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store user event.
-     * @param StoreEventCommentRequest $request
-     * @param Events $event
+     *
      * @return JsonResponse|EventResource
      */
     public function store(StoreEventCommentRequest $request, Events $event): JsonResponse|EventCommentResource
@@ -46,6 +44,7 @@ class EventCommentsController extends Controller
                 'request' => $request->all(),
                 'event_id' => $event->id,
             ]);
+
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }

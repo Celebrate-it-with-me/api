@@ -14,14 +14,13 @@ use Throwable;
 
 class SuggestedMusicConfigController extends Controller
 {
-    
     private SuggestedMusicConfigServices $suggestedMusicConfigServices;
-    
+
     public function __construct(SuggestedMusicConfigServices $suggestedMusicConfigServices)
     {
         $this->suggestedMusicConfigServices = $suggestedMusicConfigServices;
     }
-    
+
     /**
      * Display a listing of the resource.
      */
@@ -29,17 +28,17 @@ class SuggestedMusicConfigController extends Controller
     {
         try {
             $config = $this->suggestedMusicConfigServices->getSuggestedMusicConfig($event);
-            
+
             if ($config !== null) {
                 return SuggestedMusicConfigResource::make($config);
             }
-            
+
             return response()->json([
                 'message' => 'No suggested music configuration exists for the given event',
-                'data' => []
+                'data' => [],
             ], 404);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(). ' '.$th->getFile(). ' ' . $th->getLine() , 'data' => []], 500);
+            return response()->json(['message' => $th->getMessage() . ' ' . $th->getFile() . ' ' . $th->getLine(), 'data' => []], 500);
         }
     }
 

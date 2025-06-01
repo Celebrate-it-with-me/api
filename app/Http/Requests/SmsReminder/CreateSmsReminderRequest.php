@@ -25,7 +25,7 @@ class CreateSmsReminderRequest extends FormRequest
         return [
             'message' => 'required|string',
             'sendDate' => 'required|string',
-            'recipients' => 'required|array'
+            'recipients' => 'required|array',
         ];
     }
 }

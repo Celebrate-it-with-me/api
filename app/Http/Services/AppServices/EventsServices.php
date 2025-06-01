@@ -9,7 +9,6 @@ use App\Models\Events;
 use App\Models\EventType;
 use App\Models\EventUserRole;
 use App\Models\User;
-use Auth;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,23 +22,25 @@ use Spatie\Permission\Models\Role;
 class EventsServices
 {
     protected Request $request;
+
     protected Events $event;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->event = new Events();
+        $this->event = new Events;
     }
 
     /**
      * Get user logged events.
+     *
      * @return Collection
      */
     public function getUserEvents(): array
     {
         $user = $this->request->user();
 
-        if (!$user) {
+        if (! $user) {
             throw new Exception('User not authenticated');
         }
 
@@ -53,8 +54,8 @@ class EventsServices
         $events = Events::query()
             ->with(['userRoles.user', 'userRoles.role'])
             ->whereHas('userRoles', function ($query) use ($user) {
-            $query->where('user_id', $user->id);
-        })->get();
+                $query->where('user_id', $user->id);
+            })->get();
 
         return [
             $events,
@@ -64,17 +65,15 @@ class EventsServices
 
     /**
      * Getting filtered events.
-     * @param string $query
-     * @return Collection
      */
     public function getFilteredEvents(string $query): Collection
     {
         return Events::query()
             ->where('organizer_id', $this->request->user()->id)
             ->when($query, function ($subQuery) use ($query) {
-                $subQuery->whereNested(function($subQuery) use ($query) {
-                   $subQuery->where('event_name', 'like', '%' . $query . '%');
-                   $subQuery->orWhere('event_description', 'like', '%' . $query . '%');
+                $subQuery->whereNested(function ($subQuery) use ($query) {
+                    $subQuery->where('event_name', 'like', '%' . $query . '%');
+                    $subQuery->orWhere('event_description', 'like', '%' . $query . '%');
                 });
             })
             ->get();
@@ -82,7 +81,7 @@ class EventsServices
 
     /**
      * Create user event.
-     * @return Model|Builder
+     *
      * @throws Exception
      */
     public function create(): Model|Builder
@@ -97,12 +96,12 @@ class EventsServices
             'organizer_id' => $this->request->user()->id,
             'status' => $this->request->input('status'),
             'custom_url_slug' => $this->request->input('customUrlSlug') ?? Str::slug(
-                    $this->request->input('eventName')
-                ) . '-' . (Events::query()->max('id') + 1),
+                $this->request->input('eventName')
+            ) . '-' . (Events::query()->max('id') + 1),
             'visibility' => $this->request->input('visibility'),
         ]);
 
-        if (!$event) {
+        if (! $event) {
             throw new Exception('Create event failed');
         }
 
@@ -159,8 +158,6 @@ class EventsServices
 
     /**
      * Update user event info.
-     * @param Events $event
-     * @return Events
      */
     public function update(Events $event): Events
     {
@@ -191,7 +188,6 @@ class EventsServices
         $this->event->eventFeature->analytics = $this->request->input('analytics') ?? false;
         $this->event->eventFeature->save();
 
-
         $actor = request()->user();
         if ($actor) {
             $actor->last_active_event_id = $event->id;
@@ -221,23 +217,22 @@ class EventsServices
 
     /**
      * Delete user from db.
-     * @param Events $event
-     * @return bool
      */
     public function destroy(Events $event): bool
     {
         try {
             $event->delete();
+
             return true;
         } catch (Exception $e) {
             Log::error($e->getMessage());
+
             return false;
         }
     }
 
     /**
      * Retrieve all event types.
-     * @return Collection
      */
     public function getEventTypes(): Collection
     {
@@ -248,8 +243,6 @@ class EventsServices
 
     /**
      * Retrieve all event plans.
-     *
-     * @return Collection
      */
     public function getEventPlans(): Collection
     {
@@ -295,7 +288,7 @@ class EventsServices
         }
 
         // Save the Date suggestion
-        if (!$event->saveTheDate) {
+        if (! $event->saveTheDate) {
             $suggestions[] = [
                 'name' => 'Save the Date',
                 'description' => 'Create a save the date page for your event.',
@@ -328,7 +321,7 @@ class EventsServices
         }
 
         // RSVP suggestions
-        if ($event->eventFeature->rsvp && !$event->rsvp) {
+        if ($event->eventFeature->rsvp && ! $event->rsvp) {
             $suggestions[] = [
                 'name' => 'Set Up RSVP',
                 'description' => 'Configure RSVP settings for your event.',
@@ -349,7 +342,7 @@ class EventsServices
         }
 
         // Background Music suggestions
-        if ($event->eventFeature->background_music && !$event->backgroundMusic) {
+        if ($event->eventFeature->background_music && ! $event->backgroundMusic) {
             $suggestions[] = [
                 'name' => 'Set Up Background Music',
                 'description' => 'Add background music to your event page.',
@@ -360,7 +353,7 @@ class EventsServices
         // Sweet Memories suggestions
         if ($event->eventFeature->sweet_memories) {
             $sweetMemoriesImagesCount = $event->sweetMemoriesImages()->count();
-            if (!$event->sweetMemoriesConfig) {
+            if (! $event->sweetMemoriesConfig) {
                 $suggestions[] = [
                     'name' => 'Configure Sweet Memories',
                     'description' => 'Set up the Sweet Memories feature for your event.',
@@ -376,7 +369,7 @@ class EventsServices
         }
 
         // Event Comments suggestions
-        if ($event->eventFeature->event_comments && !$event->eventConfigComment) {
+        if ($event->eventFeature->event_comments && ! $event->eventConfigComment) {
             $suggestions[] = [
                 'name' => 'Configure Event Comments',
                 'description' => 'Set up the comments feature for your event.',
@@ -492,5 +485,4 @@ class EventsServices
 
         return array_merge($dateRelatedSuggestions, $statusRelatedSuggestions, $guestRelatedSuggestions, $featureRelatedSuggestions);
     }
-
 }

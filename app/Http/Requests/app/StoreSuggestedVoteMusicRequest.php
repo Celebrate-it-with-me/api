@@ -13,8 +13,7 @@ class StoreSuggestedVoteMusicRequest extends FormRequest
     {
         return true;
     }
-    
-    
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -25,6 +24,6 @@ class StoreSuggestedVoteMusicRequest extends FormRequest
         return [
             'direction' => 'required|string|in:up,down',
         ];
-        
+
     }
 }

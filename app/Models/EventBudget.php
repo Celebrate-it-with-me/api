@@ -11,29 +11,24 @@ class EventBudget extends Model
 {
     /** @use HasFactory<\Database\Factories\MenuFactory> */
     use HasFactory;
-    
+
     protected $table = 'event_budgets';
 
     protected $fillable = ['event_id', 'budget_cap'];
-    
+
     /**
      * Define a one-to-many relationship with the Events model.
-     *
-     * @return BelongsTo
      */
     public function events(): BelongsTo
     {
         return $this->belongsTo(Events::class);
     }
-    
+
     /**
      * Define a one-to-many relationship with the BudgetItem model.
-     *
-     * @return HasMany
      */
     public function items(): HasMany
     {
         return $this->hasMany(BudgetItem::class);
     }
-    
 }

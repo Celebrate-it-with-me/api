@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 class TotalsServices
 {
     private int $mainGuestCount;
+
     private int $partyMembersCount;
 
     public function __construct()
@@ -21,7 +22,6 @@ class TotalsServices
 
     /**
      * Getting totals.
-     * @return array
      */
     public function totals(): array
     {
@@ -30,7 +30,7 @@ class TotalsServices
             'mainGuests' => $this->mainGuestCount,
             'partyMembers' => $this->partyMembersCount,
             'totalConfirmed' => $this->getTotalConfirmed(),
-            'totalUnConfirmed' => $this->getTotalUnConfirmed()
+            'totalUnConfirmed' => $this->getTotalUnConfirmed(),
         ];
     }
 
@@ -88,8 +88,6 @@ class TotalsServices
 
     /**
      * Getting details.
-     * @param string $type
-     * @return Collection|array
      */
     public function details(string $type): Collection|array
     {
@@ -142,7 +140,7 @@ class TotalsServices
     {
         // 1. Fetch all MainGuests with confirmed = "yes" and their PartyMembers
         return MainGuest::query()
-            ->where('confirmed', '!=','unused')
+            ->where('confirmed', '!=', 'unused')
             ->with(['partyMembers'])
             ->get();
     }

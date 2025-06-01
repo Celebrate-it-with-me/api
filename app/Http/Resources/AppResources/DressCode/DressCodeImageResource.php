@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Storage;
 
 class DressCodeImageResource extends JsonResource
 {
-    
     /**
      * Transform the resource into an array.
      *
@@ -17,7 +16,7 @@ class DressCodeImageResource extends JsonResource
     public function toArray(Request $request): array
     {
         $disk = 'public';
-        
+
         return [
             'id' => $this->id,
             'dressCodeId' => $this->dress_code_id,

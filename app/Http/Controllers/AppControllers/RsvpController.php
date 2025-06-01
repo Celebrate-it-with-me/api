@@ -14,13 +14,13 @@ use Illuminate\Http\Request;
 
 class RsvpController extends Controller
 {
-    private RsvpServices  $rsvpService;
-    
+    private RsvpServices $rsvpService;
+
     public function __construct(RsvpServices $rsvpService)
     {
         $this->rsvpService = $rsvpService;
     }
-    
+
     /**
      * Display a listing of the resource.
      */
@@ -34,7 +34,7 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store a newly created resource in storage.
      */
@@ -46,7 +46,7 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Save the RSVP data.
      */
@@ -54,19 +54,15 @@ class RsvpController extends Controller
     {
         try {
             $this->rsvpService->saveRsvp();
-            
+
             return response()->json(['message' => 'Rsvp saved.']);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Revert the RSVP confirmation status of a guest and their companions.
-     * @param Request $request
-     * @param Events $event
-     * @param Guest $guest
-     * @return JsonResponse
      */
     public function revertConfirmation(Request $request, Events $event, Guest $guest): JsonResponse
     {
@@ -75,32 +71,28 @@ class RsvpController extends Controller
                 'rsvp_status' => 'pending',
                 'rsvp_status_date' => null,
             ]);
-            
+
             $guest->selectedMenuItems()->detach();
-            
+
             if ($guest->companions) {
                 foreach ($guest->companions as $companion) {
                     $companion->update([
                         'rsvp_status' => 'pending',
                         'rsvp_status_date' => null,
                     ]);
-                    
+
                     $companion->selectedMenuItems()->detach();
                 }
             }
-            
-            
-            
+
             return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve RSVP summary for a specific event.
-     * @param Events $event
-     * @return JsonResponse
      */
     public function summary(Events $event): JsonResponse
     {
@@ -110,7 +102,7 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve a list of RSVP users for a specific event.
      * Filters can be applied based on RSVP status and search value.
@@ -120,19 +112,19 @@ class RsvpController extends Controller
     {
         try {
             $guests = $this->rsvpService->getRsvpGuests($event);
-            
-            if (!$guests->count()) {
+
+            if (! $guests->count()) {
                 return response()->json(['message' => 'There are no guests for this event.'], 200);
             }
-            
+
             return GuestResource::collection($guests)
                 ->response()->getData(true);
-                
+
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve RSVP user totals for a specific event.
      */
@@ -142,7 +134,7 @@ class RsvpController extends Controller
             $totalGuests = Guest::query()
                 ->where('event_id', $event->id)
                 ->count();
-            
+
             $totalMainGuests = Guest::query()
                 ->where('event_id', $event->id)
                 ->whereNull('parent_id')
@@ -151,22 +143,22 @@ class RsvpController extends Controller
                 ->where('event_id', $event->id)
                 ->whereNotNull('parent_id')
                 ->count();
-            
+
             $totalPending = Guest::query()
                 ->where('event_id', $event->id)
                 ->where('rsvp_status', 'pending')
                 ->count();
-            
+
             $totalConfirmed = Guest::query()
                 ->where('event_id', $event->id)
                 ->where('rsvp_status', 'attending')
                 ->count();
-            
+
             $totalDeclined = Guest::query()
                 ->where('event_id', $event->id)
                 ->where('rsvp_status', 'not-attending')
                 ->count();
-            
+
             return response()->json([
                 'message' => 'Rsvp totals retrieved.',
                 'data' => [
@@ -182,5 +174,4 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
 }

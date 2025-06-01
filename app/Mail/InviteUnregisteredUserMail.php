@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\EventCollaborationInvite;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 class InviteUnregisteredUserMail extends Mailable
 {
     use Queueable, SerializesModels;
-    
+
     public EventCollaborationInvite $invite;
 
     /**
@@ -43,7 +42,7 @@ class InviteUnregisteredUserMail extends Mailable
             view: 'emails.invite-unregistered-user',
             with: [
                 'invite' => $this->invite,
-                'acceptUrl' => config('app.frontend_app.url'). "event/{$this->invite->event->id}/invite?token={$this->invite->token}",
+                'acceptUrl' => config('app.frontend_app.url') . "event/{$this->invite->event->id}/invite?token={$this->invite->token}",
             ],
         );
     }

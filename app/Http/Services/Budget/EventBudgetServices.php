@@ -6,21 +6,14 @@ class EventBudgetServices
 {
     /**
      * Get the budget for a given event.
-     *
-     * @param $event
-     * @return mixed
      */
     public function getEventBudget($event): mixed
     {
         return $event->budget;
     }
-    
+
     /**
      * Get the budget items for a given event.
-     *
-     * @param $event
-     * @param $budgetData
-     * @return mixed
      */
     public function createEventBudget($event, $budgetData): mixed
     {
@@ -28,25 +21,21 @@ class EventBudgetServices
             ['event_id' => $event->id],
             ['budget_cap' => $budgetData['budgetCap']]
         );
-        
+
         return $event->budget;
     }
-    
+
     /**
      * Update the budget for a given event.
-     *
-     * @param $eventBudget
-     * @param $budgetData
-     * @return mixed
      */
     public function updateEventBudget($eventBudget, $budgetData): mixed
     {
-        if (!$eventBudget) {
+        if (! $eventBudget) {
             return null;
         }
-        
+
         $eventBudget->update(['budget_cap' => $budgetData['budgetCap']]);
-        
+
         return $eventBudget;
     }
 }

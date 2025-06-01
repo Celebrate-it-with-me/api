@@ -14,8 +14,6 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
- *
- *
  * @property int $id
  * @property string $name
  * @property string $email
@@ -28,6 +26,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read int|null $notifications_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
  * @method static Builder|User newModelQuery()
  * @method static Builder|User newQuery()
@@ -40,11 +39,12 @@ use Spatie\Permission\Traits\HasRoles;
  * @method static Builder|User wherePassword($value)
  * @method static Builder|User whereRememberToken($value)
  * @method static Builder|User whereUpdatedAt($value)
+ *
  * @mixin Eloquent
  */
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -76,47 +76,50 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
-    
+
     protected $appends = [
-      'avatar_url'
+        'avatar_url',
     ];
-    
+
     /**
      * Relation with user login sessions.
-     * @return HasMany
      */
     public function userLoginSessions(): HasMany
     {
-        return $this->hasMany(UserLoginSession::class, 'user_id', 'id' );
+        return $this->hasMany(UserLoginSession::class, 'user_id', 'id');
     }
-    
+
     /**
      * Retrieves the latest user login session where the last login time is not null.
-     *
-     * @return HasOne
      */
     public function lastLoginSession(): HasOne
     {
-        return $this->hasOne(UserLoginSession::class, 'user_id', 'id' )
+        return $this->hasOne(UserLoginSession::class, 'user_id', 'id')
             ->whereNotNull('logout_time')
             ->latest('id');
     }
-    
+
     /**
      * Relation with user active event.
+     *
      * @property-read Events|null $activeEvent
+     *
      * @method static Builder|User whereActiveEvent($value)
+     *
      * @mixin Eloquent
      */
     public function activeEvent(): HasOne
     {
         return $this->hasOne(Events::class, 'id', 'last_active_event_id');
     }
-    
+
     /**
      * Getting the user avatar URL.
+     *
      * @property string|null $avatar
+     *
      * @method string userAvatarAttribute()
+     *
      * @mixin Eloquent
      */
     public function getAvatarUrlAttribute(): string
@@ -125,20 +128,19 @@ class User extends Authenticatable
             ? asset('storage/' . $this->avatar)
             : '';
     }
-    
+
     /**
      * Relation with user preferences.
-     * @return HasOne
+     *
      * @property-read UserPreference|null $preferences
      */
     public function preferences(): HasOne
     {
         return $this->hasOne(UserPreference::class, 'user_id', 'id');
     }
-    
+
     /**
      * Retrieves all events that the user has access to.
-     * @return Collection
      */
     public function accessibleEvents(): Collection
     {
@@ -146,7 +148,7 @@ class User extends Authenticatable
             $query->where('user_id', $this->id);
         })->with('userRoles.role')->get();
     }
-    
+
     public function ownedEvents(): Collection
     {
         return Events::query()->whereHas('userRoles', function ($query) {
@@ -156,16 +158,15 @@ class User extends Authenticatable
                 });
         })->get();
     }
-    
+
     /**
      * Check if the user has a specific role for the given event.
      *
-     * @param Events $event The event instance.
-     * @param string $roleSlug The slug of the role to check.
-     *
+     * @param  Events  $event  The event instance.
+     * @param  string  $roleSlug  The slug of the role to check.
      * @return bool True if the user has the specified role for the event, otherwise false.
      */
-    public function hasEventRole(Events $event, string $roleSlug = null): bool
+    public function hasEventRole(Events $event, ?string $roleSlug = null): bool
     {
         return EventUserRole::query()
             ->where('event_id', $event->id)
@@ -177,13 +178,9 @@ class User extends Authenticatable
             })
             ->exists();
     }
-    
+
     /**
      * Check if the user has a specific permission for the given event.
-     *
-     * @param Events $event
-     * @param string $permissionSlug
-     * @return bool
      */
     public function hasEventPermission(Events $event, string $permissionSlug): bool
     {
@@ -191,26 +188,26 @@ class User extends Authenticatable
             ->where('event_id', $event->id)
             ->where('user_id', $this->id)
             ->first();
-        
-        if (!$eventUserRole) {
+
+        if (! $eventUserRole) {
             return false;
         }
-        
+
         return $eventUserRole->role
             ->permissions()
             ->where('name', $permissionSlug)
             ->exists();
     }
-    
+
     public function eventRoles(): HasMany
     {
         return $this->hasMany(EventUserRole::class, 'user_id', 'id');
     }
-    
+
     /**
      * Retrieves the permissions associated with a specific event for the current user.
      *
-     * @param Events $event The event instance for which to retrieve permissions.
+     * @param  Events  $event  The event instance for which to retrieve permissions.
      * @return array An array containing the names of the permissions.
      */
     public function getEventPermissions(Events $event): array
@@ -219,12 +216,11 @@ class User extends Authenticatable
             ->where('event_id', $event->id)
             ->with('role.permissions')
             ->first();
-        
-        if (!$eventUserRole || !$eventUserRole->role) {
+
+        if (! $eventUserRole || ! $eventUserRole->role) {
             return [];
         }
-        
+
         return $eventUserRole->role->permissions->pluck('name')->toArray();
     }
-    
 }

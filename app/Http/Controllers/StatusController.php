@@ -2,16 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\MainGuest\CreateMainGuestRequest;
-use App\Http\Resources\MainGuestResource;
-use App\Http\Resources\UserResource;
-use App\Http\Services\MainGuestServices;
-use App\Models\MainGuest;
-use App\Models\User;
 use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class StatusController extends Controller
@@ -30,6 +22,7 @@ class StatusController extends Controller
     {
         try {
             DB::connection()->getPdo();
+
             return response()->json(DB::connection()->getDatabaseName() !== 'none');
         } catch (Exception $e) {
             return response()->json(false);

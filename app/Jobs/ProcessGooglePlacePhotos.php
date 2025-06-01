@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\Storage;
 class ProcessGooglePlacePhotos implements ShouldQueue
 {
     use Queueable;
-    
+
     protected EventLocation $eventLocation;
+
     protected array $photoReferences;
-    
 
     /**
      * Create a new job instance.
@@ -32,16 +32,16 @@ class ProcessGooglePlacePhotos implements ShouldQueue
     {
         foreach ($this->photoReferences as $reference) {
             $response = Http::withOptions(['allow_redirects' => true])
-                ->get(config('services.google.url'). '/place/photo', [
+                ->get(config('services.google.url') . '/place/photo', [
                     'maxwidth' => 1024,
                     'photoreference' => $reference,
                     'key' => config('services.google.map_key'),
                 ]);
-            
+
             if ($response->successful()) {
                 $filename = 'locations/google/' . $this->eventLocation->id . '/' . uniqid('photo_') . '.jpg';
                 Storage::disk('public')->put($filename, $response->body(), 'public');
-                
+
                 $this->eventLocation->eventLocationImages()->create([
                     'path' => Storage::disk('public')->url($filename),
                     'caption' => null,

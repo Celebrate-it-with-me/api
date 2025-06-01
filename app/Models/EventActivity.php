@@ -29,31 +29,27 @@ class EventActivity extends Model
         'target_type',
         'payload',
     ];
-    
+
     protected $casts = [
-      'payload' => 'array',
+        'payload' => 'array',
     ];
-    
+
     /**
      * Define a relationship between the current model and the Events model.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
-    
+
     /**
      * Define a polymorphic relationship for the current model.
-     *
-     * @return MorphTo
      */
     public function actor(): MorphTo
     {
         return $this->morphTo();
     }
-    
+
     /**
      * Define a polymorphic relationship.
      */
@@ -61,7 +57,7 @@ class EventActivity extends Model
     {
         return $this->morphTo();
     }
-    
+
     /**
      * Define a relationship to the User model.
      */
@@ -77,19 +73,17 @@ class EventActivity extends Model
             'payload' => $payload,
         ]);
     }
-    
+
     /**
      * Get the message attribute based on the activity type.
      *
      * This method dynamically generates a message based on the type of activity
      * and the associated payload data.
-     *
-     * @return object|array|string|null
      */
     public function getMessageAttribute(): object|array|string|null
     {
         return match ($this->type) {
-            'event_created' => __("Event :name, has been created by :user", [
+            'event_created' => __('Event :name, has been created by :user', [
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actor ? $this->actor->name : 'System',
             ]),
@@ -129,14 +123,14 @@ class EventActivity extends Model
                 'name' => $this->payload['name'],
                 'user' => $this->actor ? $this->actor->name : 'System',
             ]),
-            
+
             'guest_confirmed' => __('Guest :name, has confirmed their attendance.', ['name' => $this->payload['name']]),
             'photo_uploaded' => __('Photo uploaded by :name.', ['name' => $this->payload['name']]),
             'music_added' => __('Music added by :name.', ['name' => $this->payload['name']]),
             default => __('Activity logged.'),
         };
     }
-    
+
     public function getIconAttribute(): string
     {
         return match ($this->type) {
@@ -156,7 +150,7 @@ class EventActivity extends Model
             default => 'activity',
         };
     }
-    
+
     public function getColorAttribute(): string
     {
         return match ($this->type) {
@@ -172,5 +166,4 @@ class EventActivity extends Model
             default => 'gray',
         };
     }
-    
 }

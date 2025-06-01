@@ -10,16 +10,14 @@ use Throwable;
 class HydrateController
 {
     protected HydrationService $hydrationService;
-    
+
     public function __construct(HydrationService $hydrationService)
     {
         $this->hydrationService = $hydrationService;
     }
-    
+
     /**
      * Hydrate the user with their events and other related data.
-     * @param User $user
-     * @return JsonResponse|null
      */
     public function hydrate(User $user): ?JsonResponse
     {

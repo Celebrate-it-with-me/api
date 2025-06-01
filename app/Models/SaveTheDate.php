@@ -10,9 +10,9 @@ class SaveTheDate extends Model
 {
     /** @use HasFactory<\Database\Factories\SaveTheDateFactory> */
     use HasFactory;
-    
+
     protected $table = 'save_the_dates';
-    
+
     protected $fillable = [
         'event_id',
         'title',
@@ -21,13 +21,11 @@ class SaveTheDate extends Model
         'video_url',
         'show_countdown',
         'use_add_to_calendar',
-        'is_enabled'
+        'is_enabled',
     ];
-    
+
     /**
      * Define a relationship to the Events model.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {

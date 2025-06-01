@@ -21,14 +21,14 @@ return new class extends Migration
             $table->integer('companion_qty')->default(0)
                 ->after('companion_type');
         });
-        
+
         // Add email and phone_number as nullable in party_members
         Schema::table('party_members', function (Blueprint $table) {
             $table->string('email')->nullable();
             $table->string('phone_number')->nullable();
         });
     }
-    
+
     /**
      * Reverse the migrations.
      */
@@ -40,12 +40,11 @@ return new class extends Migration
             $table->dropcolumn('companion_type');
             $table->dropcolumn('companion_type');
         });
-        
+
         // Revert changes for party_members
         Schema::table('party_members', function (Blueprint $table) {
             $table->dropColumn('email');
             $table->dropColumn('phone_number');
         });
     }
-    
 };

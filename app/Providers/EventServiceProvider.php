@@ -32,30 +32,30 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
-        
+
         UserLoggedInEvent::class => [
             UserLoggedInListener::class,
         ],
-        
+
         UserLoggedOutEvent::class => [
             UserLoggedOutListener::class,
         ],
-        
+
         UserRegistered::class => [
             SendConfirmationEmail::class,
         ],
-        
+
         ResetPasswordEvent::class => [
             SendResetPasswordLink::class,
         ],
-        
+
         GooglePlacePhotosQueued::class => [
-            DispatchProcessGooglePlacePhotos::class
+            DispatchProcessGooglePlacePhotos::class,
         ],
-        
+
         LogActivityEvent::class => [
             LogActivityListener::class,
-        ]
+        ],
     ];
 
     /**

@@ -8,13 +8,6 @@ class EventActivityLogger
 {
     /**
      * Log an activity event.
-     *
-     * @param int $eventId
-     * @param string $type
-     * @param mixed|null $actor
-     * @param mixed|null $target
-     * @param array $payload
-     * @return void
      */
     public static function log(
         int $eventId,
@@ -22,8 +15,7 @@ class EventActivityLogger
         mixed $actor = null,
         mixed $target = null,
         array $payload = []
-    ): void
-    {
+    ): void {
         event(new LogActivityEvent($eventId, $type, $actor, $target, $payload));
     }
 }

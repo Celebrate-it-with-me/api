@@ -11,9 +11,9 @@ class Menu extends Model
 {
     /** @use HasFactory<\Database\Factories\MenuFactory> */
     use HasFactory;
-    
+
     protected $table = 'menus';
-    
+
     protected $fillable = [
         'event_id',
         'title',
@@ -22,21 +22,17 @@ class Menu extends Model
         'allow_custom_request',
         'is_default',
     ];
-    
+
     /**
      * Define a relationship to the Events model.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
-    
+
     /**
      * Define a one-to-many relationship with the MenuItem model.
-     *
-     * @return HasMany
      */
     public function menuItems(): HasMany
     {

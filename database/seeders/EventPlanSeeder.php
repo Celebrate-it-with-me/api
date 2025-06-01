@@ -14,11 +14,11 @@ class EventPlanSeeder extends Seeder
     public function run(): void
     {
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        
+
         EventPlan::query()->truncate();
-        
+
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-        
+
         EventPlan::query()->insert([
             [
                 'name' => 'Basic',
@@ -70,7 +70,7 @@ class EventPlanSeeder extends Seeder
                 'support_level' => 'priority',
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]
+            ],
         ]);
     }
 }

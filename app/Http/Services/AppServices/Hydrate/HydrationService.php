@@ -18,36 +18,20 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Service responsible for hydrating user data with their events and related information.
  */
 class HydrationService
 {
-    /**
-     * @var LocationsServices
-     */
     private LocationsServices $locationsServices;
 
-
-    /**
-     * @var GuestServices
-     */
     private GuestServices $guestServices;
 
-    /**
-     * @var RsvpServices
-     */
     private RsvpServices $rsvpServices;
 
     /**
      * HydrationService constructor.
-     *
-     * @param LocationsServices $locationsServices
-     * @param EventPermissionService $eventPermissionService
-     * @param GuestServices $guestServices
-     * @param RsvpServices $rsvpServices
      */
     public function __construct(
         LocationsServices $locationsServices,
@@ -63,26 +47,26 @@ class HydrationService
     /**
      * Hydrate the user with their events and other related data.
      *
-     * @param User $user The user to hydrate with data
+     * @param  User  $user  The user to hydrate with data
      * @return JsonResponse The hydrated data as JSON response
      */
     public function hydrate(User $user): JsonResponse
     {
         $events = $user->accessibleEvents();
         $activeEvent = $this->getActiveEvent($user);
-        
-        if (!$activeEvent) {
+
+        if (! $activeEvent) {
             return $this->createEmptyResponse($events);
         }
-        
-        if (!$user->hasEventPermission($activeEvent, 'view_event')) {
+
+        if (! $user->hasEventPermission($activeEvent, 'view_event')) {
             return $this->createUnauthorizedResponse();
         }
-        
+
         $userLoggedPermissions = $user->getEventPermissions($activeEvent);
-        
+
         $data = $this->loadEventData($activeEvent);
-        
+
         return response()->json(array_merge(
             [
                 'events' => $events ? EventResource::collection($events) : null,
@@ -96,7 +80,7 @@ class HydrationService
     /**
      * Get the active event for a user with preloaded relationships.
      *
-     * @param User $user The user to get the active event for
+     * @param  User  $user  The user to get the active event for
      * @return Events|null The active event or null if none exists
      */
     private function getActiveEvent(User $user): ?Events
@@ -110,7 +94,7 @@ class HydrationService
     /**
      * Create a response for when the user has no active event.
      *
-     * @param Collection|null $events The user's organized events
+     * @param  Collection|null  $events  The user's organized events
      * @return JsonResponse The empty response
      */
     private function createEmptyResponse(?Collection $events): JsonResponse
@@ -144,7 +128,7 @@ class HydrationService
     /**
      * Load all data related to an event.
      *
-     * @param Events $event The event to load data for
+     * @param  Events  $event  The event to load data for
      * @return array The loaded data
      */
     private function loadEventData(Events $event): array
@@ -189,7 +173,7 @@ class HydrationService
     /**
      * Get guests with their menu selections for an event.
      *
-     * @param Events $event The event to get menu guests for
+     * @param  Events  $event  The event to get menu guests for
      * @return LengthAwarePaginator The paginated menu guests
      */
     private function getMenuGuests(Events $event): LengthAwarePaginator
