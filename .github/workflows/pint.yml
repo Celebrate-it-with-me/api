@@ -1,4 +1,4 @@
-name: Run Laravel Pint
+name: Run Laravel Pint & PHPUnit
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   pint:
-    name: Check code format with Laravel Pint
+    name: Check code format with Laravel Pint and run PHPUnit tests
     runs-on: ubuntu-latest
 
     steps:
@@ -27,3 +27,6 @@ jobs:
 
       - name: ✅ Run Laravel Pint
         run: ./vendor/bin/pint --test
+
+      - name: 🧪 Run PHPUnit tests
+        run: ./vendor/bin/phpunit --testdox --colors=always
