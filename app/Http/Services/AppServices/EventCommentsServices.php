@@ -18,27 +18,22 @@ class EventCommentsServices
     {
         $this->request = $request;
     }
-    
+
     /**
      * Retrieves paginated comments for a given event, specifically for admin view.
-     *
-     * @param Events $event
-     * @return LengthAwarePaginator
      */
     public function getAdminEventComments(Events $event): LengthAwarePaginator
     {
         $search = $this->request->query('search', '');
         $page = $this->request->query('page', 1);
         $perPage = $this->request->query('perPage', 5);
-        
-        
+
         return $event->comments()
             ->where('comment', 'like', '%' . $search . '%')
             ->latest()
             ->paginate($perPage, ['*'], 'page', $page);
     }
-    
-    
+
     /**
      * Retrieves paginated comments for a given event.
      *
@@ -69,13 +64,10 @@ class EventCommentsServices
             'is_approved' => 1,
         ]);
     }
-    
+
     /**
      * Store a new comment for the event.
      * This method handles comment creation from admin.
-     *
-     * @param  Events  $event
-     * @return EventComment
      */
     public function createAdminComment(Events $event): EventComment
     {

@@ -50,9 +50,9 @@ class EventUserRoleSeeder extends Seeder
 
             // Location
             'view_event_locations', 'create_event_locations', 'edit_event_locations',
-            
+
             'view_sweet_memories', 'create_sweet_memories', 'edit_sweet_memories', 'delete_sweet_memories',
-            
+
             'view_suggested_music', 'create_suggested_music', 'edit_suggested_music', 'delete_suggested_music',
 
             'view_event_comments', 'create_event_comments', 'edit_event_comments', 'delete_event_comments',

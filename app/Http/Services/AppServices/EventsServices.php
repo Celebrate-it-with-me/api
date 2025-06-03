@@ -27,11 +27,12 @@ class EventsServices
         $this->request = $request;
         $this->event = new Events;
     }
-    
+
     /**
      * Get user logged events.
      *
      * @return Collection
+     *
      * @throws Exception
      */
     public function getUserEvents(): array

@@ -50,7 +50,7 @@ class EventCommentsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     public function adminIndex(Request $request, Events $event): mixed
     {
         try {
@@ -66,16 +66,12 @@ class EventCommentsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
-    
+
     /**
      * Store a new comment for the event.
      * This method handles comment creation from admin
-     * @param Request $request
-     * @param Events $event
-     * @return EventCommentResource|JsonResponse
      */
-    public function storeComment(Request $request, Events $event): EventCommentResource | JsonResponse
+    public function storeComment(Request $request, Events $event): EventCommentResource|JsonResponse
     {
         try {
             return EventCommentResource::make($this->eventCommentsServices->createAdminComment($event));
@@ -89,19 +85,14 @@ class EventCommentsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Toggle the visibility status of a specified event comment.
-     *
-     * @param Request $request
-     * @param Events $event
-     * @param EventComment $comment
-     * @return JsonResponse
      */
     public function toggleVisibility(Request $request, Events $event, EventComment $comment): JsonResponse
     {
         try {
-            $comment->is_approved = !$comment->is_approved;
+            $comment->is_approved = ! $comment->is_approved;
             $comment->save();
 
             return response()->json(['message' => 'Comment visibility toggled successfully.', 'data' => EventCommentResource::make($comment)]);
@@ -116,14 +107,9 @@ class EventCommentsController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Delete a comment from the event.
-     *
-     * @param Request $request
-     * @param Events $event
-     * @param EventComment $comment
-     * @return JsonResponse
      */
     public function destroy(Request $request, Events $event, EventComment $comment): JsonResponse
     {
