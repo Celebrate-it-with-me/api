@@ -8,6 +8,7 @@ use App\Models\Guest;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class EventCommentsServices
 {
@@ -16,6 +17,21 @@ class EventCommentsServices
     public function __construct(Request $request)
     {
         $this->request = $request;
+    }
+
+    /**
+     * Retrieves paginated comments for a given event, specifically for admin view.
+     */
+    public function getAdminEventComments(Events $event): LengthAwarePaginator
+    {
+        $search = $this->request->query('search', '');
+        $page = $this->request->query('page', 1);
+        $perPage = $this->request->query('perPage', 5);
+
+        return $event->comments()
+            ->where('comment', 'like', '%' . $search . '%')
+            ->latest()
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
@@ -44,6 +60,21 @@ class EventCommentsServices
             'event_id' => $event->id,
             'created_by_class' => $createdByClass,
             'created_by_id' => $this->request->input('userId'),
+            'comment' => $this->request->input('comment'),
+            'is_approved' => 1,
+        ]);
+    }
+
+    /**
+     * Store a new comment for the event.
+     * This method handles comment creation from admin.
+     */
+    public function createAdminComment(Events $event): EventComment
+    {
+        return EventComment::query()->create([
+            'event_id' => $event->id,
+            'created_by_class' => User::class,
+            'created_by_id' => $this->request->user()->id,
             'comment' => $this->request->input('comment'),
             'is_approved' => 1,
         ]);

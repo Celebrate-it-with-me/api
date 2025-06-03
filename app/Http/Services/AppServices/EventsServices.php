@@ -32,6 +32,8 @@ class EventsServices
      * Get user logged events.
      *
      * @return Collection
+     *
+     * @throws Exception
      */
     public function getUserEvents(): array
     {
