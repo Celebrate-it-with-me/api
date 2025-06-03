@@ -51,6 +51,22 @@ class EventCommentsController extends Controller
         }
     }
     
+    public function adminIndex(Request $request, Events $event): mixed
+    {
+        try {
+            return EventCommentResource::collection($this->eventCommentsServices->getAdminEventComments($event))
+                ->response()->getData(true);
+        } catch (Throwable $th) {
+            Log::error('Admin Comment Index Error', [
+                'message' => $th->getMessage(),
+                'request' => $request->all(),
+                'event_id' => $event->id,
+            ]);
+
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+    
     
     /**
      * Store a new comment for the event.

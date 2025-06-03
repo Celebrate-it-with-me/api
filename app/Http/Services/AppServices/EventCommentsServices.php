@@ -8,6 +8,7 @@ use App\Models\Guest;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class EventCommentsServices
 {
@@ -17,7 +18,27 @@ class EventCommentsServices
     {
         $this->request = $request;
     }
-
+    
+    /**
+     * Retrieves paginated comments for a given event, specifically for admin view.
+     *
+     * @param Events $event
+     * @return LengthAwarePaginator
+     */
+    public function getAdminEventComments(Events $event): LengthAwarePaginator
+    {
+        $search = $this->request->query('search', '');
+        $page = $this->request->query('page', 1);
+        $perPage = $this->request->query('perPage', 5);
+        
+        
+        return $event->comments()
+            ->where('comment', 'like', '%' . $search . '%')
+            ->latest()
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+    
+    
     /**
      * Retrieves paginated comments for a given event.
      *

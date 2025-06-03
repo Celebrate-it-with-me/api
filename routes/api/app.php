@@ -185,7 +185,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             
             // Event Comments
             Route::prefix('event-comments')->name('comments.')->group(function () {
-                Route::get('', [EventCommentsController::class, 'index'])->name('index');
+                Route::get('', [EventCommentsController::class, 'adminIndex'])->name('adminIndex');
                 Route::post('', [EventCommentsController::class, 'storeComment'])->name('store');
                 Route::patch('{comment}/toggle-visibility', [EventCommentsController::class, 'toggleVisibility'])
                     ->name('toggleVisibility');
