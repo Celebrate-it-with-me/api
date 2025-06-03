@@ -35,6 +35,7 @@ class EventCommentResource extends JsonResource
             'createdBy' => $createdBy,
             'author' => $author,
             'comment' => $this->comment,
+            'isApproved' => $this->is_approved,
             'createdAt' => $this->created_at->diffForHumans(),
             'updatedAt' => $this->updated_at->diffForHumans(),
         ];

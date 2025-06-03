@@ -182,6 +182,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::post('', [EventConfigCommentsController::class, 'store'])->name('store');
                 Route::put('{commentConfig}', [EventConfigCommentsController::class, 'update'])->name('update');
             });
+            
+            // Event Comments
+            Route::prefix('event-comments')->name('comments.')->group(function () {
+                Route::get('', [EventCommentsController::class, 'index'])->name('index');
+                Route::post('', [EventCommentsController::class, 'storeComment'])->name('store');
+                Route::patch('{comment}/toggle-visibility', [EventCommentsController::class, 'toggleVisibility'])
+                    ->name('toggleVisibility');
+                Route::delete('{comment}', [EventCommentsController::class, 'destroy'])->name('destroy');
+            });
 
             // Suggest Music Config
             Route::prefix('suggest-music-config')->name('suggest-music-config.')->group(function () {

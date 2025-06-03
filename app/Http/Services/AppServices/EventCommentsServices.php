@@ -48,4 +48,22 @@ class EventCommentsServices
             'is_approved' => 1,
         ]);
     }
+    
+    /**
+     * Store a new comment for the event.
+     * This method handles comment creation from admin.
+     *
+     * @param  Events  $event
+     * @return EventComment
+     */
+    public function createAdminComment(Events $event): EventComment
+    {
+        return EventComment::query()->create([
+            'event_id' => $event->id,
+            'created_by_class' => User::class,
+            'created_by_id' => $this->request->user()->id,
+            'comment' => $this->request->input('comment'),
+            'is_approved' => 1,
+        ]);
+    }
 }
