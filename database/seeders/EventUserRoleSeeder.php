@@ -56,12 +56,12 @@ class EventUserRoleSeeder extends Seeder
             'view_suggested_music', 'create_suggested_music', 'edit_suggested_music', 'delete_suggested_music',
 
             'view_event_comments', 'create_event_comments', 'edit_event_comments', 'delete_event_comments',
-            
+
             'view_profile', 'edit_profile',
             'view_preferences', 'edit_preferences',
             'view_security', 'edit_security',
             'view_danger_zone', 'edit_danger_zone',
-            
+
             // RSVP
             'manage_rsvp', 'view_rsvp',
 
