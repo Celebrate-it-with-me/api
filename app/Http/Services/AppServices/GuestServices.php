@@ -37,13 +37,6 @@ class GuestServices
         $page = $this->request->input('page', 1);
         $searchValue = $this->request->input('searchValue');
 
-        Log::info('checking guests', [
-            'event_id' => $event->id,
-            'perPage' => $perPage,
-            'page' => $page,
-            'searchValue' => $searchValue,
-        ]);
-
         return Guest::query()
             ->where('event_id', $event->id)
             ->whereNull('parent_id')

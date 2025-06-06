@@ -183,7 +183,7 @@ class EventsServices
         $this->event->eventFeature->location = $this->request->input('location') ?? false;
         $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
         $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
-        $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;
+        $this->event->eventFeature->budget = $this->request->input('budget') ?? false;
         $this->event->eventFeature->analytics = $this->request->input('analytics') ?? false;
         $this->event->eventFeature->save();
 

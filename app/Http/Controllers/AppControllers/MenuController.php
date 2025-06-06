@@ -25,10 +25,6 @@ class MenuController extends Controller
             if (! $menus) {
                 return response()->json(['message' => 'There is no menus for this event.'], 404);
             }
-            Log::info('MenuController@index', [
-                'event_id' => $event->id,
-                'menus' => $menus,
-            ]);
 
             return response()->json($menus);
         } catch (\Throwable $e) {

@@ -106,7 +106,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
         });
     });
-
+    
+    // Events Routes
+    Route::prefix('events')->name('events.')->group(function () {
+        Route::get('', [EventsController::class, 'index'])->name('index');
+        /*Route::get('load-events-plans-and-types', [EventsController::class, 'loanEventsPlansAndType'])
+            ->name('loanEventsPlansAndType');*/
+    });
+    
+    
     // Event Routes
     Route::prefix('event')->name('event.')->group(function () {
         // Event CRUD
@@ -114,14 +122,15 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         Route::get('filters', [EventsController::class, 'filterEvents'])->name('filters');
 
         Route::prefix('{event}')->group(function () {
+            Route::delete('', [EventsController::class, 'destroy'])->name('destroy');
+            Route::put('', [EventsController::class, 'update'])->name('update');
+            
             Route::get('dashboard-logs', [EventActivityController::class, 'dashboardLogs'])
                 ->name('dashboard-logs');
             Route::get('permissions', [EventPermissionsController::class, 'index'])
                 ->name('permissions');
             Route::get('suggestions', [EventsController::class, 'suggestions'])
                 ->name('suggestions');
-            Route::delete('', [EventsController::class, 'destroy'])->name('destroy');
-            Route::put('', [EventsController::class, 'update'])->name('update');
 
             // Save The Date
             Route::prefix('save-the-date')->name('save-the-date.')->group(function () {

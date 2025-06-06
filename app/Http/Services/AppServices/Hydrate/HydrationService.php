@@ -22,6 +22,7 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service responsible for hydrating user data with their events and related information.
@@ -58,6 +59,8 @@ class HydrationService
     {
         $events = $user->accessibleEvents();
         $activeEvent = $this->getActiveEvent($user);
+        
+        Log::info('Checking active event features', [$activeEvent]);
 
         if (! $activeEvent) {
             return $this->createEmptyResponse($events);
