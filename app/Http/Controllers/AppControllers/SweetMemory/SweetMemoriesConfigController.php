@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\AppControllers;
+namespace App\Http\Controllers\AppControllers\SweetMemory;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreSweetMemoriesConfigRequest;
 use App\Http\Requests\app\UpdateSweetMemoriesConfigRequest;
 use App\Http\Resources\AppResources\SweetMemoriesConfigResource;
-use App\Http\Services\AppServices\SweetMemoriesConfigServices;
+use App\Http\Services\AppServices\SweetMemory\SweetMemoriesConfigServices;
 use App\Models\Events;
 use App\Models\SweetMemoriesConfig;
 use Illuminate\Http\JsonResponse;

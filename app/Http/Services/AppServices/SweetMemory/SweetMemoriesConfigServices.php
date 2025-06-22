@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Services\AppServices;
+namespace App\Http\Services\AppServices\SweetMemory;
 
 use App\Models\Events;
 use App\Models\SweetMemoriesConfig;

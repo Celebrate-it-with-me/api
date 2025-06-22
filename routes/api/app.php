@@ -21,9 +21,10 @@ use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDateController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
 use App\Http\Controllers\AppControllers\SuggestedMusicController;
-use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
-use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
-use App\Http\Controllers\AppControllers\TemplateController;
+use App\Http\Controllers\AppControllers\SweetMemory\SweetMemoriesConfigController;
+use App\Http\Controllers\AppControllers\SweetMemory\SweetMemoriesImageController;
+    use App\Http\Controllers\AppControllers\SweetMemory\SweetMemoryController;
+    use App\Http\Controllers\AppControllers\TemplateController;
 use App\Http\Controllers\AppControllers\UserPreferenceController;
 use App\Http\Controllers\AppControllers\UserSettingsController;
 use App\Http\Controllers\AppControllers\UserTwoFAController;
@@ -220,6 +221,14 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::post('', [SweetMemoriesImageController::class, 'store'])->name('store');
                 Route::put('', [SweetMemoriesImageController::class, 'update'])->name('update');
                 Route::delete('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'destroy'])->name('destroy');
+            });
+            
+            // Sweet Memories
+            Route::prefix('sweet-memories-v2')->name('sweet-memory.')->group(function () {
+                Route::get('', [SweetMemoryController::class, 'index'])->name('index');
+                Route::post('', [SweetMemoryController::class, 'store'])->name('store');
+                Route::put('', [SweetMemoryController::class, 'update'])->name('update');
+                Route::delete('{sweetMemoriesImage}', [SweetMemoryController::class, 'destroy'])->name('destroy');
             });
 
             // Locations
