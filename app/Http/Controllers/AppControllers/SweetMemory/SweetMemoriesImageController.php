@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\AppControllers;
+namespace App\Http\Controllers\AppControllers\SweetMemory;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreSweetMemoriesImageRequest;
 use App\Http\Resources\AppResources\SweetMemoriesImageResource;
-use App\Http\Services\AppServices\SweetMemoriesImageServices;
+use App\Http\Services\AppServices\SweetMemory\SweetMemoriesImageServices;
 use App\Models\Events;
 use App\Models\SweetMemoriesImage;
 use Illuminate\Http\JsonResponse;

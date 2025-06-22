@@ -23,8 +23,6 @@ class GuestResource extends JsonResource
             ? config('app.frontend_app.url') . "event/{$this->event_id}/guest/{$this->code}"
             : null;
 
-        Log::info('checking status rsvp', [$this]);
-
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
