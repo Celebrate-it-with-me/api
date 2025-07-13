@@ -30,7 +30,7 @@ class SuggestedMusicServices
      */
     public function getSuggestedMusic(Events $event): mixed
     {
-        $perPage = 5;
+        $perPage = 4;
         $pageSelected = $this->request->input('pageSelected', 1);
         
         return SuggestedMusic::query()
