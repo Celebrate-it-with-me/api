@@ -34,7 +34,7 @@ class SweetMemoryResource extends JsonResource
             'description' => $this->description,
             'year' => $this->year,
             'visible' => $this->visible,
-            'imagePath' => $this->image_path ? Storage::disk(self::STORAGE_DISK)->url($this->image_path) : null,
+            'imageUrl' => $this->image_path ? Storage::disk(self::STORAGE_DISK)->url($this->image_path) : null,
         ];
     }
 }

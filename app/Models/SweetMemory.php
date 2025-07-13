@@ -15,13 +15,14 @@ class SweetMemory extends Model
 
     protected $fillable = [
         'event_id',
+        'order',
         'title',
         'description',
         'year',
         'visible',
         'image_path',
     ];
-    
+
     protected $casts = [
         'visible' => 'boolean',
     ];
