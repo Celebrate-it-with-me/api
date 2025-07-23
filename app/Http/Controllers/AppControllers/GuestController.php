@@ -21,8 +21,7 @@ class GuestController extends Controller
     public function index(Events $event)
     {
         try {
-            return GuestResource::collection($this->guestServices->getEventsGuests($event))
-                ->response()->getData(true);
+            return GuestResource::collection($this->guestServices->getEventsGuests($event));
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
