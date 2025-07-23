@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Guest extends Model
 {
     protected $table = 'guests';
-    
-    
+
+
     protected $fillable = [
         'event_id',
         'parent_id',
@@ -27,11 +27,11 @@ class Guest extends Model
         'is_vip',
         'tags'
     ];
-    
+
     protected $casts = [
         'rsvp_status_date' => 'datetime',
     ];
-    
+
     /**
      * Get the event that this guest belongs to.
      * @return BelongsTo
@@ -40,7 +40,7 @@ class Guest extends Model
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
-    
+
     /**
      * Get the parent guest of this guest.
      * @return BelongsTo
@@ -49,7 +49,7 @@ class Guest extends Model
     {
         return $this->belongsTo(Guest::class, 'parent_id', 'id');
     }
-    
+
     /**
      * Get the companions of this guest.
      * @return HasMany
@@ -58,7 +58,7 @@ class Guest extends Model
     {
         return $this->hasMany(Guest::class, 'parent_id', 'id');
     }
-    
+
     /**
      * Define a one-to-many relationship with the GuestRsvpLog model.
      *
@@ -68,7 +68,7 @@ class Guest extends Model
     {
         return $this->hasMany(GuestRsvpLog::class, 'guest_id', 'id');
     }
-    
+
     /**
      * Define a one-to-many relationship with the GuestInvitation model.
      *
@@ -78,7 +78,7 @@ class Guest extends Model
     {
         return $this->hasMany(GuestInvitation::class, 'guest_id', 'id');
     }
-    
+
     /**
      * Define a one-to-many relationship with the GuestMenu model.
      * @return BelongsToMany
@@ -87,9 +87,9 @@ class Guest extends Model
     {
         return $this->belongsToMany(MenuItem::class, 'guest_menu')->withTimestamps();
     }
-    
-    public function menuAssigned(): HasOne
+
+    public function menuAssigned(): BelongsTo
     {
-        return $this->hasOne(Menu::class, 'id', 'assigned_menu_id');
+        return $this->belongsTo(Menu::class, 'assigned_menu_id', 'id');
     }
 }

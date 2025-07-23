@@ -18,13 +18,13 @@ class GuestResource extends JsonResource
     public function toArray(Request $request): array
     {
         $isMainGuest = is_null($this->parent_id);
-        
+
         $invitationUrl = $isMainGuest
             ? config('app.frontend_app.url') . "event/{$this->event_id}/guest/{$this->code}"
             : null;
-        
+
         Log::info('checking status rsvp', [$this]);
-        
+
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
@@ -46,7 +46,7 @@ class GuestResource extends JsonResource
             'invitationQR' => $isMainGuest && $invitationUrl
                 ? base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
                 : null,
-            
+
             'companions' => $this->when(
                 $isMainGuest,
                 GuestResource::collection($this->companions)
@@ -61,31 +61,28 @@ class GuestResource extends JsonResource
             ),
         ];
     }
-    
+
     private function getGuestMenuWithItems(): array
     {
         if (!$this->assigned_menu_id) {
             return [];
         }
-        
-        $menu = Menu::query()
-            ->with('menuItems')
-            ->where('id', $this->assigned_menu_id)
-            ->where('event_id', $this->event_id)
-            ->first();
-        
+
+        // Use the relationship defined in the Guest model
+        $menu = $this->menuAssigned()->with('menuItems')->first();
+
         if (!$menu) {
             return [];
         }
-        
+
         $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
             return $items->values()->toArray();
         });
-        
+
         return [
             'menu' => $menu->toArray(),
             'menuItems' => $groupedItems
         ];
     }
-    
+
 }
