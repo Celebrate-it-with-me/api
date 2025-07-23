@@ -26,7 +26,7 @@ class TemplateController extends Controller
             return response()->json(['message' => $e->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Fetches guest data and their companion information based on a provided guest code.
      *
@@ -48,11 +48,11 @@ class TemplateController extends Controller
             $mainGuest = Guest::query()
                 ->where('code', $guestCode)
                 ->first();
-            
+
             $companionQty = Guest::query()
                 ->where('parent_id', $mainGuest->id)
                 ->count();
-            
+
             $guestData = [
                 'mainGuest' => [
                     'id' => $mainGuest->id,
@@ -73,40 +73,37 @@ class TemplateController extends Controller
                     'companions' => GuestResource::collection($mainGuest->companions)
                 ]
             ];
-            
+
             return response()->json(['data' => $guestData], 200);
-            
+
         } catch (Throwable $e) {
             return response()->json([
                 'message' => $e->getMessage(). ' ' .$e->getLine()
             ], 500);
         }
     }
-    
+
     private function getGuestMenuWithItems($mainGuest): array
     {
         if (!$mainGuest->assigned_menu_id) {
             return [];
         }
-        
-        $menu = Menu::query()
-            ->with('menuItems')
-            ->where('id', $mainGuest->assigned_menu_id)
-            ->where('event_id', $mainGuest->event_id)
-            ->first();
-        
+
+        // Use the relationship defined in the Guest model
+        $menu = $mainGuest->menuAssigned()->with('menuItems')->first();
+
         if (!$menu) {
             return [];
         }
-        
+
         $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
             return $items->values()->toArray();
         });
-        
+
         return [
             'menu' => $menu->toArray(),
             'menuItems' => $groupedItems
         ];
     }
-    
+
 }
