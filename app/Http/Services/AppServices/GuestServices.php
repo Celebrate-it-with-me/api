@@ -9,6 +9,7 @@ use App\Models\MainGuest;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -28,15 +29,13 @@ class GuestServices
     /**
      * Get event guests.
      */
-    public function getEventsGuests(Events $event): LengthAwarePaginator
+    public function getEventsGuests(Events $event): Collection
     {
-        $perPage = $this->request->input('perPage', 10);
-        $page = $this->request->input('page', 1);
         $searchValue = $this->request->input('searchValue');
         
         return Guest::query()
             ->where('event_id', $event->id)
-            ->whereNull('parent_id') // Solo invitados principales
+            ->whereNull('parent_id')
             ->when($searchValue, function (Builder $query, $searchValue) {
                 $query->where(function (Builder $q) use ($searchValue) {
                     $q->where('name', 'like', "%{$searchValue}%")
@@ -46,7 +45,7 @@ class GuestServices
             })
             ->withCount('companions')
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
+            ->get();
     }
     
     

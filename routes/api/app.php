@@ -38,7 +38,6 @@ Route::post('reset-password', [AuthenticationController::class, 'resetPassword']
     ->name('reset.password');
 
 
-
 Route::get('template/event/{event}/guest/{guestCode}', [TemplateController::class, 'getEventData'])
     ->name('template.event.guest');
 
@@ -75,7 +74,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         ->name('events.loanEventsPlansAndType');
     Route::get('event/{event}/rsvp/summary', [RsvpController::class, 'summary'])
         ->name('rsvp.summary');
-
+    
 
     Route::get('event/filters', [EventsController::class, 'filterEvents']);
     Route::delete('event/{event}', [EventsController::class, 'destroy']);
