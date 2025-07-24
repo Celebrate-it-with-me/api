@@ -169,7 +169,7 @@ class RsvpServices
             ->where('event_id', $event->id)
             ->whereNull('parent_id')
             ->when($status && $status !== '', function ($q) use ($status) {
-                $q->where(function ($q) use ($status) {;
+                $q->where(function ($q) use ($status) {
                     $q->where('rsvp_status', $status)
                         ->orWhereHas('companions', function($sub) use ($status) {
                             $sub->where('rsvp_status', $status);
