@@ -15,12 +15,12 @@ use Illuminate\Http\Request;
 class RsvpController extends Controller
 {
     private RsvpServices  $rsvpService;
-    
+
     public function __construct(RsvpServices $rsvpService)
     {
         $this->rsvpService = $rsvpService;
     }
-    
+
     /**
      * Display a listing of the resource.
      */
@@ -34,7 +34,7 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store a newly created resource in storage.
      */
@@ -46,7 +46,7 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Save the RSVP data.
      */
@@ -54,49 +54,49 @@ class RsvpController extends Controller
     {
         try {
             $this->rsvpService->saveRsvp();
-            
+
             return response()->json(['message' => 'Rsvp saved.']);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Revert the RSVP confirmation status of a guest and their companions.
-     * @param Request $request
-     * @param Events $event
-     * @param Guest $guest
-     * @return JsonResponse
+     *
+     * @param Request $request The HTTP request
+     * @param Events $event The event
+     * @param Guest $guest The guest to revert
+     * @return JsonResponse Response with status message
      */
     public function revertConfirmation(Request $request, Events $event, Guest $guest): JsonResponse
     {
         try {
+            // This method contains business logic that could be moved to the service layer in a future refactoring
             $guest->update([
                 'rsvp_status' => 'pending',
                 'rsvp_status_date' => null,
             ]);
-            
+
             $guest->selectedMenuItems()->detach();
-            
+
             if ($guest->companions) {
                 foreach ($guest->companions as $companion) {
                     $companion->update([
                         'rsvp_status' => 'pending',
                         'rsvp_status_date' => null,
                     ]);
-                    
+
                     $companion->selectedMenuItems()->detach();
                 }
             }
-            
-            
-            
+
             return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve RSVP summary for a specific event.
      * @param Events $event
@@ -110,105 +110,42 @@ class RsvpController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve a list of RSVP users for a specific event.
      * Filters can be applied based on RSVP status and search value.
      * Supports pagination.
+     *
+     * @param Request $request The HTTP request
+     * @param Events $event The event to get RSVP users for
      */
-    public function getRsvpUsersList(Request $request, Events $event)
+    public function getRsvpUsersList(Request $request, Events $event): JsonResponse|array
     {
         try {
             $perPage = $request->input('perPage', 15);
-            
-            if ($request->input('status') === 'pending') {
-                $status = 'pending';
-            } else if ($request->input('status') === 'confirmed') {
-                $status = 'attending';
-            } else if ($request->input('status') === 'declined') {
-                $status = 'not-attending';
-            } else {
-                $status = null;
-            }
-            
+            $requestStatus = $request->input('status');
             $search = $request->input('search');
-            
-            $guest = Guest::query()
-                ->where('event_id', $event->id)
-                ->whereNull('parent_id')
-                    ->with('companions')
-                ->when($status && $status !== '', fn ($q) => $q->where('rsvp_status', $status))
-                ->when($search, function ($q) use ($search) {
-                    $q->where(function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%")
-                            ->orWhereHas('companions', function ($sub) use ($search) {
-                                $sub->where('name', 'like', "%{$search}%")
-                                    ->orWhere('email', 'like', "%{$search}%")
-                                    ->orWhere('phone', 'like', "%{$search}%");
-                            });
-                    });
-                })
-                ->orderByDesc('created_at')
-                ->paginate($perPage ?? 10);
-            
-                return GuestResource::collection($guest)
-                    ->response()->getData(true);
-                
+
+            return $this->rsvpService->getUsersList($event, $perPage, $requestStatus, $search);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Retrieve RSVP user totals for a specific event.
+     *
+     * @param Request $request The HTTP request
+     * @param Events $event The event to get totals for
+     * @return \Illuminate\Http\JsonResponse Totals data
      */
     public function getRsvpUsersTotals(Request $request, Events $event)
     {
         try {
-            $totalGuests = Guest::query()
-                ->where('event_id', $event->id)
-                ->count();
-            
-            $totalMainGuests = Guest::query()
-                ->where('event_id', $event->id)
-                ->whereNull('parent_id')
-                ->count();
-            $totalCompanions = Guest::query()
-                ->where('event_id', $event->id)
-                ->whereNotNull('parent_id')
-                ->count();
-            
-            $totalPending = Guest::query()
-                ->where('event_id', $event->id)
-                ->where('rsvp_status', 'pending')
-                ->count();
-            
-            $totalConfirmed = Guest::query()
-                ->where('event_id', $event->id)
-                ->where('rsvp_status', 'attending')
-                ->count();
-            
-            $totalDeclined = Guest::query()
-                ->where('event_id', $event->id)
-                ->where('rsvp_status', 'not-attending')
-                ->count();
-            
-            return response()->json([
-                'message' => 'Rsvp totals retrieved.',
-                'data' => [
-                    'totalGuests' => $totalGuests,
-                    'totalMainGuests' => $totalMainGuests,
-                    'totalCompanions' => $totalCompanions,
-                    'totalPending' => $totalPending,
-                    'totalConfirmed' => $totalConfirmed,
-                    'totalDeclined' => $totalDeclined,
-                ],
-            ]);
+            return response()->json($this->rsvpService->getUsersTotals($event));
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
 }
