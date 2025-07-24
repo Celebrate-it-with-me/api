@@ -137,7 +137,7 @@ class RsvpController extends Controller
                 ->where('event_id', $event->id)
                 ->whereNull('parent_id')
                     ->with('companions')
-                ->when($status, fn ($q) => $q->where('rsvp_status', $status))
+                ->when($status && $status !== '', fn ($q) => $q->where('rsvp_status', $status))
                 ->when($search, function ($q) use ($search) {
                     $q->where(function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%")
