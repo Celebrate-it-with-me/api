@@ -120,7 +120,17 @@ class RsvpController extends Controller
     {
         try {
             $perPage = $request->input('perPage', 15);
-            $status = $request->input('status');
+            
+            if ($request->input('status') === 'pending') {
+                $status = 'pending';
+            } else if ($request->input('status') === 'confirmed') {
+                $status = 'attending';
+            } else if ($request->input('status') === 'declined') {
+                $status = 'not-attending';
+            } else {
+                $status = null;
+            }
+            
             $search = $request->input('search');
             
             $guest = Guest::query()
