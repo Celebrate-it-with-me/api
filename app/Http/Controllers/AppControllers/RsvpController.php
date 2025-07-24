@@ -120,14 +120,24 @@ class RsvpController extends Controller
     {
         try {
             $perPage = $request->input('perPage', 15);
-            $status = $request->input('status');
+            
+            if ($request->input('status') === 'pending') {
+                $status = 'pending';
+            } else if ($request->input('status') === 'confirmed') {
+                $status = 'attending';
+            } else if ($request->input('status') === 'declined') {
+                $status = 'not-attending';
+            } else {
+                $status = null;
+            }
+            
             $search = $request->input('search');
             
             $guest = Guest::query()
                 ->where('event_id', $event->id)
                 ->whereNull('parent_id')
                     ->with('companions')
-                ->when($status, fn ($q) => $q->where('rsvp_status', $status))
+                ->when($status && $status !== '', fn ($q) => $q->where('rsvp_status', $status))
                 ->when($search, function ($q) use ($search) {
                     $q->where(function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%")
