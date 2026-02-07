@@ -10,81 +10,165 @@ use App\Models\SuggestedMusic;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SuggestedMusicServices
 {
     protected Request $request;
-    protected SuggestedMusic $suggestedMusic;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->suggestedMusic = new SuggestedMusic();
     }
-    
+
     /**
      * Get event save the date.
      * @param Events $event
      * @return mixed
      */
-    public function getSuggestedMusic(Events $event): mixed
+    public function getSuggestedMusic(Events $event, array $options = []): LengthAwarePaginator
     {
-        $perPage = 5;
+        $perPage = $options['perPage'] ?? 10;
         $pageSelected = $this->request->input('pageSelected', 1);
-        
-        return SuggestedMusic::query()
+        $orderBy = $options['orderBy'] ?? 'recent'; // 'recent' or 'popular'
+        $search = $this->request->input('search');
+
+        $query = SuggestedMusic::query()
             ->where('event_id', $event->id)
-            ->orderBy('id', 'DESC')
-            ->paginate($perPage, ['*'], 'guests', $pageSelected);
-    }
-    
-    /**
-     * Add Suggested Music.
-     * @param Events $event
-     * @return SaveTheDate|Model
-     * @throws ValidationException
-     */
-    public function create(Events $event): Model|SuggestedMusic
-    {
-        if ($this->request->input('accessCode') === 'organizer') {
-            $suggestedBy = $this->request->user();
-            $suggestedByEntity = User::class;
+            ->with(['suggestedBy', 'musicVotes']);
+
+        // Apply search
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%")
+                    ->orWhere('artist', 'LIKE', "%{$search}%")
+                    ->orWhere('album', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Apply ordering
+        if ($orderBy === 'popular') {
+            $query->popular();
         } else {
-            $suggestedBy = Guest::query()
-                ->where('code', $this->request->input('accessCode'))
-                ->first();
-            $suggestedByEntity = Guest::class;
+            $query->recent();
         }
-        
-        if (!$suggestedBy) {
-            throw ValidationException::withMessages(['message' => 'Invalid access code!']);
-        }
-        
-        return SuggestedMusic::query()->create([
-            'event_id' => $event->id,
-            'title' => $this->request->get('title'),
-            'artist' => $this->request->get('artist'),
-            'album' => $this->request->get('album'),
-            'platformId' => $this->request->get('platformId'),
-            'platform'  => 'spotify',
-            'thumbnailUrl' => $this->request->get('thumbnailUrl'),
-            'suggested_by_entity' => $suggestedByEntity,
-            'suggested_by_id' => $suggestedBy->id,
-        ]);
+
+        return $query->paginate($perPage, ['*'], 'page', $pageSelected);
     }
-    
+
     /**
-     * Remove the provided SuggestedMusic instance and return its clone.
-     *
-     * @param SuggestedMusic $suggestedMusic
-     * @return SuggestedMusic
+     * Create suggested music by ORGANIZER
+     */
+    public function createByOrganizer(Events $event, User $user): Model|SuggestedMusic
+    {
+        // Check for duplicate
+        $this->checkDuplicateSong($event->id, $this->request->get('platformId'));
+
+        return DB::transaction(function() use ($event, $user) {
+            return SuggestedMusic::create([
+                'event_id' => $event->id,
+                'title' => $this->request->get('title'),
+                'artist' => $this->request->get('artist'),
+                'album' => $this->request->get('album'),
+                'platformId' => $this->request->get('platformId'),
+                'platform' => 'spotify',
+                'thumbnailUrl' => $this->request->get('thumbnailUrl'),
+                'previewUrl' => $this->request->get('previewUrl'),
+                'suggested_by_entity' => 'user',
+                'suggested_by_id' => $user->id,
+            ]);
+        });
+    }
+
+    /**
+     * Create suggested music by GUEST (with access code)
+     */
+    public function createByGuest(Events $event, string $accessCode): Model|SuggestedMusic
+    {
+        // Validate access code
+        $guest = Guest::where('code', $accessCode)
+            ->where('event_id', $event->id)
+            ->first();
+
+        if (!$guest) {
+            throw ValidationException::withMessages([
+                'accessCode' => 'Invalid access code for this event.'
+            ]);
+        }
+
+        // Check suggestion limit
+        $this->checkSuggestionLimit($guest, $event->id);
+
+        // Check for duplicate
+        $this->checkDuplicateSong($event->id, $this->request->get('platformId'));
+
+        return DB::transaction(function() use ($event, $guest) {
+            return SuggestedMusic::create([
+                'event_id' => $event->id,
+                'title' => $this->request->get('title'),
+                'artist' => $this->request->get('artist'),
+                'album' => $this->request->get('album'),
+                'platformId' => $this->request->get('platformId'),
+                'platform' => 'spotify',
+                'thumbnailUrl' => $this->request->get('thumbnailUrl'),
+                'previewUrl' => $this->request->get('previewUrl'),
+                'suggested_by_entity' => 'guest',
+                'suggested_by_id' => $guest->id,
+            ]);
+        });
+    }
+
+    /**
+     * Remove suggested music
+     * @throws \Throwable
      */
     public function remove(SuggestedMusic $suggestedMusic): SuggestedMusic
     {
-        $suggestedMusicClone = clone $suggestedMusic;
-        $suggestedMusic->delete();
-        
-        return $suggestedMusicClone;
+        $clone = clone $suggestedMusic;
+
+        DB::transaction(function() use ($suggestedMusic) {
+            // Votes will be cascade deleted by foreign key
+            $suggestedMusic->delete();
+        });
+
+        return $clone;
+    }
+
+    /**
+     * Check if guest has reached suggestion limit
+     */
+    protected function checkSuggestionLimit(Guest $guest, int $eventId): void
+    {
+        $maxSuggestions = config('music.max_suggestions_per_guest', 5);
+
+        $currentCount = SuggestedMusic::where('event_id', $eventId)
+            ->where('suggested_by_entity', Guest::class)
+            ->where('suggested_by_id', $guest->id)
+            ->count();
+
+        if ($currentCount >= $maxSuggestions) {
+            throw ValidationException::withMessages([
+                'limit' => "You have reached the maximum of {$maxSuggestions} song suggestions."
+            ]);
+        }
+    }
+
+    /**
+     * Check if song already exists for event
+     */
+    protected function checkDuplicateSong(int $eventId, string $platformId): void
+    {
+        $existing = SuggestedMusic::where('event_id', $eventId)
+            ->where('platformId', $platformId)
+            ->first();
+
+        if ($existing) {
+            throw ValidationException::withMessages([
+                'duplicate' => 'This song has already been suggested.',
+                'existingMusicId' => $existing->id,
+            ])->status(409); // Conflict
+        }
     }
 }

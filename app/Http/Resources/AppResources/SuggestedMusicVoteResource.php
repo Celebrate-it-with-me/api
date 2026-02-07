@@ -9,16 +9,16 @@ class SuggestedMusicVoteResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
             'suggestedMusicId' => $this->suggested_music_id,
-            'mainGuestId' => $this->main_guest_id,
+            'guestId' => $this->guest_id,
             'voteType' => $this->vote_type,
+            'createdAt' => $this->created_at?->toIso8601String(),
+            'updatedAt' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

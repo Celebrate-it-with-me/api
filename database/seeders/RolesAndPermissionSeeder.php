@@ -38,11 +38,12 @@ class RolesAndPermissionSeeder extends Seeder
 
         $user = User::query()->firstOrCreate(
             [
-                'email' => 'henrycarmenateg@gmail.com'
+                'email' => config('app.admin_user.email')
             ],
             [
                 'name' => 'Henry Carmenate',
-                'password' => Hash::make('password'),
+                'password' => Hash::make(config('app.admin_user.password')),
+                'email_verified_at' => now()
             ]
         );
 

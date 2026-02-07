@@ -31,28 +31,43 @@ class EventResource extends JsonResource
             'createdAt' => $this->created_at->toDateTimeString(),
             'updatedAt' => $this->updated_at->toDateTimeString(),
             'selected' => false,
-            'eventFeatures' => $this->transformFeatures()
+            'eventFeatures' => $this->transformFeatures(),
+            'guestsCount' => $this->getEventGuestsCount(),
+            'rsvpResponse' => $this->rsvpResponse(),
+            'setupProgress' => $this->calculateSetupProgress(),
         ];
     }
-    
+
+    private function getEventGuestsCount(): int
+    {
+        return $this->guests()->count();
+    }
+
+    private function rsvpResponse()
+    {
+        return $this->guests()
+            ->where('rsvp_status', '!=', 'pending')
+            ->count();
+    }
+
     private function getUserRole($user): ?string
     {
         if (!$user || !$this->userRoles) {
             return null;
         }
-        
+
         $role = $this->userRoles->firstWhere('user_id', $user->id)?->role;
-        
+
         return $role?->name;
     }
-    
+
     private function getOwner(): UserResource
     {
         return UserResource::make(
             optional($this->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user
         );
     }
-    
+
     /**
      * Transforms event features into an array with name and activation status for each feature.
      * Iterates through the provided eventFeature property and structures its data for further processing.
@@ -65,21 +80,21 @@ class EventResource extends JsonResource
             if (!$this->eventFeature) {
                 return [];
             }
-            
+
             $eventFeatures = [];
             $eventFeaturesArray = $this->eventFeature->toArray();
             unset($eventFeaturesArray['id']);
             unset($eventFeaturesArray['event_id']);
             unset($eventFeaturesArray['created_at']);
             unset($eventFeaturesArray['updated_at']);
-            
+
             foreach ($eventFeaturesArray as $key => $eventFeature) {
                 $eventFeatures[] = [
                     'name' => Str::camel($key),
                     'isActive' => $eventFeature,
                 ];
             }
-            
+
             return $eventFeatures;
         }
     }

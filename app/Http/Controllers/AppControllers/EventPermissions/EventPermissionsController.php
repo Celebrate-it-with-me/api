@@ -10,8 +10,7 @@ use Illuminate\Http\Request;
 
 class EventPermissionsController extends Controller
 {
-    public function __construct(private readonly EventsServices $eventsServices) {}
-    
+    public function __construct() {}
     
     /**
      * Get the permissions of the logged-in user for a specific event.

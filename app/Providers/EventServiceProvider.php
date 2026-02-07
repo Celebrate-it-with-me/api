@@ -2,16 +2,22 @@
 
 namespace App\Providers;
 
+use App\Events\CommentCreated;
+use App\Events\EventNotificationEvent;
 use App\Events\GooglePlacePhotosQueued;
 use App\Events\LogActivityEvent;
 use App\Events\ResetPasswordEvent;
+use App\Events\SuggestedMusicCreated;
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
 use App\Listeners\DispatchProcessGooglePlacePhotos;
 use App\Listeners\LogActivityListener;
+use App\Listeners\SendCommentCreatedNotification;
 use App\Listeners\SendConfirmationEmail;
+use App\Listeners\SendEventNotification;
 use App\Listeners\SendResetPasswordLink;
+use App\Listeners\SendSuggestedMusicCreatedNotification;
 use App\Listeners\UserLoggedInListener;
 use App\Listeners\UserLoggedOutListener;
 use App\Models\GuestCompanion;
@@ -32,30 +38,42 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
-        
+
         UserLoggedInEvent::class => [
             UserLoggedInListener::class,
         ],
-        
+
         UserLoggedOutEvent::class => [
             UserLoggedOutListener::class,
         ],
-        
+
         UserRegistered::class => [
             SendConfirmationEmail::class,
         ],
-        
+
         ResetPasswordEvent::class => [
             SendResetPasswordLink::class,
         ],
-        
+
         GooglePlacePhotosQueued::class => [
             DispatchProcessGooglePlacePhotos::class
         ],
-        
+
         LogActivityEvent::class => [
             LogActivityListener::class,
-        ]
+        ],
+
+        SuggestedMusicCreated::class => [
+            SendSuggestedMusicCreatedNotification::class
+        ],
+
+        CommentCreated::class => [
+            SendCommentCreatedNotification::class
+        ],
+
+        EventNotificationEvent::class => [
+            SendEventNotification::class
+        ],
     ];
 
     /**

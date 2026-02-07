@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
@@ -36,7 +37,7 @@ class AuthenticationController extends Controller
 
         return $user->createToken($request->input('device'))->plainTextToken;
     }
-    
+
     /**
      * Register a new user based on the provided request data.
      *
@@ -49,17 +50,20 @@ class AuthenticationController extends Controller
     {
         if (config('services.hcaptcha.enabled')) {
             $token = $request->input('hcaptcha_token');
-            
+
             if (!$token || !$this->verifyHCaptcha($token) ) {
                 return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
             }
         }
-        
+
         $user = User::query()->create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        // Assign the appUser role to give access to frontend routes
+        $user->assignRole('owner');
 
         event(new UserRegistered($user));
 
@@ -68,7 +72,7 @@ class AuthenticationController extends Controller
            'user' => $user,
         ], 201);
     }
-    
+
     /**
      * Confirm the user's email address.
      * @param Request $request
@@ -80,17 +84,17 @@ class AuthenticationController extends Controller
         if (!$request->hasValidSignature() || !$request->user) {
             return response()->json(['message' => 'Invalid or expired signature.'], 401);
         }
-        
+
         $user = User::query()->find($request->user);
-        
+
         if (!$user || !$user->hasVerifiedEmail()) {
             $user->email_verified_at = now();
             $user->save();
         }
-        
+
         return response()->json(['message' => 'Email verified successfully!']);
     }
-    
+
     /**
      * Forgot Password functionality.
      * @param ForgotPasswordRequest $request
@@ -108,7 +112,7 @@ class AuthenticationController extends Controller
 
         return response()->json(['message' => 'Password reset link sent successfully!']);
     }
-    
+
     /**
      * Check reset password link.
      * @param Request $request
@@ -119,13 +123,13 @@ class AuthenticationController extends Controller
         if (!$request->hasValidSignature() || !$request->user) {
             return response()->json(['message' => 'Invalid or expired signature.'], 401);
         }
-        
+
         return response()->json([
             'message' => 'Password Link is Valid!',
             'data' => User::find($request->user),
         ]);
     }
-    
+
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
         $user = User::query()
@@ -141,7 +145,7 @@ class AuthenticationController extends Controller
 
         return response()->json(['message' => 'Password reset successfully!']);
     }
-    
+
     /**
      * Authenticates the user for the mobile application login.
      *
@@ -156,40 +160,36 @@ class AuthenticationController extends Controller
     {
         if (config('services.hcaptcha.enabled')) {
             $token = $request->input('hcaptcha_token');
-            
+
             if (!$token || !$this->verifyHCaptcha($token) ) {
                 return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
             }
         }
-        
+
         $user = User::query()
             ->with(['lastLoginSession', 'activeEvent'])
             ->where('email', $request->input('email'))
             ->whereNotNull('email_verified_at')
             ->first();
-        
+
+
+
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid Credentials'], 401);
         }
 
         $remember = $request->input('remember', false);
-        $expiration = $remember ? now()->addDays(30) : now()->addhours(5);
-        
-        $token = $user->createToken(
-            $request->input('device'),
-            ['*'],
-            $expiration
-        )->plainTextToken;
+
+        Auth::login($user, $remember);
 
         UserLoggedInEvent::dispatch($user, $request);
-        
+
         return response()->json([
             'message' => 'Logged in successfully!',
             'user' => $user,
-            'token' => $token
         ]);
     }
-    
+
     /**
      * Verify the hCaptcha token.
      *
@@ -208,7 +208,7 @@ class AuthenticationController extends Controller
                 'remoteip' => request()->ip(),
             ]
         );
-        
+
         return $response->ok() && $response->json('success') === true;
     }
 
@@ -224,7 +224,7 @@ class AuthenticationController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         UserLoggedOutEvent::dispatch($request->user());
-        
+
         return response()->json(['message' => 'Logged out successfully!']);
     }
 

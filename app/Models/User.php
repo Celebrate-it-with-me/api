@@ -76,11 +76,11 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
-    
+
     protected $appends = [
       'avatar_url'
     ];
-    
+
     /**
      * Relation with user login sessions.
      * @return HasMany
@@ -89,7 +89,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserLoginSession::class, 'user_id', 'id' );
     }
-    
+
     /**
      * Retrieves the latest user login session where the last login time is not null.
      *
@@ -101,7 +101,7 @@ class User extends Authenticatable
             ->whereNotNull('logout_time')
             ->latest('id');
     }
-    
+
     /**
      * Relation with user active event.
      * @property-read Events|null $activeEvent
@@ -112,7 +112,16 @@ class User extends Authenticatable
     {
         return $this->hasOne(Events::class, 'id', 'last_active_event_id');
     }
-    
+
+    /**
+     * Relation with user social accounts.
+     * @return Builder|User|HasMany
+     */
+    public function socialAccounts(): Builder|User|HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
     /**
      * Getting the user avatar URL.
      * @property string|null $avatar
@@ -125,7 +134,7 @@ class User extends Authenticatable
             ? asset('storage/' . $this->avatar)
             : '';
     }
-    
+
     /**
      * Relation with user preferences.
      * @return HasOne
@@ -135,28 +144,30 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserPreference::class, 'user_id', 'id');
     }
-    
+
     /**
      * Retrieves all events that the user has access to.
      * @return Collection
      */
     public function accessibleEvents(): Collection
     {
-        return Events::query()->whereHas('userRoles', function ($query) {
-            $query->where('user_id', $this->id);
-        })->with('userRoles.role')->get();
+        return Events::query()
+            ->whereHas('userRoles', function ($query) {
+                $query->where('user_id', $this->id);
+            })->with(['userRoles.role', 'guests'])->get();
     }
-    
+
     public function ownedEvents(): Collection
     {
-        return Events::query()->whereHas('userRoles', function ($query) {
+        return Events::query()
+            ->whereHas('userRoles', function ($query) {
             $query->where('user_id', $this->id)
                 ->whereHas('role', function ($q) {
                     $q->where('name', 'owner');
                 });
         })->get();
     }
-    
+
     /**
      * Check if the user has a specific role for the given event.
      *
@@ -177,7 +188,7 @@ class User extends Authenticatable
             })
             ->exists();
     }
-    
+
     /**
      * Check if the user has a specific permission for the given event.
      *
@@ -191,22 +202,22 @@ class User extends Authenticatable
             ->where('event_id', $event->id)
             ->where('user_id', $this->id)
             ->first();
-        
+
         if (!$eventUserRole) {
             return false;
         }
-        
+
         return $eventUserRole->role
             ->permissions()
             ->where('name', $permissionSlug)
             ->exists();
     }
-    
+
     public function eventRoles(): HasMany
     {
         return $this->hasMany(EventUserRole::class, 'user_id', 'id');
     }
-    
+
     /**
      * Retrieves the permissions associated with a specific event for the current user.
      *
@@ -219,12 +230,12 @@ class User extends Authenticatable
             ->where('event_id', $event->id)
             ->with('role.permissions')
             ->first();
-        
+
         if (!$eventUserRole || !$eventUserRole->role) {
             return [];
         }
-        
+
         return $eventUserRole->role->permissions->pluck('name')->toArray();
     }
-    
+
 }

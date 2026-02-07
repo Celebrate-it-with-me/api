@@ -17,12 +17,12 @@ use Throwable;
 class SweetMemoriesImageController extends Controller
 {
     private SweetMemoriesImageServices $sweetMemoriesImageServices;
-    
+
     public function __construct(SweetMemoriesImageServices $sweetMemoriesImageServices)
     {
         $this->sweetMemoriesImageServices = $sweetMemoriesImageServices;
     }
-    
+
     /**
      * Get all event sweet memories images.
      * @param Events $event
@@ -32,7 +32,7 @@ class SweetMemoriesImageController extends Controller
     {
         return SweetMemoriesImageResource::collection($event->sweetMemoriesImages);
     }
-    
+
     /**
      * Store a newly created resource in storage.
      */
@@ -44,31 +44,33 @@ class SweetMemoriesImageController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Update the specified resource in storage.
      *
      */
-    public function update(StoreSweetMemoriesImageRequest $request, Events $event): JsonResponse|AnonymousResourceCollection
+    public function update(StoreSweetMemoriesImageRequest $request, Events $event, SweetMemoriesImage $sweetMemoriesImage): JsonResponse
     {
         try {
-            return SweetMemoriesImageResource::collection($this->sweetMemoriesImageServices->create($event));
+            [$result, $message, $status] = $this->sweetMemoriesImageServices->update($request, $sweetMemoriesImage);
+
+            return response()->json(['message' => $message, 'data' => $result], $status);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     public function updateName(Request $request, SweetMemoriesImage $sweetMemoriesImage): JsonResponse
     {
         try {
             [$result, $status] = $this->sweetMemoriesImageServices->updateName($request, $sweetMemoriesImage);
-            
+
             return response()->json(['data' => $result ], $status);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Remove the specified resource from storage.
      */
@@ -76,7 +78,7 @@ class SweetMemoriesImageController extends Controller
     {
         try {
             [$result, $message, $status] = $this->sweetMemoriesImageServices->destroy($event, $sweetMemoriesImage);
-            
+
             return response()->json(['message' => $message, 'data' => $result], $status);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);

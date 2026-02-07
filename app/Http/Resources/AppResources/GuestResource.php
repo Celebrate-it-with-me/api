@@ -2,10 +2,8 @@
 
 namespace App\Http\Resources\AppResources;
 
-use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Log;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class GuestResource extends JsonResource
@@ -18,13 +16,11 @@ class GuestResource extends JsonResource
     public function toArray(Request $request): array
     {
         $isMainGuest = is_null($this->parent_id);
-        
+
         $invitationUrl = $isMainGuest
             ? config('app.frontend_app.url') . "event/{$this->event_id}/guest/{$this->code}"
             : null;
-        
-        Log::info('checking status rsvp', [$this]);
-        
+
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
@@ -41,51 +37,47 @@ class GuestResource extends JsonResource
             'seatNumber' => $this->seat_number,
             'notes' => $this->notes,
             'code' => $isMainGuest ? $this->code : null,
-            'menuSelected' => $this->getGuestMenuWithItems(),
+            'menuSelected' => $this->getOptimizedMenuWithItems(),
             'invitationUrl' => $invitationUrl,
-            'invitationQR' => $isMainGuest && $invitationUrl
-                ? base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
-                : null,
-            
+            'invitationQR' => $this->when(
+                $isMainGuest && $invitationUrl,
+                fn() => base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
+            ),
+
             'companions' => $this->when(
                 $isMainGuest,
-                GuestResource::collection($this->companions)
+                GuestResource::collection($this->whenLoaded('companions'))
             ),
             'invitations' => $this->when(
                 $isMainGuest,
-                GuestInvitationResource::collection($this->rsvpLogs)
+                GuestInvitationResource::collection($this->whenLoaded('invitations'))
             ),
             'rsvpLogs' => $this->when(
                 $isMainGuest,
-                GuestRsvpLogResource::collection($this->rsvpLogs)
+                GuestRsvpLogResource::collection($this->whenLoaded('rsvpLogs'))
             ),
         ];
     }
-    
-    private function getGuestMenuWithItems(): array
+
+    private function getOptimizedMenuWithItems(): array
     {
-        if (!$this->assigned_menu_id) {
+        if (!$this->assigned_menu_id || !$this->relationLoaded('assignedMenu')) {
             return [];
         }
-        
-        $menu = Menu::query()
-            ->with('menuItems')
-            ->where('id', $this->assigned_menu_id)
-            ->where('event_id', $this->event_id)
-            ->first();
-        
+
+        $menu = $this->assignedMenu;
+
         if (!$menu) {
             return [];
         }
-        
+
         $groupedItems = $menu->menuItems->groupBy('type')->map(function ($items) {
             return $items->values()->toArray();
         });
-        
+
         return [
             'menu' => $menu->toArray(),
             'menuItems' => $groupedItems
         ];
     }
-    
 }

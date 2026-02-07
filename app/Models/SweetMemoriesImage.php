@@ -10,9 +10,9 @@ class SweetMemoriesImage extends Model
 {
     /** @use HasFactory<\Database\Factories\SweetMemoriesImageFactory> */
     use HasFactory;
-    
+
     protected $table = 'sweet_memories_images';
-    
+
     protected $fillable = [
         'event_id',
         'image_path',
@@ -20,9 +20,14 @@ class SweetMemoriesImage extends Model
         'image_original_name',
         'image_size',
         'thumbnail_path',
-        'thumbnail_name'
+        'thumbnail_name',
+        'title',
+        'description',
+        'year',
+        'visible',
+        'order'
     ];
-    
+
     /**
      * Defines the relationship between the current model and the Events model.
      * @return BelongsTo

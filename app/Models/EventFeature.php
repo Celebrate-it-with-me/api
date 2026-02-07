@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EventFeature extends Model
 {
     /** @use HasFactory<\Database\Factories\EventsFactory> */
-    use HasFactory;
 
     protected $table = 'event_features';
 
@@ -28,7 +27,7 @@ class EventFeature extends Model
         'analytics',
         'location'
     ];
-    
+
     /**
      * Define a relationship to the Events model.
      * @return BelongsTo

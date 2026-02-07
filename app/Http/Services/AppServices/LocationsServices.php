@@ -5,18 +5,17 @@ namespace App\Http\Services\AppServices;
 use App\Models\EventLocation;
 use App\Models\Events;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class LocationsServices
 {
     private Request $request;
-    
+
     public function __construct(Request $request)
     {
         $this->request = $request;
     }
-    
+
     /**
      * Retrieve a paginated list of event locations for a specific event.
      *
@@ -27,11 +26,12 @@ class LocationsServices
      * @param Events $event The event for which locations are being retrieved.
      * @return Collection A paginated collection of event locations.
      */
-    public function getEventLocations(Events $event): Collection
+    public function getEventLocation(Events $event): ?EventLocation
     {
         $searchValue = $this->request->input('searchValue');
-        
+
         return EventLocation::query()
+            ->with('eventLocationImages')
             ->where('event_id', $event->id)
             ->when($searchValue, function ($query) use ($searchValue) {
                 $query->where(function ($q) use ($searchValue) {
@@ -40,6 +40,6 @@ class LocationsServices
                         ->orWhere('city', 'like', "%{$searchValue}%");
                 });
             })
-            ->get();
+            ->first();
     }
 }

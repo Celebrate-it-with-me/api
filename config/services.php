@@ -35,15 +35,24 @@ return [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_AUTH_TOKEN')
     ],
-    
+
     'hcaptcha' => [
         'site_key' => env('HCAPTCHA_SECRET'),
         'secret' => env('HCAPTCHA_ENABLED', false),
     ],
-    
+
     'google' => [
         'url' => env('GOOGLE_MAPS_API_URL'),
-        'map_key' => env('GOOGLE_MAPS_API_KEY')
-    ]
+        'map_key' => env('GOOGLE_MAPS_API_KEY'),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URL'),
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URL'),
+    ],
 
 ];

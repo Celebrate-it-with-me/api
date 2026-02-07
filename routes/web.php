@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\S3ObjectsController;
+use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\StatusController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,4 +22,10 @@ Route::get('/', function () {
 
 Route::get("/status", StatusController::class);
 
-// Route::get("/testing", [S3ObjectsController::class, 'getObjects']);
+Route::prefix('oauth')->group(function () {
+    Route::get('{provider}/redirect', [SocialAuthController::class, 'redirect'])
+        ->whereIn('provider', ['google', 'facebook']);
+
+    Route::get('{provider}/callback', [SocialAuthController::class, 'callback'])
+        ->whereIn('provider', ['google', 'facebook']);
+});

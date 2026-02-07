@@ -57,9 +57,25 @@ RUN useradd -ms /bin/bash --no-user-group -g $WWWGROUP -u 1337 sail
 COPY start-container /usr/local/bin/start-container
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY php.ini /etc/php/8.2/cli/conf.d/99-sail.ini
-#COPY ./nginx.conf /etc/nginx/nginx.conf
 RUN chmod +x /usr/local/bin/start-container
 
+COPY fix-permissions.sh /usr/local/bin/fix-permissions
+RUN chmod +x /usr/local/bin/fix-permissions
+
 EXPOSE 8000
+
+RUN chown -R sail:sail /var/www/html
+
+# Wrappers para ejecutar comandos como sail CON umask correcto
+RUN mv /usr/bin/php8.2 /usr/bin/php8.2-original && \
+    echo '#!/bin/bash\numask 0002\nif [ "$(id -u)" = "0" ]; then\n    exec gosu sail /usr/bin/php8.2-original "$@"\nelse\n    exec /usr/bin/php8.2-original "$@"\nfi' > /usr/bin/php8.2 && \
+    chmod +x /usr/bin/php8.2 && \
+    ln -sf /usr/bin/php8.2 /usr/bin/php && \
+    mv /usr/bin/composer /usr/bin/composer-original && \
+    echo '#!/bin/bash\numask 0002\nif [ "$(id -u)" = "0" ]; then\n    exec gosu sail /usr/bin/composer-original "$@"\nelse\n    exec /usr/bin/composer-original "$@"\nfi' > /usr/bin/composer && \
+    chmod +x /usr/bin/composer && \
+    mv /usr/bin/npm /usr/bin/npm-original && \
+    echo '#!/bin/bash\numask 0002\nif [ "$(id -u)" = "0" ]; then\n    exec gosu sail /usr/bin/npm-original "$@"\nelse\n    exec /usr/bin/npm-original "$@"\nfi' > /usr/bin/npm && \
+    chmod +x /usr/bin/npm
 
 ENTRYPOINT ["start-container"]

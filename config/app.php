@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Celebrateitwithme'),
 
     /*
     |--------------------------------------------------------------------------
@@ -165,6 +165,8 @@ return [
         /*
          * Application Service Providers...
          */
+        App\Providers\ObserversServiceProvider::class,
+        App\Providers\HydrationServiceProvider::class,
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
@@ -187,9 +189,16 @@ return [
         'Image' => Intervention\Image\Facades\Image::class,
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
-    
+
     'frontend_app' => [
         'url' => env('APP_FRONT_URL'),
-    ]
+    ],
+
+    'admin_user' => [
+        'email' => env('DEFAULT_ADMIN_EMAIL'),
+        'password' => env('DEFAULT_ADMIN_PASSWORD'),
+    ],
+
+    'spa_url' => env('SPA_URL', 'https://celebrateitwithme.com'),
 
 ];

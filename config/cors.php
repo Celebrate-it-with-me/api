@@ -1,6 +1,6 @@
 <?php
 
-$allowedOrigins = explode(',', env('ALLOWED_SPA_DOMAINS', ''));
+$allowedOrigins = array_values(array_filter(explode(',', env('ALLOWED_SPA_DOMAINS', ''))));
 
 return [
 
@@ -17,7 +17,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/v1/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 

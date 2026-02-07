@@ -27,7 +27,7 @@ class GuestController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Store event guest.
      * @param StoreGuestRequest $request
@@ -42,7 +42,7 @@ class GuestController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
+
     /**
      * Remove a guest from the event.
      * @param Events $event
@@ -58,8 +58,8 @@ class GuestController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
-    
-    
+
+
     /**
      * Show the event guest and all the relations.
      * @param Events $event
@@ -74,4 +74,21 @@ class GuestController extends Controller
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }
     }
+
+    /**
+     * Count the total number of assistants for a given event.
+     * @param Events $event
+     * @return JsonResponse
+     */
+    public function countTotalAssistant(Events $event)
+    {
+        try {
+            $count = Guest::query()->where('event_id', $event->id)->count();
+            return response()->json(['message' => "Total count of assistants for event {$event->event_name}", 'total' =>
+                $count]);
+        } catch (Throwable $th) {
+            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+        }
+    }
+
 }

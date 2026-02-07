@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Guest;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
@@ -23,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-    
+        // we need to migrate old data to use guest and user
+        Relation::enforceMorphMap([
+            'guest' => Guest::class,
+            'user' => User::class,
+        ]);
     }
 }

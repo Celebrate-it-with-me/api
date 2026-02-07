@@ -10,9 +10,9 @@ class EventLocationImages extends Model
 {
     /** @use HasFactory<\Database\Factories\EventLocationFactory> */
     use HasFactory;
-    
+
     protected $table = 'event_location_images';
-    
+
     protected $fillable = [
         'event_location_id',
         'path',
@@ -20,7 +20,7 @@ class EventLocationImages extends Model
         'order',
         'source',
     ];
-    
+
     /**
      * Define a relationship to the Events model.
      *
@@ -28,6 +28,6 @@ class EventLocationImages extends Model
      */
     public function eventLocation(): BelongsTo
     {
-        return $this->belongsTo(EventLocation::class, 'event_id', 'id');
+        return $this->belongsTo(EventLocation::class, 'event_location_id', 'id');
     }
 }

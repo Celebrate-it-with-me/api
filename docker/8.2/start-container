@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ "$EUID" -eq 0 ] && [ -f /usr/local/bin/fix-permissions ]; then
+    /usr/local/bin/fix-permissions
+fi
+
 if [ ! -z "$WWWUSER" ]; then
     usermod -u $WWWUSER sail
 fi

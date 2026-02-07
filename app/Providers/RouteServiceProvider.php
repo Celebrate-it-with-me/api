@@ -45,4 +45,23 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/web.php'));
         });
     }
+
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('public-event-comments-ip', function (Request $request) {
+            $eventId = (string) $request->route('event')?->id ?? (string) $request->route('event');
+            $ip = (string) $request->ip();
+
+            // Example: 20 comments per 10 minutes per IP per event
+            return Limit::perMinutes(10, 20)->by("event:{$eventId}|ip:{$ip}");
+        });
+
+        RateLimiter::for('public-event-comments-guest', function (Request $request) {
+            $eventId = (string) $request->route('event')?->id ?? (string) $request->route('event');
+            $guestCode = (string) $request->input('guestCode', 'unknown');
+
+            // Example: 6 comments per 10 minutes per guestCode per event
+            return Limit::perMinutes(10, 6)->by("event:{$eventId}|guest:{$guestCode}");
+        });
+    }
 }
