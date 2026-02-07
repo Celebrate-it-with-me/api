@@ -9,7 +9,7 @@ class EventPlanSeeder extends Seeder
 {
     public function run(): void
     {
-        EventPlan::query()->upsert([
+        $rows = [
             [
                 'slug' => 'basic',
                 'name' => 'Basic',
@@ -24,8 +24,6 @@ class EventPlanSeeder extends Seeder
                 'has_sms' => false,
                 'has_gift_registry' => false,
                 'support_level' => 'basic',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'slug' => 'premium',
@@ -41,8 +39,6 @@ class EventPlanSeeder extends Seeder
                 'has_sms' => false,
                 'has_gift_registry' => true,
                 'support_level' => 'standard',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'slug' => 'lux',
@@ -58,23 +54,14 @@ class EventPlanSeeder extends Seeder
                 'has_sms' => true,
                 'has_gift_registry' => true,
                 'support_level' => 'priority',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
-        ], ['slug'], [
-            'name',
-            'description',
-            'max_guests',
-            'has_gallery',
-            'has_music',
-            'has_custom_design',
-            'has_drag_editor',
-            'has_ai_assistant',
-            'has_invitations',
-            'has_sms',
-            'has_gift_registry',
-            'support_level',
-            'updated_at',
-        ]);
+        ];
+        
+        foreach ($rows as $row) {
+            EventPlan::query()->updateOrCreate(
+                ['slug' => $row['slug']],
+                $row
+            );
+        }
     }
 }
