@@ -1,14 +1,14 @@
 <?php
-    
+
     use Illuminate\Database\Migrations\Migration;
     use Illuminate\Support\Facades\DB;
-    
+
     return new class extends Migration
     {
         public function up(): void
         {
             $driver = DB::getDriverName();
-            
+
             if ($driver === 'pgsql') {
                 DB::statement("
             UPDATE event_comments
@@ -24,8 +24,18 @@
             WHERE authorable_type IS NULL
         ");
             }
-            
-            DB::statement("
+
+            if ($driver === 'pgsql') {
+                DB::statement("
+        UPDATE event_comments
+        SET status = CASE
+            WHEN is_approved IS TRUE THEN 'visible'
+            ELSE 'hidden'
+        END
+        WHERE status IS NULL OR status = ''
+    ");
+            } else { // mysql
+                DB::statement("
         UPDATE event_comments
         SET status = CASE
             WHEN is_approved = 1 THEN 'visible'
@@ -33,8 +43,10 @@
         END
         WHERE status IS NULL OR status = ''
     ");
+            }
+
         }
-        
+
         public function down(): void
         {
             //
