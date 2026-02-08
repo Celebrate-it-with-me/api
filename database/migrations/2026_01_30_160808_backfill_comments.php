@@ -1,41 +1,54 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+    use Illuminate\Database\Migrations\Migration;
+    use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    return new class extends Migration
     {
-        DB::table('event_comments')
-            ->whereNull('authorable_type')
-            ->update([
-                'authorable_type' => DB::raw('created_by_class'),
-                'authorable_id' => DB::raw('created_by_id'),
-            ]);
+        public function up(): void
+        {
+            $driver = DB::getDriverName();
 
-        DB::table('event_comments')
-            ->whereNull('status')
-            ->orWhere('status', '=', '')
-            ->update([
-                'status' => DB::raw("CASE WHEN is_approved = 1 THEN 'visible' ELSE 'hidden' END"),
-            ]);
+            if ($driver === 'pgsql') {
+                DB::statement("
+            UPDATE event_comments
+            SET authorable_type = created_by_class,
+                authorable_id = NULLIF(created_by_id, '')::bigint
+            WHERE authorable_type IS NULL
+        ");
+            } else { // mysql / mariadb
+                DB::statement("
+            UPDATE event_comments
+            SET authorable_type = created_by_class,
+                authorable_id = CAST(NULLIF(created_by_id, '') AS UNSIGNED)
+            WHERE authorable_type IS NULL
+        ");
+            }
 
-        DB::table('event_comments')
-            ->update([
-                'status' => DB::raw("CASE WHEN is_approved = 1 THEN 'visible' ELSE 'hidden' END"),
-            ]);
-    }
+            if ($driver === 'pgsql') {
+                DB::statement("
+        UPDATE event_comments
+        SET status = CASE
+            WHEN is_approved IS TRUE THEN 'visible'
+            ELSE 'hidden'
+        END
+        WHERE status IS NULL OR status = ''
+    ");
+            } else { // mysql
+                DB::statement("
+        UPDATE event_comments
+        SET status = CASE
+            WHEN is_approved = 1 THEN 'visible'
+            ELSE 'hidden'
+        END
+        WHERE status IS NULL OR status = ''
+    ");
+            }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        //
-    }
-};
+        }
+
+        public function down(): void
+        {
+            //
+        }
+    };

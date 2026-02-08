@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -203,6 +204,14 @@ class User extends Authenticatable
             ->where('user_id', $this->id)
             ->first();
 
+        Log::info('Checking event permission for user',
+        [
+            'event_id' => $event->id,
+            'user_id' => $this->id,
+            'permission_slug' => $permissionSlug,
+            'event_user_rol' => $eventUserRole
+        ]);
+        
         if (!$eventUserRole) {
             return false;
         }
