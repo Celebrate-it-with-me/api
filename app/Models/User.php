@@ -203,18 +203,21 @@ class User extends Authenticatable
             ->where('event_id', $event->id)
             ->where('user_id', $this->id)
             ->first();
+        if (!$eventUserRole) {
+            return false;
+        }
+        
 
         Log::info('Checking event permission for user',
         [
             'event_id' => $event->id,
             'user_id' => $this->id,
             'permission_slug' => $permissionSlug,
-            'event_user_rol' => $eventUserRole
+            'event_user_rol' => $eventUserRole->role
+                ->permissions()
+                ->where('name', $permissionSlug)
+                ->exists()
         ]);
-        
-        if (!$eventUserRole) {
-            return false;
-        }
 
         return $eventUserRole->role
             ->permissions()

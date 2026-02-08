@@ -346,7 +346,7 @@ class Events extends Model
             'seats_accommodation' => $this->locations !== null &&
                 !empty($this->locations->capacity),
             'budget' => $this->budget !== null &&
-                $this->budget->budgetItems()->count() > 0,
+                $this->budget->items()->count() > 0,
             'location' => $this->locations !== null &&
                 !empty($this->locations->address),
             default => false,

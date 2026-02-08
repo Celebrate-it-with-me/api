@@ -100,6 +100,12 @@ Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, '
 
 Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
 
+    //=========================================
+    // CHECK IF AUTH IS READY
+    //=========================================
+    Route::get('/auth/ready', [AuthenticationController::class, 'checkAuthReady'])
+        ->name('auth.ready');
+    
     // ========================================
     // USER MANAGEMENT ROUTES
     // ========================================
