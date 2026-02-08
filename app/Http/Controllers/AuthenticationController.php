@@ -172,16 +172,18 @@ class AuthenticationController extends Controller
             ->whereNotNull('email_verified_at')
             ->first();
 
-
-
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid Credentials'], 401);
         }
 
         $remember = $request->input('remember', false);
-
         Auth::login($user, $remember);
-
+        
+        if ($user->is_first_login) {
+            $user->is_first_login = false;
+            $user->save();
+        }
+        
         UserLoggedInEvent::dispatch($user, $request);
 
         return response()->json([
