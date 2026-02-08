@@ -192,7 +192,12 @@ class AuthenticationController extends Controller
         ]);
     }
     
-    
+    /**
+     * Check if authentication is ready.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function checkAuthReady(Request $request): JsonResponse
     {
         return response()->json([
