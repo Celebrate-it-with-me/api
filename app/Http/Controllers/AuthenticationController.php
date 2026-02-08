@@ -191,6 +191,15 @@ class AuthenticationController extends Controller
             'user' => $user,
         ]);
     }
+    
+    
+    public function checkAuthReady(Request $request): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Authentication is ready',
+            'status' => 'success',
+        ]);
+    }
 
     /**
      * Verify the hCaptcha token.
