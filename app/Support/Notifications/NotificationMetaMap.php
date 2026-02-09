@@ -99,6 +99,11 @@ final class NotificationMetaMap
             'icon' => 'badge-check',
             'color' => 'green',
         ],
+        NotificationKeys::BUDGET_ITEM_REMINDER => [
+            'priority' => 'high',
+            'icon' => 'calendar-clock',
+            'color' => 'red',
+        ],
 
         // Save the Date
         NotificationKeys::SAVE_THE_DATE_UPDATED => [

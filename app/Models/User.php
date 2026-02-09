@@ -249,5 +249,15 @@ class User extends Authenticatable
 
         return $eventUserRole->role->permissions->pluck('name')->toArray();
     }
-
+    
+    /**
+     * Retrieve the reminders associated with a user.
+     *
+     * @return HasMany
+     */
+    public function budgetItemReminders(): HasMany
+    {
+        return $this->hasMany(BudgetItemReminder::class, 'user_id', 'id');
+    }
+    
 }

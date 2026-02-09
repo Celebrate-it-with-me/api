@@ -52,4 +52,13 @@ class BudgetItem extends Model
         return $this->belongsTo(BudgetCategory::class, 'category_id');
     }
     
+    /**
+     * Retrieve the reminders associated with a budget item.
+     *
+     * @return HasMany|BudgetItem
+     */
+    public function budgetItemReminders(): HasMany|BudgetItem
+    {
+        return $this->hasMany(BudgetItemReminder::class);
+    }
 }

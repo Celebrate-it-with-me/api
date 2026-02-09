@@ -43,7 +43,7 @@ class InviteUnregisteredUserMail extends Mailable
             view: 'emails.invite-unregistered-user',
             with: [
                 'invite' => $this->invite,
-                'acceptUrl' => config('app.frontend_app.url'). "event/{$this->invite->event->id}/invite?token={$this->invite->token}",
+                'acceptUrl' => config('app.frontend_app.url'). "/event/{$this->invite->event->id}/invite?token={$this->invite->token}",
             ],
         );
     }
