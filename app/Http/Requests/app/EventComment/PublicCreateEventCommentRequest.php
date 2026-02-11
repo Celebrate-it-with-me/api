@@ -22,7 +22,7 @@ class PublicCreateEventCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'guestCode' => ['required', 'string', 'max:255'],
+            'accessCode' => ['required', 'string', 'max:6'],
             'comment' => ['required', 'string', 'min:1', 'max:2000']
         ];
     }

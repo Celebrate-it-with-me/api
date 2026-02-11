@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('invites:send-initial')->everyTenMinutes();
         $schedule->command('invites:resend')->dailyAt('08:00');
         $schedule->command('invites:expire')->dailyAt('01:00');
+        $schedule->command('budget-item:reminders')->daily();
     }
 
     /**

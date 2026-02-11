@@ -50,7 +50,7 @@ class PublicEventCommentController extends Controller
 
         $guest = Guest::query()
             ->where('event_id', $event->id)
-            ->where('code', $payload['guestCode'])
+            ->where('code', $payload['accessCode'])
             ->firstOrFail();
 
         $requiresApproval = false;

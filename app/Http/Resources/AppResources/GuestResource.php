@@ -18,7 +18,7 @@ class GuestResource extends JsonResource
         $isMainGuest = is_null($this->parent_id);
 
         $invitationUrl = $isMainGuest
-            ? config('app.frontend_app.url') . "event/{$this->event_id}/guest/{$this->code}"
+            ? config('app.frontend_app.url') . "/event/{$this->event_id}/guest/{$this->code}"
             : null;
 
         return [
@@ -28,6 +28,7 @@ class GuestResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'gender' => $this->gender,
             'rsvpStatus' => $this->rsvp_status,
             'rsvpStatusDate' => $this->rsvp_status_date
                 ? $this->rsvp_status_date->diffForHumans()

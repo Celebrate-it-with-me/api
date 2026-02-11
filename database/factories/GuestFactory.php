@@ -27,6 +27,7 @@ class GuestFactory extends Factory
             'name' => $this->faker->name(),
             'email' => $this->faker->unique()->safeEmail(),
             'phone' => $this->faker->phoneNumber(),
+            'gender' => $this->faker->randomElement(['male', 'female', 'other']),
             'rsvp_status' => $this->faker->randomElement(['pending', 'attending', 'not-attending']),
             'rsvp_status_date' => $this->faker->dateTimeBetween('-30 days', 'now'),
             'assigned_menu_id' => null,
