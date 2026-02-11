@@ -63,11 +63,11 @@ readonly class HydrationService
                 ->buildEmpty();
         }
 
-        $permissions = $this->authorizationService->validateAndGetPermissions($user, $event);
+        /*$permissions = $this->authorizationService->validateAndGetPermissions($user, $event);
 
         if ($permissions === null) {
             return $this->responseBuilder->buildUnauthorized();
-        }
+        }*/
 
         $eventData = $this->dataLoader->loadEventData($event);
 
@@ -75,7 +75,7 @@ readonly class HydrationService
             ->withEvents($events)
             ->withActiveEvent($event)
             ->withEventData($eventData)
-            ->withUserPermissions($permissions)
+            //->withUserPermissions($permissions)
             ->build();
     }
 
