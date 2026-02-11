@@ -21,7 +21,10 @@ class GuestServices
     protected Request $request;
     protected MainGuest $guest;
 
-    public function __construct(Request $request)
+    public function __construct(
+        Request $request,
+        private readonly CalculateAccessCodeService $accessCodeService
+    )
     {
         $this->request = $request;
         $this->guest = new MainGuest();
@@ -93,12 +96,11 @@ class GuestServices
             'name' => $guestData['name'],
             'email' => $guestData['email'] ?? null,
             'phone' => $guestData['phone'] ?? null,
+            'gender' => $guestData['gender'] ?? null,
             'assigned_menu_id' => $guestData['menuSelected'] ?? null,
-            'meal_preference' => $preferences['meal_preference'] ?? null,
-            'allergies' => $preferences['allergies'] ?? null,
             'notes' => $preferences['notes'] ?? null,
             'rsvp_status' => 'pending',
-            'code' => $this->calculateAccessCode(),
+            'code' => $this->accessCodeService->generateForEvent($event),
         ]);
 
         if (!$mainGuest) {
@@ -113,6 +115,7 @@ class GuestServices
                     'name' => $companion['name'],
                     'email' => $companion['email'] ?? null,
                     'phone' => $companion['phone'] ?? null,
+                    'gender' => $companion['gender'] ?? null,
                     'assigned_menu_id' => $guestData['menuSelected'] ?? null,
                     'rsvp_status' => 'pending',
                 ]);
@@ -151,29 +154,6 @@ class GuestServices
         );
 
         return $mainGuest;
-    }
-
-
-    /**
-     * Auto generate access code.
-     * @return string
-     */
-    private function calculateAccessCode(): string
-    {
-        $code = Str::upper(Str::random(2));
-        $eventId = $this->request->input('eventId');
-
-        do {
-            $randomNumber = random_int(1000, 9999);
-            $fullCode = $code . $randomNumber;
-
-            $isUnique = !Guest::query()
-                ->where('event_id', $eventId)
-                ->where('code', $fullCode)
-                ->exists();
-        } while (!$isUnique);
-
-        return $fullCode;
     }
 
     /**

@@ -48,6 +48,50 @@ class Events extends Model
     }
 
     /**
+     * Get the owner/organizer of the event.
+     *
+     * @return HasOne
+     */
+    public function owner(): HasOne
+    {
+        return $this->hasOne(EventUserRole::class, 'event_id')
+            ->whereHas('role', function ($query) {
+                $query->where('name', 'owner');
+            })
+            ->with('user');
+    }
+
+    /**
+     * Get the owner user directly.
+     *
+     * @return User|null
+     */
+    public function getOwnerUserAttribute(): ?User
+    {
+        return $this->owner?->user;
+    }
+    
+    /**
+     * Get the owner user directly.
+     *
+     * @return User|null
+     */
+    public function getOrganizerAttribute(): ?User
+    {
+        return $this->owner?->user;
+    }
+
+    /**
+     * Get the owner user ID directly.
+     *
+     * @return int
+     */
+    public function getOwnerUserIdAttribute(): int
+    {
+        return $this->owner?->user?->id ?? 0;
+    }
+
+    /**
      * Get the main guest associated with the event.
      *
      * @return HasMany

@@ -48,7 +48,7 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function configureRateLimiting(): void
     {
-        RateLimiter::for('public-event-comments-ip', function (Request $request) {
+        /*RateLimiter::for('public-event-comments-ip', function (Request $request) {
             $eventId = (string) $request->route('event')?->id ?? (string) $request->route('event');
             $ip = (string) $request->ip();
 
@@ -62,6 +62,6 @@ class RouteServiceProvider extends ServiceProvider
 
             // Example: 6 comments per 10 minutes per guestCode per event
             return Limit::perMinutes(10, 6)->by("event:{$eventId}|guest:{$guestCode}");
-        });
+        });*/
     }
 }

@@ -78,6 +78,7 @@ class RsvpServices
         $guest->name = $guestData['name'];
         $guest->email = $guestData['email'];
         $guest->phone = $guestData['phone'];
+        $guest->gender = $guestData['gender'] ?? $guest->gender;
         $guest->rsvp_status = $guestData['rsvpStatus'];
         $guest->rsvp_status_date = now();
 
