@@ -8,6 +8,7 @@ use App\Models\MainGuest;
 use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Log;
 
 class TemplateResource extends JsonResource
 {
@@ -62,7 +63,7 @@ class TemplateResource extends JsonResource
                 'eventFeature' => EventFeatureResource::make($this->eventFeature),
                 'sweetMemoriesImages' => SweetMemoriesImageResource::collection($this->sweetMemoriesImages),
                 'sweetMemoriesConfig' => SweetMemoriesConfigResource::make($this->sweetMemoriesConfig),
-                'eventLocations' => EventLocationResource::collection($this->locations),
+                'eventLocations' => ($this->locations) ? EventLocationResource::make($this->locations) : null,
             ],
             'mainGuest' => [
                 'id' => $this->mainGuest->id,

@@ -94,7 +94,6 @@ class EventsServices
             'event_plan_id' => $this->request->input('eventPlan') ?? 3,
             'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
-            'organizer_id' => $this->request->user()->id,
             'status' => $this->request->input('status'),
             'custom_url_slug' => $this->request->input('customUrlSlug') ?? Str::slug(
                     $this->request->input('eventName')
@@ -108,18 +107,18 @@ class EventsServices
 
         EventFeature::query()->create([
             'event_id' => $event->id,
-            'save_the_date' => $this->request->input('saveTheDate') ?? false,
-            'rsvp' => $this->request->input('rsvp') ?? false,
-            'menu' => $this->request->input('menu') ?? false,
-            'sweet_memories' => $this->request->input('sweetMemories') ?? false,
-            'music' => $this->request->input('music') ?? false,
-            'background_music' => $this->request->input('backgroundMusic') ?? false,
-            'event_comments' => $this->request->input('eventComments') ?? false,
-            'location' => $this->request->input('location') ?? false,
-            'seats_accommodation' => $this->request->input('seatsAccommodation') ?? false,
-            'preview' => $this->request->input('preview') ?? false,
-            'budget' => $this->request->input('budget') ?? false,
-            'analytics' => $this->request->input('analytics') ?? false,
+            'save_the_date' => /*$this->request->input('saveTheDate') ?? false*/true,
+            'rsvp' => /*$this->request->input('rsvp') ?? false*/true,
+            'menu' => /*$this->request->input('menu') ?? */false,
+            'sweet_memories' => /*$this->request->input('sweetMemories') ?? false*/true,
+            'music' => /*$this->request->input('music') ?? false*/true,
+            'background_music' => /*$this->request->input('backgroundMusic') ??*/ false,
+            'event_comments' => /*$this->request->input('eventComments') ?? false*/true,
+            'location' => /*$this->request->input('location') ?? false*/true,
+            'seats_accommodation' => /*$this->request->input('seatsAccommodation') ?? false*/true,
+            'preview' => /*$this->request->input('preview') ?? false*/false,
+            'budget' => /*$this->request->input('budget') ?? false*/true,
+            'analytics' => /*$this->request->input('analytics') ?? false*/false,
         ]);
 
         $actor = request()->user();

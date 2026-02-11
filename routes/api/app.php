@@ -7,7 +7,8 @@ use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorControll
 use App\Http\Controllers\AppControllers\CompanionController;
 use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
 use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
-use App\Http\Controllers\AppControllers\EventCommentsController;
+    use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
+    use App\Http\Controllers\AppControllers\EventCommentsController;
 use App\Http\Controllers\AppControllers\EventConfigCommentsController;
 use App\Http\Controllers\AppControllers\EventLocationController;
 use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
@@ -36,6 +37,37 @@ use App\Http\Controllers\AuthenticationController;
 // PUBLIC ROUTES (No Authentication)
 // ========================================
 
+// Public Event Template Routes
+Route::prefix('template')->name('template.')->group(function () {
+    Route::prefix('event/{event}')->name('event.')->group(function () {
+        Route::get('guest/{guestCode}', [TemplateController::class, 'getEventData'])
+            ->name('guest');
+        Route::get('guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
+            ->name('guest.data');
+        Route::post('save-rsvp', [RsvpController::class, 'saveRsvp'])
+            ->name('save-rsvp');
+        
+        Route::get('comments', [PublicEventCommentController::class, 'index'])
+            ->name('comments.index');
+        Route::post('comments', [PublicEventCommentController::class, 'store'])
+            ->name('comments.store');
+        Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
+            Route::get('', [PublicSuggestedMusicController::class, 'index'])->name('index');
+            Route::post('', [PublicSuggestedMusicController::class, 'store'])->name('store');
+            Route::delete('', [PublicSuggestedMusicController::class, 'destroy'])->name('destroy');
+        });
+        
+        Route::get('votes/available', [SuggestedMusicVoteController::class, 'getAvailableVotes'])
+            ->name('votes.available'); // Body: { accessCode: 'ABC123' }
+        
+        Route::get('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'getUserVote'])
+            ->name('vote.show'); // Body: { accessCode: 'ABC123' }
+        
+        Route::post('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'storeOrUpdate'])
+            ->name('vote.store');
+    });
+});
+
 // Authentication Routes
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -52,39 +84,7 @@ Route::prefix('')->name('auth.')->group(function () {
         ->name('reset.password');
 });
 
-// Public Event Template Routes
-Route::prefix('template')->name('template.')->group(function () {
-    Route::prefix('event/{event}')->name('event.')->group(function () {
-        Route::get('guest/{guestCode}', [TemplateController::class, 'getEventData'])
-            ->name('guest');
-        Route::get('guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
-            ->name('guest.data');
-        Route::post('save-rsvp', [RsvpController::class, 'saveRsvp'])
-            ->name('save-rsvp');
-    });
-});
 
-// Public Event Interactions (Comments, Music Suggestions)
-Route::prefix('event/{event}')->name('event.')->group(function () {
-    Route::get('comments', [EventCommentsController::class, 'index'])
-        ->name('comments.index');
-    Route::post('comments', [EventCommentsController::class, 'store'])
-        ->middleware(['throttle:public-event-comments-ip', 'throttle:public-event-comments-guest'])
-        ->name('comments.store');
-    Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
-        Route::get('', [PublicSuggestedMusicController::class, 'index'])->name('index');
-        Route::post('', [PublicSuggestedMusicController::class, 'store'])->name('store');
-    });
-
-    Route::get('votes/available', [SuggestedMusicVoteController::class, 'getAvailableVotes'])
-        ->name('votes.available'); // Body: { accessCode: 'ABC123' }
-
-    Route::get('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'getUserVote'])
-        ->name('vote.show'); // Body: { accessCode: 'ABC123' }
-
-    Route::post('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'storeOrUpdate'])
-        ->name('vote.store');
-});
 
 // Public Collaborator Invitation Routes
 Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])

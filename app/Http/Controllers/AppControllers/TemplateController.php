@@ -14,6 +14,7 @@ use App\Models\Guest;
 use App\Models\Menu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class TemplateController extends Controller
@@ -23,6 +24,14 @@ class TemplateController extends Controller
         try {
             return new TemplateResource($event, $guestCode);
         } catch (Throwable $e) {
+            Log::error('checking error', [
+                'event_id' => $event->id,
+                'guest_code' => $guestCode,
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            
             return response()->json(['message' => $e->getMessage(), 'data' => []], 500);
         }
     }

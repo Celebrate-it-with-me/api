@@ -43,7 +43,7 @@ class InviteRegisteredUserMail extends Mailable
             view: 'emails.invite-registered-user',
             with: [
                 'invite' => $this->invite,
-                'eventUrl' => config('app.frontend_app.url'). "dashboard/events/{$this->invite->event_id}",
+                'eventUrl' => config('app.frontend_app.url'). "/dashboard/events/{$this->invite->event_id}",
             ],
         );
     }

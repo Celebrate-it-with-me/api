@@ -11,7 +11,7 @@ class UpdateGuestRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,15 @@ class UpdateGuestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'gender' => ['nullable', 'string', 'in:male,female,other'],
+            'rsvp_status' => ['sometimes', 'string', 'in:pending,attending,not-attending'],
+            'assigned_menu_id' => ['nullable', 'exists:menus,id'],
+            'notes' => ['nullable', 'string'],
+            'is_vip' => ['sometimes', 'boolean'],
+            'tags' => ['nullable', 'array'],
         ];
     }
 }

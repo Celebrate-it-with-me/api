@@ -21,7 +21,7 @@ class EventBudget extends Model
      *
      * @return BelongsTo
      */
-    public function events(): BelongsTo
+    public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class);
     }

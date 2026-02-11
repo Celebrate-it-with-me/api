@@ -22,7 +22,7 @@ class EventCommentResource extends JsonResource
             'isPinned' => (bool) $this->is_pinned,
             'isFavorite' => (bool) $this->is_favorite,
 
-            'createdAt' => optional($this->created_at)->toISOString(),
+            'createdAt' => $this->created_at->diffForHumans(),
             'updatedAt' => optional($this->updated_at)->toISOString(),
 
             'author' => $author ? [

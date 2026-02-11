@@ -30,6 +30,7 @@ final class NotificationKeys
     // Budget
     public const BUDGET_ITEM_CREATED = 'budget.item_created';
     public const BUDGET_ITEM_PAID = 'budget.item_paid';
+    public const BUDGET_ITEM_REMINDER = 'budget.item_reminder';
 
     // Save the date
     public const SAVE_THE_DATE_UPDATED = 'save_the_date.updated';
@@ -63,6 +64,7 @@ final class NotificationKeys
             // Budget
             self::BUDGET_ITEM_CREATED,
             self::BUDGET_ITEM_PAID,
+            self::BUDGET_ITEM_REMINDER,
 
             // Save the date
             self::SAVE_THE_DATE_UPDATED,

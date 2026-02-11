@@ -2,12 +2,9 @@
 
 namespace App\Listeners;
 
-use App\Events\SuggestedMusicCreated;
+use App\Events\CommentCreated;
 use App\Models\User;
-use App\Notifications\SuggestedMusicNotification;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Log;
+use App\Notifications\CommentCreatedNotification;
 
 class SendCommentCreatedNotification
 {
@@ -19,7 +16,7 @@ class SendCommentCreatedNotification
     /**
      * Handle the event.
      */
-    public function handle(SuggestedMusicCreated $event): void
+    public function handle(CommentCreated $event): void
     {
         $owner = User::query()->find($event->ownerUserId);
 
@@ -33,9 +30,8 @@ class SendCommentCreatedNotification
 
         $owner->notify(new CommentCreatedNotification(
             $event->eventId,
-            $event->suggestionId,
-            $event->songTitle,
-            $event->artist,
+            $event->commentId,
+            $event->comment,
             $event->actor
         ));
     }

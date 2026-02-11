@@ -30,7 +30,7 @@ class SendConfirmationEmail
             ['user' => $user->id]
         );
         
-        $completedUrl = config('app.frontend_app.url'). 'confirm-email?confirm=' . urlencode($confirmUrl);
+        $completedUrl = config('app.frontend_app.url'). '/confirm-email?confirm=' . urlencode($confirmUrl);
         
         Mail::to($user->email)->send(new ConfirmAccountEmail($user, $completedUrl));
     }

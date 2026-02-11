@@ -34,7 +34,7 @@ class SendResetPasswordLink
             ['user' => $user->id]
         );
         
-        $completedUrl = config('app.frontend_app.url'). 'confirm-reset?confirm=' . urlencode($confirmUrl);
+        $completedUrl = config('app.frontend_app.url'). '/confirm-reset?confirm=' . urlencode($confirmUrl);
         
         Mail::to($user->email)->send(new ResetPasswordEmail($user, $completedUrl));
     }
