@@ -55,16 +55,14 @@ Route::prefix('template')->name('template.')->group(function () {
             Route::get('', [PublicSuggestedMusicController::class, 'index'])->name('index');
             Route::post('', [PublicSuggestedMusicController::class, 'store'])->name('store');
             Route::delete('', [PublicSuggestedMusicController::class, 'destroy'])->name('destroy');
+            
+            Route::get('votes/available', [SuggestedMusicVoteController::class, 'getAvailableVotes'])
+                ->name('votes.available'); // Body: { accessCode: 'ABC123' }
+            Route::get('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'getUserVote'])
+                ->name('vote.show'); // Body: { accessCode: 'ABC123' }
+            Route::post('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'storeOrUpdate'])
+                ->name('vote.store');
         });
-        
-        Route::get('votes/available', [SuggestedMusicVoteController::class, 'getAvailableVotes'])
-            ->name('votes.available'); // Body: { accessCode: 'ABC123' }
-        
-        Route::get('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'getUserVote'])
-            ->name('vote.show'); // Body: { accessCode: 'ABC123' }
-        
-        Route::post('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'storeOrUpdate'])
-            ->name('vote.store');
     });
 });
 
@@ -156,6 +154,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
 
         Route::prefix('{event}')->group(function () {
             Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
+                Route::get('export', [SuggestedMusicController::class, 'export'])->name('export');
                 Route::get('', [SuggestedMusicController::class, 'index'])->name('index');
                 Route::post('', [SuggestedMusicController::class, 'store'])->name('store');
                 Route::delete('{suggestedMusic}', [SuggestedMusicController::class, 'destroy'])->name('destroy');
