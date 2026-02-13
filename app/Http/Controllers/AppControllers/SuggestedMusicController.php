@@ -8,6 +8,7 @@ use App\Http\Requests\app\StoreSuggestedMusicRequest;
 use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Resources\AppResources\SuggestedMusicResource;
 use App\Http\Services\AppServices\SuggestedMusicServices;
+use App\Http\Services\AppServices\SuggestedMusicExportService;
 use App\Models\Events;
 use App\Models\SuggestedMusic;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,10 @@ use Throwable;
 class SuggestedMusicController extends Controller
 {
 
-    public function __construct(private readonly SuggestedMusicServices  $suggestedMusicServices) {}
+    public function __construct(
+        private readonly SuggestedMusicServices $suggestedMusicServices,
+        private readonly SuggestedMusicExportService $exportService
+    ) {}
 
     /**
      * Display a listing of suggested music (Organizer view)
@@ -95,6 +99,29 @@ class SuggestedMusicController extends Controller
                 'message' => 'Song removed successfully!',
                 'data' => SuggestedMusicResource::make($removed)
             ]);
+        } catch (Throwable $th) {
+            return response()->json([
+                'message' => $th->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Export suggested music for an event.
+     */
+    public function export(Events $event): mixed
+    {
+        try {
+            $format = request()->query('format', 'csv');
+            
+            if (!in_array($format, ['csv', 'xlsx', 'pdf'])) {
+                return response()->json([
+                    'message' => 'Invalid format. Supported formats: csv, xlsx, pdf',
+                ], 422);
+            }
+
+            return $this->exportService->export($event, $format);
         } catch (Throwable $th) {
             return response()->json([
                 'message' => $th->getMessage(),
