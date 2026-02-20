@@ -1,37 +1,39 @@
 <?php
-
-use App\Http\Controllers\AppControllers\BackgroundMusicController;
-use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
-use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
-use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
-use App\Http\Controllers\AppControllers\CompanionController;
-use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
-use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
+    
+    use App\Http\Controllers\AppControllers\BackgroundMusicController;
+    use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
+    use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
+    use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
+    use App\Http\Controllers\AppControllers\CompanionController;
+    use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
+    use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
     use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
-    use App\Http\Controllers\AppControllers\EventCommentsController;
-use App\Http\Controllers\AppControllers\EventConfigCommentsController;
-use App\Http\Controllers\AppControllers\EventLocationController;
-use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
-use App\Http\Controllers\AppControllers\EventsController;
-use App\Http\Controllers\AppControllers\ExportController;
-use App\Http\Controllers\AppControllers\GuestController;
-use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
-use App\Http\Controllers\AppControllers\MenuController;
-use App\Http\Controllers\AppControllers\MenuItemController;
-use App\Http\Controllers\AppControllers\OrganizerRsvpController;
-use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
-use App\Http\Controllers\AppControllers\RsvpController;
-use App\Http\Controllers\AppControllers\SaveTheDateController;
-use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
-use App\Http\Controllers\AppControllers\SuggestedMusicController;
-use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
-use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
-use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
-use App\Http\Controllers\AppControllers\TemplateController;
-use App\Http\Controllers\AppControllers\UserPreferenceController;
-use App\Http\Controllers\AppControllers\UserSettingsController;
-use App\Http\Controllers\AppControllers\UserTwoFAController;
-use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\AppControllers\EventConfigCommentsController;
+    use App\Http\Controllers\AppControllers\EventLocationController;
+    use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
+    use App\Http\Controllers\AppControllers\EventsController;
+    use App\Http\Controllers\AppControllers\ExportController;
+    use App\Http\Controllers\AppControllers\GuestController;
+    use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
+    use App\Http\Controllers\AppControllers\MenuController;
+    use App\Http\Controllers\AppControllers\MenuItemController;
+    use App\Http\Controllers\AppControllers\OrganizerRsvpController;
+    use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
+    use App\Http\Controllers\AppControllers\RsvpController;
+    use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
+    use App\Http\Controllers\AppControllers\Seating\TableController;
+    use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
+    use App\Http\Controllers\AppControllers\SuggestedMusicController;
+    use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
+    use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+    use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
+    use App\Http\Controllers\AppControllers\TemplateController;
+    use App\Http\Controllers\AppControllers\Timeline\TimelineController;
+    use App\Http\Controllers\AppControllers\UserPreferenceController;
+    use App\Http\Controllers\AppControllers\UserSettingsController;
+    use App\Http\Controllers\AppControllers\UserTwoFAController;
+    use App\Http\Controllers\AuthenticationController;
+    use App\Http\Controllers\DressCodeController;
 
 // ========================================
 // PUBLIC ROUTES (No Authentication)
@@ -224,10 +226,56 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // SAVE THE DATE
             // ========================================
             Route::prefix('save-the-date')->name('save-the-date.')->group(function () {
-                Route::get('', [SaveTheDateController::class, 'index'])->name('index');
-                Route::post('', [SaveTheDateController::class, 'store'])->name('store');
+                Route::get('', [SaveTheDateController::class, 'show'])->name('index');
+                Route::put('', [SaveTheDateController::class, 'upsert'])->name('upsert');
+                Route::delete('', [SaveTheDateController::class, 'destroy'])->name('destroy');
             });
 
+            // ========================================
+            // DRESS CODE
+            // ========================================
+            Route::prefix('dress-code')->name('dress-code.')->group(function () {
+                Route::get('', [DressCodeController::class, 'index'])->name('index');
+                Route::post('', [DressCodeController::class, 'store'])->name('store');
+                Route::put('{dressCode}', [DressCodeController::class, 'update'])->name('update');
+                Route::post('generate-images', [DressCodeController::class, 'generateImages'])->name('generate-images');
+                Route::delete('{dressCode}', [DressCodeController::class, 'destroy'])->name('destroy');
+            });
+            
+            // ========================================
+            // Timeline
+            // ========================================
+            Route::prefix('timeline')->name('timeline.')->group(function () {
+                Route::get('', [TimelineController::class, 'index'])->name('index');
+                Route::post('', [TimelineController::class, 'store'])->name('store');
+                Route::put('{timeline}', [TimelineController::class, 'update'])->name('update');
+                Route::delete('{timeline}', [TimelineController::class, 'destroy'])->name('destroy');
+            });
+            
+            
+            // ========================================
+            // Seating
+            // ========================================
+                // Tables
+            Route::prefix('tables')->name('tables.')->group(function() {
+                Route::get('', [TableController::class, 'index'])->name('index');
+                Route::post('', [TableController::class, 'store'])->name('store');
+                Route::get('{table}', [TableController::class, 'show'])->name('show');
+                Route::put('{table}', [TableController::class, 'update'])->name('update');
+                Route::delete('{table}', [TableController::class, 'destroy'])->name('destroy');
+                
+                Route::post('{table}/assign', [TableController::class, 'assignGuest'])->name('assign-guests');
+                Route::delete('{table}/guest/{guest}', [TableController::class, 'removeGuest'])->name('remove-guest');
+            });
+            
+                // Seating
+            Route::prefix('seating')->name('seating.')->group(function() {
+                Route::get('unassigned', [TableController::class, 'unassignedGuests'])->name('unassigned-guests');
+                Route::post('bulk-assign', [TableController::class, 'bulkAssign'])->name('bulk-assign');
+                Route::delete('clear-all', [TableController::class, 'clearAll'])->name('clear-all');
+            });
+            
+            
             // ========================================
             // LOCATION
             // ========================================

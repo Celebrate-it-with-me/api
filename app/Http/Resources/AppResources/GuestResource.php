@@ -35,7 +35,7 @@ class GuestResource extends JsonResource
                 : null,
             'mealPreference' => $this->meal_preference,
             'allergies' => $this->allergies,
-            'seatNumber' => $this->seat_number,
+            'seatNumber' => $this->getSeatNumber(),
             'notes' => $this->notes,
             'code' => $isMainGuest ? $this->code : null,
             'menuSelected' => $this->getOptimizedMenuWithItems(),
@@ -80,5 +80,20 @@ class GuestResource extends JsonResource
             'menu' => $menu->toArray(),
             'menuItems' => $groupedItems
         ];
+    }
+    
+    private function getSeatNumber(): ?string
+    {
+        $seat = '';
+        
+        $tableAssignment = $this->relationLoaded('tableAssignment') ? $this->tableAssignment : null;
+        
+        if ($tableAssignment) {
+            $fullSeat = $tableAssignment->seat_number;
+            $parts = explode(' - ', $fullSeat);
+            $seat = count($parts) > 1 ? $parts[1] : $fullSeat;
+        }
+        
+        return $seat;
     }
 }

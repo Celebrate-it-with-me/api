@@ -4,29 +4,29 @@ namespace App\Http\Resources\AppResources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class SaveTheDateResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'eventId' => $this->event_id,
-            'stdTitle' => $this->std_title,
-            'stdSubTitle' => $this->std_subtitle,
-            'backgroundColor' => $this->background_color,
-            'useCountdown' => $this->use_countdown,
-            'useAddToCalendar' => $this->use_add_to_calendar,
-            'imageUrl' => $this->image_url
-                ? url(Storage::url($this->image_url))
-                : null,
-            'isEnabled' => $this->is_enabled,
+            'show_countdown' => $this->show_countdown,
+            'use_add_to_calendar' => $this->use_add_to_calendar,
+            
+            'date_source' => $this->date_source,
+            'custom_starts_at' => $this->custom_starts_at?->toIso8601String(),
+            
+            'countdown_units' => $this->countdown_units ?? [],
+            'countdown_finish_behavior' => $this->countdown_finish_behavior,
+            
+            'calendar_providers' => $this->calendar_providers ?? [],
+            'calendar_mode' => $this->calendar_mode,
+            
+            'calendar_location_override' => $this->calendar_location_override,
+            'calendar_description_override' => $this->calendar_description_override,
+            
+            // helper útil para frontend
+            'is_enabled' => true,
         ];
     }
 }
