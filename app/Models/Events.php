@@ -265,6 +265,14 @@ class Events extends Model
     }
 
     /**
+     * @return HasOne
+     */
+    public function dressCode(): HasOne
+    {
+        return $this->hasOne(DressCode::class, 'event_id', 'id');
+    }
+
+    /**
      * Get the theme associated with the event.
      *
      * @return HasOne|Events

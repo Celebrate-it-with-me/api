@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Seating\Table;
+use App\Models\Seating\TableAssignment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -101,5 +103,10 @@ class Guest extends Model
     public function assignedMenu(): BelongsTo
     {
         return $this->belongsTo(Menu::class, 'assigned_menu_id');
+    }
+    
+    public function tableAssignment(): HasOne|Guest
+    {
+        return $this->hasOne(TableAssignment::class, 'guest_id');
     }
 }

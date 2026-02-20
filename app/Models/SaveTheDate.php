@@ -8,29 +8,34 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SaveTheDate extends Model
 {
-    /** @use HasFactory<\Database\Factories\SaveTheDateFactory> */
     use HasFactory;
     
     protected $table = 'save_the_dates';
     
     protected $fillable = [
         'event_id',
-        'title',
-        'message',
-        'image_path',
-        'video_url',
         'show_countdown',
         'use_add_to_calendar',
-        'is_enabled'
+        'date_source',
+        'custom_starts_at',
+        'countdown_units',
+        'countdown_finish_behavior',
+        'calendar_providers',
+        'calendar_mode',
+        'calendar_location_override',
+        'calendar_description_override',
     ];
     
-    /**
-     * Define a relationship to the Events model.
-     *
-     * @return BelongsTo
-     */
+    protected $casts = [
+        'show_countdown' => 'boolean',
+        'use_add_to_calendar' => 'boolean',
+        'custom_starts_at' => 'datetime',
+        'countdown_units' => 'array',
+        'calendar_providers' => 'array',
+    ];
+    
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Events::class, 'event_id', 'id');
+        return $this->belongsTo(Events::class);
     }
 }
