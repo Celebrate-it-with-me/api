@@ -36,7 +36,7 @@ class EventLocationController extends Controller
     public function index(Request $request, Events $event)
     {
         try {
-            $locations = $this->locationsServices->getEventLocations($event);
+            $locations = $this->locationsServices->getEventLocation($event);
             
             if ($locations->isEmpty()) {
                 return response()->json(['message' => 'There are no locations for this event.'], 404);
@@ -57,6 +57,13 @@ class EventLocationController extends Controller
      */
     public function getLocationImages(Events $event, string $placeId): JsonResponse
     {
+        Log::info('public disk 4131', [
+            'app_env' => app()->environment(),
+            'driver' => config('filesystems.disks.public.driver'),
+            'bucket' => config('filesystems.disks.public.bucket'),
+            'aws_url' => config('filesystems.disks.public.url'),
+        ]);
+        
         if (!$placeId) {
             return response()->json([
                 'error' => 'Place ID is required.',
