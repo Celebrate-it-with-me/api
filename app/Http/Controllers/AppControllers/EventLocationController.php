@@ -103,25 +103,9 @@ class EventLocationController extends Controller
             
             if ($imageResponse->successful()) {
                 $filename = 'locations/google/'. $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
-                
-                
-                try {
-                    $key = 'debug/'.uniqid().'_test.txt';
-                    
-                    $ok = Storage::disk('public')->put($key, 'hello', 'public');
-                    
-                    Log::info('debug upload result', [
-                        'ok' => $ok,
-                        'key' => $key,
-                        'exists' => Storage::disk('public')->exists($key),
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error('debug upload failed', [
-                        'message' => $e->getMessage(),
-                        'class' => get_class($e),
-                    ]);
-                }
-                
+                Storage::disk('public')->put($filename, $imageResponse->body(), [
+                    'ContentType' => 'image/jpeg',
+                ]);
                 
                 $placePhoto = PlacePhoto::query()->create([
                     'place_id' => $placeId,
