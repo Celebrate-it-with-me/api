@@ -77,6 +77,8 @@ class EventLocationController extends Controller
             ));
         }
         
+        
+        
         $response = Http::withOptions(['allow_redirects' => true])
             ->acceptJson()
             ->get(config('services.google.url') . 'place/details/json', [
@@ -101,7 +103,10 @@ class EventLocationController extends Controller
             
             if ($imageResponse->successful()) {
                 $filename = 'locations/google/'. $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
-                Storage::disk('public')->put($filename, $imageResponse->body());
+                Storage::disk('public')->put($filename, $imageResponse->body(), [
+                    'visibility' => 'public',
+                    'ContentType' => 'image/jpeg',
+                ]);
                 
                 $placePhoto = PlacePhoto::query()->create([
                     'place_id' => $placeId,
