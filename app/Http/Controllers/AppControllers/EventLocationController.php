@@ -57,13 +57,6 @@ class EventLocationController extends Controller
      */
     public function getLocationImages(Events $event, string $placeId): JsonResponse
     {
-        Log::info('public disk 4131', [
-            'app_env' => app()->environment(),
-            'driver' => config('filesystems.disks.public.driver'),
-            'bucket' => config('filesystems.disks.public.bucket'),
-            'aws_url' => config('filesystems.disks.public.url'),
-        ]);
-        
         if (!$placeId) {
             return response()->json([
                 'error' => 'Place ID is required.',
@@ -110,10 +103,25 @@ class EventLocationController extends Controller
             
             if ($imageResponse->successful()) {
                 $filename = 'locations/google/'. $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
-                Storage::disk('public')->put($filename, $imageResponse->body(), [
-                    'visibility' => 'public',
-                    'ContentType' => 'image/jpeg',
-                ]);
+                
+                
+                try {
+                    $key = 'debug/'.uniqid().'_test.txt';
+                    
+                    $ok = Storage::disk('public')->put($key, 'hello', 'public');
+                    
+                    Log::info('debug upload result', [
+                        'ok' => $ok,
+                        'key' => $key,
+                        'exists' => Storage::disk('public')->exists($key),
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('debug upload failed', [
+                        'message' => $e->getMessage(),
+                        'class' => get_class($e),
+                    ]);
+                }
+                
                 
                 $placePhoto = PlacePhoto::query()->create([
                     'place_id' => $placeId,
