@@ -36,7 +36,7 @@ class EventLocationController extends Controller
     public function index(Request $request, Events $event)
     {
         try {
-            $locations = $this->locationsServices->getEventLocations($event);
+            $locations = $this->locationsServices->getEventLocation($event);
             
             if ($locations->isEmpty()) {
                 return response()->json(['message' => 'There are no locations for this event.'], 404);
@@ -77,6 +77,8 @@ class EventLocationController extends Controller
             ));
         }
         
+        
+        
         $response = Http::withOptions(['allow_redirects' => true])
             ->acceptJson()
             ->get(config('services.google.url') . 'place/details/json', [
@@ -101,7 +103,9 @@ class EventLocationController extends Controller
             
             if ($imageResponse->successful()) {
                 $filename = 'locations/google/'. $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
-                Storage::disk('public')->put($filename, $imageResponse->body());
+                Storage::disk('public')->put($filename, $imageResponse->body(), [
+                    'ContentType' => 'image/jpeg',
+                ]);
                 
                 $placePhoto = PlacePhoto::query()->create([
                     'place_id' => $placeId,
