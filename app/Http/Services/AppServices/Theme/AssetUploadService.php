@@ -3,7 +3,7 @@
 namespace App\Http\Services\AppServices\Theme;
 
 use App\Models\Events;
-use App\Models\ThemeAsset;
+use App\Models\Theme\ThemeAsset;
 use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;

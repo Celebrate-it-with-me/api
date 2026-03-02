@@ -5,7 +5,7 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EventTheme>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Theme\EventTheme>
  */
 class EventThemeFactory extends Factory
 {

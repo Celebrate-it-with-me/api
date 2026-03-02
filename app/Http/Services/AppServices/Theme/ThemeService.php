@@ -3,7 +3,7 @@
 namespace App\Http\Services\AppServices\Theme;
 
 use App\Models\Events;
-use App\Models\EventTheme;
+use App\Models\Theme\EventTheme;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;

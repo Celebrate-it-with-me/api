@@ -2,9 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\ThemeAsset;
+use App\Models\Theme\ThemeAsset;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class ThemeAssetPolicy
 {

@@ -2,12 +2,14 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\AppServices\Themes\CreateEventThemeFromTemplateService;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
 use App\Models\EventUserRole;
+use App\Models\Theme\Theme;
 use App\Models\User;
 use Auth;
 use Exception;
@@ -25,7 +27,10 @@ class EventsServices
     protected Request $request;
     protected Events $event;
 
-    public function __construct(Request $request)
+    public function __construct(
+        Request $request,
+        private readonly CreateEventThemeFromTemplateService $createEventThemeFromTemplateService,
+    )
     {
         $this->request = $request;
         $this->event = new Events();
@@ -69,12 +74,15 @@ class EventsServices
      */
     public function getFilteredEvents(string $query): Collection
     {
+        $user = $this->request->user();
+        
         return Events::query()
-            ->where('organizer_id', $this->request->user()->id)
+            ->with(['userRoles.user', 'userRoles.role'])
+            ->whereHas('userRoles', fn ($q) => $q->where('user_id', $user->id))
             ->when($query, function ($subQuery) use ($query) {
-                $subQuery->whereNested(function($subQuery) use ($query) {
-                   $subQuery->where('event_name', 'like', '%' . $query . '%');
-                   $subQuery->orWhere('event_description', 'like', '%' . $query . '%');
+                $subQuery->where(function ($q) use ($query) {
+                    $q->where('event_name', 'like', "%{$query}%")
+                        ->orWhere('event_description', 'like', "%{$query}%");
                 });
             })
             ->get();
@@ -152,7 +160,19 @@ class EventsServices
         ], [
             'role_id' => Role::query()->where('name', 'owner')->first()->id,
         ]);
-
+        
+        // Pick template (default: basic)
+        $themeSlug = $this->request->input('themeSlug') ?? 'basic';
+        
+        $theme = Theme::query()
+            ->where('slug', $themeSlug)
+            ->where('is_published', true)
+            ->first();
+        
+        if ($theme) {
+            $this->createEventThemeFromTemplateService->handle($event, $theme);
+        }
+        
         return $event;
     }
 

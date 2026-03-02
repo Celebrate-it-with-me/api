@@ -4,11 +4,12 @@
 namespace App\Http\Controllers\AppControllers\Theme;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Theme\UploadAssetRequest;
 use App\Http\Services\AppServices\Theme\AssetUploadService;
 use App\Models\Events;
-use App\Models\ThemeAsset;
-use Illuminate\Http\Request;
+use App\Models\Theme\ThemeAsset;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ThemeAssetController extends Controller
 {
@@ -82,7 +83,7 @@ class ThemeAssetController extends Controller
     /**
      * Actualizar metadata de un asset
      */
-    public function update(Event $event, ThemeAsset $asset, Request $request): JsonResponse
+    public function update(Events $event, ThemeAsset $asset, Request $request): JsonResponse
     {
         // Verificar que el asset pertenece al evento
         if ($asset->eventTheme->event_id !== $event->id) {
@@ -120,7 +121,7 @@ class ThemeAssetController extends Controller
     /**
      * Eliminar un asset
      */
-    public function destroy(Event $event, ThemeAsset $asset): JsonResponse
+    public function destroy(Events $event, ThemeAsset $asset): JsonResponse
     {
         // Verificar que el asset pertenece al evento
         if ($asset->eventTheme->event_id !== $event->id) {
@@ -149,7 +150,7 @@ class ThemeAssetController extends Controller
     /**
      * Reemplazar un asset existente
      */
-    public function replace(Event $event, ThemeAsset $asset, UploadAssetRequest $request): JsonResponse
+    public function replace(Events $event, ThemeAsset $asset, UploadAssetRequest $request): JsonResponse
     {
         // Verificar que el asset pertenece al evento
         if ($asset->eventTheme->event_id !== $event->id) {
@@ -185,7 +186,7 @@ class ThemeAssetController extends Controller
     /**
      * Obtener assets por sección
      */
-    public function bySection(Event $event, string $section): JsonResponse
+    public function bySection(Events $event, string $section): JsonResponse
     {
         $theme = $event->theme;
 
@@ -213,7 +214,7 @@ class ThemeAssetController extends Controller
     /**
      * Reordenar assets dentro de una sección
      */
-    public function reorder(Event $event, Request $request): JsonResponse
+    public function reorder(Events $event, Request $request): JsonResponse
     {
         $request->validate([
             'assets' => 'required|array',

@@ -2,9 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\EventTheme;
+use App\Models\Theme\EventTheme;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class EventThemePolicy
 {

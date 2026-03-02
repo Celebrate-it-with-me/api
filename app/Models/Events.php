@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Theme\EventTheme;
 use Database\Factories\EventsFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Log;
 
 class Events extends Model
 {
@@ -279,7 +279,8 @@ class Events extends Model
      */
     public function theme(): HasOne|Events
     {
-        return $this->hasOne(EventTheme::class, 'event_theme_id', 'id');
+        return $this->hasOne(EventTheme::class, 'event_id', 'id')
+            ->where('is_active', true);
     }
 
     /**
@@ -288,7 +289,7 @@ class Events extends Model
     public function getThemeConfigAttribute(): array
     {
         return $this->theme
-            ? $this->theme->config
+            ? ($this->theme->theme_config ?? [])
             : $this->getDefaultThemeConfig();
     }
 

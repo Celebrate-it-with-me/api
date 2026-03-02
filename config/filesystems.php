@@ -83,6 +83,22 @@ return [
                 : env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'throw' => true,
+        ],
+        
+        'themes' => [
+            'driver' => env('THEMES_DRIVER', 'local'),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => env('THEMES_DRIVER') === 'local'
+                ? env('SWEET_MEMORIES_ROOT', storage_path('app/public/themes'))
+                : null,
+            'url' => (env('THEMES_DRIVER') === 'local')
+                ? env('APP_URL').'/storage/themes'
+                : env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'throw' => true,
         ]
     ],
 
