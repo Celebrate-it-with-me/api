@@ -80,11 +80,11 @@ class EventDataLoader
      */
     private function loadEventFeatures(Events $event): ?EventFeatureResource
     {
-        if (!$event->eventFeatures) {
+        if (!$event->eventFeature) {
             return null;
         }
 
-        return EventFeatureResource::make($event->eventFeatures);
+        return EventFeatureResource::make($event->eventFeature);
     }
 
     /**

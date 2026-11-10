@@ -10,7 +10,7 @@ class HydrationData
     public function __construct(
         public Collection|AnonymousResourceCollection|null $events = null,
         public mixed $activeEvent = null,
-        public ?Collection $menus = null,
+        public Collection|AnonymousResourceCollection|null $menus = null,
         public mixed $eventFeatures = null,
         public ?array $guests = null,
         public ?array $rsvp = null,
