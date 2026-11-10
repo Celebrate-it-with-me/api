@@ -7,6 +7,45 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## CWM API · desarrollo local
+
+API de Celebrate It With Me (Laravel 13, PHP 8.4, PostgreSQL 17). Los repos `cwm_api`, `cwm_app` y `cwm_admin` deben estar como carpetas hermanas: el `docker-compose.yml` de este repo levanta los tres.
+
+```bash
+cp .env.example .env            # primera vez; DB_HOST=cwm_pgsql, DB_USERNAME/DB_PASSWORD los usa también el contenedor de PostgreSQL
+export WWWUSER=$(id -u) WWWGROUP=$(id -g)
+docker compose up -d --build
+docker exec cwm_api composer install
+docker exec cwm_api php artisan key:generate
+docker exec cwm_api php artisan migrate:fresh --seed
+```
+
+Hosts locales (añadir a `/etc/hosts`): `127.0.0.1 dev.api.cwm.com dev.app.cwm.com dev.admin.cwm.com`.
+
+### Datos de demo
+
+`migrate:fresh --seed` carga, **solo con `APP_ENV=local`**, datos de ejemplo en español. Todas las cuentas usan la contraseña `password`.
+
+| Cuenta | Rol | Evento |
+|---|---|---|
+| `marisol@cwm.test` | owner | **Los XV de Valentina** (evento completo: invitados, menús, itinerario, presupuesto, mesas, música...) |
+| `carlos@cwm.test` | editor | Los XV de Valentina |
+| `lucia@cwm.test` | viewer | Los XV de Valentina |
+| `daniel@cwm.test` | owner | **Boda de Camila y Andrés** (parcial) y **Baby Shower de Sofía** (vacío) |
+
+- El usuario del panel admin sale de `DEFAULT_ADMIN_EMAIL` / `DEFAULT_ADMIN_PASSWORD`. Si no están definidos (y no es producción) se usa `admin@cwm.test` / `password`.
+- Los datos de referencia (roles y permisos, tipos de evento, planes, categorías de presupuesto) son idempotentes y se cargan en cualquier entorno: `php artisan db:seed`.
+- Para cargar el demo en otro entorno que no sea producción: `php artisan db:seed --class='Database\Seeders\Demo\DemoSeeder'`.
+- Los permisos de un usuario en un evento salen de su rol (`owner`, `editor`, `viewer`); el frontend protege cada ruta con un `requiredPermission`. La matriz completa está en `database/seeders/RolesAndPermissionSeeder.php`.
+
+### Tests
+
+```bash
+docker exec cwm_api php vendor/bin/pest
+```
+
+Usan la base `testing` (creada al iniciar PostgreSQL) y `RefreshDatabase`.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
