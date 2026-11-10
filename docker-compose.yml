@@ -6,16 +6,16 @@ services:
             - "80:80"
         volumes:
             - /var/run/docker.sock:/tmp/docker.sock:ro
-            - ./docker/8.2/custom.conf:/etc/nginx/conf.d/custom.conf:ro
+            - ./docker/nginx-proxy/custom.conf:/etc/nginx/conf.d/custom.conf:ro
         networks:
             - sail
     cwm_api:
         build:
-            context: ./docker/8.2
+            context: ./docker/8.4
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
-        image: sail-8.2/app
+        image: sail-8.4/app
         container_name: cwm_api
         hostname: cwm_api
         expose:
@@ -36,14 +36,12 @@ services:
                 aliases:
                     - "dev.api.cwm.com"
         depends_on:
-            - cwm_mysql
+            - cwm_pgsql
             - cwm_redis
-            - cwm_meilisearch
             - cwm_mailpit
-            - cwm_selenium
 
     cwm_admin:
-        image: node:latest
+        image: node:26
         environment:
             VIRTUAL_HOST: dev.admin.cwm.com
             VIRTUAL_PORT: 8080
@@ -63,7 +61,7 @@ services:
             - cwm_api
 
     cwm_app:
-        image: node:latest
+        image: node:26
         environment:
             VIRTUAL_HOST: dev.app.cwm.com
             VIRTUAL_PORT: 8080
@@ -82,32 +80,35 @@ services:
         depends_on:
             - cwm_api
 
-    cwm_mysql:
-        image: 'mysql/mysql-server:8.0'
+    cwm_pgsql:
+        image: 'postgres:17-alpine'
+        container_name: cwm_pgsql
+        hostname: cwm_pgsql
         ports:
-            - '${FORWARD_DB_PORT:-3306}:3306'
-        container_name: cwm_mysql
-        hostname: cwm_mysql
+            - '${FORWARD_DB_PORT:-5432}:5432'
         environment:
-            MYSQL_ROOT_PASSWORD: 'password'
-            MYSQL_DATABASE: 'celebrateitwithme'
-            MYSQL_USER: 'root'
-            MYSQL_PASSWORD: 'password'
+            PGPASSWORD: '${DB_PASSWORD:-password}'
+            POSTGRES_DB: '${DB_DATABASE:-celebrateitwithme}'
+            POSTGRES_USER: '${DB_USERNAME:-cwm}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-password}'
         volumes:
-            - 'sail-mysql:/var/lib/mysql'
-            - './docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+            - 'sail-pgsql:/var/lib/postgresql/data'
+            - './docker/pgsql/create-testing-database.sql:/docker-entrypoint-initdb.d/10-create-testing-database.sql'
         networks:
             - sail
         healthcheck:
             test:
                 - CMD
-                - mysqladmin
-                - ping
-                - '-p${DB_PASSWORD}'
+                - pg_isready
+                - '-q'
+                - '-d'
+                - '${DB_DATABASE:-celebrateitwithme}'
+                - '-U'
+                - '${DB_USERNAME:-cwm}'
             retries: 3
             timeout: 5s
     cwm_redis:
-        image: 'redis:alpine'
+        image: 'redis:8-alpine'
         container_name: cwm_redis
         ports:
             - '${FORWARD_REDIS_PORT:-6379}:6379'
@@ -122,26 +123,6 @@ services:
                 - ping
             retries: 3
             timeout: 5s
-    cwm_meilisearch:
-        image: 'getmeili/meilisearch:latest'
-        container_name: cwm_meilisearch
-        ports:
-            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
-        environment:
-            MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
-        volumes:
-            - 'sail-meilisearch:/meili_data'
-        networks:
-            - sail
-        healthcheck:
-            test:
-                - CMD
-                - wget
-                - '--no-verbose'
-                - '--spider'
-                - 'http://localhost:7700/health'
-            retries: 3
-            timeout: 5s
     cwm_mailpit:
         image: 'axllent/mailpit:latest'
         container_name: cwm_mailpit
@@ -150,21 +131,11 @@ services:
             - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
-    cwm_selenium:
-        image: selenium/standalone-chrome
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
-        volumes:
-            - '/dev/shm:/dev/shm'
-        networks:
-            - sail
 networks:
     sail:
         driver: bridge
 volumes:
-    sail-mysql:
+    sail-pgsql:
         driver: local
     sail-redis:
-        driver: local
-    sail-meilisearch:
         driver: local
