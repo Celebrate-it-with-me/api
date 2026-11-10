@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Guest;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -30,7 +31,7 @@ class RSVPExport implements FromCollection, WithHeadings
         $this->page = $page;
     }
     
-    public function collection()
+    public function collection(): Enumerable
     {
         return Guest::query()
             ->where('event_id', $this->eventId)

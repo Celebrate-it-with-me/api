@@ -44,7 +44,7 @@ class GuestFactory extends Factory
     /**
      * Indicate that the guest is a companion (has parent_id).
      */
-    public function companion(Guest $mainGuest = null): static
+    public function companion(?Guest $mainGuest = null): static
     {
         return $this->state(fn (array $attributes) => [
             'parent_id' => $mainGuest?->id ?? Guest::factory(),
@@ -120,7 +120,7 @@ class GuestFactory extends Factory
     /**
      * Create guest with assigned menu.
      */
-    public function withMenu(Menu $menu = null): static
+    public function withMenu(?Menu $menu = null): static
     {
         return $this->state(fn (array $attributes) => [
             'assigned_menu_id' => $menu?->id ?? Menu::factory(),

@@ -177,7 +177,7 @@ class User extends Authenticatable
      *
      * @return bool True if the user has the specified role for the event, otherwise false.
      */
-    public function hasEventRole(Events $event, string $roleSlug = null): bool
+    public function hasEventRole(Events $event, ?string $roleSlug = null): bool
     {
         return EventUserRole::query()
             ->where('event_id', $event->id)

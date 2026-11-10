@@ -121,7 +121,7 @@ class SuggestedMusicExportService
         return Excel::download(new class($exportData) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
             protected $collection;
             public function __construct($collection) { $this->collection = $collection; }
-            public function collection() { return $this->collection; }
+            public function collection(): \Illuminate\Support\Enumerable { return $this->collection; }
             public function headings(): array {
                 return ['Title', 'Artist', 'Platform', 'URL', 'SuggestedBy', 'Score', 'Upvotes', 'Downvotes', 'CreatedAt'];
             }

@@ -104,7 +104,7 @@ class SweetMemoriesImageServices
      */
     private function generateThumbnail($file, $event): array
     {
-        $imageThumbnail = $this->imageManager->read($file->getPathname())
+        $imageThumbnail = $this->imageManager->decodePath($file->getPathname())
                             ->resize(150, 150);
 
         $thumbnailName = 'thumbnail_' . $file->getClientOriginalName();
