@@ -19,7 +19,6 @@ class ExampleTest extends TestCase
 
     /**
      * Testing the connection to the S3 service using AWS SDK for PHP.
-     * @test
      * @return void
      */
     public function testingConnection()
