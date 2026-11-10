@@ -12,13 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         // 1) Remove duplicates keeping the smallest id per (event_id, platformId)
-        DB::statement("
-            DELETE FROM suggested_music sm
-            USING suggested_music sm2
-            WHERE sm.event_id = sm2.event_id
-              AND sm.\"platformId\" = sm2.\"platformId\"
-              AND sm.id > sm2.id
-        ");
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("
+                DELETE FROM suggested_music sm
+                USING suggested_music sm2
+                WHERE sm.event_id = sm2.event_id
+                  AND sm.\"platformId\" = sm2.\"platformId\"
+                  AND sm.id > sm2.id
+            ");
+        } else { // mysql / mariadb
+            DB::statement("
+                DELETE sm FROM suggested_music sm
+                JOIN suggested_music sm2
+                  ON sm.event_id = sm2.event_id
+                 AND sm.platformId = sm2.platformId
+                 AND sm.id > sm2.id
+            ");
+        }
         
         // 2) Add unique constraint
         Schema::table('suggested_music', function (Blueprint $table) {

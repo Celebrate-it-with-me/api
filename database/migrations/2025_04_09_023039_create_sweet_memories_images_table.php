@@ -20,6 +20,11 @@ return new class extends Migration
             $table->string('image_size');
             $table->string('thumbnail_path')->nullable();
             $table->string('thumbnail_name')->nullable();
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
+            $table->string('year')->nullable();
+            $table->boolean('visible')->default(true);
+            $table->integer('order')->default(0);
             $table->timestamps();
         });
     }
