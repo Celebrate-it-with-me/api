@@ -210,7 +210,6 @@ class GuestServices
      */
     public function delete(Guest $guest): void
     {
-
         EventActivityLogger::log(
             $guest->event_id,
             'guest_deleted',
