@@ -12,6 +12,7 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\Demo\DemoSeeder;
 use Database\Seeders\RolesAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -72,6 +73,32 @@ describe('reference data', function () {
         $this->seed(AdminUserSeeder::class);
 
         expect(User::where('email', 'root@example.test')->first()->hasRole('admin'))->toBeTrue();
+    });
+});
+
+describe('admin user', function () {
+    it('replaces the default migration password with the configured one', function () {
+        $this->seed(RolesAndPermissionSeeder::class);
+        // Same situation as the 2025_04_05 migration: admin with password 'password'.
+        $admin = User::factory()->create(['email' => 'root@example.test', 'password' => 'password']);
+        config(['app.admin_user.email' => 'root@example.test', 'app.admin_user.password' => 'a-strong-pass']);
+
+        $this->seed(AdminUserSeeder::class);
+
+        $admin->refresh();
+        expect(Hash::check('a-strong-pass', $admin->password))->toBeTrue()
+            ->and(Hash::check('password', $admin->password))->toBeFalse()
+            ->and($admin->hasRole('admin'))->toBeTrue();
+    });
+
+    it('never overwrites a password that was changed on purpose', function () {
+        $this->seed(RolesAndPermissionSeeder::class);
+        $admin = User::factory()->create(['email' => 'root@example.test', 'password' => 'my-own-password']);
+        config(['app.admin_user.email' => 'root@example.test', 'app.admin_user.password' => 'a-strong-pass']);
+
+        $this->seed(AdminUserSeeder::class);
+
+        expect(Hash::check('my-own-password', $admin->refresh()->password))->toBeTrue();
     });
 });
 

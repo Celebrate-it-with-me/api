@@ -44,6 +44,15 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
+        // The 2025_04_05 migration creates an admin with the well-known password
+        // 'password'. If it is still untouched, replace it with the configured one;
+        // a password that was changed on purpose is never overwritten.
+        if (! $admin->wasRecentlyCreated
+            && $password !== self::LOCAL_PASSWORD
+            && Hash::check(self::LOCAL_PASSWORD, $admin->password)) {
+            $admin->forceFill(['password' => Hash::make($password)])->save();
+        }
+
         if (! $admin->hasRole('admin')) {
             $admin->assignRole('admin');
         }
