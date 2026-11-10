@@ -45,7 +45,7 @@ class GalleryServices
 
                 $imageContent = Storage::disk($this->disk)->get($path);
 
-                $imgThumbnail = $this->imageManager->read($imageContent)
+                $imgThumbnail = $this->imageManager->decodeBinary($imageContent)
                     ->resize(150,150);
 
                 $thumbnailPath =  $thumbnailFolderName . '/' . $image->hashName();
