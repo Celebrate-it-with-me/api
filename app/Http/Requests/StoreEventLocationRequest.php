@@ -2,45 +2,53 @@
 
 namespace App\Http\Requests;
 
+use App\Models\EventLocation;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
+/** Create and update share the same rules: a place is always sent whole. */
 class StoreEventLocationRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
-    
-    protected function prepareForValidation(): void
-    {
-        $this->merge([
-            'isDefault' => filter_var($this->isDefault, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
-        ]);
-    }
-    
-    
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
+
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'address' => 'required|string|max:255',
-            'city' => 'required|string|max:255',
-            'state' => 'required|string|max:255',
-            'zipCode' => 'required|string|max:10',
-            'country' => 'required|string|max:255',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'isDefault' => 'nullable|boolean',
-            'images.*' => 'nullable|image|max:2048',
-            'google_photos' => 'nullable|string',
+            'type' => ['required', Rule::in(EventLocation::TYPES)],
+            'name' => ['required', 'string', 'max:120'],
+            'address' => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
+            'zipCode' => ['nullable', 'string', 'max:12'],
+            'country' => ['required', 'string', 'max:120'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'placeId' => ['nullable', 'string', 'max:255'],
+            'directions' => ['nullable', 'string', 'max:500'],
+        ];
+    }
+
+    /** Column names for the model. */
+    public function place(): array
+    {
+        $data = $this->validated();
+
+        return [
+            'type' => $data['type'],
+            'name' => $data['name'],
+            'address' => $data['address'],
+            'city' => $data['city'],
+            'state' => $data['state'] ?? null,
+            'zip_code' => $data['zipCode'] ?? null,
+            'country' => $data['country'],
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'place_id' => $data['placeId'] ?? null,
+            'notes' => ($data['directions'] ?? null) ?: null,
         ];
     }
 }

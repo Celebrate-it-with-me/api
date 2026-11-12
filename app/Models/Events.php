@@ -223,11 +223,11 @@ class Events extends Model
     /**
      * Get the locations associated with the event.
      *
-     * @return HasOne
+     * @return HasMany
      */
-    public function locations(): HasOne
+    public function locations(): HasMany
     {
-        return $this->hasOne(EventLocation::class, 'event_id', 'id');
+        return $this->hasMany(EventLocation::class, 'event_id', 'id');
     }
 
     /**

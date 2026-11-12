@@ -5,32 +5,26 @@ namespace App\Http\Resources\AppResources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-
 class EventLocationResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
-            'event_id' => $this->event_id,
+            'eventId' => $this->event_id,
+            'type' => $this->type,
             'name' => $this->name,
             'address' => $this->address,
             'city' => $this->city,
             'state' => $this->state,
             'zipCode' => $this->zip_code,
             'country' => $this->country,
-            'latitude' => $this->latitude,
-            'longitude' => $this->longitude,
-            'isDefault' => $this->is_default,
-            
-            'images' => EventLocationImageResource::collection($this->eventLocationImages),
-            
+            'latitude' => $this->latitude !== null ? (float) $this->latitude : null,
+            'longitude' => $this->longitude !== null ? (float) $this->longitude : null,
+            'placeId' => $this->place_id,
+            'directions' => $this->notes,
+            'images' => EventLocationImageResource::collection($this->whenLoaded('eventLocationImages')),
         ];
     }
-    
 }

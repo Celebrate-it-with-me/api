@@ -292,9 +292,11 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::get('', [EventLocationController::class, 'index'])->name('index');
                 Route::post('', [EventLocationController::class, 'store'])->name('store');
                 Route::get('{location}', [EventLocationController::class, 'show'])->name('show');
+                Route::put('{location}', [EventLocationController::class, 'update'])->name('update');
                 Route::delete('{location}', [EventLocationController::class, 'destroy'])->name('destroy');
                 Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
+                Route::delete('{location}/images/{image}', [EventLocationController::class, 'destroyImage'])->name('images.destroy');
             });
 
             // ========================================

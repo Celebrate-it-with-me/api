@@ -94,7 +94,7 @@ describe('GET invitation', function () {
 
         expect($sections->keys()->all())->toBe(['cover', 'locations', 'dress_code', 'rsvp', 'closing'])
             ->and($sections['locations']['data']['items'][0]['name'])->toBe('Salón Jardín')
-            ->and($sections['locations']['data']['items'][0]['mapsUrl'])->toStartWith('https://www.google.com/maps/search/?api=1&query=')
+            ->and($sections['locations']['data']['items'][0]['links']['google'])->toStartWith('https://www.google.com/maps/search/?api=1&query=')
             ->and($sections['dress_code']['data']['colors'])->toBe(['#ffffff']);
     });
 

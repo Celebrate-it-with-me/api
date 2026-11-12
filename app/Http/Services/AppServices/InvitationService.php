@@ -263,8 +263,8 @@ class InvitationService
     private function locationsData(Events $event): ?array
     {
         $locations = EventLocation::query()
+            ->with('eventLocationImages')
             ->where('event_id', $event->id)
-            ->orderByDesc('is_default')
             ->orderBy('id')
             ->get();
 
@@ -272,29 +272,50 @@ class InvitationService
             return null;
         }
 
+        // Ceremony and reception show the time of the same kind of moment in the program of the day.
+        $moments = Timeline::query()->where('event_id', $event->id)->whereIn('type', ['ceremony', 'reception'])
+            ->orderBy('start_time')->get()->groupBy('type');
+
+        $order = array_flip(EventLocation::TYPES);
+
         return [
-            'items' => $locations->map(fn (EventLocation $location) => [
-                'name' => $location->name,
-                'address' => $location->address,
-                'city' => $location->city,
-                'state' => $location->state,
-                'zipCode' => $location->zip_code,
-                'country' => $location->country,
-                'notes' => $location->notes,
-                'latitude' => $location->latitude !== null ? (float) $location->latitude : null,
-                'longitude' => $location->longitude !== null ? (float) $location->longitude : null,
-                'mapsUrl' => $this->mapsUrl($location),
-            ])->all(),
+            'items' => $locations
+                ->sortBy([fn ($a, $b) => $order[$a->type] <=> $order[$b->type], fn ($a, $b) => $a->id <=> $b->id])
+                ->map(function (EventLocation $location) use ($moments) {
+                    $moment = $moments->get($location->type)?->first();
+
+                    return [
+                        'type' => $location->type,
+                        'name' => $location->name,
+                        'address' => $location->address,
+                        'city' => $location->city,
+                        'state' => $location->state,
+                        'zipCode' => $location->zip_code,
+                        'country' => $location->country,
+                        'directions' => $location->notes,
+                        'latitude' => $location->latitude !== null ? (float) $location->latitude : null,
+                        'longitude' => $location->longitude !== null ? (float) $location->longitude : null,
+                        'startTime' => $moment?->start_time->format('Y-m-d H:i:s'),
+                        'endTime' => $moment?->end_time?->format('Y-m-d H:i:s'),
+                        'images' => $location->eventLocationImages->pluck('path')->all(),
+                        'links' => $this->routeLinks($location),
+                    ];
+                })->values()->all(),
         ];
     }
 
-    private function mapsUrl(EventLocation $location): string
+    /** "How to get there" buttons: Google Maps, Apple Maps and Waze. @return array{google: string, apple: string, waze: string} */
+    private function routeLinks(EventLocation $location): array
     {
-        $query = ($location->latitude !== null && $location->longitude !== null)
-            ? "{$location->latitude},{$location->longitude}"
-            : implode(', ', array_filter([$location->name, $location->address, $location->city, $location->state]));
+        $hasPoint = $location->latitude !== null && $location->longitude !== null;
+        $text = implode(', ', array_filter([$location->name, $location->address, $location->city, $location->state]));
+        $point = $hasPoint ? "{$location->latitude},{$location->longitude}" : null;
 
-        return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($query);
+        return [
+            'google' => 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($point ?? $text),
+            'apple' => 'https://maps.apple.com/?' . http_build_query(['q' => $location->name, ($point ? 'll' : 'address') => $point ?? $text]),
+            'waze' => 'https://waze.com/ul?' . http_build_query($hasPoint ? ['ll' => $point, 'navigate' => 'yes'] : ['q' => $text, 'navigate' => 'yes']),
+        ];
     }
 
     /** @return array<string, mixed>|null */
