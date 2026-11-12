@@ -34,10 +34,17 @@
     use App\Http\Controllers\AppControllers\UserTwoFAController;
     use App\Http\Controllers\AuthenticationController;
     use App\Http\Controllers\DressCodeController;
+    use App\Http\Controllers\AppControllers\PublicInvitationController;
 
 // ========================================
 // PUBLIC ROUTES (No Authentication)
 // ========================================
+
+// Public invitation: event slug + guest code are the only credentials.
+Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
+    Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:60,1')->name('show');
+    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware('throttle:20,1')->name('rsvp');
+});
 
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {

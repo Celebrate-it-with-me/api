@@ -31,7 +31,8 @@ class Guest extends Model
         'notes',
         'is_vip',
         'tags',
-        'gender'
+        'gender',
+        'locale',
     ];
 
     protected $casts = [
