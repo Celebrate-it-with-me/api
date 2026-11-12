@@ -49,8 +49,9 @@ class PublicSuggestedMusicController extends Controller
                 ]
             ]);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Please try again.',
                 'data' => []
             ], 500);
         }
@@ -86,8 +87,9 @@ class PublicSuggestedMusicController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Please try again.',
                 'data' => []
             ], 500);
         }
@@ -108,7 +110,9 @@ class PublicSuggestedMusicController extends Controller
     public function destroy(DestroyPublicSuggestedMusicRequest $request, Events $event)
     {
         try {
-            $guestRequesting = Guest::where('code', $request->input('accessCode'))->firstOrFail();
+            $guestRequesting = Guest::where('event_id', $event->id)
+                ->where('code', $request->input('accessCode'))
+                ->firstOrFail();
             
             $suggestedMusic = SuggestedMusic::where('event_id', $event->id)
                 ->where('id', $request->input('songId'))
@@ -133,8 +137,9 @@ class PublicSuggestedMusicController extends Controller
             ], 200);
             
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Please try again.',
                 'data' => []
             ], 500);
         }

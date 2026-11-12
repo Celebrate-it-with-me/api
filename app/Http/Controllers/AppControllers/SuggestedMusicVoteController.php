@@ -48,8 +48,9 @@ class SuggestedMusicVoteController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Please try again.',
                 'data' => []
             ], 500);
         }
@@ -100,8 +101,9 @@ class SuggestedMusicVoteController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Please try again.',
                 'data' => []
             ], 500);
         }
@@ -137,8 +139,9 @@ class SuggestedMusicVoteController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Please try again.',
                 'data' => []
             ], 500);
         }

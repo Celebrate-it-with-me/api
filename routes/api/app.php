@@ -47,7 +47,8 @@ Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function (
 
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {
-    Route::prefix('event/{event}')->name('event.')->group(function () {
+    // Guest-facing: a valid access code of this event is required, even to read (see EnsureGuestEventAccess).
+    Route::prefix('event/{event}')->middleware(['event.guest', 'throttle:60,1'])->name('event.')->group(function () {
         Route::get('comments', [PublicEventCommentController::class, 'index'])
             ->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
