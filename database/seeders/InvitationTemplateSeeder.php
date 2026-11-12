@@ -106,7 +106,7 @@ class InvitationTemplateSeeder extends Seeder
 
         return [
             'theme' => 'classic',
-            'fonts' => ['heading' => 'Fraunces', 'body' => 'Figtree'],
+            'fonts' => ['heading' => 'Fraunces', 'body' => 'Figtree', 'script' => 'Pinyon Script'],
             'preset' => 'rose',
             'presets' => [
                 'rose' => ['label' => ['es' => 'Rosa', 'en' => 'Rose'], 'colors' => $base + ['primary' => '#b04a62']],

@@ -50,6 +50,8 @@ class DemoEventSeeder extends Seeder
             'slug' => 'xv-de-valentina',
             'status' => 'published',
             'visibility' => 'public',
+            // Illustrative brand portrait (served by the app from public/demo), never a real client.
+            'template_config' => ['sections' => [['type' => 'cover', 'settings' => ['image' => '/demo/valentina-portrait.webp']]]],
             'type' => 'quinceanera',
             'plan' => 'premium',
             'start' => $start,
@@ -315,6 +317,7 @@ class DemoEventSeeder extends Seeder
             'visibility' => $data['visibility'],
             'event_plan_id' => EventPlan::query()->where('slug', $data['plan'])->value('id'),
             'event_type_id' => EventType::query()->where('slug', $data['type'])->value('id'),
+            'template_config' => isset($data['template_config']) ? json_encode($data['template_config']) : null,
         ]));
 
         DB::table('event_features')->insert($this->row(['event_id' => $id] + $data['features']));
