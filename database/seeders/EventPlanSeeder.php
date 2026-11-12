@@ -14,7 +14,7 @@ class EventPlanSeeder extends Seeder
                 'slug' => 'basic',
                 'name' => 'Basic',
                 'description' => 'Up to 100 guests. Core features only.',
-                'max_guests' => 100,
+                'max_guests' => 30,
                 'has_gallery' => false,
                 'has_music' => false,
                 'has_custom_design' => false,

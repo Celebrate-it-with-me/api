@@ -4,6 +4,7 @@ namespace App\Http\Resources\AppResources;
 
 use App\Http\Resources\UserResource;
 use App\Http\Services\AppServices\EventModules;
+use App\Http\Services\AppServices\GuestLimit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -38,6 +39,8 @@ class EventResource extends JsonResource
             // What the menu shows: from the module catalog, by the event's plan (see EventModules).
             'modules' => app(EventModules::class)->forEvent($this->resource),
             'guestsCount' => $this->getEventGuestsCount(),
+            // The plan's guest limit (people, with companions), or null when it has none.
+            'guestLimit' => app(GuestLimit::class)->limitFor($this->resource),
             'rsvpResponse' => $this->rsvpResponse(),
             'setupProgress' => $this->calculateSetupProgress(),
         ];
