@@ -11,6 +11,7 @@ use App\Models\Events;
 use App\Models\Guest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class RsvpController extends Controller
 {
@@ -74,6 +75,9 @@ class RsvpController extends Controller
                     $companion->selectedMenuItems()->detach();
                 }
             }
+            Cache::forget("event.{$event->id}.rsvp.stats");
+            Cache::forget("event.{$event->id}.rsvp.summary");
+
             return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);

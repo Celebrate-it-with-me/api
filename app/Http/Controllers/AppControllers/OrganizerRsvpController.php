@@ -85,10 +85,10 @@ class OrganizerRsvpController extends Controller
      * @param Guest $guest The main guest
      * @return JsonResponse
      */
-    public function bulkApplyToCompanions(Request $request, Guest $guest): JsonResponse
+    public function bulkApplyToCompanions(Request $request, Events $event, Guest $guest): JsonResponse
     {
         $request->validate([
-            'rsvp_status' => 'required|in:attending,not_attending,pending',
+            'rsvp_status' => 'required|in:attending,not-attending,pending',
             'notes' => 'sometimes|string|max:1000'
         ]);
 

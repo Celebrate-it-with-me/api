@@ -15,6 +15,7 @@
     use App\Http\Controllers\AppControllers\EventsController;
     use App\Http\Controllers\AppControllers\ExportController;
     use App\Http\Controllers\AppControllers\GuestController;
+    use App\Http\Controllers\AppControllers\GuestRosterController;
     use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
     use App\Http\Controllers\AppControllers\MenuController;
     use App\Http\Controllers\AppControllers\MenuItemController;
@@ -193,6 +194,14 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             // GUESTS & RSVP
             // ========================================
+            // The unified "Invitados" screen: status tabs, event-wide counters, edit people.
+            Route::prefix('roster')->name('roster.')->group(function () {
+                Route::get('', [GuestRosterController::class, 'index'])->name('index');
+                Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
+                Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');
+                Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');
+            });
+
             Route::prefix('guests')->name('guests.')->group(function () {
                 Route::get('count', [GuestController::class, 'countTotalAssistant'])->name('countTotalAssistant');
                 Route::get('', [GuestController::class, 'index'])->name('index');
