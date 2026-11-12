@@ -70,6 +70,12 @@ class BudgetItem extends Model
         return $this->paid() > 0 ? self::PARTIAL : self::UNPAID;
     }
 
+    /** What padrinos promised to cover of this item. */
+    public function commitments(): HasMany
+    {
+        return $this->hasMany(PadrinoCommitment::class, 'budget_item_id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(BudgetPayment::class, 'budget_item_id')->orderBy('paid_on')->orderBy('id');

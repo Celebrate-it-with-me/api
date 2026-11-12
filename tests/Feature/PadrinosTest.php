@@ -155,6 +155,26 @@ describe('padrinos', function () {
     });
 });
 
+describe('on the budget', function () {
+    it('shows each item the padrinos behind it, with what they promised and paid', function () {
+        [, $u, $api] = padrinoEvent();
+        $cake = budgetItem($this, $u['owner'], $api, 'Pastel', 400);
+        $plain = budgetItem($this, $u['owner'], $api, 'Sin padrino', 100);
+        $raul = $this->actingAs($u['owner'])->postJson("$api/padrinos", padrinoData())->json('data.id');
+        $ana = $this->actingAs($u['owner'])->postJson("$api/padrinos", padrinoData(['name' => 'Ana']))->json('data.id');
+        $this->actingAs($u['owner'])->putJson("$api/padrinos/$raul/commitments", ['commitments' => [['budgetItemId' => $cake, 'amount' => 300]]]);
+        $this->actingAs($u['owner'])->putJson("$api/padrinos/$ana/commitments", ['commitments' => [['budgetItemId' => $cake, 'amount' => 100]]]);
+        $this->actingAs($u['owner'])->postJson("$api/budget/items/$cake/payments", ['amount' => 120, 'paidOn' => '2027-01-01', 'padrinoId' => $raul])->assertCreated();
+
+        $rows = collect($this->actingAs($u['owner'])->getJson("$api/budget/items")->json('data'))->keyBy('id');
+
+        expect($rows[$plain]['padrinos'])->toBe([])
+            ->and($rows[$cake]['padrinos'])->toHaveCount(2)
+            ->and(collect($rows[$cake]['padrinos'])->firstWhere('name', 'Tío Raúl'))->toMatchArray(['committed' => 300, 'paid' => 120])
+            ->and(collect($rows[$cake]['padrinos'])->firstWhere('name', 'Ana'))->toMatchArray(['committed' => 100, 'paid' => 0]);
+    });
+});
+
 describe('public invitation', function () {
     function padrinoLink(string $plan): array
     {

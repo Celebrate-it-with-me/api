@@ -39,7 +39,7 @@ class BudgetService
     /** @return Collection<int, BudgetItem> */
     public function items(EventBudget $budget): Collection
     {
-        return $budget->items()->with('payments')->orderBy('due_date')->orderBy('id')->get();
+        return $budget->items()->with(['payments.padrino', 'commitments.padrino'])->orderBy('due_date')->orderBy('id')->get();
     }
 
     /** @return array<string, mixed> */
@@ -88,7 +88,7 @@ class BudgetService
     /** The shape the screens read. @return array<string, mixed> */
     public function row(BudgetItem $item): array
     {
-        $item->loadMissing('payments.padrino');
+        $item->loadMissing(['payments.padrino', 'commitments.padrino']);
 
         return [
             'id' => $item->id,
@@ -104,6 +104,7 @@ class BudgetService
             'remaining' => $item->remaining(),
             'status' => $item->status(),
             'dueDate' => $item->due_date?->toDateString(),
+            'padrinos' => $this->padrinosOf($item),
             'payments' => $item->payments->map(fn (BudgetPayment $p) => [
                 'id' => $p->id,
                 'amount' => (float) $p->amount,
@@ -113,6 +114,23 @@ class BudgetService
                 'padrinoName' => $p->padrino?->name,
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * The padrinos behind an item: what each promised to cover of it and what each has paid towards it.
+     *
+     * @return list<array{padrinoId: int, name: string, committed: float, paid: float}>
+     */
+    private function padrinosOf(BudgetItem $item): array
+    {
+        $paidBy = $item->payments->whereNotNull('padrino_id')->groupBy('padrino_id')->map(fn ($payments) => round((float) $payments->sum('amount'), 2));
+
+        return $item->commitments->map(fn ($commitment) => [
+            'padrinoId' => $commitment->padrino_id,
+            'name' => $commitment->padrino?->name ?? '',
+            'committed' => (float) $commitment->amount,
+            'paid' => (float) ($paidBy[$commitment->padrino_id] ?? 0),
+        ])->values()->all();
     }
 
     /** Add a payment. When it settles the item the owner is told. */
