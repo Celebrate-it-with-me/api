@@ -75,5 +75,6 @@ class Kernel extends HttpKernel
         'verified' => EnsureEmailIsVerified::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
         'event.access' => \App\Http\Middleware\EnsureEventAccess::class,
+        'event.guest' => \App\Http\Middleware\EnsureGuestEventAccess::class,
     ];
 }
