@@ -3,6 +3,7 @@
 namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateEventsRequest extends FormRequest
 {
@@ -22,7 +23,15 @@ class UpdateEventsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            // A hidden type is accepted only if the event already has it.
+            'eventType' => [
+                'sometimes',
+                'integer',
+                Rule::exists('event_types', 'id')->where(
+                    fn ($q) => $q->where('is_active', true)
+                        ->orWhere('id', $this->route('event')?->event_type_id)
+                ),
+            ],
         ];
     }
 }

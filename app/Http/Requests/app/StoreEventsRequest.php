@@ -3,6 +3,7 @@
 namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreEventsRequest extends FormRequest
 {
@@ -22,6 +23,7 @@ class StoreEventsRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'eventType' => ['required', 'integer', Rule::exists('event_types', 'id')->where('is_active', true)],
             'eventName' => 'required|string|max:255',
             'eventDescription' => 'nullable|string',
             'startDate' => 'required|date_format:m/d/Y H:i',

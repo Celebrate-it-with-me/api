@@ -30,6 +30,7 @@ class EventCacheService
             self::CACHE_TTL,
             function () {
                 return EventType::query()
+                    ->active()
                     ->select('id', 'name', 'slug', 'icon')
                     ->get();
             }
