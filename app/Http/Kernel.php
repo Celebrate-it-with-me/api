@@ -74,5 +74,6 @@ class Kernel extends HttpKernel
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
+        'event.access' => \App\Http\Middleware\EnsureEventAccess::class,
     ];
 }

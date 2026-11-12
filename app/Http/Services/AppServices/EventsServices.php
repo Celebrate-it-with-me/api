@@ -47,6 +47,7 @@ class EventsServices
             $lastActiveEvent = Events::query()
                 ->with(['userRoles.user', 'userRoles.role'])
                 ->where('id', $user->last_active_event_id)
+                ->whereHas('userRoles', fn ($query) => $query->where('user_id', $user->id))
                 ->first();
         }
 
@@ -70,7 +71,7 @@ class EventsServices
     public function getFilteredEvents(string $query): Collection
     {
         return Events::query()
-            ->where('organizer_id', $this->request->user()->id)
+            ->whereHas('userRoles', fn ($roles) => $roles->where('user_id', $this->request->user()->id))
             ->when($query, function ($subQuery) use ($query) {
                 $subQuery->whereNested(function($subQuery) use ($query) {
                    $subQuery->where('event_name', 'like', '%' . $query . '%');
@@ -91,7 +92,8 @@ class EventsServices
             'event_name' => $this->request->input('eventName'),
             'event_description' => $this->request->input('eventDescription'),
             'event_type_id' => $this->request->input('eventType'),
-            'event_plan_id' => $this->request->input('eventPlan') ?? 3,
+            // The plan is decided by the server (free by default), never by the client.
+            'event_plan_id' => $this->defaultPlanId(),
             'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
             'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
             'status' => $this->request->input('status'),
@@ -168,7 +170,6 @@ class EventsServices
         $this->event->event_name = $this->request->input('eventName');
         $this->event->event_description = $this->request->input('eventDescription');
         $this->event->event_type_id = $this->request->input('eventType');
-        $this->event->event_plan_id = $this->request->input('eventPlan') ?? 3;
         $this->event->start_date = $this->request->input('startDate');
         $this->event->end_date = $this->request->input('endDate');
         $this->event->status = $this->request->input('status');
@@ -238,6 +239,12 @@ class EventsServices
      * Retrieve all event types.
      * @return Collection
      */
+    /** The entry plan: the one with the lowest id (`basic` in the seeders). */
+    private function defaultPlanId(): int
+    {
+        return (int) EventPlan::query()->orderBy('id')->value('id');
+    }
+
     public function getEventTypes(): Collection
     {
         return EventType::query()
