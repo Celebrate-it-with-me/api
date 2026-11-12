@@ -89,23 +89,6 @@ class EventsServices
             ->get();
     }
 
-    /** Feature flags the organizer may send, as request key => column. */
-    private const FEATURE_FIELDS = [
-        'saveTheDate' => 'save_the_date',
-        'rsvp' => 'rsvp',
-        'menu' => 'menu',
-        'sweetMemories' => 'sweet_memories',
-        'music' => 'music',
-        'backgroundMusic' => 'background_music',
-        'eventComments' => 'event_comments',
-        'location' => 'location',
-        'seatsAccommodation' => 'seats_accommodation',
-        'preview' => 'preview',
-        'budget' => 'budget',
-        'eventBudget' => 'budget', // older clients used this key
-        'analytics' => 'analytics',
-    ];
-
     /**
      * Create user event. It always starts as a draft: publishing is its own action.
      * @return Model|Builder
@@ -126,19 +109,21 @@ class EventsServices
                 ?: $this->uniqueSlug((string) $this->request()->input('eventName')),
         ]);
 
+        // A new event starts with the core only; the premium modules are not switched on here, the plan
+        // decides them (see EventModules). These flags are legacy: the menu no longer reads them.
         EventFeature::query()->create([
             'event_id' => $event->id,
             'save_the_date' => true,
             'rsvp' => true,
-            'menu' => false,
-            'sweet_memories' => true,
-            'music' => true,
-            'background_music' => false,
-            'event_comments' => true,
             'location' => true,
-            'seats_accommodation' => true,
-            'preview' => false,
             'budget' => true,
+            'menu' => false,
+            'sweet_memories' => false,
+            'music' => false,
+            'background_music' => false,
+            'event_comments' => false,
+            'seats_accommodation' => false,
+            'preview' => false,
             'analytics' => false,
         ]);
 
@@ -187,14 +172,6 @@ class EventsServices
             $event->end_date = $this->parseDate($input->input('endDate'));
         }
         $event->save();
-
-        $features = collect(self::FEATURE_FIELDS)
-            ->filter(fn ($column, $key) => $input->has($key))
-            ->mapWithKeys(fn ($column, $key) => [$column => $input->boolean($key)]);
-
-        if ($features->isNotEmpty()) {
-            EventFeature::query()->updateOrCreate(['event_id' => $event->id], $features->all());
-        }
 
         $actor = $this->request()->user();
         if ($actor) {

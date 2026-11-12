@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventPlan extends Model
@@ -25,6 +26,12 @@ class EventPlan extends Model
      *
      * @return HasMany
      */
+    /** Modules this plan includes. */
+    public function modules(): BelongsToMany
+    {
+        return $this->belongsToMany(Module::class, 'module_plan', 'event_plan_id', 'module_id');
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(Events::class, 'event_plan_id', 'id');

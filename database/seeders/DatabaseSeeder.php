@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionSeeder::class,
             EventTypeSeeder::class,
             EventPlanSeeder::class,
+            ModuleSeeder::class,
             InvitationTemplateSeeder::class,
             BudgetCategorySeeder::class,
             AdminUserSeeder::class,
