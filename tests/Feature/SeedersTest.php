@@ -227,3 +227,16 @@ describe('profile update', function () {
             ->assertStatus(422)->assertJsonValidationErrors(['name', 'phone']);
     });
 });
+
+describe('password change', function () {
+    it('changes the password and reports a wrong current one as a field error', function () {
+        $user = User::factory()->create(['password' => Hash::make('old-password-1')]);
+        $payload = ['currentPassword' => 'old-password-1', 'newPassword' => 'new-password-1', 'newPasswordConfirmation' => 'new-password-1'];
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-password', ['currentPassword' => 'nope'] + $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('currentPassword');
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-password', $payload)->assertOk();
+        expect(Hash::check('new-password-1', $user->fresh()->password))->toBeTrue();
+    });
+});
