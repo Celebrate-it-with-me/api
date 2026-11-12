@@ -10,6 +10,7 @@
     use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
     use App\Http\Controllers\AppControllers\EventConfigCommentsController;
     use App\Http\Controllers\AppControllers\EventLocationController;
+    use App\Http\Controllers\AppControllers\EventLifecycleController;
     use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
     use App\Http\Controllers\AppControllers\EventsController;
     use App\Http\Controllers\AppControllers\ExportController;
@@ -163,7 +164,11 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             });
 
             Route::get('', [EventsController::class, 'show'])->name('show');
-            Route::put('', [EventsController::class, 'update'])->name('update');
+            Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
+            Route::post('publish', [EventLifecycleController::class, 'publish'])->name('publish');
+            Route::post('unpublish', [EventLifecycleController::class, 'unpublish'])->name('unpublish');
+            Route::post('archive', [EventLifecycleController::class, 'archive'])->name('archive');
+            Route::post('restore', [EventLifecycleController::class, 'restore'])->name('restore');
             Route::delete('', [EventsController::class, 'destroy'])->middleware('event.access:delete_event')->name('destroy');
             Route::get('dashboard-logs', [EventActivityController::class, 'dashboardLogs'])
                 ->name('dashboard-logs');

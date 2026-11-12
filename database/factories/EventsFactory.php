@@ -28,9 +28,8 @@ class EventsFactory extends Factory
             'event_plan_id' => EventPlan::factory(),
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'status' => $this->faker->randomElement(['draft', 'published', 'archived', 'canceled']),
+            'status' => $this->faker->randomElement(['draft', 'published', 'archived']),
             'custom_url_slug' => $this->faker->unique()->slug(),
-            'visibility' => $this->faker->randomElement(['public', 'private', 'restricted']),
         ];
     }
 
@@ -41,6 +40,7 @@ class EventsFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'published',
+            'published_at' => now(),
         ]);
     }
 
@@ -51,26 +51,6 @@ class EventsFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'draft',
-        ]);
-    }
-
-    /**
-     * Indicate that the event is public.
-     */
-    public function public(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'visibility' => 'public',
-        ]);
-    }
-
-    /**
-     * Indicate that the event is private.
-     */
-    public function private(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'visibility' => 'private',
         ]);
     }
 }

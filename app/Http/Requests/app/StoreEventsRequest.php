@@ -7,30 +7,26 @@ use Illuminate\Validation\Rule;
 
 class StoreEventsRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * An event is born as a draft: the status is not an input here (see `EventLifecycleService`).
+     * The end date and the description are optional.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'eventType' => ['required', 'integer', Rule::exists('event_types', 'id')->where('is_active', true)],
             'eventName' => 'required|string|max:255',
-            'eventDescription' => 'nullable|string',
+            'eventType' => ['required', 'integer', Rule::exists('event_types', 'id')->where('is_active', true)],
+            'eventDescription' => 'nullable|string|max:5000',
             'startDate' => 'required|date_format:m/d/Y H:i',
-            'endDate' => 'required|date_format:m/d/Y H:i',
-            'status' => 'required|in:draft,published,archived,canceled',
-            'customUrlSlug' => 'nullable|string|unique:events,custom_url_slug|regex:/^[a-z0-9-]+$/',
-            'visibility' => 'required|in:public,private,restricted',
+            'endDate' => 'nullable|date_format:m/d/Y H:i|after_or_equal:startDate',
+            'customUrlSlug' => ['nullable', 'string', 'max:60', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:events,custom_url_slug'],
         ];
     }
 }
