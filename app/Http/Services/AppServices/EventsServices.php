@@ -241,6 +241,7 @@ class EventsServices
     public function getEventTypes(): Collection
     {
         return EventType::query()
+            ->active()
             ->select('id', 'name', 'slug', 'icon')
             ->get();
     }

@@ -16,7 +16,7 @@ use Illuminate\Database\Seeder;
  *   carlos@cwm.test   editor of "Los XV de Valentina"
  *   lucia@cwm.test    viewer of "Los XV de Valentina"
  *   daniel@cwm.test   owner  of "Boda de Camila y Andrés" (partial) and
- *                             "Baby Shower de Sofía" (empty event)
+ *                             "Los XV de Sofía" (empty event)
  */
 class DemoSeeder extends Seeder
 {

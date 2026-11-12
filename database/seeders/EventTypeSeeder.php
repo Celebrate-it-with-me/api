@@ -14,6 +14,7 @@ class EventTypeSeeder extends Seeder
                 'slug' => 'quinceanera',
                 'name' => 'Quinceañera',
                 'icon' => 'party-popper',
+                'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -21,6 +22,7 @@ class EventTypeSeeder extends Seeder
                 'slug' => 'wedding',
                 'name' => 'Wedding',
                 'icon' => 'heart',
+                'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -28,6 +30,7 @@ class EventTypeSeeder extends Seeder
                 'slug' => 'birthday',
                 'name' => 'Birthday',
                 'icon' => 'cake',
+                'is_active' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -35,6 +38,7 @@ class EventTypeSeeder extends Seeder
                 'slug' => 'baby-shower',
                 'name' => 'Baby Shower',
                 'icon' => 'baby',
+                'is_active' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -42,9 +46,10 @@ class EventTypeSeeder extends Seeder
                 'slug' => 'graduation',
                 'name' => 'Graduation',
                 'icon' => 'graduation-cap',
+                'is_active' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-        ], ['slug'], ['name', 'icon', 'updated_at']);
+        ], ['slug'], ['name', 'icon', 'is_active', 'updated_at']);
     }
 }

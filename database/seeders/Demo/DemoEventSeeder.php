@@ -16,7 +16,7 @@ use Spatie\Permission\Models\Role;
  * Builds three demo events with different levels of completeness:
  *  - "Los XV de Valentina": every section filled in (premium plan).
  *  - "Boda de Camila y Andrés": partially configured (basic plan).
- *  - "Baby Shower de Sofía": just created, nothing configured (empty states).
+ *  - "Los XV de Sofía": just created, nothing configured (empty states).
  *
  * Rows are written with the query builder on purpose: no model events/observers
  * fire (no notifications, jobs or e-mails) and JSON columns are explicit.
@@ -279,12 +279,12 @@ class DemoEventSeeder extends Seeder
         $start = $this->now->copy()->addDays(30)->setTime(15, 0);
 
         $this->createEvent([
-            'name' => 'Baby Shower de Sofía',
-            'description' => 'Bienvenida al bebé de Sofía.',
-            'slug' => 'baby-shower-sofia',
+            'name' => 'Los XV de Sofía',
+            'description' => 'Los quince años de Sofía.',
+            'slug' => 'xv-de-sofia',
             'status' => 'draft',
             'visibility' => 'private',
-            'type' => 'baby-shower',
+            'type' => 'quinceanera',
             'plan' => 'basic',
             'start' => $start,
             'end' => $start->copy()->addHours(4),

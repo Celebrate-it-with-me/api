@@ -113,7 +113,7 @@ describe('demo data', function () {
 
         $xv = Events::where('custom_url_slug', 'xv-de-valentina')->first();
         $wedding = Events::where('custom_url_slug', 'boda-camila-y-andres')->first();
-        $shower = Events::where('custom_url_slug', 'baby-shower-sofia')->first();
+        $shower = Events::where('custom_url_slug', 'xv-de-sofia')->first();
 
         expect($xv->eventType->slug)->toBe('quinceanera')
             ->and($xv->eventPlan->slug)->toBe('premium')
@@ -170,5 +170,39 @@ describe('demo data', function () {
         $response = app(HydrationService::class)->hydrateForEvent($viewer, $wedding->id);
 
         expect($response->getStatusCode())->toBe(403);
+    });
+});
+
+describe('event types', function () {
+    it('only offers quinceanera and wedding', function () {
+        $this->seed(DatabaseSeeder::class);
+
+        expect(EventType::active()->pluck('slug')->sort()->values()->all())->toBe(['quinceanera', 'wedding'])
+            ->and(EventType::count())->toBeGreaterThan(2);
+    });
+
+    it('keeps hidden types out of the hydration payload', function () {
+        $this->seed(DatabaseSeeder::class);
+
+        $slugs = app(\App\Http\Services\AppServices\Hydrate\EventCacheService::class)
+            ->getEventTypes()->pluck('slug')->sort()->values()->all();
+
+        expect($slugs)->toBe(['quinceanera', 'wedding']);
+    });
+
+    it('rejects creating an event with a hidden type', function () {
+        $this->seed(DatabaseSeeder::class);
+        $user = User::factory()->create();
+        $hidden = EventType::where('slug', 'birthday')->first();
+        $active = EventType::where('slug', 'quinceanera')->first();
+        $payload = [
+            'eventName' => 'Test', 'startDate' => '12/01/2027 18:00', 'endDate' => '12/01/2027 23:00',
+            'status' => 'draft', 'visibility' => 'private',
+        ];
+
+        $this->actingAs($user)->postJson('/api/v1/app/event', $payload + ['eventType' => $hidden->id])
+            ->assertStatus(422)->assertJsonValidationErrors('eventType');
+        $this->actingAs($user)->postJson('/api/v1/app/event', $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('eventType');
     });
 });
