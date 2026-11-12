@@ -70,7 +70,8 @@ class EventActivity extends Model
         return self::query()->create([
             'event_id' => $eventId,
             'type' => $type,
-            'actor_type' => $actor ? get_class($actor) : null,
+            // The app enforces morph aliases (`user`, `guest`): the class name cannot be read back.
+            'actor_type' => $actor?->getMorphClass(),
             'actor_id' => $actor ? $actor->id : null,
             'target_type' => $target ? get_class($target) : null,
             'target_id' => $target ? $target->id : null,
