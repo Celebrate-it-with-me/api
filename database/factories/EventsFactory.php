@@ -29,7 +29,8 @@ class EventsFactory extends Factory
             'start_date' => $startDate,
             'end_date' => $endDate,
             'status' => $this->faker->randomElement(['draft', 'published', 'archived']),
-            'custom_url_slug' => $this->faker->unique()->slug(),
+            // 3 words: the API accepts addresses up to 60 characters, and the default 6 words can go over.
+            'custom_url_slug' => $this->faker->unique()->slug(3),
         ];
     }
 

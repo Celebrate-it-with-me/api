@@ -125,16 +125,6 @@ describe('editing the details', function () {
         expect($event->fresh()->event_name)->toBe('Via PUT')->and($event->fresh()->eventFeature->budget)->toBeTrue();
     });
 
-    it('accepts both budget keys for the feature flag', function () {
-        [$event, $m] = lifecycleEvent();
-
-        $this->actingAs($m['owner'])->patchJson("/api/v1/app/event/{$event->id}", ['eventBudget' => false])->assertOk();
-        expect($event->fresh()->eventFeature->budget)->toBeFalse();
-
-        $this->actingAs($m['owner'])->patchJson("/api/v1/app/event/{$event->id}", ['budget' => true])->assertOk();
-        expect($event->fresh()->eventFeature->budget)->toBeTrue();
-    });
-
     it('cannot change the status or the plan', function () {
         [$event, $m] = lifecycleEvent();
 

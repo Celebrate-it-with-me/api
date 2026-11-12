@@ -3,6 +3,7 @@
 namespace App\Http\Resources\AppResources;
 
 use App\Http\Resources\UserResource;
+use App\Http\Services\AppServices\EventModules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -34,6 +35,8 @@ class EventResource extends JsonResource
             'updatedAt' => $this->updated_at->toDateTimeString(),
             'selected' => false,
             'eventFeatures' => $this->transformFeatures(),
+            // What the menu shows: from the module catalog, by the event's plan (see EventModules).
+            'modules' => app(EventModules::class)->forEvent($this->resource),
             'guestsCount' => $this->getEventGuestsCount(),
             'rsvpResponse' => $this->rsvpResponse(),
             'setupProgress' => $this->calculateSetupProgress(),

@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Partial update of an event (`PATCH`, and `PUT` for older clients): every field is optional and only
- * what is sent is changed. Status and plan are not editable here.
+ * what is sent is changed. Status, plan and modules are not editable here.
  */
 class UpdateEventsRequest extends FormRequest
 {
@@ -45,19 +45,6 @@ class UpdateEventsRequest extends FormRequest
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
                 Rule::unique('events', 'custom_url_slug')->ignore($event?->id),
             ],
-            'saveTheDate' => 'sometimes|boolean',
-            'rsvp' => 'sometimes|boolean',
-            'menu' => 'sometimes|boolean',
-            'sweetMemories' => 'sometimes|boolean',
-            'music' => 'sometimes|boolean',
-            'backgroundMusic' => 'sometimes|boolean',
-            'eventComments' => 'sometimes|boolean',
-            'location' => 'sometimes|boolean',
-            'seatsAccommodation' => 'sometimes|boolean',
-            'preview' => 'sometimes|boolean',
-            'budget' => 'sometimes|boolean',
-            'eventBudget' => 'sometimes|boolean',
-            'analytics' => 'sometimes|boolean',
         ];
     }
 

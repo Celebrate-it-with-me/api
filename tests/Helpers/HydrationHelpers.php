@@ -25,7 +25,8 @@ use App\Models\User;
 |
 */
 
-uses(Tests\TestCase::class)->in('Unit/Services/Hydrate');
+// The resources read the module catalog, so these tests need the tables: do not rely on another test having migrated.
+uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class)->in('Unit/Services/Hydrate');
 
 /*
 |--------------------------------------------------------------------------
