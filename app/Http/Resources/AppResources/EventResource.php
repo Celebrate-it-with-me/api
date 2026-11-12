@@ -27,7 +27,9 @@ class EventResource extends JsonResource
             'userRole' => $this->getUserRole($request->user()),
             'status' => $this->status,
             'customUrlSlug' => $this->custom_url_slug,
-            'visibility' => $this->visibility,
+            'publishedAt' => $this->published_at?->toIso8601String(),
+            // The UI locks the address field and explains why: links may already be out.
+            'slugLocked' => $this->isSlugLocked(),
             'createdAt' => $this->created_at->toDateTimeString(),
             'updatedAt' => $this->updated_at->toDateTimeString(),
             'selected' => false,

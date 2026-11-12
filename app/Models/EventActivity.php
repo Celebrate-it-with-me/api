@@ -97,6 +97,22 @@ class EventActivity extends Model
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actor ? $this->actor->name : 'System',
             ]),
+            'event_published' => __('Event :name has been published by :user', [
+                'name' => $this->payload['event_name'] ?? '',
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'event_unpublished' => __('Event :name is back to draft, by :user', [
+                'name' => $this->payload['event_name'] ?? '',
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'event_archived' => __('Event :name has been archived by :user', [
+                'name' => $this->payload['event_name'] ?? '',
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
+            'event_restored' => __('Event :name has been restored by :user', [
+                'name' => $this->payload['event_name'] ?? '',
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
             'guest_created' => __('Guest :name, has been created by :user', [
                 'name' => $this->payload['name'],
                 'user' => $this->actor ? $this->actor->name : 'System',
@@ -142,6 +158,10 @@ class EventActivity extends Model
         return match ($this->type) {
             'event_created' => 'party-popper',
             'event_updated' => 'edit',
+            'event_published' => 'send',
+            'event_unpublished' => 'eye-off',
+            'event_archived' => 'archive',
+            'event_restored' => 'archive-restore',
             'guest_created', 'guest_added' => 'user-plus',
             'guest_updated' => 'user-check',
             'guest_deleted' => 'user-minus',
@@ -162,6 +182,9 @@ class EventActivity extends Model
         return match ($this->type) {
             'event_created' => 'indigo',
             'event_updated', 'guest_added' => 'blue',
+            'event_published' => 'green',
+            'event_unpublished', 'event_archived' => 'gray',
+            'event_restored' => 'blue',
             'guest_created', 'guest_confirmed', 'menu_item_created' => 'green',
             'guest_updated', 'music_added' => 'yellow',
             'guest_deleted', 'guest_declined' => 'red',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Enums\EventStatus;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\EventFeature;
 use App\Models\EventPlan;
@@ -22,13 +23,20 @@ use Spatie\Permission\Models\Role;
 
 class EventsServices
 {
-    protected Request $request;
     protected Events $event;
 
-    public function __construct(Request $request)
+    public function __construct()
     {
-        $this->request = $request;
         $this->event = new Events();
+    }
+
+    /**
+     * The request being handled right now. It is read on every use, never kept: a service that holds
+     * the request it was built with keeps answering the first request when the app handles several.
+     */
+    protected function request(): Request
+    {
+        return app('request');
     }
 
     /**
@@ -37,7 +45,7 @@ class EventsServices
      */
     public function getUserEvents(): array
     {
-        $user = $this->request->user();
+        $user = $this->request()->user();
 
         if (!$user) {
             throw new Exception('User not authenticated');
@@ -71,7 +79,7 @@ class EventsServices
     public function getFilteredEvents(string $query): Collection
     {
         return Events::query()
-            ->whereHas('userRoles', fn ($roles) => $roles->where('user_id', $this->request->user()->id))
+            ->whereHas('userRoles', fn ($roles) => $roles->where('user_id', $this->request()->user()->id))
             ->when($query, function ($subQuery) use ($query) {
                 $subQuery->whereNested(function($subQuery) use ($query) {
                    $subQuery->where('event_name', 'like', '%' . $query . '%');
@@ -81,76 +89,71 @@ class EventsServices
             ->get();
     }
 
+    /** Feature flags the organizer may send, as request key => column. */
+    private const FEATURE_FIELDS = [
+        'saveTheDate' => 'save_the_date',
+        'rsvp' => 'rsvp',
+        'menu' => 'menu',
+        'sweetMemories' => 'sweet_memories',
+        'music' => 'music',
+        'backgroundMusic' => 'background_music',
+        'eventComments' => 'event_comments',
+        'location' => 'location',
+        'seatsAccommodation' => 'seats_accommodation',
+        'preview' => 'preview',
+        'budget' => 'budget',
+        'eventBudget' => 'budget', // older clients used this key
+        'analytics' => 'analytics',
+    ];
+
     /**
-     * Create user event.
+     * Create user event. It always starts as a draft: publishing is its own action.
      * @return Model|Builder
      * @throws Exception
      */
     public function create(): Model|Builder
     {
         $event = Events::query()->create([
-            'event_name' => $this->request->input('eventName'),
-            'event_description' => $this->request->input('eventDescription'),
-            'event_type_id' => $this->request->input('eventType'),
+            'event_name' => $this->request()->input('eventName'),
+            'event_description' => $this->request()->input('eventDescription'),
+            'event_type_id' => $this->request()->input('eventType'),
             // The plan is decided by the server (free by default), never by the client.
             'event_plan_id' => $this->defaultPlanId(),
-            'start_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('startDate'))->toDateTimeString(),
-            'end_date' => Carbon::createFromFormat('m/d/Y H:i', $this->request->input('endDate'))->toDateTimeString(),
-            'status' => $this->request->input('status'),
-            'custom_url_slug' => $this->request->input('customUrlSlug') ?? Str::slug(
-                    $this->request->input('eventName')
-                ) . '-' . (Events::query()->max('id') + 1),
-            'visibility' => $this->request->input('visibility'),
+            'start_date' => $this->parseDate($this->request()->input('startDate')),
+            'end_date' => $this->parseDate($this->request()->input('endDate')),
+            'status' => EventStatus::DRAFT->value,
+            'custom_url_slug' => $this->request()->input('customUrlSlug')
+                ?: $this->uniqueSlug((string) $this->request()->input('eventName')),
         ]);
-
-        if (!$event) {
-            throw new Exception('Create event failed');
-        }
 
         EventFeature::query()->create([
             'event_id' => $event->id,
-            'save_the_date' => /*$this->request->input('saveTheDate') ?? false*/true,
-            'rsvp' => /*$this->request->input('rsvp') ?? false*/true,
-            'menu' => /*$this->request->input('menu') ?? */false,
-            'sweet_memories' => /*$this->request->input('sweetMemories') ?? false*/true,
-            'music' => /*$this->request->input('music') ?? false*/true,
-            'background_music' => /*$this->request->input('backgroundMusic') ??*/ false,
-            'event_comments' => /*$this->request->input('eventComments') ?? false*/true,
-            'location' => /*$this->request->input('location') ?? false*/true,
-            'seats_accommodation' => /*$this->request->input('seatsAccommodation') ?? false*/true,
-            'preview' => /*$this->request->input('preview') ?? false*/false,
-            'budget' => /*$this->request->input('budget') ?? false*/true,
-            'analytics' => /*$this->request->input('analytics') ?? false*/false,
+            'save_the_date' => true,
+            'rsvp' => true,
+            'menu' => false,
+            'sweet_memories' => true,
+            'music' => true,
+            'background_music' => false,
+            'event_comments' => true,
+            'location' => true,
+            'seats_accommodation' => true,
+            'preview' => false,
+            'budget' => true,
+            'analytics' => false,
         ]);
 
-        $actor = request()->user();
+        $actor = $this->request()->user();
 
         if ($actor) {
             $actor->last_active_event_id = $event->id;
             $actor->save();
         }
 
-        EventActivityLogger::log(
-            $event->id,
-            'event_created',
-            $actor ?? null,
-            $event,
-            [
-                'event_name' => $event->event_name,
-                'event_description' => $event->event_description,
-                'event_type_id' => $event->event_type_id,
-                'event_plan_id' => $event->event_plan_id,
-                'start_date' => $event->start_date,
-                'end_date' => $event->end_date,
-                'status' => $event->status,
-                'custom_url_slug' => $event->custom_url_slug,
-                'visibility' => $event->visibility,
-            ]
-        );
+        EventActivityLogger::log($event->id, 'event_created', $actor, $event, $this->activityPayload($event));
 
         EventUserRole::query()->firstOrCreate([
             'event_id' => $event->id,
-            'user_id' => $this->request->user()->id,
+            'user_id' => $actor->id,
         ], [
             'role_id' => Role::query()->where('name', 'owner')->first()->id,
         ]);
@@ -159,64 +162,85 @@ class EventsServices
     }
 
     /**
-     * Update user event info.
-     * @param Events $event
-     * @return Events
+     * Update the event. Only what the request carries is touched, so a form that sends just the
+     * details never switches features off. Status and plan are not editable here.
      */
     public function update(Events $event): Events
     {
         $this->event = $event;
+        $input = $this->request();
 
-        $this->event->event_name = $this->request->input('eventName');
-        $this->event->event_description = $this->request->input('eventDescription');
-        $this->event->event_type_id = $this->request->input('eventType');
-        $this->event->start_date = $this->request->input('startDate');
-        $this->event->end_date = $this->request->input('endDate');
-        $this->event->status = $this->request->input('status');
-        $this->event->custom_url_slug = $this->request->input('customUrlSlug');
-        $this->event->visibility = $this->request->input('visibility');
-        $this->event->save();
+        foreach (['eventName' => 'event_name', 'eventDescription' => 'event_description', 'eventType' => 'event_type_id'] as $key => $column) {
+            if ($input->has($key)) {
+                $event->{$column} = $input->input($key);
+            }
+        }
 
-        $this->event->eventFeature->save_the_date = $this->request->input('saveTheDate') ?? false;
-        $this->event->eventFeature->rsvp = $this->request->input('rsvp') ?? false;
-        $this->event->eventFeature->menu = $this->request->input('menu') ?? false;
-        $this->event->eventFeature->sweet_memories = $this->request->input('sweetMemories') ?? false;
-        $this->event->eventFeature->music = $this->request->input('music') ?? false;
-        $this->event->eventFeature->background_music = $this->request->input('backgroundMusic') ?? false;
-        $this->event->eventFeature->event_comments = $this->request->input('eventComments') ?? false;
-        $this->event->eventFeature->location = $this->request->input('location') ?? false;
-        $this->event->eventFeature->seats_accommodation = $this->request->input('seatsAccommodation') ?? false;
-        $this->event->eventFeature->preview = $this->request->input('preview') ?? false;
-        $this->event->eventFeature->budget = $this->request->input('eventBudget') ?? false;
-        $this->event->eventFeature->analytics = $this->request->input('analytics') ?? false;
-        $this->event->eventFeature->save();
+        // The form request already rejected a different address once the event has been published.
+        if ($input->has('customUrlSlug') && $input->input('customUrlSlug')) {
+            $event->custom_url_slug = $input->input('customUrlSlug');
+        }
+        if ($input->has('startDate')) {
+            $event->start_date = $this->parseDate($input->input('startDate'));
+        }
+        if ($input->has('endDate')) {
+            $event->end_date = $this->parseDate($input->input('endDate'));
+        }
+        $event->save();
 
+        $features = collect(self::FEATURE_FIELDS)
+            ->filter(fn ($column, $key) => $input->has($key))
+            ->mapWithKeys(fn ($column, $key) => [$column => $input->boolean($key)]);
 
-        $actor = request()->user();
+        if ($features->isNotEmpty()) {
+            EventFeature::query()->updateOrCreate(['event_id' => $event->id], $features->all());
+        }
+
+        $actor = $this->request()->user();
         if ($actor) {
             $actor->last_active_event_id = $event->id;
             $actor->save();
         }
 
-        EventActivityLogger::log(
-            $event->id,
-            'event_updated',
-            $actor ?? null,
-            $event,
-            [
-                'event_name' => $this->event->event_name,
-                'event_description' => $this->event->event_description,
-                'event_type_id' => $this->event->event_type_id,
-                'event_plan_id' => $this->event->event_plan_id,
-                'start_date' => $this->event->start_date,
-                'end_date' => $this->event->end_date,
-                'status' => $this->event->status,
-                'custom_url_slug' => $this->event->custom_url_slug,
-                'visibility' => $this->event->visibility,
-            ]
-        );
+        EventActivityLogger::log($event->id, 'event_updated', $actor, $event, $this->activityPayload($event));
 
-        return $this->event;
+        return $event->refresh();
+    }
+
+    /** Dates travel as `m/d/Y H:i`; an empty value means "no date". */
+    private function parseDate(?string $value): ?Carbon
+    {
+        return $value ? Carbon::createFromFormat('m/d/Y H:i', $value) : null;
+    }
+
+    /** A readable slug that is free right now: `los-xv-de-valentina`, then `-2`, `-3`... or a short suffix. */
+    private function uniqueSlug(string $name): string
+    {
+        $base = Str::limit(Str::slug($name) ?: 'evento', 50, '');
+        $slug = $base;
+        $attempt = 1;
+
+        // withTrashed: the unique index also counts events that were soft deleted.
+        while (Events::withTrashed()->where('custom_url_slug', $slug)->exists()) {
+            $attempt++;
+            $slug = $attempt <= 5 ? "{$base}-{$attempt}" : $base . '-' . Str::lower(Str::random(5));
+        }
+
+        return $slug;
+    }
+
+    private function activityPayload(Events $event): array
+    {
+        return [
+            'event_name' => $event->event_name,
+            'event_description' => $event->event_description,
+            'event_type_id' => $event->event_type_id,
+            'event_plan_id' => $event->event_plan_id,
+            'start_date' => $event->start_date,
+            'end_date' => $event->end_date,
+            'status' => $event->status,
+            'custom_url_slug' => $event->custom_url_slug,
+        ];
     }
 
     /**

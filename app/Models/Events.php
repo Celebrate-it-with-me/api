@@ -26,8 +26,8 @@ class Events extends Model
         'start_date',
         'end_date',
         'status',
+        'published_at',
         'custom_url_slug',
-        'visibility',
         'template_id',
         'template_config',
         'locale',
@@ -40,6 +40,7 @@ class Events extends Model
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+        'published_at' => 'datetime',
         'template_config' => 'array',
     ];
 
@@ -95,6 +96,15 @@ class Events extends Model
     public function getOwnerUserIdAttribute(): int
     {
         return $this->owner?->user?->id ?? 0;
+    }
+
+    /**
+     * The public address (`custom_url_slug`) is fixed once the event has been published, even if it goes
+     * back to draft: the links `/i/{slug}/{code}` may already have been sent to guests.
+     */
+    public function isSlugLocked(): bool
+    {
+        return $this->published_at !== null;
     }
 
     /**
