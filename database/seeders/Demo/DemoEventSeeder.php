@@ -135,12 +135,12 @@ class DemoEventSeeder extends Seeder
         $this->saveTheDate($event);
 
         $this->timeline($event, $start, [
-            ['16:30', '17:30', 'Ceremonia religiosa', 'Misa de acción de gracias en la parroquia.'],
-            ['19:00', '19:45', 'Recepción', 'Llegada de los invitados, cóctel de bienvenida y fotos.'],
-            ['19:45', '20:30', 'Entrada de la quinceañera y vals', 'Entrada de Valentina y vals con familiares.'],
-            ['20:30', '22:00', 'Cena', 'Servicio de cena para todos los invitados.'],
-            ['22:00', '01:00', 'Baile', 'Música en vivo, baile sorpresa y brindis.'],
-            ['01:00', null, 'Cierre', 'Entrega de recuerdos y despedida.'],
+            ['16:30', '17:30', 'Ceremonia religiosa', 'Misa de acción de gracias en la parroquia.', 'ceremony'],
+            ['19:00', '19:45', 'Recepción', 'Llegada de los invitados, cóctel de bienvenida y fotos.', 'reception'],
+            ['19:45', '20:30', 'Entrada de la quinceañera y vals', 'Entrada de Valentina y vals con familiares.', 'waltz'],
+            ['20:30', '22:00', 'Cena', 'Servicio de cena para todos los invitados.', 'dinner'],
+            ['22:00', '01:00', 'Baile', 'Música en vivo, baile sorpresa y brindis.', 'dance'],
+            ['01:00', null, 'Cierre', 'Entrega de recuerdos y despedida.', 'other'],
         ]);
 
         DB::table('dress_codes')->insert($this->row([
@@ -479,7 +479,7 @@ class DemoEventSeeder extends Seeder
     /** @param array<int, array{0:string,1:?string,2:string,3:string}> $items start, end, title, description (HH:MM) */
     private function timeline(int $event, Carbon $day, array $items): void
     {
-        foreach ($items as [$from, $to, $title, $description]) {
+        foreach ($items as [$from, $to, $title, $description, $type]) {
             $startTime = $day->copy()->setTimeFromTimeString($from);
             // Items after midnight belong to the next calendar day.
             if ($startTime->lt($day->copy()->setTime(12, 0))) {
@@ -497,6 +497,7 @@ class DemoEventSeeder extends Seeder
             DB::table('timelines')->insert($this->row([
                 'event_id' => $event,
                 'title' => $title,
+                'type' => $type,
                 'description' => $description,
                 'start_time' => $startTime,
                 'end_time' => $endTime,

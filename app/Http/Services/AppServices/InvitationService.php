@@ -9,6 +9,7 @@ use App\Models\Guest;
 use App\Models\GuestRsvpLog;
 use App\Models\InvitationTemplate;
 use App\Models\Rsvp;
+use App\Models\Timeline;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class InvitationService
     public const STATUS_PENDING = 'pending';
 
     /** Section types the renderer understands in this release. */
-    private const SECTION_TYPES = ['cover', 'locations', 'dress_code', 'rsvp', 'closing'];
+    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'rsvp', 'closing'];
 
     /** Only published events have a public invitation. */
     public function findEvent(string $slug): ?Events
@@ -231,12 +232,31 @@ class InvitationService
                 'description' => $event->event_description,
                 'image' => $section['settings']['image'] ?? null,
             ],
+            'itinerary' => $this->itineraryData($event),
             'locations' => $this->locationsData($event),
             'dress_code' => $this->dressCodeData($event),
             'rsvp' => $this->rsvpData($event, $guest),
             'closing' => [],
             default => null,
         };
+    }
+
+    /** The program of the day, in order; left out when it has no moments. @return array<string, mixed>|null */
+    private function itineraryData(Events $event): ?array
+    {
+        $moments = Timeline::query()->where('event_id', $event->id)->orderBy('start_time')->orderBy('id')->get();
+
+        if ($moments->isEmpty()) {
+            return null;
+        }
+
+        return ['items' => $moments->map(fn (Timeline $moment) => [
+            'type' => $moment->type,
+            'title' => $moment->title,
+            'description' => $moment->description,
+            'startTime' => $moment->start_time->format('Y-m-d H:i:s'),
+            'endTime' => $moment->end_time?->format('Y-m-d H:i:s'),
+        ])->all()];
     }
 
     /** @return array<string, mixed>|null */

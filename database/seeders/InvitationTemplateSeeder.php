@@ -22,6 +22,10 @@ class InvitationTemplateSeeder extends Seeder
                 'title' => ['es' => 'Te invito a celebrar', 'en' => 'Join me to celebrate'],
                 'text' => ['es' => 'Quiero compartir este día tan especial contigo.', 'en' => 'I want to share this special day with you.'],
             ],
+            'itinerary' => [
+                'title' => ['es' => 'Programa del día', 'en' => 'Program of the day'],
+                'text' => ['es' => null, 'en' => null],
+            ],
             'locations' => [
                 'title' => ['es' => 'Dónde celebramos', 'en' => 'Where we celebrate'],
                 'text' => ['es' => null, 'en' => null],
@@ -44,6 +48,10 @@ class InvitationTemplateSeeder extends Seeder
             'cover' => [
                 'title' => ['es' => 'Te invitamos a celebrar', 'en' => 'Join us to celebrate'],
                 'text' => ['es' => 'Queremos compartir este día tan especial contigo.', 'en' => 'We want to share this special day with you.'],
+            ],
+            'itinerary' => [
+                'title' => ['es' => 'Programa del día', 'en' => 'Program of the day'],
+                'text' => ['es' => null, 'en' => null],
             ],
             'locations' => [
                 'title' => ['es' => 'Dónde celebramos', 'en' => 'Where we celebrate'],

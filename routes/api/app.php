@@ -255,6 +255,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             Route::prefix('timeline')->name('timeline.')->group(function () {
                 Route::get('', [TimelineController::class, 'index'])->name('index');
+                Route::post('typical', [TimelineController::class, 'typical'])->name('typical');
                 Route::post('', [TimelineController::class, 'store'])->name('store');
                 Route::put('{timeline}', [TimelineController::class, 'update'])->name('update');
                 Route::delete('{timeline}', [TimelineController::class, 'destroy'])->name('destroy');
