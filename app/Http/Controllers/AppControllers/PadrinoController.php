@@ -19,7 +19,7 @@ class PadrinoController extends Controller
     {
         $rows = $this->padrinos->list($event);
 
-        return response()->json(['data' => $rows, 'totals' => $this->padrinos->totals($rows)]);
+        return response()->json(['data' => $rows, 'totals' => $this->padrinos->totals($rows), 'currency' => $event->currency ?: 'USD']);
     }
 
     public function store(PadrinoRequest $request, Events $event): JsonResponse
