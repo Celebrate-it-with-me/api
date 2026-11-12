@@ -153,7 +153,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
         Route::get('filters', [EventsController::class, 'filterEvents'])->name('filters');
         Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');
 
-        Route::prefix('{event}')->group(function () {
+        Route::prefix('{event}')->middleware('event.access')->group(function () {
             Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
                 Route::get('export', [SuggestedMusicController::class, 'export'])->name('export');
                 Route::get('', [SuggestedMusicController::class, 'index'])->name('index');
@@ -163,7 +163,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
 
             Route::get('', [EventsController::class, 'show'])->name('show');
             Route::put('', [EventsController::class, 'update'])->name('update');
-            Route::delete('', [EventsController::class, 'destroy'])->name('destroy');
+            Route::delete('', [EventsController::class, 'destroy'])->middleware('event.access:delete_event')->name('destroy');
             Route::get('dashboard-logs', [EventActivityController::class, 'dashboardLogs'])
                 ->name('dashboard-logs');
             Route::get('permissions', [EventPermissionsController::class, 'index'])
@@ -175,10 +175,13 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // COLLABORATORS
             // ========================================
             Route::prefix('collaborators')->name('collaborators.')->group(function () {
-                Route::post('', [InviteCollaboratorController::class, 'invite'])->name('store');
+                Route::post('', [InviteCollaboratorController::class, 'invite'])
+                    ->middleware('event.access:manage_collaborators')->name('store');
+                // The invitee is not a member yet; the controller checks the invite belongs to their email.
                 Route::post('invite/{id}/accept', [InviteCollaboratorController::class, 'accept'])
-                    ->name('accept');
-                Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])->name('destroy');
+                    ->withoutMiddleware('event.access')->name('accept');
+                Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])
+                    ->middleware('event.access:manage_collaborators')->name('destroy');
             });
 
             // ========================================
