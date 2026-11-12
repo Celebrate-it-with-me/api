@@ -4,7 +4,6 @@
     use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
     use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
     use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
-    use App\Http\Controllers\AppControllers\CompanionController;
     use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
     use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
     use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
@@ -203,11 +202,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             });
 
             Route::prefix('guests')->name('guests.')->group(function () {
-                Route::get('count', [GuestController::class, 'countTotalAssistant'])->name('countTotalAssistant');
-                Route::get('', [GuestController::class, 'index'])->name('index');
                 Route::post('', [GuestController::class, 'store'])->name('store');
-                Route::get('{guest}', [GuestController::class, 'show'])->name('show');
-                Route::delete('{guest}', [GuestController::class, 'destroy'])->name('destroy');
             });
 
             // Organizer RSVP Management Routes
@@ -227,12 +222,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             });
 
             Route::prefix('rsvp')->name('rsvp.')->group(function () {
-                Route::get('', [RsvpController::class, 'index'])->name('index');
-                Route::get('summary', [RsvpController::class, 'summary'])->name('summary');
                 Route::get('stats', [RsvpController::class, 'getRsvpStats'])->name('getRsvpStats');
 
                 Route::prefix('guests')->name('guests.')->group(function () {
-                    Route::get('', [RsvpController::class, 'getRsvpUsersList'])->name('list');
                     Route::get('download', [ExportController::class, 'handleExportRequest'])->name('export');
                     Route::post('{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
                         ->name('revert-confirmation');
@@ -395,19 +387,6 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::delete('{comment}', [OrganizerEventCommentController::class, 'destroy'])->name('destroy');
             });
         });
-    });
-
-    // ========================================
-    // STANDALONE GUEST & COMPANION ROUTES (Outside event context)
-    // ========================================
-    Route::prefix('guest')->name('guest.')->group(function () {
-        Route::patch('{guest}', [GuestController::class, 'updateCompanion'])->name('updateCompanion');
-        Route::post('{guest}/companion', [CompanionController::class, 'store'])->name('storeCompanion');
-    });
-
-    Route::prefix('companion')->name('companion.')->group(function () {
-        Route::put('{companion}', [CompanionController::class, 'update'])->name('update');
-        Route::delete('{guestCompanion}', [CompanionController::class, 'destroy'])->name('destroy');
     });
 
     // ========================================

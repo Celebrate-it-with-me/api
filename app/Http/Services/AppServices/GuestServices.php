@@ -5,16 +5,12 @@ namespace App\Http\Services\AppServices;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Guest;
-use App\Models\GuestCompanion;
 use App\Models\MainGuest;
 use Exception;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class GuestServices
 {
@@ -38,49 +34,6 @@ class GuestServices
     /**
      * Get event guests.
      */
-
-    public function getEventsGuests(Events $event): LengthAwarePaginator
-    {
-        $perPage = $this->request()->input('perPage', 10);
-        $page = $this->request()->input('pageSelected', 1);
-        $searchValue = $this->request()->input('searchValue');
-
-        Log::info('checking guests', [
-            'event_id' => $event->id,
-            'perPage' => $perPage,
-            'pageSelected' => $page,
-            'searchValue' => $searchValue,
-            'all_request_params' => $this->request()->all(),
-        ]);
-
-        $query = Guest::query()
-            ->where('event_id', $event->id)
-            ->whereNull('parent_id')
-            ->when($searchValue, function (Builder $query, $searchValue) {
-                $query->where(function (Builder $q) use ($searchValue) {
-                    $q->where('name', 'like', "%{$searchValue}%")
-                        ->orWhere('email', 'like', "%{$searchValue}%")
-                        ->orWhere('phone', 'like', "%{$searchValue}%");
-                });
-            })
-            ->with([
-                'companions',
-                'assignedMenu.menuItems'
-            ])
-            ->withCount('companions')
-            ->orderBy('created_at', 'desc')
-            ->orderBy('id', 'desc');
-
-        $result = $query->paginate($perPage, ['*'], 'pageSelected', $page);
-
-        Log::info('Pagination Result', [
-            'total' => $result->total(),
-            'current_page' => $result->currentPage(),
-            'data_count' => $result->count(),
-        ]);
-
-        return $result;
-    }
 
 
     /**
@@ -162,92 +115,6 @@ class GuestServices
         );
 
         return $mainGuest;
-    }
-
-    /**
-     * Updates the companion type for the specified main guest.
-     *
-     * @param MainGuest $mainGuest The main guest instance whose companion type is being updated.
-     * @param Request $request The HTTP request containing the data for the companion type update.
-     *
-     * @return MainGuest The updated main guest instance.
-     */
-    public function updateCompanionType(MainGuest $mainGuest, Request $request): MainGuest
-    {
-        $requestArray = $request->all();
-
-        if (count($requestArray)) {
-            foreach ($requestArray as $key => $value) {
-                $snakeCaseKey = Str::snake($key);
-                $mainGuest->{$snakeCaseKey} = $value;
-
-                if ($snakeCaseKey === 'companionType') {
-                    $this->deleteCompanions($value, $mainGuest);
-                }
-            }
-        }
-
-        $mainGuest->save();
-
-        $mainGuest->refresh();
-        return $mainGuest;
-    }
-
-    /**
-     * Deletes the companions associated with the specified main guest based on the companion type.
-     *
-     * @param string $companionType The type of companion to evaluate for deletion.
-     * @param MainGuest $mainGuest The main guest instance whose companions may be deleted.
-     *
-     * @return void
-     */
-    private function deleteCompanions(string $companionType, MainGuest $mainGuest): void
-    {
-        if ($companionType === 'no_named') {
-            GuestCompanion::query()
-                ->where('main_guest_id', $mainGuest->id)
-                ->delete();
-        }
-    }
-
-    /**
-     * Deletes the specified guest from the database.
-     *
-     * @param Guest $guest The guest instance to be deleted.
-     * @return void
-     */
-    public function delete(Guest $guest): void
-    {
-        EventActivityLogger::log(
-            $guest->event_id,
-            'guest_deleted',
-            Auth::user(),
-            $guest,
-            [
-                'name' => $guest->name,
-                'email' => $guest->email,
-                'phone' => $guest->phone,
-                'code' => $guest->code,
-            ]
-        );
-
-        $guest->delete();
-    }
-
-    public function showGuest(Guest $guest): Guest
-    {
-        return $guest->load([
-            'companions' => function ($query) {
-                $query->orderBy('created_at', 'desc');
-            },
-            'event',
-            'invitations' => function ($query) {
-                $query->orderBy('created_at', 'desc');
-            },
-            'rsvpLogs' => function ($query) {
-                $query->orderBy('created_at', 'desc');
-            },
-        ]);
     }
 
 }
