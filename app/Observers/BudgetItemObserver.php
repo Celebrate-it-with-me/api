@@ -14,23 +14,28 @@ class BudgetItemObserver
         $this->dispatch($item, NotificationKeys::BUDGET_ITEM_CREATED);
     }
 
-    public function updated(BudgetItem $item): void
+    /** Called by the budget service when a payment settles an item. */
+    public function paid(BudgetItem $item): void
     {
-        if ($item->wasChanged('is_paid') && $item->is_paid) {
-            $this->dispatch($item, NotificationKeys::BUDGET_ITEM_PAID);
-        }
+        $this->dispatch($item, NotificationKeys::BUDGET_ITEM_PAID);
     }
 
     protected function dispatch(BudgetItem $item, string $key): void
     {
         $budget = $item->budget;
-        if (!$budget) return;
+        if (! $budget) {
+            return;
+        }
 
-        $event = $budget->events; // Note: model has events() relationship
-        if (!$event) return;
+        $event = $budget->event;
+        if (! $event) {
+            return;
+        }
 
         $ownerUserId = optional($event->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user?->id ?? 0;
-        if ($ownerUserId <= 0) return;
+        if ($ownerUserId <= 0) {
+            return;
+        }
 
         $user = Auth::user();
         $actor = [

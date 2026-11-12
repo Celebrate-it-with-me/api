@@ -210,11 +210,11 @@ describe('child resources without an event_id', function () {
         $budgetA = EventBudget::create(['event_id' => $eventA->id, 'budget_cap' => 1000]);
         $budgetB = EventBudget::create(['event_id' => $eventB->id, 'budget_cap' => 1000]);
         $itemB = BudgetItem::create([
-            'event_budget_id' => $budgetB->id, 'title' => 'Salón', 'estimated_cost' => 100, 'actual_cost' => 0, 'is_paid' => false,
+            'event_budget_id' => $budgetB->id, 'title' => 'Salón', 'estimated_cost' => 100,
         ]);
 
         $this->actingAs($a['owner'])
-            ->deleteJson("/api/v1/app/event/{$eventA->id}/budget/{$budgetA->id}/items/{$itemB->id}")
+            ->deleteJson("/api/v1/app/event/{$eventA->id}/budget/items/{$itemB->id}")
             ->assertNotFound();
         expect(BudgetItem::find($itemB->id))->not->toBeNull();
     });

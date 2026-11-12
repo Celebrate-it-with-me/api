@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Services\AppServices\Hydrate\HydrationService;
-use App\Models\BudgetCategory;
 use App\Models\EventPlan;
 use App\Models\EventType;
 use App\Models\Events;
@@ -26,7 +25,6 @@ describe('reference data', function () {
             'permissions' => Permission::count(),
             'types' => EventType::count(),
             'plans' => EventPlan::count(),
-            'categories' => BudgetCategory::count(),
             'users' => User::count(),
         ];
 
@@ -37,7 +35,6 @@ describe('reference data', function () {
             'permissions' => Permission::count(),
             'types' => EventType::count(),
             'plans' => EventPlan::count(),
-            'categories' => BudgetCategory::count(),
             'users' => User::count(),
         ])->toBe($first);
     });

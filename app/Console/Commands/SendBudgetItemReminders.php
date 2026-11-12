@@ -46,7 +46,7 @@ class SendBudgetItemReminders extends Command
         $itemsByThreshold = [];
         foreach (self::THRESHOLD_DAYS as $threshold) {
             $itemsByThreshold[$threshold] = $budgetItems->filter(function ($item) use ($now, $threshold) {
-                return $now->diffInDays($item->due_date->startOfDay()) == $threshold;
+                return $now->diffInDays($item->due_date->startOfDay(), false) == $threshold;
             });
         }
         
@@ -154,10 +154,12 @@ class SendBudgetItemReminders extends Command
                     $q->where('name', 'owner');
                 });
             }])
-            ->where('is_paid', 0)
+            ->with('payments')
             ->whereNotNull('due_date')
             ->where('due_date', '<=', now()->addDays(max(self::THRESHOLD_DAYS))->endOfDay())
-            ->get();
+            ->get()
+            // Only what still has a balance: a fully paid item needs no reminder.
+            ->reject(fn (BudgetItem $item) => $item->isPaid());
     }
     
 }
