@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class UserSettingsServices
 {
@@ -63,13 +64,15 @@ class UserSettingsServices
             }
             
             if (!Hash::check($request->input('currentPassword'), $user->password)) {
-                throw new Exception('Current password is incorrect');
+                throw ValidationException::withMessages(['currentPassword' => 'Current password is incorrect.']);
             }
             
             $user->password = Hash::make($request->input('newPassword'));
             $user->save();
             
             return true;
+        } catch (ValidationException $ex) {
+            throw $ex;
         } catch (Exception $ex) {
             // Handle exception
             Log::error('Error updating password: ' . $ex->getMessage());

@@ -206,3 +206,37 @@ describe('event types', function () {
             ->assertStatus(422)->assertJsonValidationErrors('eventType');
     });
 });
+
+describe('profile update', function () {
+    it('saves name and an E.164 phone, and clears the phone when empty', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-profile', ['name' => 'Marisol F.', 'phone' => '+13055550123'])
+            ->assertOk();
+        expect($user->fresh())->name->toBe('Marisol F.')->phone->toBe('+13055550123');
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-profile', ['name' => 'Marisol F.', 'phone' => null])
+            ->assertOk();
+        expect($user->fresh()->phone)->toBeNull();
+    });
+
+    it('rejects a missing name and a phone that is not E.164', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-profile', ['name' => '', 'phone' => '305 555 0123'])
+            ->assertStatus(422)->assertJsonValidationErrors(['name', 'phone']);
+    });
+});
+
+describe('password change', function () {
+    it('changes the password and reports a wrong current one as a field error', function () {
+        $user = User::factory()->create(['password' => Hash::make('old-password-1')]);
+        $payload = ['currentPassword' => 'old-password-1', 'newPassword' => 'new-password-1', 'newPasswordConfirmation' => 'new-password-1'];
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-password', ['currentPassword' => 'nope'] + $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('currentPassword');
+
+        $this->actingAs($user)->postJson('/api/v1/app/user/update-password', $payload)->assertOk();
+        expect(Hash::check('new-password-1', $user->fresh()->password))->toBeTrue();
+    });
+});
