@@ -244,10 +244,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             Route::prefix('dress-code')->name('dress-code.')->group(function () {
                 Route::get('', [DressCodeController::class, 'index'])->name('index');
-                Route::post('', [DressCodeController::class, 'store'])->name('store');
-                Route::put('{dressCode}', [DressCodeController::class, 'update'])->name('update');
-                Route::post('generate-images', [DressCodeController::class, 'generateImages'])->name('generate-images');
-                Route::delete('{dressCode}', [DressCodeController::class, 'destroy'])->name('destroy');
+                Route::post('', [DressCodeController::class, 'store'])->name('store'); // create or replace
+                Route::delete('', [DressCodeController::class, 'destroy'])->name('destroy');
             });
             
             // ========================================

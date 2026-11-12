@@ -2,97 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreDressCodeRequest;
-use App\Http\Requests\UpdateDressCodeRequest;
+use App\Http\Requests\SaveDressCodeRequest;
 use App\Http\Services\AppServices\DressCode\DressCodeService;
+use App\Models\Events;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
+/** The dress code of an event (it has at most one). Access to the event is checked by `event.access` on the route. */
 class DressCodeController extends Controller
 {
-    protected DressCodeService $dressCodeService;
+    public function __construct(private readonly DressCodeService $dressCodeService) {}
 
-    public function __construct(DressCodeService $dressCodeService)
+    public function index(Events $event): JsonResponse
     {
-        $this->dressCodeService = $dressCodeService;
+        return response()->json(['data' => $this->dressCodeService->get($event)]);
     }
 
-    /**
-     * Retrieve dress code for specific event.
-     */
-    public function index(int $eventId): JsonResponse
+    /** Create or replace. */
+    public function store(SaveDressCodeRequest $request, Events $event): JsonResponse
     {
-        $data = $this->dressCodeService->getDressCode($eventId);
+        $data = $this->dressCodeService->save($event, $request->validated(), $request->file('dressCodeImages') ?? []);
 
-        return response()->json([
-            'data' => $data
-        ]);
+        return response()->json(['data' => $data]);
     }
 
-    /**
-     * Create new dress code for event.
-     */
-    public function store(StoreDressCodeRequest $request, int $eventId): JsonResponse
+    public function destroy(Events $event): JsonResponse
     {
-        try {
-            $this->dressCodeService->createDressCode(
-                $eventId,
-                $request->validated(),
-                $request->file('dressCodeImages')
-            );
+        $this->dressCodeService->delete($event);
 
-            return response()->json(['message' => 'Dress code created successfully'], 201);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 500);
-        }
-    }
-
-    /**
-     * Update existing dress code.
-     */
-    public function update(UpdateDressCodeRequest $request, int $eventId, int $dressCodeId): JsonResponse
-    {
-        try {
-            $this->dressCodeService->updateDressCode(
-                $eventId,
-                $dressCodeId,
-                $request->validated(),
-                $request->file('dressCodeImages')
-            );
-
-            return response()->json(['message' => 'Dress code updated successfully'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 500);
-        }
-    }
-    
-    /**
-     * Delete a dress code associated with a specific event.
-     *
-     * @param int $event
-     * @param int $dressCodeId
-     * @return JsonResponse
-     */
-    public function destroy(int $event, int $dressCodeId)
-    {
-        try {
-            $this->dressCodeService->deleteDressCode($event, $dressCodeId);
-            
-            return response()->json(['message' => 'Dress code deleted successfully'], 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 500);
-        }
-    }
-
-    /**
-     * Generate AI images for dress code (Optional placeholder).
-     */
-    public function generateImages(Request $request, int $eventId): JsonResponse
-    {
-        $request->validate(['dressType' => 'required|string']);
-
-        $mockImages = $this->dressCodeService->generateMockImages();
-
-        return response()->json($mockImages);
+        return response()->json(['message' => 'Dress code removed.']);
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Rsvp;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -289,7 +290,14 @@ class InvitationService
         return [
             'type' => $dressCode->dress_code_type,
             'description' => $dressCode->description,
-            'colors' => array_values($dressCode->reserved_colors ?? []),
+            'reservedColors' => array_values($dressCode->reserved_colors ?? []),
+            'suggestedColors' => array_values($dressCode->suggested_colors ?? []),
+            // Uploads come with their URL; bank picks are shown by the app from its own photo bank.
+            'images' => $dressCode->dressCodeImages()->orderBy('id')->get()->map(fn ($image) => [
+                'source' => $image->source,
+                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk('public')->url($image->image_path) : null,
+                'bankKey' => $image->bank_key,
+            ])->all(),
         ];
     }
 
