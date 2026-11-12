@@ -27,7 +27,6 @@
     use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
     use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
     use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
-    use App\Http\Controllers\AppControllers\TemplateController;
     use App\Http\Controllers\AppControllers\Timeline\TimelineController;
     use App\Http\Controllers\AppControllers\UserPreferenceController;
     use App\Http\Controllers\AppControllers\UserSettingsController;
@@ -49,13 +48,6 @@ Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function (
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {
     Route::prefix('event/{event}')->name('event.')->group(function () {
-        Route::get('guest/{guestCode}', [TemplateController::class, 'getEventData'])
-            ->name('guest');
-        Route::get('guest/{guestCode}/data', [TemplateController::class, 'getGuestData'])
-            ->name('guest.data');
-        Route::post('save-rsvp', [RsvpController::class, 'saveRsvp'])
-            ->name('save-rsvp');
-        
         Route::get('comments', [PublicEventCommentController::class, 'index'])
             ->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
