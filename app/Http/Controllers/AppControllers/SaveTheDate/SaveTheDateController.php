@@ -7,6 +7,7 @@ use App\Http\Requests\app\UpsertSaveTheDateRequest;
 use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Services\AppServices\SaveTheDateServices;
 use App\Models\Events;
+use App\Models\SaveTheDate;
 use Illuminate\Http\JsonResponse;
 
 class SaveTheDateController extends Controller
@@ -17,18 +18,17 @@ class SaveTheDateController extends Controller
     
     public function show(Events $event): JsonResponse
     {
-        $saveTheDate = $this->service->getForEvent($event);
-        
-        return response()->json([
-            'data' => $saveTheDate ? new SaveTheDateResource($saveTheDate) : null,
-        ]);
+        // An event that has not set anything up still answers the defaults.
+        $saveTheDate = $this->service->getForEvent($event) ?? new SaveTheDate(['show_countdown' => true, 'use_add_to_calendar' => true]);
+
+        return response()->json(['data' => new SaveTheDateResource($saveTheDate)]);
     }
     
     public function upsert(UpsertSaveTheDateRequest $request, Events $event): JsonResponse
     {
         $saveTheDate = $this->service->upsertForEvent(
             $event,
-            $request->validated()
+            $request->settings()
         );
         
         return response()->json([

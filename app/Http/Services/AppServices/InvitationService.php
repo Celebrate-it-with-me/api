@@ -9,6 +9,7 @@ use App\Models\Guest;
 use App\Models\GuestRsvpLog;
 use App\Models\InvitationTemplate;
 use App\Models\Rsvp;
+use App\Models\SaveTheDate;
 use App\Models\Timeline;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -66,6 +67,8 @@ class InvitationService
                 'timezone' => $event->timezone,
             ],
             'guest' => ['name' => $guest->name],
+            // Which version of the link this is: the Save the date or the full invitation.
+            'stage' => $event->invitation_stage,
             'locale' => $locale,
             'theme' => $this->resolveTheme($event, $template),
             'sections' => $this->resolveSections($event, $guest, $template, $locale),
@@ -84,6 +87,11 @@ class InvitationService
      */
     public function saveRsvp(Events $event, Guest $guest, array $payload): array
     {
+        // Nobody answers a Save the date: the invitation with the RSVP comes later, on the same link.
+        if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
+            throw ValidationException::withMessages(['rsvp' => 'closed']);
+        }
+
         $window = $this->rsvpWindow($event);
 
         if (! $window['isOpen']) {
@@ -184,6 +192,10 @@ class InvitationService
     /** @return array<int, array<string, mixed>> */
     private function resolveSections(Events $event, Guest $guest, InvitationTemplate $template, string $locale): array
     {
+        if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
+            return $this->saveTheDateSections($event, $locale);
+        }
+
         $base = collect($template->default_sections)->keyBy('type');
         $overrides = collect($event->template_config['sections'] ?? [])->keyBy('type');
 
@@ -211,6 +223,97 @@ class InvitationService
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * The Save the date: who celebrates and when, a countdown, "add to calendar" and a short message.
+     * Nothing that is not decided yet (places, program, dress code, RSVP).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function saveTheDateSections(Events $event, string $locale): array
+    {
+        $settings = SaveTheDate::query()->where('event_id', $event->id)->first();
+        $showCountdown = $settings?->show_countdown ?? true;
+        $showCalendar = $settings?->use_add_to_calendar ?? true;
+        $english = $locale === 'en';
+        $startsAt = $event->start_date->format('Y-m-d\TH:i:s');
+
+        $sections = [[
+            'type' => 'cover',
+            'title' => $english ? 'Save the date' : 'Guarda la fecha',
+            'text' => null,
+            'data' => ['eventName' => $event->event_name, 'description' => null, 'image' => null],
+        ]];
+
+        if ($showCountdown) {
+            $sections[] = [
+                'type' => 'countdown',
+                'title' => $english ? 'Counting the days' : 'Faltan',
+                'text' => null,
+                'data' => ['startsAt' => $startsAt, 'timezone' => $event->timezone],
+            ];
+        }
+
+        $message = $settings?->message;
+        if ($message || $showCalendar) {
+            $sections[] = [
+                'type' => 'save_the_date',
+                'title' => null,
+                'text' => null,
+                'data' => [
+                    'message' => $message,
+                    'calendar' => $showCalendar ? ['google' => $this->googleCalendarUrl($event), 'icsPath' => 'calendar.ics'] : null,
+                ],
+            ];
+        }
+
+        $sections[] = [
+            'type' => 'closing',
+            'title' => $english ? 'More details soon' : 'Pronto más detalles',
+            'text' => $english ? 'The full invitation will reach you on this same link.' : 'La invitación completa te llegará por este mismo enlace.',
+            'data' => (object) [],
+        ];
+
+        return $sections;
+    }
+
+    private function googleCalendarUrl(Events $event): string
+    {
+        $start = $event->start_date;
+        $end = $event->end_date ?? $start->copy()->addHours(4);
+
+        return 'https://calendar.google.com/calendar/render?' . http_build_query([
+            'action' => 'TEMPLATE',
+            'text' => $event->event_name,
+            'dates' => $start->format('Ymd\THis') . '/' . $end->format('Ymd\THis'),
+            'ctz' => $event->timezone,
+        ]);
+    }
+
+    /** The event as an .ics file. Times are the event's local time with its zone id. */
+    public function calendarFile(Events $event): string
+    {
+        $start = $event->start_date;
+        $end = $event->end_date ?? $start->copy()->addHours(4);
+        $zone = $event->timezone ?: 'UTC';
+        $escape = fn (string $text) => str_replace([',', ';', "\n"], ['\\,', '\\;', '\\n'], $text);
+
+        return implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Quinvite//ES',
+            'CALSCALE:GREGORIAN',
+            'BEGIN:VEVENT',
+            "UID:event-{$event->id}@quinvite",
+            'DTSTAMP:' . now()->utc()->format('Ymd\THis\Z'),
+            "DTSTART;TZID={$zone}:" . $start->format('Ymd\THis'),
+            "DTEND;TZID={$zone}:" . $end->format('Ymd\THis'),
+            'SUMMARY:' . $escape((string) $event->event_name),
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]);
     }
 
     /** @param string|array<string, ?string>|null $value */

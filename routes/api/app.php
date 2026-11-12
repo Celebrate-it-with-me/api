@@ -44,6 +44,7 @@
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
     Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:60,1')->name('show');
     Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware('throttle:20,1')->name('rsvp');
+    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:30,1')->name('calendar');
 });
 
 // Public Event Template Routes
@@ -392,10 +393,6 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     // ========================================
     // STANDALONE FEATURE ROUTES (Outside event context)
     // ========================================
-    Route::prefix('save-the-date')->name('save-the-date.')->group(function () {
-        Route::put('{saveTheDate}', [SaveTheDateController::class, 'update'])->name('update');
-    });
-
     Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->group(function () {
         Route::patch('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])->name('update-name');
     });

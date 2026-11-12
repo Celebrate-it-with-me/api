@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Log;
 
 class Events extends Model
 {
+    /** What the public link shows once published. */
+    public const STAGE_SAVE_THE_DATE = 'save_the_date';
+
+    public const STAGE_INVITATION = 'invitation';
+
     /** @use HasFactory<EventsFactory> */
     use HasFactory, SoftDeletes;
 

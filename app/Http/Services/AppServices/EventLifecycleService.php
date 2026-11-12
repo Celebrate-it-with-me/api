@@ -15,9 +15,16 @@ use Illuminate\Validation\ValidationException;
 class EventLifecycleService
 {
     /** Make the invitation reachable. Needs the minimum a guest would see: name, date and type. */
-    public function publish(Events $event, ?User $actor): Events
+    public function publish(Events $event, ?User $actor, string $stage = Events::STAGE_INVITATION): Events
     {
-        $this->requireStatus($event, [EventStatus::DRAFT], 'Only a draft can be published.');
+        // A published Save the date can be upgraded to the full invitation (same link); never the other way round.
+        $upgrading = $event->status === EventStatus::PUBLISHED->value
+            && $event->invitation_stage === Events::STAGE_SAVE_THE_DATE
+            && $stage === Events::STAGE_INVITATION;
+
+        if (! $upgrading) {
+            $this->requireStatus($event, [EventStatus::DRAFT], 'Only a draft can be published.');
+        }
 
         $missing = [];
         if (blank($event->event_name)) {
@@ -37,10 +44,11 @@ class EventLifecycleService
         app(GuestLimit::class)->assertCanPublish($event);
 
         $event->status = EventStatus::PUBLISHED->value;
+        $event->invitation_stage = $stage;
         // The first publication is remembered forever: it is what locks the public address.
         $event->published_at ??= now();
 
-        return $this->save($event, $actor, 'event_published');
+        return $this->save($event, $actor, $upgrading ? 'event_stage_upgraded' : 'event_published');
     }
 
     /** Take the invitation offline. The address stays locked: the links may already be out. */

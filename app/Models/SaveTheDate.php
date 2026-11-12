@@ -16,6 +16,7 @@ class SaveTheDate extends Model
         'event_id',
         'show_countdown',
         'use_add_to_calendar',
+        'message',
         'date_source',
         'custom_starts_at',
         'countdown_units',
