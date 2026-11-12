@@ -19,8 +19,8 @@ class InvitationTemplateSeeder extends Seeder
 
         $this->upsert('classic-quinceanera', 'Clásica · Quinceañera', $quince, [
             'cover' => [
-                'title' => ['es' => 'Mis XV', 'en' => 'My Quinceañera'],
-                'text' => ['es' => 'Quiero celebrar este día tan especial contigo.', 'en' => 'I want to celebrate this special day with you.'],
+                'title' => ['es' => 'Te invito a celebrar', 'en' => 'Join me to celebrate'],
+                'text' => ['es' => 'Quiero compartir este día tan especial contigo.', 'en' => 'I want to share this special day with you.'],
             ],
             'locations' => [
                 'title' => ['es' => 'Dónde celebramos', 'en' => 'Where we celebrate'],
@@ -42,7 +42,7 @@ class InvitationTemplateSeeder extends Seeder
 
         $this->upsert('classic-wedding', 'Clásica · Boda', $wedding, [
             'cover' => [
-                'title' => ['es' => 'Nos casamos', 'en' => 'We’re getting married'],
+                'title' => ['es' => 'Te invitamos a celebrar', 'en' => 'Join us to celebrate'],
                 'text' => ['es' => 'Queremos compartir este día tan especial contigo.', 'en' => 'We want to share this special day with you.'],
             ],
             'locations' => [

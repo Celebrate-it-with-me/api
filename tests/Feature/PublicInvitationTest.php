@@ -65,8 +65,9 @@ describe('GET invitation', function () {
         $es = $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk();
         $en = $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234?lang=en')->assertOk();
 
-        expect($es->json('data.sections.0.title'))->toBe('Nos casamos')
-            ->and($en->json('data.sections.0.title'))->toBe('We’re getting married')
+        expect($es->json('data.sections.0.title'))->toBe('Te invitamos a celebrar')
+            ->and($es->json('data.sections.0.text'))->toContain('Queremos')
+            ->and($en->json('data.sections.0.title'))->toBe('Join us to celebrate')
             ->and($en->json('data.locale'))->toBe('en');
     });
 
