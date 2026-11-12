@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AppControllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreGuestRequest;
 use App\Http\Resources\AppResources\GuestResource;
+use App\Exceptions\PlanLimitExceeded;
 use App\Http\Services\AppServices\GuestServices;
 use App\Models\Events;
 use App\Models\Guest;
@@ -38,6 +39,8 @@ class GuestController extends Controller
     {
         try {
             return GuestResource::make($this->guestServices->create($event));
+        } catch (PlanLimitExceeded $limit) {
+            throw $limit; // renders as a 402 with the numbers (see the exception)
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }

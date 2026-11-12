@@ -33,6 +33,9 @@ class EventLifecycleService
             throw ValidationException::withMessages($missing);
         }
 
+        // A list over the plan's limit cannot be published (see GuestLimit).
+        app(GuestLimit::class)->assertCanPublish($event);
+
         $event->status = EventStatus::PUBLISHED->value;
         // The first publication is remembered forever: it is what locks the public address.
         $event->published_at ??= now();

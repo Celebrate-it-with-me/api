@@ -18,16 +18,21 @@ use Illuminate\Support\Str;
 
 class GuestServices
 {
-    protected Request $request;
     protected MainGuest $guest;
 
     public function __construct(
-        Request $request,
         private readonly CalculateAccessCodeService $accessCodeService
-    )
-    {
-        $this->request = $request;
+    ) {
         $this->guest = new MainGuest();
+    }
+
+    /**
+     * The request being handled right now. It is read on every use, never kept: a service that holds the
+     * request it was built with keeps answering the first request when the app handles several.
+     */
+    protected function request(): Request
+    {
+        return app('request');
     }
 
     /**
@@ -36,16 +41,16 @@ class GuestServices
 
     public function getEventsGuests(Events $event): LengthAwarePaginator
     {
-        $perPage = $this->request->input('perPage', 10);
-        $page = $this->request->input('pageSelected', 1);
-        $searchValue = $this->request->input('searchValue');
+        $perPage = $this->request()->input('perPage', 10);
+        $page = $this->request()->input('pageSelected', 1);
+        $searchValue = $this->request()->input('searchValue');
 
         Log::info('checking guests', [
             'event_id' => $event->id,
             'perPage' => $perPage,
             'pageSelected' => $page,
             'searchValue' => $searchValue,
-            'all_request_params' => $this->request->all(),
+            'all_request_params' => $this->request()->all(),
         ]);
 
         $query = Guest::query()
@@ -86,10 +91,13 @@ class GuestServices
      */
     public function create(Events $event): Model|Builder
     {
-        $guestData = $this->request->input('guest');
-        $preferences = $this->request->input('preferences', []);
-        $namedCompanions = $this->request->input('namedCompanions', []);
-        $unnamedCompanions = (int) $this->request->input('unnamedCompanions', 0);
+        $guestData = $this->request()->input('guest');
+        $preferences = $this->request()->input('preferences', []);
+        $namedCompanions = $this->request()->input('namedCompanions', []);
+        $unnamedCompanions = (int) $this->request()->input('unnamedCompanions', 0);
+
+        // The main guest and every companion count: once the event is published the plan's limit is a hard cap.
+        app(GuestLimit::class)->assertCanAdd($event, 1 + count($namedCompanions) + max(0, $unnamedCompanions));
 
         $mainGuest = Guest::query()->create([
             'event_id' => $event->id,
