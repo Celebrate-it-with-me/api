@@ -25,6 +25,13 @@ class UserSettingsController extends Controller
      */
     public function updateProfile(Request $request): JsonResponse
     {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            // E.164: + and 7 to 15 digits, first one not zero.
+            'phone' => ['nullable', 'string', 'regex:/^\+[1-9]\d{6,14}$/'],
+            'avatar' => 'nullable|image|max:2048',
+        ]);
+
         if ($this->userSettingsServices->updateProfile($request)) {
             return response()->json(['message' => 'Profile updated successfully.']);
         }

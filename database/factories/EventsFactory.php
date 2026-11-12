@@ -23,7 +23,7 @@ class EventsFactory extends Factory
 
         return [
             'event_name' => $this->faker->sentence(3),
-            'event_description' => $this->faker->paragraph(),
+            'event_description' => $this->faker->text(200),
             'event_type_id' => EventType::factory(),
             'event_plan_id' => EventPlan::factory(),
             'start_date' => $startDate,
