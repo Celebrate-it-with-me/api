@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Log;
 
 class Events extends Model
 {
+    /** What the public link shows once published. */
+    public const STAGE_SAVE_THE_DATE = 'save_the_date';
+
+    public const STAGE_INVITATION = 'invitation';
+
     /** @use HasFactory<EventsFactory> */
     use HasFactory, SoftDeletes;
 
@@ -223,11 +228,11 @@ class Events extends Model
     /**
      * Get the locations associated with the event.
      *
-     * @return HasOne
+     * @return HasMany
      */
-    public function locations(): HasOne
+    public function locations(): HasMany
     {
-        return $this->hasOne(EventLocation::class, 'event_id', 'id');
+        return $this->hasMany(EventLocation::class, 'event_id', 'id');
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Models\Events;
 use App\Models\Guest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 /**
  * Public invitation by event slug + guest code. Unknown slug, unpublished event
@@ -34,6 +35,17 @@ class PublicInvitationController extends Controller
         $rsvp = $this->invitations->saveRsvp($event, $guest, $request->validated());
 
         return response()->json(['data' => $rsvp]);
+    }
+
+    /** The event as a calendar file, for "add to calendar" (Apple, Outlook, anything that reads .ics). */
+    public function calendar(string $slug, string $code): Response
+    {
+        [$event] = $this->resolve($slug, $code);
+
+        return response($this->invitations->calendarFile($event), 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $event->custom_url_slug . '.ics"',
+        ]);
     }
 
     /** @return array{0: Events, 1: Guest} */

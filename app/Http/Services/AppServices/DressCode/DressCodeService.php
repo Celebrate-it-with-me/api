@@ -6,115 +6,114 @@ use App\Models\DressCode;
 use App\Models\DressCodeImage;
 use App\Models\Events;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DressCodeService
 {
     /**
-     * Get dress code data for an event.
+     * The dress code of an event as the screens read it. An event without one answers the same keys, empty.
+     *
+     * @return array<string, mixed>
      */
-    public function getDressCode(int $eventId): array
+    public function get(Events $event): array
     {
-        $event = Events::findOrFail($eventId);
         $dressCode = $event->dressCode()->with('dressCodeImages')->first();
 
-        if (!$dressCode) {
+        if (! $dressCode) {
             return [
                 'id' => null,
-                'dressCodeType' => '',
+                'dressCodeType' => null,
                 'description' => '',
                 'reservedColors' => [],
-                'dressCodeImages' => []
+                'suggestedColors' => [],
+                'images' => [],
             ];
         }
 
         return [
             'id' => $dressCode->id,
             'dressCodeType' => $dressCode->dress_code_type,
-            'description' => $dressCode->description,
-            'reservedColors' => $dressCode->reserved_colors,
-            'dressCodeImages' => $dressCode->dressCodeImages->map(function ($image) {
-                return [
-                    'id' => $image->id,
-                    'imagePath' => Storage::disk('public')->url($image->image_path),
-                    'originalName' => $image->original_name
-                ];
-            })->toArray()
+            'description' => $dressCode->description ?? '',
+            'reservedColors' => array_values($dressCode->reserved_colors ?? []),
+            'suggestedColors' => array_values($dressCode->suggested_colors ?? []),
+            'images' => $this->images($dressCode),
         ];
     }
 
     /**
-     * Create a new dress code.
+     * Create the event's dress code or replace it (an event has one). Pictures: the uploads in `keepImageIds`
+     * stay, the other uploads are removed, `bankImages` is the full set of photo bank picks, and new files are added.
+     *
+     * @param  array<string, mixed>  $data  Validated by SaveDressCodeRequest
+     * @param  list<UploadedFile>  $uploads
      */
-    public function createDressCode(int $eventId, array $data, ?array $images = []): DressCode
+    public function save(Events $event, array $data, array $uploads = []): array
     {
-        $event = Events::findOrFail($eventId);
+        DB::transaction(function () use ($event, $data, $uploads) {
+            $dressCode = DressCode::query()->firstOrNew(['event_id' => $event->id]);
+            $dressCode->fill([
+                'dress_code_type' => $data['dressCodeType'],
+                'description' => ($data['description'] ?? null) ?: null,
+                'reserved_colors' => $this->normalizeColors($data['reservedColors'] ?? []),
+                'suggested_colors' => $this->normalizeColors($data['suggestedColors'] ?? []),
+            ])->save();
 
-        if ($event->dressCode()->exists()) {
-            throw new \Exception('Dress code already exists for this event.', 422);
+            $this->syncImages($dressCode, $data['keepImageIds'] ?? [], $data['bankImages'] ?? [], $uploads);
+        });
+
+        return $this->get($event->refresh());
+    }
+
+    public function delete(Events $event): void
+    {
+        $dressCode = $event->dressCode()->with('dressCodeImages')->first();
+
+        if (! $dressCode) {
+            return;
         }
 
-        $dressCode = DressCode::create([
-            'event_id' => $event->id,
-            'dress_code_type' => $data['dressCodeType'],
-            'description' => $data['description'] ?? null,
-            'reserved_colors' => json_decode($data['reservedColors'], true),
-        ]);
+        foreach ($dressCode->dressCodeImages as $image) {
+            $this->deleteFile($image);
+        }
 
-        if ($images) {
-            foreach ($images as $file) {
-                $this->storeImage($file, $dressCode->id);
+        $dressCode->delete();
+    }
+
+    /** @param list<int|string> $keepIds @param list<string> $bankKeys @param list<UploadedFile> $uploads */
+    private function syncImages(DressCode $dressCode, array $keepIds, array $bankKeys, array $uploads): void
+    {
+        $keepIds = array_map('intval', $keepIds);
+        $bankKeys = array_values(array_unique($bankKeys));
+
+        foreach ($dressCode->dressCodeImages()->get() as $image) {
+            $stays = $image->source === 'bank' ? in_array($image->bank_key, $bankKeys, true) : in_array($image->id, $keepIds, true);
+
+            if (! $stays) {
+                $this->deleteFile($image);
+                $image->delete();
             }
         }
 
-        return $dressCode;
-    }
+        $present = $dressCode->dressCodeImages()->where('source', 'bank')->pluck('bank_key')->all();
 
-    /**
-     * Update an existing dress code.
-     */
-    public function updateDressCode(int $eventId, int $dressCodeId, array $data, ?array $images = []): DressCode
-    {
-        $dressCode = DressCode::where('event_id', $eventId)->findOrFail($dressCodeId);
-
-        $dressCode->update([
-            'dress_code_type' => $data['dressCodeType'],
-            'description' => $data['description'] ?? null,
-            'reserved_colors' => json_decode($data['reservedColors'], true),
-        ]);
-
-        // Handle Image Deletion
-        $existingImageIds = json_decode($data['existingImageIds'] ?? '[]', true);
-        $imagesToDelete = $dressCode->dressCodeImages()
-            ->whereNotIn('id', $existingImageIds)
-            ->get();
-
-        foreach ($imagesToDelete as $image) {
-            Storage::disk('public')->delete($image->image_path);
-            $image->delete();
+        foreach (array_diff($bankKeys, $present) as $key) {
+            DressCodeImage::query()->create(['dress_code_id' => $dressCode->id, 'source' => 'bank', 'bank_key' => $key]);
         }
 
-        // Handle New Image Uploads
-        if ($images) {
-            foreach ($images as $file) {
-                $this->storeImage($file, $dressCode->id);
-            }
+        foreach ($uploads as $file) {
+            $this->storeUpload($file, $dressCode->id);
         }
-
-        return $dressCode;
     }
 
-    /**
-     * Store a dress code image.
-     */
-    private function storeImage(UploadedFile $file, int $dressCodeId): void
+    private function storeUpload(UploadedFile $file, int $dressCodeId): void
     {
-        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('dress-code-images', $filename, 'public');
+        $path = $file->storeAs('dress-code-images', Str::uuid() . '.' . $file->getClientOriginalExtension(), 'public');
 
         DressCodeImage::query()->create([
             'dress_code_id' => $dressCodeId,
+            'source' => 'upload',
             'image_path' => $path,
             'original_name' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),
@@ -122,29 +121,38 @@ class DressCodeService
         ]);
     }
 
-    /**
-     * Generate mock AI images.
-     */
-    public function generateMockImages(): array
+    private function deleteFile(DressCodeImage $image): void
     {
-        return [
-            'dress-code-images/ai_generated_1.jpg',
-            'dress-code-images/ai_generated_2.jpg',
-            'dress-code-images/ai_generated_3.jpg',
-        ];
+        if ($image->source === 'upload' && $image->image_path) {
+            Storage::disk('public')->delete($image->image_path);
+        }
     }
-    
-    /**
-     * Delete a dress code associated with a specific event.
-     */
-    public function deleteDressCode(int $eventId, int $dressCodeId): true
+
+    /** Lowercase `#rrggbb`, no repeats. `#fff` becomes `#ffffff`. */
+    private function normalizeColors(array $colors): array
     {
-        $dressCode = DressCode::query()
-            ->where('event_id', $eventId)
-            ->where('id', $dressCodeId)
-            ->firstOrFail();
-        
-        $dressCode->delete();
-        return true;
+        return collect($colors)
+            ->map(function (string $color) {
+                $hex = strtolower(ltrim($color, '#'));
+
+                return '#' . (strlen($hex) === 3 ? preg_replace('/(.)/', '$1$1', $hex) : $hex);
+            })
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** @return list<array{id: int, source: string, url: ?string, bankKey: ?string, originalName: ?string}> */
+    private function images(DressCode $dressCode): array
+    {
+        return $dressCode->dressCodeImages
+            ->map(fn (DressCodeImage $image) => [
+                'id' => $image->id,
+                'source' => $image->source,
+                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk('public')->url($image->image_path) : null,
+                'bankKey' => $image->bank_key,
+                'originalName' => $image->original_name,
+            ])
+            ->all();
     }
 }

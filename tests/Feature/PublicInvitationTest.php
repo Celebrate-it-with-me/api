@@ -94,8 +94,10 @@ describe('GET invitation', function () {
 
         expect($sections->keys()->all())->toBe(['cover', 'locations', 'dress_code', 'rsvp', 'closing'])
             ->and($sections['locations']['data']['items'][0]['name'])->toBe('Salón Jardín')
-            ->and($sections['locations']['data']['items'][0]['mapsUrl'])->toStartWith('https://www.google.com/maps/search/?api=1&query=')
-            ->and($sections['dress_code']['data']['colors'])->toBe(['#ffffff']);
+            ->and($sections['locations']['data']['items'][0]['links']['google'])->toStartWith('https://www.google.com/maps/search/?api=1&query=')
+            ->and($sections['dress_code']['data']['reservedColors'])->toBe(['#ffffff'])
+            ->and($sections['dress_code']['data']['suggestedColors'])->toBe([])
+            ->and($sections['dress_code']['data']['images'])->toBe([]);
     });
 
     it('lets the organizer reorder, rename and hide sections', function () {

@@ -11,7 +11,9 @@ class DressCodeImage extends Model
 
     protected $fillable = [
         'dress_code_id',
+        'source',
         'image_path',
+        'bank_key',
         'original_name',
         'file_size',
         'mime_type',

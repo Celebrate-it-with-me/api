@@ -28,6 +28,7 @@ class EventResource extends JsonResource
             'organizer' => $this->getOwner(),
             'userRole' => $this->getUserRole($request->user()),
             'status' => $this->status,
+            'invitationStage' => $this->invitation_stage,
             'customUrlSlug' => $this->custom_url_slug,
             'publishedAt' => $this->published_at?->toIso8601String(),
             // The UI locks the address field and explains why: links may already be out.

@@ -9,9 +9,12 @@ use App\Models\Guest;
 use App\Models\GuestRsvpLog;
 use App\Models\InvitationTemplate;
 use App\Models\Rsvp;
+use App\Models\SaveTheDate;
+use App\Models\Timeline;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -30,7 +33,7 @@ class InvitationService
     public const STATUS_PENDING = 'pending';
 
     /** Section types the renderer understands in this release. */
-    private const SECTION_TYPES = ['cover', 'locations', 'dress_code', 'rsvp', 'closing'];
+    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'rsvp', 'closing'];
 
     /** Only published events have a public invitation. */
     public function findEvent(string $slug): ?Events
@@ -65,6 +68,8 @@ class InvitationService
                 'timezone' => $event->timezone,
             ],
             'guest' => ['name' => $guest->name],
+            // Which version of the link this is: the Save the date or the full invitation.
+            'stage' => $event->invitation_stage,
             'locale' => $locale,
             'theme' => $this->resolveTheme($event, $template),
             'sections' => $this->resolveSections($event, $guest, $template, $locale),
@@ -83,6 +88,11 @@ class InvitationService
      */
     public function saveRsvp(Events $event, Guest $guest, array $payload): array
     {
+        // Nobody answers a Save the date: the invitation with the RSVP comes later, on the same link.
+        if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
+            throw ValidationException::withMessages(['rsvp' => 'closed']);
+        }
+
         $window = $this->rsvpWindow($event);
 
         if (! $window['isOpen']) {
@@ -183,6 +193,10 @@ class InvitationService
     /** @return array<int, array<string, mixed>> */
     private function resolveSections(Events $event, Guest $guest, InvitationTemplate $template, string $locale): array
     {
+        if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
+            return $this->saveTheDateSections($event, $locale);
+        }
+
         $base = collect($template->default_sections)->keyBy('type');
         $overrides = collect($event->template_config['sections'] ?? [])->keyBy('type');
 
@@ -212,6 +226,97 @@ class InvitationService
             ->all();
     }
 
+    /**
+     * The Save the date: who celebrates and when, a countdown, "add to calendar" and a short message.
+     * Nothing that is not decided yet (places, program, dress code, RSVP).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function saveTheDateSections(Events $event, string $locale): array
+    {
+        $settings = SaveTheDate::query()->where('event_id', $event->id)->first();
+        $showCountdown = $settings?->show_countdown ?? true;
+        $showCalendar = $settings?->use_add_to_calendar ?? true;
+        $english = $locale === 'en';
+        $startsAt = $event->start_date->format('Y-m-d\TH:i:s');
+
+        $sections = [[
+            'type' => 'cover',
+            'title' => $english ? 'Save the date' : 'Guarda la fecha',
+            'text' => null,
+            'data' => ['eventName' => $event->event_name, 'description' => null, 'image' => null],
+        ]];
+
+        if ($showCountdown) {
+            $sections[] = [
+                'type' => 'countdown',
+                'title' => $english ? 'Counting the days' : 'Faltan',
+                'text' => null,
+                'data' => ['startsAt' => $startsAt, 'timezone' => $event->timezone],
+            ];
+        }
+
+        $message = $settings?->message;
+        if ($message || $showCalendar) {
+            $sections[] = [
+                'type' => 'save_the_date',
+                'title' => null,
+                'text' => null,
+                'data' => [
+                    'message' => $message,
+                    'calendar' => $showCalendar ? ['google' => $this->googleCalendarUrl($event), 'icsPath' => 'calendar.ics'] : null,
+                ],
+            ];
+        }
+
+        $sections[] = [
+            'type' => 'closing',
+            'title' => $english ? 'More details soon' : 'Pronto más detalles',
+            'text' => $english ? 'The full invitation will reach you on this same link.' : 'La invitación completa te llegará por este mismo enlace.',
+            'data' => (object) [],
+        ];
+
+        return $sections;
+    }
+
+    private function googleCalendarUrl(Events $event): string
+    {
+        $start = $event->start_date;
+        $end = $event->end_date ?? $start->copy()->addHours(4);
+
+        return 'https://calendar.google.com/calendar/render?' . http_build_query([
+            'action' => 'TEMPLATE',
+            'text' => $event->event_name,
+            'dates' => $start->format('Ymd\THis') . '/' . $end->format('Ymd\THis'),
+            'ctz' => $event->timezone,
+        ]);
+    }
+
+    /** The event as an .ics file. Times are the event's local time with its zone id. */
+    public function calendarFile(Events $event): string
+    {
+        $start = $event->start_date;
+        $end = $event->end_date ?? $start->copy()->addHours(4);
+        $zone = $event->timezone ?: 'UTC';
+        $escape = fn (string $text) => str_replace([',', ';', "\n"], ['\\,', '\\;', '\\n'], $text);
+
+        return implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Quinvite//ES',
+            'CALSCALE:GREGORIAN',
+            'BEGIN:VEVENT',
+            "UID:event-{$event->id}@quinvite",
+            'DTSTAMP:' . now()->utc()->format('Ymd\THis\Z'),
+            "DTSTART;TZID={$zone}:" . $start->format('Ymd\THis'),
+            "DTEND;TZID={$zone}:" . $end->format('Ymd\THis'),
+            'SUMMARY:' . $escape((string) $event->event_name),
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]);
+    }
+
     /** @param string|array<string, ?string>|null $value */
     private function localized(string|array|null $value, string $locale): ?string
     {
@@ -231,6 +336,7 @@ class InvitationService
                 'description' => $event->event_description,
                 'image' => $section['settings']['image'] ?? null,
             ],
+            'itinerary' => $this->itineraryData($event),
             'locations' => $this->locationsData($event),
             'dress_code' => $this->dressCodeData($event),
             'rsvp' => $this->rsvpData($event, $guest),
@@ -239,12 +345,30 @@ class InvitationService
         };
     }
 
+    /** The program of the day, in order; left out when it has no moments. @return array<string, mixed>|null */
+    private function itineraryData(Events $event): ?array
+    {
+        $moments = Timeline::query()->where('event_id', $event->id)->orderBy('start_time')->orderBy('id')->get();
+
+        if ($moments->isEmpty()) {
+            return null;
+        }
+
+        return ['items' => $moments->map(fn (Timeline $moment) => [
+            'type' => $moment->type,
+            'title' => $moment->title,
+            'description' => $moment->description,
+            'startTime' => $moment->start_time->format('Y-m-d H:i:s'),
+            'endTime' => $moment->end_time?->format('Y-m-d H:i:s'),
+        ])->all()];
+    }
+
     /** @return array<string, mixed>|null */
     private function locationsData(Events $event): ?array
     {
         $locations = EventLocation::query()
+            ->with('eventLocationImages')
             ->where('event_id', $event->id)
-            ->orderByDesc('is_default')
             ->orderBy('id')
             ->get();
 
@@ -252,29 +376,50 @@ class InvitationService
             return null;
         }
 
+        // Ceremony and reception show the time of the same kind of moment in the program of the day.
+        $moments = Timeline::query()->where('event_id', $event->id)->whereIn('type', ['ceremony', 'reception'])
+            ->orderBy('start_time')->get()->groupBy('type');
+
+        $order = array_flip(EventLocation::TYPES);
+
         return [
-            'items' => $locations->map(fn (EventLocation $location) => [
-                'name' => $location->name,
-                'address' => $location->address,
-                'city' => $location->city,
-                'state' => $location->state,
-                'zipCode' => $location->zip_code,
-                'country' => $location->country,
-                'notes' => $location->notes,
-                'latitude' => $location->latitude !== null ? (float) $location->latitude : null,
-                'longitude' => $location->longitude !== null ? (float) $location->longitude : null,
-                'mapsUrl' => $this->mapsUrl($location),
-            ])->all(),
+            'items' => $locations
+                ->sortBy([fn ($a, $b) => $order[$a->type] <=> $order[$b->type], fn ($a, $b) => $a->id <=> $b->id])
+                ->map(function (EventLocation $location) use ($moments) {
+                    $moment = $moments->get($location->type)?->first();
+
+                    return [
+                        'type' => $location->type,
+                        'name' => $location->name,
+                        'address' => $location->address,
+                        'city' => $location->city,
+                        'state' => $location->state,
+                        'zipCode' => $location->zip_code,
+                        'country' => $location->country,
+                        'directions' => $location->notes,
+                        'latitude' => $location->latitude !== null ? (float) $location->latitude : null,
+                        'longitude' => $location->longitude !== null ? (float) $location->longitude : null,
+                        'startTime' => $moment?->start_time->format('Y-m-d H:i:s'),
+                        'endTime' => $moment?->end_time?->format('Y-m-d H:i:s'),
+                        'images' => $location->eventLocationImages->pluck('path')->all(),
+                        'links' => $this->routeLinks($location),
+                    ];
+                })->values()->all(),
         ];
     }
 
-    private function mapsUrl(EventLocation $location): string
+    /** "How to get there" buttons: Google Maps, Apple Maps and Waze. @return array{google: string, apple: string, waze: string} */
+    private function routeLinks(EventLocation $location): array
     {
-        $query = ($location->latitude !== null && $location->longitude !== null)
-            ? "{$location->latitude},{$location->longitude}"
-            : implode(', ', array_filter([$location->name, $location->address, $location->city, $location->state]));
+        $hasPoint = $location->latitude !== null && $location->longitude !== null;
+        $text = implode(', ', array_filter([$location->name, $location->address, $location->city, $location->state]));
+        $point = $hasPoint ? "{$location->latitude},{$location->longitude}" : null;
 
-        return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($query);
+        return [
+            'google' => 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($point ?? $text),
+            'apple' => 'https://maps.apple.com/?' . http_build_query(['q' => $location->name, ($point ? 'll' : 'address') => $point ?? $text]),
+            'waze' => 'https://waze.com/ul?' . http_build_query($hasPoint ? ['ll' => $point, 'navigate' => 'yes'] : ['q' => $text, 'navigate' => 'yes']),
+        ];
     }
 
     /** @return array<string, mixed>|null */
@@ -289,7 +434,14 @@ class InvitationService
         return [
             'type' => $dressCode->dress_code_type,
             'description' => $dressCode->description,
-            'colors' => array_values($dressCode->reserved_colors ?? []),
+            'reservedColors' => array_values($dressCode->reserved_colors ?? []),
+            'suggestedColors' => array_values($dressCode->suggested_colors ?? []),
+            // Uploads come with their URL; bank picks are shown by the app from its own photo bank.
+            'images' => $dressCode->dressCodeImages()->orderBy('id')->get()->map(fn ($image) => [
+                'source' => $image->source,
+                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk('public')->url($image->image_path) : null,
+                'bankKey' => $image->bank_key,
+            ])->all(),
         ];
     }
 

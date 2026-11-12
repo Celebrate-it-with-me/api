@@ -4,73 +4,81 @@ namespace App\Http\Services\AppServices\Timeline;
 
 use App\Models\Events;
 use App\Models\Timeline;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class TimelineServices
 {
-    protected Request $request;
-
-    public function __construct(Request $request)
-    {
-        $this->request = $request;
-    }
-    
     /**
-     * Retrieves a collection of timelines associated with a specific event,
-     * sorted by their start time in ascending order.
-     *
-     * @param Events $event The event instance used to filter timelines.
-     * @return Collection A collection of timelines associated with the specified event.
+     * Typical programs: [type, Spanish title, English title, minutes after the event starts, minutes it lasts].
+     * They are a starting point; the organizer edits everything.
      */
+    private const TYPICAL = [
+        'quinceanera' => [
+            ['ceremony', 'Misa de acción de gracias', 'Thanksgiving Mass', 0, 60],
+            ['reception', 'Recepción', 'Reception', 90, 60],
+            ['waltz', 'Vals', 'Waltz', 150, 20],
+            ['dinner', 'Cena', 'Dinner', 180, 60],
+            ['dance', 'Baile', 'Dancing', 240, 120],
+            ['other', 'Cierre', 'Farewell', 360, null],
+        ],
+        'wedding' => [
+            ['ceremony', 'Ceremonia', 'Ceremony', 0, 45],
+            ['reception', 'Cóctel', 'Cocktail hour', 60, 60],
+            ['dinner', 'Cena', 'Dinner', 120, 75],
+            ['dance', 'Primer baile', 'First dance', 200, 15],
+            ['dance', 'Fiesta', 'Party', 220, 150],
+        ],
+    ];
+
+    /** The event's moments in order. @return Collection<int, Timeline> */
     public function getTimelinesByEvent(Events $event): Collection
     {
-        return Timeline::query()
-            ->where('event_id', $event->id)
-            ->orderBy('start_time')
-            ->get();
+        return Timeline::query()->where('event_id', $event->id)->orderBy('start_time')->orderBy('id')->get();
     }
-    
-    /**
-     * Creates a new timeline entry associated with a specific event.
-     *
-     * @param Events $event The event instance to associate with the new timeline.
-     * @param array $data The data to populate the new timeline entry.
-     * @return Timeline The newly created timeline instance.
-     */
-    public function createTimeline(Events $event, array $data): Timeline
+
+    public function create(Events $event, array $data): Timeline
     {
-        return Timeline::query()
-            ->create(['event_id' => $event->id, ...$data]);
+        return Timeline::query()->create(['event_id' => $event->id, ...$data]);
     }
-    
-    /**
-     * Updates the specified timeline associated with a given event using the provided data
-     * and refreshes the timeline instance to reflect the latest state.
-     *
-     * @param Events $event The event instance related to the timeline being updated.
-     * @param Timeline $timeline The timeline instance to be updated.
-     * @param array $data An associative array containing the updated data for the timeline.
-     * @return Timeline The updated timeline instance.
-     */
-    public function updateTimeline(Events $event, Timeline $timeline, array $data): Timeline
+
+    public function update(Timeline $timeline, array $data): Timeline
     {
         $timeline->update($data);
-        $timeline->refresh();
-        
-        return $timeline;
+
+        return $timeline->refresh();
     }
-    
-    /**
-     * Deletes a specific timeline associated with the given event.
-     *
-     * @param Events $event The event instance associated with the timeline.
-     * @param Timeline $timeline The timeline instance to be deleted.
-     * @return void
-     */
-    public function deleteTimeline(Events $event, Timeline $timeline): void
+
+    public function delete(Timeline $timeline): void
     {
         $timeline->delete();
     }
-    
+
+    /**
+     * Fill an empty program with the typical one for the event's type, counted from its start time.
+     * Never touches a program that already has moments.
+     *
+     * @return Collection<int, Timeline>|null null when the event already has moments
+     */
+    public function createTypical(Events $event): ?Collection
+    {
+        if (Timeline::query()->where('event_id', $event->id)->exists()) {
+            return null;
+        }
+
+        $slug = $event->eventType?->slug === 'wedding' ? 'wedding' : 'quinceanera';
+        $english = ($event->locale ?? 'es') === 'en';
+        $start = $event->start_date->copy();
+
+        foreach (self::TYPICAL[$slug] as [$type, $es, $en, $after, $lasts]) {
+            Timeline::query()->create([
+                'event_id' => $event->id,
+                'type' => $type,
+                'title' => $english ? $en : $es,
+                'start_time' => $start->copy()->addMinutes($after),
+                'end_time' => $lasts ? $start->copy()->addMinutes($after + $lasts) : null,
+            ]);
+        }
+
+        return $this->getTimelinesByEvent($event);
+    }
 }

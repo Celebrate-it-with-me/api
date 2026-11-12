@@ -5,7 +5,6 @@ namespace App\Http\Services\AppServices\Hydrate;
 use App\Http\Resources\AppResources\EventComment\EventCommentResource;
 use App\Http\Resources\AppResources\EventFeatureResource;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
-use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Resources\AppResources\MenuResource;
 use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Services\AppServices\GuestServices;
@@ -48,8 +47,9 @@ class EventDataLoader
         return [
             'menus' => $this->loadMenus($event),
             'eventFeatures' => $this->loadEventFeatures($event),
-            'guests' => $this->loadGuests($event),
-            'rsvp' => $this->loadRsvpGuests($event),
+            // The guest list and the answers have their own screen and endpoints; loading them here cost a QR per guest on every app load.
+            'guests' => null,
+            'rsvp' => null,
             'saveTheDate' => $this->loadSaveTheDate($event),
             'menuGuests' => $this->loadMenuGuests($event),
             'location' => $this->loadLocation($event),
@@ -85,42 +85,6 @@ class EventDataLoader
         }
 
         return EventFeatureResource::make($event->eventFeature);
-    }
-
-    /**
-     * Loads event guests.
-     *
-     * @param Events $event
-     * @return array|null
-     */
-    private function loadGuests(Events $event): ?array
-    {
-        $guests = $this->guestServices->getEventsGuests($event);
-
-        if (!$guests || $guests->isEmpty()) {
-            return null;
-        }
-
-        $resource = GuestResource::collection($guests);
-
-        return $resource->toResponse(request())->getData(true);
-    }
-
-    /**
-     * Loads RSVP guests for the event.
-     *
-     * @param Events $event
-     * @return array|null
-     */
-    private function loadRsvpGuests(Events $event): ?array
-    {
-        $rsvpGuests = $this->rsvpServices->getRsvpGuests($event);
-
-        if (!$rsvpGuests || $rsvpGuests->isEmpty()) {
-            return null;
-        }
-
-        return GuestResource::collection($rsvpGuests)->toResponse(request())->getData(true);
     }
 
     /**

@@ -2,83 +2,88 @@
 
 namespace App\Http\Controllers\AppControllers;
 
-use App\Events\GooglePlacePhotosQueued;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventLocationRequest;
-use App\Http\Requests\UpdateEventLocationRequest;
 use App\Http\Resources\AppResources\EventLocationResource;
-use App\Http\Services\AppServices\LocationsServices;
 use App\Models\EventLocation;
+use App\Models\EventLocationImages;
 use App\Models\Events;
 use App\Models\PlacePhoto;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Throwable;
+use Illuminate\Validation\ValidationException;
 
+/** The places of an event (ceremony, reception, others). Access is checked by `event.access` on the routes. */
 class EventLocationController extends Controller
 {
-    private LocationsServices $locationsServices;
-    
-    public function __construct(LocationsServices $locationsServices)
+    public function index(Events $event)
     {
-        $this->locationsServices = $locationsServices;
+        $locations = EventLocation::query()
+            ->with('eventLocationImages')
+            ->where('event_id', $event->id)
+            ->orderBy('id')
+            ->get();
+
+        return EventLocationResource::collection($locations);
     }
-    
-    
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request, Events $event)
+
+    public function show(Events $event, EventLocation $location): EventLocationResource
     {
-        try {
-            $locations = $this->locationsServices->getEventLocation($event);
-            
-            if ($locations->isEmpty()) {
-                return response()->json(['message' => 'There are no locations for this event.'], 404);
-            }
-            
-            return EventLocationResource::collection($locations);
-        } catch (Throwable $th) {
-            Log::error($th->getMessage());
-            return response()->json([
-                'error' => 'An error occurred while fetching event locations.',
-                'message' => $th->getMessage(),
-            ], 500);
+        return EventLocationResource::make($location->load('eventLocationImages'));
+    }
+
+    public function store(StoreEventLocationRequest $request, Events $event): JsonResponse
+    {
+        $location = EventLocation::query()->create(['event_id' => $event->id, ...$request->place()]);
+
+        return EventLocationResource::make($location->load('eventLocationImages'))->response()->setStatusCode(201);
+    }
+
+    public function update(StoreEventLocationRequest $request, Events $event, EventLocation $location): EventLocationResource
+    {
+        $location->update($request->place());
+
+        return EventLocationResource::make($location->load('eventLocationImages'));
+    }
+
+    public function destroy(Events $event, EventLocation $location): JsonResponse
+    {
+        foreach ($location->eventLocationImages as $image) {
+            $this->deleteFile($image);
         }
+        $location->delete();
+
+        return response()->json(['message' => 'Location removed.']);
     }
-    
+
     /**
      * @throws ConnectionException
      */
     public function getLocationImages(Events $event, string $placeId): JsonResponse
     {
-        if (!$placeId) {
+        if (! $placeId) {
             return response()->json([
                 'error' => 'Place ID is required.',
             ], 422);
         }
-        
+
         $existingPlacePhotos = PlacePhoto::query()
             ->where('place_id', $placeId)
             ->where('source', 'google')
             ->get();
-        
+
         if ($existingPlacePhotos->count()) {
             return response()->json($existingPlacePhotos->map(
-                fn($img) => [
+                fn ($img) => [
                     'url' => $img->path,
                     'source' => 'google',
                 ]
             ));
         }
-        
-        
-        
+
         $response = Http::withOptions(['allow_redirects' => true])
             ->acceptJson()
             ->get(config('services.google.url') . 'place/details/json', [
@@ -86,13 +91,13 @@ class EventLocationController extends Controller
                 'fields' => 'photos',
                 'key' => config('services.google.map_key'),
             ]);
-        
+
         Log::info('Google API response', [$response->json()]);
-        
+
         $photos = $response->json('result.photos');
         $saved = collect();
-        
-        foreach (array_slice($photos, 0, 10) as $photo) {
+
+        foreach (array_slice($photos ?? [], 0, 10) as $photo) {
             $photoReference = $photo['photo_reference'];
             $imageResponse = Http::withOptions(['allow_redirects' => true])
                 ->get(config('services.google.url') . 'place/photo', [
@@ -100,181 +105,77 @@ class EventLocationController extends Controller
                     'photo_reference' => $photoReference,
                     'key' => config('services.google.map_key'),
                 ]);
-            
+
             if ($imageResponse->successful()) {
-                $filename = 'locations/google/'. $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
+                $filename = 'locations/google/' . $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
                 Storage::disk('public')->put($filename, $imageResponse->body(), [
                     'ContentType' => 'image/jpeg',
                 ]);
-                
+
                 $placePhoto = PlacePhoto::query()->create([
                     'place_id' => $placeId,
                     'path' => Storage::disk('public')->url($filename),
                     'source' => 'google',
                 ]);
-                
-                
-                
+
                 $saved->push([
-                        'url' => $placePhoto->path,
-                        'source' => $placePhoto->source
-                    ]
-                );
+                    'url' => $placePhoto->path,
+                    'source' => $placePhoto->source,
+                ]);
             }
         }
-        
+
         return response()->json($saved);
     }
-    
-    public function storeImages(Request $request, Events $event, EventLocation $location): JsonResponse
-    {
-        try {
-            DB::beginTransaction();
-            
-            $savedPhotos = collect();
-            
-            // Handle uploaded images
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    $path = $image->store('locations/images', 'public');
-                    $savedPhotos->push([
-                        'url' => Storage::disk('public')->url($path),
-                        'source' => 'uploaded',
-                    ]);
-                    
-                    $location->eventLocationImages()->create([
-                        'path' => Storage::disk('public')->url($path),
-                        'caption' => null,
-                        'order' => 0,
-                        'source' => 'uploaded',
-                    ]);
-                }
-            }
-            
-            // Handle Google photos
-            if ($request->filled('googlePhotos')) {
-                $googlePhotos = json_decode($request->input('googlePhotos'), true);
-                
-                foreach ($googlePhotos as $photo) {
-                    if (!empty($photo['url'])) {
-                        $location->eventLocationImages()->create([
-                            'path' => $photo['url'],
-                            'caption' => null,
-                            'order' => 0,
-                            'source' => 'google',
-                        ]);
-                        
-                        $savedPhotos->push([
-                            'url' => $photo['url'],
-                            'source' => 'google',
-                        ]);
-                    }
-                }
-            }
-            
-            DB::commit();
-            
-            return response()->json($savedPhotos);
-        } catch (Throwable $e) {
-            DB::rollBack();
-            Log::error('Failed to upload event location images', [
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-            ]);
-            return response()->json([
-                'message' => 'Error uploading images.',
-            ], 500);
-        }
-    }
-    
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreEventLocationRequest $request, Events $event): JsonResponse | EventLocationResource
-    {
-        $validated = $request->validated();
-        
-        try {
-            DB::beginTransaction();
-            $eventLocation = EventLocation::query()->create([
-                'event_id' => $event->id,
-                'name' => $validated['name'],
-                'address' => $validated['address'],
-                'city' => $validated['city'],
-                'state' => $validated['state'],
-                'zip_code' => $validated['zipCode'] ?? null,
-                'country' => $validated['country'],
-                'latitude' => $validated['latitude'] ?? null,
-                'longitude' => $validated['longitude'] ?? null,
-                'is_default' => $validated['isDefault'] ?? false,
-            ]);
-            
-            DB::commit();
-            
-            return EventLocationResource::make($eventLocation);
-        } catch (Throwable $th) {
-            DB::rollBack();
-            Log::error('What fails', [$th->getMessage(), $th->getLine(), $th->getFile()]);
-            return response()->json([
-                'error' => 'An error occurred while creating event location.',
-                'message' => $th->getMessage(),
-            ], 500);
-        }
-    }
-    
-    
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(EventLocation $location): JsonResponse|EventLocationResource
+    /** Add pictures: own uploads and/or photos already fetched from Google. Six at most per place. */
+    public function storeImages(Request $request, Events $event, EventLocation $location): EventLocationResource
     {
-        try {
-            return EventLocationResource::make($location);
-        } catch (Throwable $th) {
-            Log::error($th->getMessage());
-            return response()->json([
-                'error' => 'An error occurred while fetching event location.',
-                'message' => $th->getMessage(),
-            ], 500);
+        $request->validate([
+            'images' => ['nullable', 'array'],
+            'images.*' => ['image', 'mimes:jpeg,png,webp', 'max:2048'],
+            'googlePhotos' => ['nullable', 'array'],
+            'googlePhotos.*' => ['string', 'max:500'],
+        ]);
+
+        $uploads = $request->file('images') ?? [];
+        $google = collect($request->input('googlePhotos', []))->unique()->values();
+
+        if ($location->eventLocationImages()->count() + count($uploads) + $google->count() > EventLocation::MAX_IMAGES) {
+            throw ValidationException::withMessages(['images' => 'A place can have at most ' . EventLocation::MAX_IMAGES . ' pictures.']);
         }
+
+        foreach ($uploads as $file) {
+            $path = $file->store('locations/images', 'public');
+            $location->eventLocationImages()->create(['path' => Storage::disk('public')->url($path), 'order' => 0, 'source' => 'uploaded']);
+        }
+
+        // Only photos this event fetched itself (stored under its own folder) can be attached.
+        $own = Storage::disk('public')->url('locations/google/' . $event->id . '/');
+        foreach ($google->filter(fn (string $url) => str_starts_with($url, $own)) as $url) {
+            $location->eventLocationImages()->create(['path' => $url, 'order' => 0, 'source' => 'google']);
+        }
+
+        return EventLocationResource::make($location->load('eventLocationImages'));
     }
 
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateEventLocationRequest $request, Events $event, EventLocation $eventLocation)
+    public function destroyImage(Events $event, EventLocation $location, EventLocationImages $image): JsonResponse
     {
-        try {
-            $eventLocation->update($request->validated());
-            return EventLocationResource::make($eventLocation);
-        } catch (Throwable $th) {
-            Log::error($th->getMessage());
-            return response()->json([
-                'error' => 'An error occurred while updating event location.',
-                'message' => $th->getMessage(),
-            ], 500);
-        }
+        abort_unless($image->event_location_id === $location->id, 404);
+
+        $this->deleteFile($image);
+        $image->delete();
+
+        return response()->json(['message' => 'Picture removed.']);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Events $event, EventLocation $location): JsonResponse
+    private function deleteFile(EventLocationImages $image): void
     {
-        try {
-            $location->delete();
-            return response()->json([
-                'message' => 'Event location deleted successfully.',
-            ], 200);
-        } catch (Throwable $th) {
-            Log::error($th->getMessage());
-            return response()->json([
-                'error' => 'An error occurred while deleting event location.',
-                'message' => $th->getMessage(),
-            ], 500);
+        if ($image->source !== 'uploaded') {
+            return;
         }
+
+        $relative = ltrim(str_replace(Storage::disk('public')->url(''), '', $image->path), '/');
+        Storage::disk('public')->delete($relative);
     }
 }

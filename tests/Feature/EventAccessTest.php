@@ -60,7 +60,7 @@ describe('a stranger', function () {
         $as = fn () => $this->actingAs($m['stranger']);
 
         $as()->getJson($api)->assertNotFound();
-        $as()->getJson("$api/guests")->assertNotFound();
+        $as()->getJson("$api/roster")->assertNotFound();
         $as()->getJson("$api/rsvp/stats")->assertNotFound();
         $as()->getJson("$api/dashboard-logs")->assertNotFound();
         $as()->getJson("$api/permissions")->assertNotFound();
@@ -98,7 +98,7 @@ describe('a viewer', function () {
         $as = fn () => $this->actingAs($m['viewer']);
 
         $as()->getJson($api)->assertOk();
-        $as()->getJson("$api/guests")->assertOk();
+        $as()->getJson("$api/roster")->assertOk();
         $as()->putJson($api, updatePayload($event))->assertForbidden();
         $as()->postJson("$api/guests", [])->assertForbidden();
         $as()->deleteJson($api)->assertForbidden();
@@ -190,8 +190,8 @@ describe('resources of another event', function () {
         [$eventB] = eventWithMembers();
         $guestB = Guest::factory()->create(['event_id' => $eventB->id]);
 
-        $this->actingAs($a['owner'])->getJson("/api/v1/app/event/{$eventA->id}/guests/{$guestB->id}")->assertNotFound();
-        $this->actingAs($a['owner'])->deleteJson("/api/v1/app/event/{$eventA->id}/guests/{$guestB->id}")->assertNotFound();
+        $this->actingAs($a['owner'])->putJson("/api/v1/app/event/{$eventA->id}/roster/{$guestB->id}", ['name' => 'X'])->assertNotFound();
+        $this->actingAs($a['owner'])->deleteJson("/api/v1/app/event/{$eventA->id}/roster/{$guestB->id}")->assertNotFound();
         expect(Guest::find($guestB->id))->not->toBeNull();
     });
 
@@ -199,7 +199,7 @@ describe('resources of another event', function () {
         [$event, $m] = eventWithMembers();
         $guest = Guest::factory()->create(['event_id' => $event->id]);
 
-        $this->actingAs($m['owner'])->getJson("/api/v1/app/event/{$event->id}/guests/{$guest->id}")->assertOk();
+        $this->actingAs($m['owner'])->putJson("/api/v1/app/event/{$event->id}/roster/{$guest->id}", ['name' => 'Nuevo nombre'])->assertOk();
     });
 });
 

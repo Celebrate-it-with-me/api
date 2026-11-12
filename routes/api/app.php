@@ -4,7 +4,6 @@
     use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
     use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
     use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
-    use App\Http\Controllers\AppControllers\CompanionController;
     use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
     use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
     use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
@@ -15,6 +14,7 @@
     use App\Http\Controllers\AppControllers\EventsController;
     use App\Http\Controllers\AppControllers\ExportController;
     use App\Http\Controllers\AppControllers\GuestController;
+    use App\Http\Controllers\AppControllers\GuestRosterController;
     use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
     use App\Http\Controllers\AppControllers\MenuController;
     use App\Http\Controllers\AppControllers\MenuItemController;
@@ -44,6 +44,7 @@
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
     Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:60,1')->name('show');
     Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware('throttle:20,1')->name('rsvp');
+    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:30,1')->name('calendar');
 });
 
 // Public Event Template Routes
@@ -193,12 +194,16 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             // GUESTS & RSVP
             // ========================================
+            // The unified "Invitados" screen: status tabs, event-wide counters, edit people.
+            Route::prefix('roster')->name('roster.')->group(function () {
+                Route::get('', [GuestRosterController::class, 'index'])->name('index');
+                Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
+                Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');
+                Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');
+            });
+
             Route::prefix('guests')->name('guests.')->group(function () {
-                Route::get('count', [GuestController::class, 'countTotalAssistant'])->name('countTotalAssistant');
-                Route::get('', [GuestController::class, 'index'])->name('index');
                 Route::post('', [GuestController::class, 'store'])->name('store');
-                Route::get('{guest}', [GuestController::class, 'show'])->name('show');
-                Route::delete('{guest}', [GuestController::class, 'destroy'])->name('destroy');
             });
 
             // Organizer RSVP Management Routes
@@ -218,12 +223,9 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             });
 
             Route::prefix('rsvp')->name('rsvp.')->group(function () {
-                Route::get('', [RsvpController::class, 'index'])->name('index');
-                Route::get('summary', [RsvpController::class, 'summary'])->name('summary');
                 Route::get('stats', [RsvpController::class, 'getRsvpStats'])->name('getRsvpStats');
 
                 Route::prefix('guests')->name('guests.')->group(function () {
-                    Route::get('', [RsvpController::class, 'getRsvpUsersList'])->name('list');
                     Route::get('download', [ExportController::class, 'handleExportRequest'])->name('export');
                     Route::post('{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
                         ->name('revert-confirmation');
@@ -244,10 +246,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             Route::prefix('dress-code')->name('dress-code.')->group(function () {
                 Route::get('', [DressCodeController::class, 'index'])->name('index');
-                Route::post('', [DressCodeController::class, 'store'])->name('store');
-                Route::put('{dressCode}', [DressCodeController::class, 'update'])->name('update');
-                Route::post('generate-images', [DressCodeController::class, 'generateImages'])->name('generate-images');
-                Route::delete('{dressCode}', [DressCodeController::class, 'destroy'])->name('destroy');
+                Route::post('', [DressCodeController::class, 'store'])->name('store'); // create or replace
+                Route::delete('', [DressCodeController::class, 'destroy'])->name('destroy');
             });
             
             // ========================================
@@ -255,6 +255,7 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             Route::prefix('timeline')->name('timeline.')->group(function () {
                 Route::get('', [TimelineController::class, 'index'])->name('index');
+                Route::post('typical', [TimelineController::class, 'typical'])->name('typical');
                 Route::post('', [TimelineController::class, 'store'])->name('store');
                 Route::put('{timeline}', [TimelineController::class, 'update'])->name('update');
                 Route::delete('{timeline}', [TimelineController::class, 'destroy'])->name('destroy');
@@ -291,9 +292,11 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::get('', [EventLocationController::class, 'index'])->name('index');
                 Route::post('', [EventLocationController::class, 'store'])->name('store');
                 Route::get('{location}', [EventLocationController::class, 'show'])->name('show');
+                Route::put('{location}', [EventLocationController::class, 'update'])->name('update');
                 Route::delete('{location}', [EventLocationController::class, 'destroy'])->name('destroy');
                 Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
+                Route::delete('{location}/images/{image}', [EventLocationController::class, 'destroyImage'])->name('images.destroy');
             });
 
             // ========================================
@@ -386,25 +389,8 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     });
 
     // ========================================
-    // STANDALONE GUEST & COMPANION ROUTES (Outside event context)
-    // ========================================
-    Route::prefix('guest')->name('guest.')->group(function () {
-        Route::patch('{guest}', [GuestController::class, 'updateCompanion'])->name('updateCompanion');
-        Route::post('{guest}/companion', [CompanionController::class, 'store'])->name('storeCompanion');
-    });
-
-    Route::prefix('companion')->name('companion.')->group(function () {
-        Route::put('{companion}', [CompanionController::class, 'update'])->name('update');
-        Route::delete('{guestCompanion}', [CompanionController::class, 'destroy'])->name('destroy');
-    });
-
-    // ========================================
     // STANDALONE FEATURE ROUTES (Outside event context)
     // ========================================
-    Route::prefix('save-the-date')->name('save-the-date.')->group(function () {
-        Route::put('{saveTheDate}', [SaveTheDateController::class, 'update'])->name('update');
-    });
-
     Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->group(function () {
         Route::patch('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])->name('update-name');
     });
