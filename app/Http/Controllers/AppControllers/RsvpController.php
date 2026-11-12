@@ -48,20 +48,6 @@ class RsvpController extends Controller
     }
 
     /**
-     * Save the RSVP data.
-     */
-    public function saveRsvp(Request $request): JsonResponse|bool
-    {
-        try {
-            $this->rsvpService->saveRsvp();
-
-            return response()->json(['message' => 'Rsvp saved.']);
-        } catch (\Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
-        }
-    }
-
-    /**
      * Revert the RSVP confirmation status of a guest and their companions.
      * @param Request $request
      * @param Events $event

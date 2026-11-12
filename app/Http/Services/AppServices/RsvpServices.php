@@ -42,61 +42,6 @@ class RsvpServices
 
 
     /**
-     * Save rsvp info
-     * @throws \Exception
-     */
-    public function saveRsvp(): bool
-    {
-        try {
-            $requestGuest = $this->request->input('guest');
-
-            $mainGuest = Guest::query()->findOrFail($requestGuest['id']);
-            $this->saveGuest($requestGuest, $mainGuest);
-
-            if (isset($requestGuest['companions'])) {
-                foreach ($requestGuest['companions'] as $companion) {
-                    $guestCompanion = Guest::query()->findOrFail($companion['id']);
-
-                    $this->saveGuest($companion, $guestCompanion);
-                }
-            }
-
-            Cache::forget("event.{$mainGuest->event_id}.rsvp.stats");
-
-            return true;
-        } catch (\Throwable $th) {
-            throw new \Exception($th->getMessage());
-        }
-    }
-
-    /**
-     * @param mixed $companion
-     * @param Model|Collection|GuestCompanion|null $guestCompanion
-     * @return void
-     */
-    private function saveGuest(array $guestData, Guest $guest): void {
-        $guest->name = $guestData['name'];
-        $guest->email = $guestData['email'];
-        $guest->phone = $guestData['phone'];
-        $guest->gender = $guestData['gender'] ?? $guest->gender;
-        $guest->rsvp_status = $guestData['rsvpStatus'];
-        $guest->rsvp_status_date = now();
-
-        $guest->save();
-
-        if (isset($guestData['menusSelections']) && is_array($guestData['menusSelections'])) {
-            $menuItemIds = collect($guestData['menusSelections'])
-                ->filter(fn($value) => is_numeric($value) && $value > 0)
-                ->map(fn($id) => (int) $id)
-                ->values()
-                ->toArray();
-
-
-            $guest->selectedMenuItems()->sync($menuItemIds);
-        }
-    }
-
-    /**
      * Revert the RSVP confirmation status of a guest and their companions.
      * @param Events $event
      * @return array

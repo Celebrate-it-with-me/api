@@ -27,7 +27,12 @@ class Events extends Model
         'end_date',
         'status',
         'custom_url_slug',
-        'visibility'
+        'visibility',
+        'template_id',
+        'template_config',
+        'locale',
+        'currency',
+        'timezone',
     ];
 
     protected $dates = ['deleted_at'];
@@ -35,6 +40,7 @@ class Events extends Model
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+        'template_config' => 'array',
     ];
 
     /**
@@ -89,6 +95,14 @@ class Events extends Model
     public function getOwnerUserIdAttribute(): int
     {
         return $this->owner?->user?->id ?? 0;
+    }
+
+    /**
+     * Invitation template this event was built from.
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(InvitationTemplate::class, 'template_id');
     }
 
     /**
