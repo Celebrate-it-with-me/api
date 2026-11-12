@@ -34,6 +34,10 @@ class InvitationTemplateSeeder extends Seeder
                 'title' => ['es' => 'Código de vestimenta', 'en' => 'Dress code'],
                 'text' => ['es' => null, 'en' => null],
             ],
+            'padrinos' => [
+                'title' => ['es' => 'Con el cariño de', 'en' => 'With love from'],
+                'text' => ['es' => null, 'en' => null],
+            ],
             'rsvp' => [
                 'title' => ['es' => '¿Me acompañas?', 'en' => 'Will you join me?'],
                 'text' => ['es' => 'Confirma tu asistencia para que todo salga perfecto.', 'en' => 'Let me know if you can make it so everything is perfect.'],
@@ -59,6 +63,10 @@ class InvitationTemplateSeeder extends Seeder
             ],
             'dress_code' => [
                 'title' => ['es' => 'Código de vestimenta', 'en' => 'Dress code'],
+                'text' => ['es' => null, 'en' => null],
+            ],
+            'padrinos' => [
+                'title' => ['es' => 'Con el cariño de', 'en' => 'With love from'],
                 'text' => ['es' => null, 'en' => null],
             ],
             'rsvp' => [

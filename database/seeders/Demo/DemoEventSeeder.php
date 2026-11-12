@@ -162,6 +162,8 @@ class DemoEventSeeder extends Seeder
             ['Recuerdos', 'Recuerdos para invitados', '100 recuerdos personalizados.', 450, 380, null, [[380, -5]], -5],
         ]);
 
+        $this->padrinos($event);
+
         $this->music($event, $guestIds);
         $this->seating($event, $owner, $guestIds);
 
@@ -536,6 +538,38 @@ class DemoEventSeeder extends Seeder
                     'amount' => $amount,
                     'paid_on' => $this->now->copy()->addDays($daysAgo)->toDateString(),
                 ]));
+            }
+        }
+    }
+
+    /** Padrinos of the demo event: what they promised comes from budget items, what they paid from payments. */
+    private function padrinos(int $event): void
+    {
+        $budgetId = DB::table('event_budgets')->where('event_id', $event)->value('id');
+        $item = fn (string $title) => DB::table('budget_items')->where('event_budget_id', $budgetId)->where('title', 'like', "$title%")->value('id');
+
+        // name, relationship, status, public, thanks, [item title prefix => amount, paid]
+        $padrinos = [
+            ['Tío Raúl y tía Marta', 'Tíos', 'accepted', true, 'Gracias por regalarme la música de mi noche.', [['DJ', 1200, 1200]]],
+            ['Doña Carmen Salazar', 'Madrina de bautizo', 'accepted', true, 'Su cariño me acompaña desde que nací.', [['Vestido', 700, 700], ['Recuerdos', 150, 0]]],
+            ['Familia Ortega', 'Amigos de la familia', 'invited', false, null, []],
+        ];
+
+        foreach ($padrinos as $order => [$name, $relationship, $status, $public, $thanks, $commitments]) {
+            $padrinoId = DB::table('padrinos')->insertGetId($this->row([
+                'event_id' => $event, 'name' => $name, 'relationship' => $relationship, 'status' => $status,
+                'public_thanks' => $public, 'thanks_text' => $thanks, 'sort_order' => $order + 1,
+            ]));
+
+            foreach ($commitments as [$title, $amount, $paid]) {
+                $itemId = $item($title);
+                DB::table('padrino_commitments')->insert($this->row(['padrino_id' => $padrinoId, 'budget_item_id' => $itemId, 'amount' => $amount]));
+                if ($paid > 0) {
+                    DB::table('budget_payments')->insert($this->row([
+                        'budget_item_id' => $itemId, 'amount' => $paid, 'paid_on' => $this->now->copy()->subDays(12)->toDateString(),
+                        'note' => 'Aporte de padrino', 'padrino_id' => $padrinoId,
+                    ]));
+                }
             }
         }
     }

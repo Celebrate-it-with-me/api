@@ -14,6 +14,11 @@ class BudgetPayment extends Model
 
     protected $casts = ['amount' => 'decimal:2', 'paid_on' => 'date'];
 
+    public function padrino(): BelongsTo
+    {
+        return $this->belongsTo(Padrino::class);
+    }
+
     public function item(): BelongsTo
     {
         return $this->belongsTo(BudgetItem::class, 'budget_item_id');

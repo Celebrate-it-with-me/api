@@ -88,7 +88,7 @@ class BudgetService
     /** The shape the screens read. @return array<string, mixed> */
     public function row(BudgetItem $item): array
     {
-        $item->loadMissing('payments');
+        $item->loadMissing('payments.padrino');
 
         return [
             'id' => $item->id,
@@ -110,6 +110,7 @@ class BudgetService
                 'paidOn' => $p->paid_on->toDateString(),
                 'note' => $p->note,
                 'padrinoId' => $p->padrino_id,
+                'padrinoName' => $p->padrino?->name,
             ])->values()->all(),
         ];
     }

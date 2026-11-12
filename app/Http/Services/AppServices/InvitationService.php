@@ -8,6 +8,7 @@ use App\Models\Events;
 use App\Models\Guest;
 use App\Models\GuestRsvpLog;
 use App\Models\InvitationTemplate;
+use App\Models\Padrino;
 use App\Models\Rsvp;
 use App\Models\SaveTheDate;
 use App\Models\Timeline;
@@ -33,7 +34,7 @@ class InvitationService
     public const STATUS_PENDING = 'pending';
 
     /** Section types the renderer understands in this release. */
-    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'rsvp', 'closing'];
+    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'rsvp', 'closing'];
 
     /** Only published events have a public invitation. */
     public function findEvent(string $slug): ?Events
@@ -339,10 +340,43 @@ class InvitationService
             'itinerary' => $this->itineraryData($event),
             'locations' => $this->locationsData($event),
             'dress_code' => $this->dressCodeData($event),
+            'padrinos' => $this->padrinosData($event),
             'rsvp' => $this->rsvpData($event, $guest),
             'closing' => [],
             default => null,
         };
+    }
+
+    /**
+     * "Con el cariño de": the padrinos the organizer chose to show, with what they sponsor and an optional message.
+     * Premium. Never amounts or payments.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function padrinosData(Events $event): ?array
+    {
+        if (! app(PlanFeatures::class)->isPremium($event)) {
+            return null;
+        }
+
+        $padrinos = Padrino::query()
+            ->with('commitments.item')
+            ->where('event_id', $event->id)
+            ->where('public_thanks', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        if ($padrinos->isEmpty()) {
+            return null;
+        }
+
+        return ['items' => $padrinos->map(fn (Padrino $padrino) => [
+            'name' => $padrino->name,
+            'relationship' => $padrino->relationship,
+            'sponsors' => $padrino->commitments->map(fn ($c) => $c->item?->title)->filter()->values()->all(),
+            'thanks' => $padrino->thanks_text,
+        ])->all()];
     }
 
     /** The program of the day, in order; left out when it has no moments. @return array<string, mixed>|null */

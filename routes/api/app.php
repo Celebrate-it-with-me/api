@@ -18,6 +18,7 @@
     use App\Http\Controllers\AppControllers\MenuController;
     use App\Http\Controllers\AppControllers\MenuItemController;
     use App\Http\Controllers\AppControllers\OrganizerRsvpController;
+    use App\Http\Controllers\AppControllers\PadrinoController;
     use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
     use App\Http\Controllers\AppControllers\RsvpController;
     use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
@@ -339,6 +340,17 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
                 Route::post('items/{item}/payments', [BudgetController::class, 'storePayment'])->name('payments.store');
                 Route::put('items/{item}/payments/{payment}', [BudgetController::class, 'updatePayment'])->name('payments.update');
                 Route::delete('items/{item}/payments/{payment}', [BudgetController::class, 'destroyPayment'])->name('payments.destroy');
+            });
+
+            // ========================================
+            // PADRINOS
+            // ========================================
+            Route::prefix('padrinos')->name('padrinos.')->group(function () {
+                Route::get('', [PadrinoController::class, 'index'])->name('index');
+                Route::post('', [PadrinoController::class, 'store'])->name('store');
+                Route::put('{padrino}', [PadrinoController::class, 'update'])->name('update');
+                Route::delete('{padrino}', [PadrinoController::class, 'destroy'])->name('destroy');
+                Route::put('{padrino}/commitments', [PadrinoController::class, 'setCommitments'])->name('commitments');
             });
 
             // ========================================

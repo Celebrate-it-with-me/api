@@ -40,8 +40,8 @@ describe('the catalog', function () {
 
         expect(Module::count())->toBe(14)
             ->and(Module::where('key', 'invitation')->value('is_enabled'))->toBeFalse()
-            ->and(Module::where('key', 'padrinos')->value('is_enabled'))->toBeFalse()
-            ->and($keys)->not->toContain('invitation', 'padrinos');
+            ->and(Module::where('key', 'padrinos')->value('is_enabled'))->toBeTrue()
+            ->and($keys)->not->toContain('invitation')->toContain('padrinos');
     });
 
     it('never overwrites what the admin changed when it is seeded again', function () {
@@ -63,9 +63,9 @@ describe('what an event shows', function () {
 
         expect($states)->toMatchArray([
             'guests' => 'active', 'rsvp' => 'active', 'save_the_date' => 'active',
-            'timeline' => 'active', 'locations' => 'active', 'dress_code' => 'active', 'budget' => 'active',
+            'timeline' => 'active', 'locations' => 'active', 'dress_code' => 'active', 'budget' => 'active', 'padrinos' => 'active',
             'menus' => 'locked', 'seating' => 'locked', 'suggested_music' => 'locked', 'memories' => 'locked', 'comments' => 'locked',
-        ])->and($states)->not->toHaveKeys(['invitation', 'padrinos']);
+        ])->and($states)->not->toHaveKeys(['invitation']);
     });
 
     it('on a paid plan: everything enabled is active', function () {
@@ -79,7 +79,7 @@ describe('what an event shows', function () {
 
         expect(collect(app(EventModules::class)->forEvent($event))->pluck('key')->all())->toBe([
             'guests', 'rsvp', 'save_the_date',
-            'timeline', 'locations', 'dress_code', 'budget',
+            'timeline', 'locations', 'dress_code', 'budget', 'padrinos',
             'menus', 'seating', 'suggested_music', 'memories', 'comments',
         ]);
     });
@@ -88,13 +88,13 @@ describe('what an event shows', function () {
         [$event] = eventOnPlan('basic');
 
         Module::where('key', 'dress_code')->update(['is_enabled' => false]);
-        Module::where('key', 'padrinos')->update(['is_enabled' => true]);               // built: switch on
+        Module::where('key', 'invitation')->update(['is_enabled' => true]);             // built: switch on
         Module::where('key', 'menus')->first()->plans()->attach($event->event_plan_id); // give it to this plan
 
         $states = moduleStates(app(EventModules::class)->forEvent($event));
 
         expect($states)->not->toHaveKey('dress_code')
-            ->and($states['padrinos'])->toBe('active')
+            ->and($states['invitation'])->toBe('active')
             ->and($states['menus'])->toBe('active')
             ->and($states['seating'])->toBe('locked');
     });
@@ -105,7 +105,8 @@ describe('what an event shows', function () {
 
         expect($modules->stateOf($event, 'rsvp'))->toBe('active')
             ->and($modules->stateOf($event, 'menus'))->toBe('locked')
-            ->and($modules->stateOf($event, 'padrinos'))->toBeNull()
+            ->and($modules->stateOf($event, 'padrinos'))->toBe('active')
+            ->and($modules->stateOf($event, 'invitation'))->toBeNull()
             ->and($modules->stateOf($event, 'does_not_exist'))->toBeNull()
             ->and($modules->isActive($event, 'menus'))->toBeFalse();
     });
@@ -119,7 +120,7 @@ describe('the API', function () {
         $one = $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}")->assertOk();
 
         expect($list->json('data.events.0.modules.0'))->toHaveKeys(['key', 'section', 'order', 'state'])
-            ->and($one->json('data.modules'))->toHaveCount(12);
+            ->and($one->json('data.modules'))->toHaveCount(13);
     });
 
     it('does not run more queries for ten events than for one', function () {

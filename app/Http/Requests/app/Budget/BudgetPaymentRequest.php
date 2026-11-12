@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\app\Budget;
 
+use App\Models\Padrino;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /** A payment towards an item. `padrinoId` says who paid it: empty is the family. */
 class BudgetPaymentRequest extends FormRequest
@@ -19,7 +21,7 @@ class BudgetPaymentRequest extends FormRequest
             'amount' => ['required', 'numeric', 'gt:0', 'max:99999999'],
             'paidOn' => ['required', 'date_format:Y-m-d'],
             'note' => ['nullable', 'string', 'max:160'],
-            'padrinoId' => ['nullable', 'integer'],
+            'padrinoId' => ['nullable', 'integer', Rule::exists(Padrino::class, 'id')->where('event_id', $this->route('event')->id)],
         ];
     }
 

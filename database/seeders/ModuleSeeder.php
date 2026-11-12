@@ -28,7 +28,7 @@ class ModuleSeeder extends Seeder
         'locations' => ['organization', 20, true, false],
         'dress_code' => ['organization', 30, true, false],
         'budget' => ['organization', 40, true, false],
-        'padrinos' => ['organization', 50, false, false],
+        'padrinos' => ['organization', 50, true, false],
 
         'menus' => ['extras', 10, true, true],
         'seating' => ['extras', 20, true, true],
