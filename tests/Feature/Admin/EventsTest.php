@@ -211,7 +211,7 @@ describe('summary', function () {
         DB::table('budget_items')->insert(['event_budget_id' => $budgetId, 'category_id' => $catId, 'title' => 'Cake', 'estimated_cost' => 200, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('budget_payments')->insert(['budget_item_id' => $itemId, 'amount' => 300, 'paid_on' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now()]);
 
-        $res = $this->actingAs(evStaff('support'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
+        $res = $this->actingAs(evStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
 
         $res->assertJsonPath('data.event.name', 'XV de Valentina')
             ->assertJsonPath('data.event.slugLocked', true)
@@ -272,4 +272,19 @@ describe('summary', function () {
 
         expect($queries($big))->toBe($queries($small));
     });
+});
+
+it('does not show payments or amounts to support, only to who manages purchases', function () {
+    $owner = evOwner('Marisol Perez');
+    $event = evMake($owner, ['event_name' => 'XV de Valentina']);
+    EventPurchase::create(['event_id' => $event->id, 'user_id' => $owner->id, 'event_plan_id' => $event->event_plan_id, 'gateway' => 'manual',
+        'list_price_cents' => 9900, 'amount_cents' => 7900, 'status' => 'paid']);
+
+    $support = $this->actingAs(evStaff('support'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
+    $super = $this->actingAs(evStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
+
+    expect($support->json('data.payment'))->toBeNull()
+        ->and($support->json('data.plan.priceCents'))->toBeNull()
+        ->and($support->getContent())->not->toContain('7900')
+        ->and($super->json('data.payment.lastPurchase.amountCents'))->toBe(7900);
 });
