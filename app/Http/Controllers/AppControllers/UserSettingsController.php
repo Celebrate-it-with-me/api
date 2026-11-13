@@ -58,6 +58,7 @@ class UserSettingsController extends Controller
             'message' => 'User retrieved successfully.',
             'data' => [
                 'user' => $user,
+                'impersonating' => $request->attributes->get('impersonation_session')?->banner(),
             ]
         ]);
     }

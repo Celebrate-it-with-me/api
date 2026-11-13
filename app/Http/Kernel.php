@@ -91,6 +91,7 @@ class Kernel extends HttpKernel
         'verified' => EnsureEmailIsVerified::class,
         'not.suspended' => \App\Http\Middleware\EnsureNotSuspended::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
+        'impersonation.guard' => \App\Http\Middleware\ImpersonationGuard::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
         'admin.can' => \App\Http\Middleware\EnsureAdminPermission::class,
         'event.access' => \App\Http\Middleware\EnsureEventAccess::class,

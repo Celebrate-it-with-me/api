@@ -67,6 +67,8 @@ class EventActivity extends Model
      */
     public static function logActivity($eventId, $type, $actor = null, $target = null, $payload = [])
     {
+        $impersonatedBy = request()->attributes->get('impersonated_by');
+
         return self::query()->create([
             'event_id' => $eventId,
             'type' => $type,
@@ -75,10 +77,21 @@ class EventActivity extends Model
             'actor_id' => $actor ? $actor->id : null,
             'target_type' => $target ? get_class($target) : null,
             'target_id' => $target ? $target->id : null,
-            'payload' => $payload,
+            // Done by staff impersonating the user: the feed says "Soporte" and the payload keeps who it really was.
+            'payload' => $impersonatedBy ? $payload + ['impersonated_by' => $impersonatedBy] : $payload,
         ]);
     }
     
+    /** Who did it, for the feed: "Soporte" when staff did it while impersonating. */
+    public function actorName(): string
+    {
+        if (! empty($this->payload['impersonated_by'])) {
+            return config('impersonation.staff_label');
+        }
+
+        return $this->actor ? $this->actor->name : 'System';
+    }
+
     /**
      * Get the message attribute based on the activity type.
      *
@@ -92,68 +105,68 @@ class EventActivity extends Model
         return match ($this->type) {
             'event_created' => __("Event :name, has been created by :user", [
                 'name' => $this->payload['event_name'] ?? '',
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'event_updated' => __('Event :name, has been updated by :user', [
                 'name' => $this->payload['event_name'] ?? '',
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'event_published' => __('Event :name has been published by :user', [
                 'name' => $this->payload['event_name'] ?? '',
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'event_unpublished' => __('Event :name is back to draft, by :user', [
                 'name' => $this->payload['event_name'] ?? '',
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'event_archived' => __('Event :name has been archived by :user', [
                 'name' => $this->payload['event_name'] ?? '',
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'event_restored' => __('Event :name has been restored by :user', [
                 'name' => $this->payload['event_name'] ?? '',
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'guest_created' => __('Guest :name, has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'guest_updated' => __('Guest :name, has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'guest_deleted' => __('Guest :name, has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'menu_created' => __('Menu :name, has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'menu_updated' => __('Menu :name, has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'menu_deleted' => __('Menu :name, has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'menu_item_created' => __('Menu item :name, has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'menu_item_updated' => __('Menu item :name, has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'menu_item_deleted' => __('Menu item :name, has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             
             'guests_imported' => __(':count guests imported by :user', [
                 'count' => $this->payload['count'] ?? 0,
-                'user' => $this->actor ? $this->actor->name : 'System',
+                'user' => $this->actorName(),
             ]),
             'guest_confirmed' => __('Guest :name, has confirmed their attendance.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'photo_uploaded' => __('Photo uploaded by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
