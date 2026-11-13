@@ -206,7 +206,7 @@ describe('onboarding summary', function () {
             ->and($first['done'])->toBe(1)->and($first['total'])->toBe(4);
 
         Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null]);
-        \App\Models\Timeline::create(['event_id' => $event->id, 'title' => 'Misa', 'type' => 'ceremony', 'start_time' => now()]);
+        Timeline::create(['event_id' => $event->id, 'title' => 'Misa', 'type' => 'ceremony', 'start_time' => now()]);
         $event->update(['status' => 'published']);
 
         $second = $this->actingAs($u['owner'])->getJson($url)->json('data');
