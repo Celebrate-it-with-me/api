@@ -25,6 +25,7 @@ final class AdminPermissions
         'admin.impersonate',
         'admin.support.manage',
         'admin.users.reset_password',
+        'admin.catalog.view',
     ];
 
     /** What only a superadmin can do. */
