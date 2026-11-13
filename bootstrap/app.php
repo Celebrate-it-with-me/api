@@ -42,6 +42,14 @@ $app->singleton(
 );
 
 /*
+| Soft maintenance switch (system_flags), not `artisan down`. Pushed here because it must run for every request.
+*/
+$app->afterResolving(
+    Illuminate\Contracts\Http\Kernel::class,
+    fn ($kernel) => $kernel->pushMiddleware(App\Http\Middleware\SystemMaintenance::class)
+);
+
+/*
 |--------------------------------------------------------------------------
 | Return The Application
 |--------------------------------------------------------------------------
