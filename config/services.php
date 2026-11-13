@@ -61,4 +61,10 @@ return [
         'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET', 'local-webhook-secret'),
     ],
 
+    // Where suspended users and the "Necesito ayuda" button send people, and the admin panel the support mail links to.
+    'support' => [
+        'email' => env('SUPPORT_EMAIL', 'soporte@quinvite.com'),
+        'admin_url' => env('ADMIN_URL'),
+    ],
+
 ];

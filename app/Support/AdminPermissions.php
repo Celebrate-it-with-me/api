@@ -23,6 +23,8 @@ final class AdminPermissions
         'admin.content.moderate',
         'admin.modules.gift',
         'admin.impersonate',
+        'admin.support.manage',
+        'admin.users.reset_password',
     ];
 
     /** What only a superadmin can do. */
@@ -35,6 +37,8 @@ final class AdminPermissions
         'admin.templates.manage',
         'admin.users.manage',
         'admin.users.delete',
+        'admin.users.suspend',
+        'admin.users.export',
         'admin.team.manage',
         'admin.audit.view',
         'admin.legacy',
