@@ -47,8 +47,9 @@ class SuggestedMusicController extends Controller
                 ]
             ]);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'data' => []
             ], 500);
         }
@@ -67,21 +68,23 @@ class SuggestedMusicController extends Controller
                 'data' => SuggestedMusicResource::make($music)
             ], 201);
         } catch (ValidationException $e) {
+            report($e);
             // Handle duplicate song (409 Conflict)
             if ($e->status === 409) {
                 return response()->json([
-                    'message' => $e->getMessage(),
+                    'message' => 'Something went wrong. Try again.',
                     'errors' => $e->errors(),
                 ], 409);
             }
 
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'data' => []
             ], 500);
         }
@@ -100,8 +103,9 @@ class SuggestedMusicController extends Controller
                 'data' => SuggestedMusicResource::make($removed)
             ]);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'data' => []
             ], 500);
         }
@@ -123,8 +127,9 @@ class SuggestedMusicController extends Controller
 
             return $this->exportService->export($event, $format);
         } catch (Throwable $th) {
+            report($th);
             return response()->json([
-                'message' => $th->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'data' => []
             ], 500);
         }

@@ -30,7 +30,8 @@ class BackgroundMusicController extends Controller
         try {
             return BackgroundMusicResource::make($event->backgroundMusic);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
     
@@ -45,7 +46,8 @@ class BackgroundMusicController extends Controller
         try {
             return BackgroundMusicResource::make($this->suggestedMusicServices->create($event));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
     
@@ -57,12 +59,12 @@ class BackgroundMusicController extends Controller
      */
     public function update(Request $request, BackgroundMusic $backgroundMusic): JsonResponse|BackgroundMusicResource
     {
-        Log::info('Checking request', ['request' => $request->all()]);
         
         try {
             return BackgroundMusicResource::make($this->suggestedMusicServices->update($backgroundMusic));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
 }

@@ -39,7 +39,8 @@ class SuggestedMusicConfigController extends Controller
                 'data' => []
             ], 404);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(). ' '.$th->getFile(). ' ' . $th->getLine() , 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
 
@@ -51,7 +52,8 @@ class SuggestedMusicConfigController extends Controller
         try {
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->create($event));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
 
@@ -63,7 +65,8 @@ class SuggestedMusicConfigController extends Controller
         try {
             return SuggestedMusicConfigResource::make($suggestedMusicConfig);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
 
@@ -75,7 +78,8 @@ class SuggestedMusicConfigController extends Controller
         try {
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->update($suggestedMusicConfig));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
 
@@ -87,7 +91,8 @@ class SuggestedMusicConfigController extends Controller
         try {
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->destroy($suggestedMusicConfig));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
 }
