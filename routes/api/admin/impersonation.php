@@ -8,3 +8,8 @@
  */
 
 use Illuminate\Support\Facades\Route;
+
+use App\Http\Controllers\Admin\Impersonation\ImpersonationController;
+
+Route::post('users/{user}/impersonate', [ImpersonationController::class, 'store'])
+    ->middleware('admin.can:admin.impersonate');

@@ -213,6 +213,7 @@ class AuthenticationController extends Controller
         return response()->json([
             'message' => 'Authentication is ready',
             'status' => 'success',
+            'impersonating' => $request->attributes->get('impersonation_session')?->banner(),
         ]);
     }
 

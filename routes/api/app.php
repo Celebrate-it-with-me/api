@@ -104,7 +104,7 @@ Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, '
 // PROTECTED ROUTES (Require Authentication)
 // ========================================
 
-Route::middleware(['auth:sanctum', 'not.suspended', 'refresh.token'])->group(function () {
+Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refresh.token'])->group(function () {
 
     //=========================================
     // CHECK IF AUTH IS READY
@@ -440,4 +440,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'refresh.token'])->group(fun
     // LOGOUT
     // ========================================
     Route::post('logout', [AuthenticationController::class, 'appLogout'])->name('logout');
+
+    // Ends a support (impersonation) session; only works with an impersonation token.
+    Route::post('impersonation/end', \App\Http\Controllers\AppControllers\Impersonation\ImpersonationEndController::class)->name('impersonation.end');
 });

@@ -27,7 +27,15 @@ class HydrateController
         abort_unless(request()->user()?->is($user), 403);
 
         try {
-            return $this->hydrationService->hydrate($user);
+            $response = $this->hydrationService->hydrate($user);
+
+            // Tells the app it is being used by support (banner). Null for a normal session.
+            $session = request()->attributes->get('impersonation_session');
+            if ($session && $response instanceof JsonResponse) {
+                $response->setData(array_merge((array) $response->getData(true), ['impersonating' => $session->banner()]));
+            }
+
+            return $response;
         } catch (Throwable $th) {
             report($th);
 
