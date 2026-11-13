@@ -81,6 +81,7 @@ class User extends Authenticatable implements HasLocalePreference
     protected $casts = [
         'email_verified_at' => 'datetime',
         'suspended_at' => 'datetime',
+        'password_changed_at' => 'datetime',
         'anonymized_at' => 'datetime',
         'password' => 'hashed',
     ];
@@ -88,6 +89,17 @@ class User extends Authenticatable implements HasLocalePreference
     protected $appends = [
       'avatar_url'
     ];
+
+    /** Two-factor enrolment of a staff member (admin panel); null when she never started it. */
+    public function adminTwoFactor(): HasOne
+    {
+        return $this->hasOne(AdminTwoFactor::class);
+    }
+
+    public function hasAdminTwoFactor(): bool
+    {
+        return (bool) $this->adminTwoFactor?->isActive();
+    }
 
     /**
      * Relation with user login sessions.

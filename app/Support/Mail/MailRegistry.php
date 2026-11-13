@@ -2,6 +2,8 @@
 
 namespace App\Support\Mail;
 
+use App\Mail\AdminEmailConfirmMail;
+use App\Mail\AdminSecurityNoticeMail;
 use App\Mail\ConfirmAccountEmail;
 use App\Mail\ImpersonationEndedMail;
 use App\Mail\InviteRegisteredUserMail;
@@ -69,6 +71,27 @@ class MailRegistry
             new MailDefinition('impersonation-ended', 'Fin de la sesión de ayuda', ImpersonationEndedMail::class, $both, ['mail'],
                 fn (string $lang) => new ImpersonationEndedMail(self::session(), self::user($lang)),
                 'Al terminar una sesión de ayuda del equipo en su cuenta.'),
+            new MailDefinition('admin-email-confirm', 'Panel: confirmar correo nuevo', AdminEmailConfirmMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminEmailConfirmMail(self::user($lang), MailLinks::admin('account/confirm-email?token=sample-token'), 60),
+                'Al pedir el cambio de correo de acceso en Mi cuenta del admin; llega a la dirección nueva.'),
+            new MailDefinition('admin-security-password-changed', 'Panel: contraseña cambiada', AdminSecurityNoticeMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'password_changed', []),
+                'Al cambiar la contraseña en Mi cuenta del admin.'),
+            new MailDefinition('admin-security-email-changed', 'Panel: correo cambiado', AdminSecurityNoticeMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'email_changed', ['newEmail' => 'nuevo@example.com']),
+                'Al confirmarse el cambio de correo; llega a la dirección anterior.'),
+            new MailDefinition('admin-security-two-factor-enabled', 'Panel: verificación en dos pasos activada', AdminSecurityNoticeMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'two_factor_enabled', []),
+                'Al activar la verificación en dos pasos.'),
+            new MailDefinition('admin-security-two-factor-disabled', 'Panel: verificación en dos pasos desactivada', AdminSecurityNoticeMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'two_factor_disabled', []),
+                'Al desactivarla.'),
+            new MailDefinition('admin-security-recovery-codes-regenerated', 'Panel: códigos de recuperación nuevos', AdminSecurityNoticeMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'recovery_codes_regenerated', []),
+                'Al regenerar los códigos de recuperación.'),
+            new MailDefinition('admin-security-new-device', 'Panel: inicio de sesión desde un dispositivo nuevo', AdminSecurityNoticeMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'new_device', ['device' => 'Chrome en Windows', 'when' => '13/11/2026 10:42', 'ip' => '190.12.34.x']),
+                'Al entrar al admin desde un navegador o equipo que no estaba en su historial.'),
             new MailDefinition('budget-reminder', 'Recordatorio de pagos', BudgetItemReminderNotification::class, $both, ['database', 'mail'],
                 fn (string $lang) => [new BudgetItemReminderNotification(self::budgetItems(), self::event()), self::user($lang)],
                 'Comando diario budget-item:reminders (7, 3, 1 y 0 días antes).'),
