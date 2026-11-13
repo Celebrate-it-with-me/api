@@ -29,7 +29,7 @@ class SendResetPasswordLink
         
         // Send the reset password link to the user
         $confirmUrl = URL::temporarySignedRoute(
-            'check.password',
+            'auth.check.password',
             now()->addDay(),
             ['user' => $user->id]
         );
