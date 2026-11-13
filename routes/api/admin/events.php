@@ -15,3 +15,8 @@ Route::prefix('events')->group(function () {
     // Archived and soft-deleted events are still found by support.
     Route::get('{event}', [EventController::class, 'show'])->withTrashed()->whereNumber('event')->middleware('admin.can:admin.events.view');
 });
+
+// One file per tab of the event sheet, so the agents that build them never edit the same file.
+foreach (['plan', 'modules', 'actions', 'content'] as $part) {
+    require __DIR__."/events/{$part}.php";
+}
