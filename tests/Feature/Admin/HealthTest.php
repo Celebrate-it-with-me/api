@@ -35,8 +35,8 @@ function healthFailedJob(array $attrs = []): int
         'uuid' => (string) Str::uuid(),
         'connection' => 'database',
         'queue' => 'default',
-        'payload' => json_encode(['displayName' => 'App\\Jobs\\SendInvite', 'data' => ['command' => 'O:8:"secret":1:{s:5:"email";s:'.strlen(HEALTH_SECRET_EMAIL).':"'.HEALTH_SECRET_EMAIL.'";}']]),
-        'exception' => "RuntimeException: Cannot send to ".HEALTH_SECRET_EMAIL." with token ".HEALTH_SECRET_TOKEN." in /var/www/html/app/Jobs/SendInvite.php:42\nStack trace:\n#0 /var/www/html/vendor/x.php(1): foo('".HEALTH_SECRET_EMAIL."')",
+        'payload' => json_encode(['displayName' => 'App\\Jobs\\SendInvite', 'data' => ['command' => 'O:8:"secret":1:{s:5:"email";s:' . strlen(HEALTH_SECRET_EMAIL) . ':"' . HEALTH_SECRET_EMAIL . '";}']]),
+        'exception' => 'RuntimeException: Cannot send to ' . HEALTH_SECRET_EMAIL . ' with token ' . HEALTH_SECRET_TOKEN . " in /var/www/html/app/Jobs/SendInvite.php:42\nStack trace:\n#0 /var/www/html/vendor/x.php(1): foo('" . HEALTH_SECRET_EMAIL . "')",
         'failed_at' => now(),
     ]);
 }
@@ -126,14 +126,14 @@ it('schedules the heartbeat every minute', function () {
 
 it('summarises recent log errors and sanitises them', function () {
     $dir = storage_path('logs');
-    $file = $dir.'/laravel-health-test.log';
+    $file = $dir . '/laravel-health-test.log';
     file_put_contents($file, implode("\n", [
         '[2026-11-13 10:00:00] testing.INFO: just info',
-        '[2026-11-13 10:01:00] testing.ERROR: Mail failed for '.HEALTH_SECRET_EMAIL.' using '.HEALTH_SECRET_TOKEN.' {"exception":"[object] (Foo)"}',
+        '[2026-11-13 10:01:00] testing.ERROR: Mail failed for ' . HEALTH_SECRET_EMAIL . ' using ' . HEALTH_SECRET_TOKEN . ' {"exception":"[object] (Foo)"}',
         '#0 /var/www/html/vendor/laravel/x.php(10): trace line',
-        '[2026-11-13 10:02:00] testing.ERROR: Mail failed for '.HEALTH_SECRET_EMAIL.' using '.HEALTH_SECRET_TOKEN.' {"exception":"[object] (Foo)"}',
+        '[2026-11-13 10:02:00] testing.ERROR: Mail failed for ' . HEALTH_SECRET_EMAIL . ' using ' . HEALTH_SECRET_TOKEN . ' {"exception":"[object] (Foo)"}',
         '[2026-11-13 10:03:00] testing.CRITICAL: SQLSTATE[23505]: Unique violation (Connection: pgsql, SQL: insert into users (email) values (a@b.com))',
-    ])."\n");
+    ]) . "\n");
     touch($file, time() + 100);
 
     try {

@@ -36,6 +36,6 @@ final class Redactor
 
         $text = trim((string) preg_replace('/\s+/', ' ', $text));
 
-        return mb_strlen($text) > $max ? mb_substr($text, 0, $max - 1).'…' : $text;
+        return mb_strlen($text) > $max ? mb_substr($text, 0, $max - 1) . '…' : $text;
     }
 }

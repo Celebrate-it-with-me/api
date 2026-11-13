@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Admin\Health;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /** Failed jobs for the health screen: counts and the latest few, never the payload or the trace. */
@@ -52,7 +53,7 @@ class FailedJobs
             'job' => $job,
             'queue' => (string) $row->queue,
             'connection' => (string) $row->connection,
-            'failedAt' => $row->failed_at ? \Illuminate\Support\Carbon::parse($row->failed_at)->toIso8601String() : null,
+            'failedAt' => $row->failed_at ? Carbon::parse($row->failed_at)->toIso8601String() : null,
             'exceptionClass' => $class,
             'message' => Redactor::summary($message),
         ];

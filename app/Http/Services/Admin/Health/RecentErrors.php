@@ -29,7 +29,7 @@ class RecentErrors
         $groups = [];
         foreach (array_reverse($matches) as $m) {
             $summary = Redactor::summary($m[3]);
-            $key = $m[2].'|'.$summary;
+            $key = $m[2] . '|' . $summary;
             if (isset($groups[$key])) {
                 $groups[$key]['count']++;
 
