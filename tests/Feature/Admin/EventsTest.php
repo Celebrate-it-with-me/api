@@ -157,6 +157,18 @@ describe('list', function () {
             ->and($ids('internal=1'))->toBe(collect([$real->id, $demo->id, $staffOwned->id])->sort()->values()->all());
     });
 
+    it('says how many events the internal-account filter is hiding', function () {
+        evMake(evOwner('Real Mom', 'mom@example.com'));
+        evMake(User::factory()->create(['email' => 'demo@cwm.test']));
+        evMake(User::factory()->create(['email' => 'other@cwm.test']));
+        $viewer = evStaff('support');
+        $meta = fn (string $qs) => $this->actingAs($viewer)->getJson("/api/v1/admin/events?$qs")->json('meta');
+
+        expect($meta('')['hiddenInternal'])->toBe(2)
+            ->and($meta('internal=1')['hiddenInternal'])->toBe(0)
+            ->and($meta('search=zzzz-nothing')['hiddenInternal'])->toBe(0);
+    });
+
     it('does not run more queries with 25 events than with 1', function () {
         $staff = evStaff('support');
         $o = evOwner();

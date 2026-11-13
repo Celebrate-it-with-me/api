@@ -88,6 +88,18 @@ describe('permissions', function () {
 });
 
 describe('listing and profile', function () {
+    it('says how many accounts the internal filter is hiding', function () {
+        $admin = usersStaff('superadmin');
+        User::factory()->create(['email' => 'ana@example.com']);
+        User::factory()->create(['email' => 'demo1@cwm.test']);
+        User::factory()->create(['email' => 'demo2@cwm.test']);
+        usersStaff('support');
+        $meta = fn (string $q = '') => $this->actingAs($admin)->getJson(ADMIN_USERS . $q)->assertOk()->json('meta');
+
+        // two demo accounts + the support member + the superadmin himself
+        expect($meta()['hiddenInternal'])->toBe(4)->and($meta('?internal=1')['hiddenInternal'])->toBe(0);
+    });
+
     it('searches, filters and hides internal accounts by default', function () {
         $admin = usersStaff('superadmin');
         $ana = User::factory()->create(['name' => 'Ana Customer', 'email' => 'ana@example.com', 'phone' => '+13055550101']);

@@ -60,8 +60,24 @@ class EventDirectory
 
         return [
             'data' => $rows,
-            'meta' => ['page' => $page->currentPage(), 'perPage' => $page->perPage(), 'total' => $page->total(), 'lastPage' => $page->lastPage()],
+            'meta' => [
+                'page' => $page->currentPage(), 'perPage' => $page->perPage(), 'total' => $page->total(), 'lastPage' => $page->lastPage(),
+                // How many more the same filters would find if internal accounts were included, so the screen can say so.
+                'hiddenInternal' => $this->hiddenInternal($f, $page->total()),
+            ],
         ];
+    }
+
+    /** Events left out because their owner is an internal account (0 when internal accounts are already included). */
+    private function hiddenInternal(array $f, int $shown): int
+    {
+        if (filter_var($f['internal'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            return 0;
+        }
+        $all = Events::query();
+        $this->applyFilters($all, $f + ['internal' => 1]);
+
+        return max(0, $all->count() - $shown);
     }
 
     public function summary(Events $event, bool $withPayments = false): array
