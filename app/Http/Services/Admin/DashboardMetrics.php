@@ -24,7 +24,7 @@ class DashboardMetrics
     /** Staff and demo accounts. */
     private array $internalUserIds = [];
 
-    public function build(int $days = 30, bool $includeInternal = false): array
+    public function build(int $days = 30, bool $includeInternal = false, bool $withMoney = true): array
     {
         $days = in_array($days, [7, 30, 90], true) ? $days : 30;
         $now = CarbonImmutable::now();
@@ -33,7 +33,7 @@ class DashboardMetrics
 
         $this->internalUserIds = $includeInternal ? [] : $this->internalUsers();
 
-        return [
+        $data = [
             'days' => $days,
             'includeInternal' => $includeInternal,
             'generatedAt' => $now->toIso8601String(),
@@ -52,6 +52,13 @@ class DashboardMetrics
             'usage' => $this->usage($now),
             'attention' => $this->attention($now),
         ];
+
+        // Support does not see payments or amounts (owner's decision): the money numbers are left out, not zeroed.
+        if (! $withMoney) {
+            unset($data['kpis']['revenueCents'], $data['kpis']['refundedCents'], $data['series']['metrics']['revenueCents']);
+        }
+
+        return $data;
     }
 
     /** Value in the period and in the one before it, with the change. */
