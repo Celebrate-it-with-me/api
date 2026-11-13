@@ -288,6 +288,11 @@ class Events extends Model
      *
      * @return HasOne
      */
+    public function padrinos(): HasMany
+    {
+        return $this->hasMany(Padrino::class, 'event_id', 'id')->orderBy('sort_order')->orderBy('id');
+    }
+
     public function budget(): HasOne
     {
         return $this->hasOne(EventBudget::class, 'event_id', 'id');

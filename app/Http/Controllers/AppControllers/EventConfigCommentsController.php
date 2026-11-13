@@ -28,7 +28,8 @@ class EventConfigCommentsController extends Controller
             
             return EventConfigCommentResource::make($event->eventConfigComment);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
     
@@ -43,7 +44,8 @@ class EventConfigCommentsController extends Controller
         try {
             return EventConfigCommentResource::make($this->eventConfigCommentsServices->createEventConfigComment($event));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
     
@@ -59,7 +61,8 @@ class EventConfigCommentsController extends Controller
         try {
             return EventConfigCommentResource::make($this->eventConfigCommentsServices->updateEventConfigComment($commentConfig));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
     

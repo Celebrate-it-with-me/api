@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\AppResources\Seating;
 
-use App\Http\Resources\AppResources\GuestResource;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -27,7 +26,7 @@ class TableAssignmentResource extends JsonResource
             
             // Relations (when loaded)
             'table' => new TableResource($this->whenLoaded('table')),
-            'guest' => new GuestResource($this->whenLoaded('guest')),
+            'guest' => new SeatGuestResource($this->whenLoaded('guest')),
             'assigner' => new UserResource($this->whenLoaded('assignedBy')),
             
             // Metadata

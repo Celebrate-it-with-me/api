@@ -10,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 
 class SweetMemoriesImageServices
@@ -59,19 +60,17 @@ class SweetMemoriesImageServices
                 }
 
                 $storagePath = "images/event/$event->id/memories-images";
-                $path = $file->store($storagePath, self::STORAGE_DISK);
+                $path = $file->storeAs($storagePath, $this->uniqueName($file), self::STORAGE_DISK);
 
                 [$thumbnailPath, $thumbnailName] = $this->generateThumbnail($file, $event);
-                $metadata = $this->request->get('metadata');
-
-                Log::info('checking metadata', $metadata);
+                $metadata = (array) $this->request->get('metadata', []);
 
                 $uploadedImage = SweetMemoriesImage::query()->create([
                     'event_id' => $event->id,
                     'image_path' => $path,
                     'image_name' => $file->getClientOriginalName(),
-                    'image_original_name' => Arr::get($metadata, "$index.name"),
-                    'image_size' => Arr::get($metadata, "$index.size"),
+                    'image_original_name' => Arr::get($metadata, "$index.name", $file->getClientOriginalName()),
+                    'image_size' => Arr::get($metadata, "$index.size", $file->getSize()),
                     'thumbnail_path' => $thumbnailPath,
                     'thumbnail_name' => $thumbnailName,
                     'title' => $this->request->get('title'),
@@ -102,12 +101,19 @@ class SweetMemoriesImageServices
      * @param Events $event
      * @return array
      */
+    /** A name of its own, even for two files with the same content: each row owns its files. */
+    private function uniqueName($file): string
+    {
+        return Str::uuid() . '.' . ($file->extension() ?: 'jpg');
+    }
+
     private function generateThumbnail($file, $event): array
     {
         $imageThumbnail = $this->imageManager->decodePath($file->getPathname())
                             ->resize(150, 150);
 
-        $thumbnailName = 'thumbnail_' . $file->getClientOriginalName();
+        // A name of its own: two uploads called "foto.jpg" must not share (or delete) each other's thumbnail.
+        $thumbnailName = 'thumbnail_' . $this->uniqueName($file);
         $thumbnailPath = "images/event/$event->id/memories-thumbnails/$thumbnailName";
 
         Storage::disk(self::STORAGE_DISK)->put($thumbnailPath,(string) $imageThumbnail->encode());
@@ -128,8 +134,7 @@ class SweetMemoriesImageServices
             $imagePath = $sweetMemoriesImage->image_path;
             $thumbnailPath = $sweetMemoriesImage->thumbnail_path;
 
-            Storage::disk(self::STORAGE_DISK)->delete($imagePath);
-            Storage::disk(self::STORAGE_DISK)->delete($thumbnailPath);
+            Storage::disk(self::STORAGE_DISK)->delete(array_filter([$imagePath, $thumbnailPath]));
 
             $sweetMemoriesImage->delete();
 
@@ -163,10 +168,10 @@ class SweetMemoriesImageServices
 
                 $file = $request->file('files')[0];
                 $storagePath = "images/event/{$sweetMemoriesImage->event_id}/memories-images";
-                $path = $file->store($storagePath, self::STORAGE_DISK);
+                $path = $file->storeAs($storagePath, $this->uniqueName($file), self::STORAGE_DISK);
 
                 [$thumbnailPath, $thumbnailName] = $this->generateThumbnail($file, $sweetMemoriesImage->event);
-                $metadata = $request->get('metadata');
+                $metadata = (array) $request->get('metadata', []);
 
                 $data['image_path'] = $path;
                 $data['image_name'] = $file->getClientOriginalName();

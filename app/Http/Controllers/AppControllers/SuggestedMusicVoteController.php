@@ -43,8 +43,9 @@ class SuggestedMusicVoteController extends Controller
                 'data' => $votesData
             ]);
         } catch (ValidationException $e) {
+            report($e);
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
@@ -96,8 +97,9 @@ class SuggestedMusicVoteController extends Controller
                 ]
             ]);
         } catch (ValidationException $e) {
+            report($e);
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
@@ -134,8 +136,9 @@ class SuggestedMusicVoteController extends Controller
                 'data' => $vote ? SuggestedMusicVoteResource::make($vote) : null
             ]);
         } catch (ValidationException $e) {
+            report($e);
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {

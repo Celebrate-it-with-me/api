@@ -1,8 +1,7 @@
 <?php
     
     use App\Http\Controllers\AppControllers\BackgroundMusicController;
-    use App\Http\Controllers\AppControllers\Budget\BudgetItemController;
-    use App\Http\Controllers\AppControllers\Budget\EventBudgetController;
+    use App\Http\Controllers\AppControllers\Budget\BudgetController;
     use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
     use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
     use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
@@ -19,6 +18,7 @@
     use App\Http\Controllers\AppControllers\MenuController;
     use App\Http\Controllers\AppControllers\MenuItemController;
     use App\Http\Controllers\AppControllers\OrganizerRsvpController;
+    use App\Http\Controllers\AppControllers\PadrinoController;
     use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
     use App\Http\Controllers\AppControllers\RsvpController;
     use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
@@ -324,17 +324,33 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // BUDGET
             // ========================================
             Route::prefix('budget')->name('budget.')->group(function () {
-                Route::get('', [EventBudgetController::class, 'show'])->name('show');
-                Route::post('', [EventBudgetController::class, 'store'])->name('store');
-                Route::put('{eventBudget}', [EventBudgetController::class, 'update'])->name('update');
-                Route::delete('{eventBudget}', [EventBudgetController::class, 'destroy'])->name('destroy');
+                Route::get('', [BudgetController::class, 'show'])->name('show');
+                Route::put('', [BudgetController::class, 'update'])->name('update');
+                Route::get('export', [BudgetController::class, 'export'])->name('export');
 
-                Route::prefix('{eventBudget}/items')->group(function () {
-                    Route::get('', [BudgetItemController::class, 'index'])->name('budgetItems.index');
-                    Route::post('', [BudgetItemController::class, 'store'])->name('budgetItems.store');
-                    Route::put('{budgetItem}', [BudgetItemController::class, 'update'])->name('budgetItems.update');
-                    Route::delete('{budgetItem}', [BudgetItemController::class, 'destroy'])->name('budgetItems.destroy');
-                });
+                Route::post('categories', [BudgetController::class, 'storeCategory'])->name('categories.store');
+                Route::put('categories/{category}', [BudgetController::class, 'updateCategory'])->name('categories.update');
+                Route::delete('categories/{category}', [BudgetController::class, 'destroyCategory'])->name('categories.destroy');
+
+                Route::get('items', [BudgetController::class, 'items'])->name('items.index');
+                Route::post('items', [BudgetController::class, 'storeItem'])->name('items.store');
+                Route::put('items/{item}', [BudgetController::class, 'updateItem'])->name('items.update');
+                Route::delete('items/{item}', [BudgetController::class, 'destroyItem'])->name('items.destroy');
+
+                Route::post('items/{item}/payments', [BudgetController::class, 'storePayment'])->name('payments.store');
+                Route::put('items/{item}/payments/{payment}', [BudgetController::class, 'updatePayment'])->name('payments.update');
+                Route::delete('items/{item}/payments/{payment}', [BudgetController::class, 'destroyPayment'])->name('payments.destroy');
+            });
+
+            // ========================================
+            // PADRINOS
+            // ========================================
+            Route::prefix('padrinos')->name('padrinos.')->group(function () {
+                Route::get('', [PadrinoController::class, 'index'])->name('index');
+                Route::post('', [PadrinoController::class, 'store'])->name('store');
+                Route::put('{padrino}', [PadrinoController::class, 'update'])->name('update');
+                Route::delete('{padrino}', [PadrinoController::class, 'destroy'])->name('destroy');
+                Route::put('{padrino}/commitments', [PadrinoController::class, 'setCommitments'])->name('commitments');
             });
 
             // ========================================
