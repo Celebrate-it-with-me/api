@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Http\Services\AppServices\EventModules;
+use App\Http\Services\AppServices\InvitationService;
 use App\Models\Events;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureModuleAccess
 {
-    public function __construct(private readonly EventModules $modules) {}
+    public function __construct(private readonly EventModules $modules, private readonly InvitationService $invitations) {}
 
     public function handle(Request $request, Closure $next, string $module): Response
     {
@@ -52,16 +53,29 @@ class EnsureModuleAccess
         }
 
         // Routes without `{event}` in the address (e.g. renaming a memory image): the event comes from the bound model.
+        // Someone who is not a member of that event learns nothing about it: the controller answers its 404.
         foreach ($request->route()->parameters() as $bound) {
             if ($bound instanceof Model && array_key_exists('event_id', $bound->getAttributes())) {
-                return Events::query()->find($bound->getAttribute('event_id'));
+                $event = Events::query()->find($bound->getAttribute('event_id'));
+
+                return $event && $request->user()?->hasEventRole($event) ? $event : null;
             }
         }
 
         $slug = $request->route('slug');
 
-        return is_string($slug)
-            ? Events::query()->where('custom_url_slug', $slug)->where('status', 'published')->first()
-            : null;
+        if (! is_string($slug)) {
+            return null;
+        }
+
+        // Public invitation: slug + guest code are the credentials. Unknown slug, unpublished event and wrong code
+        // all answer the same 404 as the controller, before anything is said about the module.
+        $event = $this->invitations->findEvent($slug);
+        $code = $request->route('code');
+        $guest = $event && is_string($code) ? $this->invitations->findGuest($event, $code) : $event;
+
+        abort_if(! $event || ! $guest, 404, 'Invitation not found.');
+
+        return $event;
     }
 }

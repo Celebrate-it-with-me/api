@@ -140,6 +140,8 @@ class HydrationResponseBuilder
             return null;
         }
 
+        app(\App\Http\Services\AppServices\EventModules::class)->preload($this->events);
+
         return EventResource::collection($this->events);
     }
 
