@@ -1,7 +1,6 @@
 <?php
     
     use App\Http\Controllers\AuthenticationController;
-    use App\Http\Controllers\GalleryController;
     use App\Http\Controllers\UserController;
     use App\Http\Controllers\Admin\AuditController;
     use App\Http\Controllers\Admin\DashboardController;
@@ -40,12 +39,4 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     foreach (['events', 'users', 'support', 'moderation', 'impersonation', 'revenue', 'catalog'] as $module) {
         require __DIR__."/admin/{$module}.php";
     }
-
-    // The old endpoints of the first panel: superadmin only, until they are removed.
-    Route::middleware('admin.can:admin.legacy')->group(function () {
-        Route::prefix('gallery')->group(function () {
-            Route::post('/upload-images/{userName}', [GalleryController::class, 'uploadImages'])->name('upload-images');
-            Route::post('/show-images/{userName}', [GalleryController::class, 'showImages'])->name('show-images');
-        });
-    });
 });
