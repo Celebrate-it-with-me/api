@@ -111,9 +111,19 @@ class AdminPaymentController extends Controller
         ]);
         $fields = ['is_active', 'max_uses', 'expires_at'];
         $before = $coupon->only($fields);
-        $coupon->update(array_filter([
-            'is_active' => $data['isActive'] ?? null, 'max_uses' => $data['maxUses'] ?? null, 'expires_at' => $data['expiresAt'] ?? null,
-        ], fn ($v) => $v !== null));
+
+        // Absent key = leave as is; explicit null on maxUses/expiresAt = remove the limit.
+        $changes = [];
+        if (array_key_exists('isActive', $data) && $data['isActive'] !== null) {
+            $changes['is_active'] = $data['isActive'];
+        }
+        if (array_key_exists('maxUses', $data)) {
+            $changes['max_uses'] = $data['maxUses'];
+        }
+        if (array_key_exists('expiresAt', $data)) {
+            $changes['expires_at'] = $data['expiresAt'];
+        }
+        $coupon->update($changes);
 
         $this->audit->record(($data['isActive'] ?? true) === false ? 'coupon.deactivate' : 'coupon.update', $coupon, [
             'reason' => $data['reason'], 'before' => $before, 'after' => $coupon->only($fields),
