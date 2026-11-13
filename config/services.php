@@ -55,4 +55,10 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URL'),
     ],
 
+    // Payments: `fake` until the Stripe account exists. The webhook secret signs the calls the gateway makes.
+    'payments' => [
+        'gateway' => env('PAYMENTS_GATEWAY', 'fake'),
+        'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET', 'local-webhook-secret'),
+    ],
+
 ];
