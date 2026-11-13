@@ -102,6 +102,17 @@ it('adds and removes menu items, and lists the guests with their choices', funct
     $this->actingAs($u['owner'])->getJson("$url/guests")->assertOk()->assertJsonCount(1, 'data');
 });
 
+it('shows menu activity on the dashboard feed instead of failing', function () {
+    [$event, $u, $url] = menuEvent();
+    $id = $this->actingAs($u['owner'])->postJson($url, menuData(['title' => 'Cena de gala']))->json('id');
+    $this->actingAs($u['owner'])->putJson("$url/$id", menuData(['title' => 'Cena de gala 2']));
+    $this->actingAs($u['owner'])->deleteJson("$url/$id");
+
+    $response = $this->actingAs($u['owner'])->getJson("/api/v1/app/event/{$event->id}/dashboard-logs")->assertOk();
+
+    expect($response->getContent())->toContain('Cena de gala');
+});
+
 it('keeps viewers read-only and strangers and other events out', function () {
     [, $u, $url] = menuEvent();
     [, $u2, $url2] = menuEvent();
