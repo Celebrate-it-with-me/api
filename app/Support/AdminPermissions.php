@@ -30,6 +30,7 @@ final class AdminPermissions
     /** What only a superadmin can do. */
     public const SUPERADMIN_ONLY = [
         'admin.events.change_plan',
+        'admin.events.manage',
         'admin.purchases.manage',
         'admin.refunds',
         'admin.pricing.manage',
