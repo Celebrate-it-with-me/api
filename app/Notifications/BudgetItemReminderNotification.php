@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\BudgetItem;
 use App\Models\Events;
+use App\Support\Mail\MailLinks;
 use App\Support\Notifications\NotificationEntities;
 use App\Support\Notifications\NotificationKeys;
 use App\Support\Notifications\NotificationMetaMap;
@@ -83,11 +84,11 @@ class BudgetItemReminderNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $url = config('app.frontend_app.url') . "/events/{$this->event->id}/budget";
+        $url = MailLinks::app("events/{$this->event->id}/budget");
 
         return (new MailMessage)
-            ->subject('Budget reminders: ' . $this->event->event_name)
-            ->view('emails.budget-item-reminder', [
+            ->subject(__('mail.budget_reminder.subject', ['event' => $this->event->event_name]))
+            ->markdown('mail.budget-reminder', [
                 'user' => $notifiable,
                 'budgetItems' => $this->budgetItems,
                 'event' => $this->event,

@@ -1,0 +1,115 @@
+<?php
+
+// Transactional mail copy (Spanish is the design language). Keep the keys identical in lang/en/mail.php:
+// MailRegistryTest renders every mail in both languages and fails on a missing key.
+return [
+    'footer' => [
+        'tagline' => 'Quinvite · invitaciones digitales para tu quinceañera o tu boda.',
+        'help' => '¿Dudas? Escríbenos a :email.',
+    ],
+
+    'roles' => [
+        'owner' => 'dueño',
+        'editor' => 'editor',
+        'viewer' => 'solo lectura',
+    ],
+
+    'confirm' => [
+        'subject' => 'Confirma tu correo para empezar con tu celebración',
+        'preheader' => 'Un clic y tu cuenta de Quinvite queda lista.',
+        'title' => '¡Hola, :name!',
+        'intro' => 'Qué alegría tenerte en **Quinvite**. Estás a un paso de empezar a planear tu quinceañera o tu boda: confirma tu correo y tu cuenta queda lista.',
+        'action' => 'Confirmar mi correo',
+        'outro' => 'Si no creaste esta cuenta, puedes ignorar este mensaje; no pasará nada.',
+    ],
+
+    'welcome' => [
+        'subject' => 'Te damos la bienvenida a Quinvite, :name',
+        'preheader' => 'Tu quinceañera o tu boda, organizada en un solo lugar.',
+        'title' => 'Bienvenida a Quinvite, :name',
+        'intro' => 'Gracias por unirte. Aquí vas a crear la invitación de tu quinceañera o tu boda, armar la lista de invitados, recibir sus confirmaciones y tener todos los pendientes bajo control.',
+        'step' => 'Empieza por lo más bonito: ponle nombre a tu evento y elige cómo quieres que se vea tu invitación.',
+        'action' => 'Crear mi evento',
+    ],
+
+    'reset' => [
+        'subject' => 'Restablece tu contraseña de Quinvite',
+        'preheader' => 'Te ayudamos a volver a entrar a tu cuenta.',
+        'title' => 'Hola, :name',
+        'intro' => 'Recibimos una solicitud para cambiar la contraseña de tu cuenta de **Quinvite**. Toca el botón para elegir una nueva.',
+        'action' => 'Elegir nueva contraseña',
+        'outro' => 'Si no fuiste tú, ignora este mensaje: tu contraseña actual sigue funcionando.',
+    ],
+
+    'invite_registered' => [
+        'subject' => 'Te invitaron a colaborar en :event',
+        'preheader' => ':event te espera en tu panel de Quinvite.',
+        'title' => '¡Te invitaron a colaborar!',
+        'intro' => 'Te sumaron al equipo de **:event** con el rol de **:role**. Entra a tu panel para ayudar con los preparativos.',
+        'action' => 'Abrir el evento',
+        'outro' => 'Si no esperabas esta invitación, puedes ignorarla.',
+    ],
+
+    'invite_unregistered' => [
+        'subject' => 'Te invitaron a colaborar en :event',
+        'preheader' => 'Crea tu cuenta gratis y ayuda con los preparativos de :event.',
+        'title' => '¡Te invitaron a colaborar!',
+        'intro' => 'Te sumaron al equipo de **:event** con el rol de **:role**. Para aceptar, crea tu cuenta gratis o inicia sesión.',
+        'action' => 'Aceptar la invitación',
+        'outro' => 'Este enlace vence en 7 días. Si no esperabas esta invitación, puedes ignorarla.',
+    ],
+
+    'ownership_new' => [
+        'subject' => 'Ahora estás a cargo de :event',
+        'preheader' => 'Nuestro equipo te asignó la titularidad del evento.',
+        'title' => 'Hola, :name',
+        'intro' => 'Nuestro equipo te asignó la titularidad de **:event**, como acordamos. Ya puedes administrarlo por completo: invitados, invitación, presupuesto y todo lo demás.',
+        'action' => 'Abrir el evento',
+        'outro' => '¿Algo no cuadra? Escríbenos y lo revisamos juntos.',
+    ],
+
+    'ownership_previous' => [
+        'subject' => 'Cambio de titularidad de :event',
+        'preheader' => 'Sigues con acceso al evento como editor.',
+        'title' => 'Hola, :name',
+        'intro' => 'A pedido, nuestro equipo movió la titularidad de **:event** a otra cuenta. Tú sigues con acceso como **editor**, así que puedes seguir ayudando con los preparativos.',
+        'action' => 'Abrir el evento',
+        'outro' => '¿Algo no cuadra? Escríbenos y lo revisamos juntos.',
+    ],
+
+    'impersonation_ended' => [
+        'subject' => 'El equipo de Quinvite entró a tu cuenta para ayudarte',
+        'preheader' => 'Fue una visita corta y quedó registrada.',
+        'title' => 'Hola, :name',
+        'intro' => 'El equipo de Quinvite entró a tu cuenta el :date durante :minutes :unit :why.',
+        'unit_one' => 'minuto',
+        'unit_other' => 'minutos',
+        'why_request' => 'para ayudarte con tu solicitud de soporte',
+        'why_account' => 'para ayudarte con tu cuenta',
+        'details' => 'Solo lo hacemos para atender una solicitud de ayuda y toda la sesión queda registrada. Si no esperabas este acceso o tienes dudas, escríbenos a :email.',
+        'action' => 'Escribir al equipo',
+        'signature' => 'Equipo Quinvite',
+    ],
+
+    'budget_reminder' => [
+        'subject' => 'Recordatorio de pagos: :event',
+        'preheader' => '{1} Tienes 1 pago por vencer en :event.|[2,*] Tienes :count pagos por vencer en :event.',
+        'title' => 'Hola, :name',
+        'intro' => 'Estos pagos de **:event** se acercan:',
+        'item' => 'Concepto',
+        'due' => 'Vence',
+        'cost' => 'Costo estimado',
+        'due_today' => 'Vence hoy',
+        'due_in' => '{1} Vence mañana|[2,*] Vence en :days días',
+        'action' => 'Ver mi presupuesto',
+        'outro' => 'Si ya los pagaste, márcalos como pagados en la app para dejar de recibir estos avisos.',
+    ],
+
+    'test' => [
+        'subject' => 'Prueba de correo de Quinvite',
+        'preheader' => 'Si ves este mensaje, el envío de correos funciona.',
+        'title' => 'Todo en orden',
+        'intro' => 'Este es un correo de prueba de **Quinvite**. Si lo estás leyendo, el envío de correos funciona.',
+        'action' => 'Ir a mi panel',
+    ],
+];

@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
+use App\Support\Mail\MailLocale;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -14,44 +14,23 @@ class ResetPasswordEmail extends Mailable
     use Queueable, SerializesModels;
 
     public $user;
+
     public $resetPasswordLink;
-    
-    /**
-     * Create a new message instance.
-     */
+
     public function __construct($user, $resetPasswordLink)
     {
         $this->user = $user;
         $this->resetPasswordLink = $resetPasswordLink;
+        $this->locale(MailLocale::forUser($user));
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Reset Password Email',
-        );
+        return new Envelope(subject: __('mail.reset.subject'));
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
-        return new Content(
-            view: 'emails.reset-password-email',
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
+        return new Content(markdown: 'mail.reset-password');
     }
 }

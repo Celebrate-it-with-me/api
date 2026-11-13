@@ -3,8 +3,10 @@
 namespace App\Mail;
 
 use App\Models\EventCollaborationInvite;
+use App\Models\User;
+use App\Support\Mail\MailLinks;
+use App\Support\Mail\MailLocale;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,48 +15,30 @@ use Illuminate\Queue\SerializesModels;
 class InviteUnregisteredUserMail extends Mailable
 {
     use Queueable, SerializesModels;
-    
+
     public EventCollaborationInvite $invite;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(EventCollaborationInvite $invite)
     {
         $this->invite = $invite;
+        // No account yet: the best guess is the language of whoever invited her.
+        $this->locale(MailLocale::forUser($invite->invited_by_user_id ? User::query()->find($invite->invited_by_user_id) : null));
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: "You're invited to collaborate on {$this->invite->event->event_name}",
-        );
+        return new Envelope(subject: __('mail.invite_unregistered.subject', ['event' => $this->invite->event->event_name]));
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            view: 'emails.invite-unregistered-user',
+            markdown: 'mail.invite-unregistered',
             with: [
                 'invite' => $this->invite,
-                'acceptUrl' => config('app.frontend_app.url'). "/event/{$this->invite->event->id}/invite?token={$this->invite->token}",
+                'role' => MailLocale::role($this->invite->role, $this->locale),
+                'acceptUrl' => MailLinks::app("event/{$this->invite->event->id}/invite?token={$this->invite->token}"),
             ],
         );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
     }
 }
