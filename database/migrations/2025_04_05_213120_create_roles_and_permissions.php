@@ -37,17 +37,8 @@ use Illuminate\Support\Facades\Schema;
         $appUserRole = Role::create(['name' => 'appUser']);
         $appUserRole->givePermissionTo(['app']);
         
-        // Create admin user
-        User::firstOrCreate(
-            [
-                'email' => 'henrycarmenateg@gmail.com'
-            ],
-            [
-                'name' => 'Henry Carmenate',
-                'password' => Hash::make('password'),
-            ]
-        )->assignRole('admin');
-        
+        // The admin user is created by AdminUserSeeder, with credentials from the environment: a migration must
+        // never create an account with a known password.
     }
 
     /**
@@ -55,9 +46,6 @@ use Illuminate\Support\Facades\Schema;
      */
     public function down(): void
     {
-        // Remove the admin user
-        User::where('email', 'henrycarmenateg@gmail.com')->delete();
-        
         // Remove roles and permissions
         Role::where('name', 'admin')->delete();
         Role::where('name', 'appUser')->delete();

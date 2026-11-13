@@ -11,7 +11,9 @@
     
     Route::post('/login', [AuthenticationController::class, 'adminLogin']);
 
-Route::middleware('auth:sanctum')->group(function () {
+// Everything in the admin panel needs a logged-in administrator. The legacy RSVP and gallery endpoints used to be
+// open to anyone (and the rest to any logged-in user): they are closed with the rest.
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('userInfo', [UserController::class, 'userInfo']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('main-guest', MainGuestController::class);
@@ -30,26 +32,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('delete-folder/{folder}', [S3ObjectsController::class, 'deleteFolder']);
 
     Route::apiResource('sms-reminders', SMSReminderController::class);
+
+    Route::prefix('rsvp')->group(function() {
+        Route::get('{accessCode}', [RSVPController::class, 'checkAccessCode'])
+            ->name('checkRsvpAccessCode');
+
+        Route::post('/confirm', [RSVPController::class, 'guestConfirm'])
+            ->name('guestConfirm');
+
+        Route::post('/reset-access-code', [RSVPController::class, 'resetCode'])
+            ->name('resetCode');
+    });
+
+    Route::prefix('gallery')->group(function() {
+        Route::post('/upload-images/{userName}', [GalleryController::class, 'uploadImages'])
+            ->name('upload-images');
+
+        Route::post('/show-images/{userName}', [GalleryController::class, 'showImages'])
+            ->name('show-images');
+    });
 });
 
-Route::prefix('rsvp')->group(function() {
-    Route::get('{accessCode}', [RSVPController::class, 'checkAccessCode'])
-        ->name('checkRsvpAccessCode');
-
-    Route::post('/confirm', [RSVPController::class, 'guestConfirm'])
-        ->name('guestConfirm');
-
-    Route::post('/reset-access-code', [RSVPController::class, 'resetCode'])
-        ->name('resetCode');
-});
-
-Route::prefix('gallery')->group(function() {
-    Route::post('/upload-images/{userName}', [GalleryController::class, 'uploadImages'])
-        ->name('upload-images');
-
-    Route::post('/show-images/{userName}', [GalleryController::class, 'showImages'])
-        ->name('show-images');
-});
 
 
 
