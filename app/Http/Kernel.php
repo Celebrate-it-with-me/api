@@ -96,5 +96,6 @@ class Kernel extends HttpKernel
         'admin.can' => \App\Http\Middleware\EnsureAdminPermission::class,
         'event.access' => \App\Http\Middleware\EnsureEventAccess::class,
         'event.guest' => \App\Http\Middleware\EnsureGuestEventAccess::class,
+        'module.access' => \App\Http\Middleware\EnsureModuleAccess::class,
     ];
 }
