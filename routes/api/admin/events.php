@@ -7,4 +7,11 @@
  * Every write goes through App\Http\Services\Admin\AdminAudit and asks for a reason when it is sensitive.
  */
 
+use App\Http\Controllers\Admin\Events\EventController;
 use Illuminate\Support\Facades\Route;
+
+Route::prefix('events')->group(function () {
+    Route::get('', [EventController::class, 'index'])->middleware('admin.can:admin.events.view');
+    // Archived and soft-deleted events are still found by support.
+    Route::get('{event}', [EventController::class, 'show'])->withTrashed()->whereNumber('event')->middleware('admin.can:admin.events.view');
+});
