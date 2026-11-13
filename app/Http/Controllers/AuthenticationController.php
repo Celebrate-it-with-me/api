@@ -12,6 +12,7 @@ use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Services\Admin\AdminAudit;
+use App\Http\Middleware\EnsureNotSuspended;
 use App\Models\User;
 use App\Support\AdminPermissions;
 use Illuminate\Http\Client\ConnectionException;
@@ -179,6 +180,10 @@ class AuthenticationController extends Controller
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid Credentials'], 401);
+        }
+
+        if ($user->suspended_at) {
+            return EnsureNotSuspended::response();
         }
 
         $remember = $request->input('remember', false);

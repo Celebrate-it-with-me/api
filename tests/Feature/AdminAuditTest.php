@@ -137,7 +137,7 @@ describe('the audit log', function () {
         $couponId = $this->actingAs($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'amigos', 'kind' => 'fixed_price', 'value' => 5900, 'reason' => 'Friends and family'])->assertCreated()->json('data.id');
         $this->actingAs($admin)->patchJson("/api/v1/admin/payments/coupons/{$couponId}", ['isActive' => false, 'reason' => 'Campaign over'])->assertOk();
         $victim = User::factory()->create();
-        $this->actingAs($admin)->deleteJson("/api/v1/admin/users/{$victim->id}", ['reason' => 'Asked to delete their account'])->assertOk();
+        $this->actingAs($admin)->deleteJson("/api/v1/admin/users/{$victim->id}", ['reason' => 'Asked to delete their account', 'confirmEmail' => $victim->email])->assertOk();
 
         $actions = AdminAuditLog::orderBy('id')->pluck('action')->all();
         expect($actions)->toBe(['payment.manual', 'payment.refund', 'pricing.update', 'coupon.create', 'coupon.deactivate', 'user.delete']);

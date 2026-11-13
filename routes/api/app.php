@@ -104,7 +104,7 @@ Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, '
 // PROTECTED ROUTES (Require Authentication)
 // ========================================
 
-Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
+Route::middleware(['auth:sanctum', 'not.suspended', 'refresh.token'])->group(function () {
 
     //=========================================
     // CHECK IF AUTH IS READY
