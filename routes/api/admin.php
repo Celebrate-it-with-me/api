@@ -14,6 +14,7 @@
 // Everything in the admin panel needs a logged-in administrator. The legacy RSVP and gallery endpoints used to be
 // open to anyone (and the rest to any logged-in user): they are closed with the rest.
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('dashboard', \App\Http\Controllers\Admin\DashboardController::class);
     Route::prefix('payments')->group(function () {
         Route::get('', [\App\Http\Controllers\Payments\AdminPaymentController::class, 'index']);
         Route::post('events/{event}/manual', [\App\Http\Controllers\Payments\AdminPaymentController::class, 'manual']);
