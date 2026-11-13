@@ -94,7 +94,7 @@ class ProfileController extends Controller
         ]);
 
         $this->security->mailSafely(fn () => Mail::to($email)->send(
-            new AdminEmailConfirmMail($user, MailLinks::admin('account/confirm-email?token='.$token), $minutes)
+            new AdminEmailConfirmMail($user, MailLinks::admin('account/confirm-email?token=' . $token), $minutes)
         ), $user);
         $this->audit->record('account.email_change_requested', $user, ['after' => ['newEmail' => $email]]);
 
@@ -107,7 +107,7 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validate(['token' => ['required', 'string', 'max:100']]);
 
-        $pending = $user->adminEmailChange;
+        $pending = $user->adminEmailChange()->first();
         $valid = $pending && $pending->expires_at->isFuture() && hash_equals($pending->token_hash, hash('sha256', $data['token']));
         if (! $valid) {
             throw ValidationException::withMessages(['token' => ['El enlace no es válido o venció. Pide el cambio de nuevo.']]);
@@ -142,7 +142,7 @@ class ProfileController extends Controller
 
     private function present(User $user): array
     {
-        $user->loadMissing('preferences', 'adminTwoFactor', 'adminEmailChange');
+        $user->load('preferences', 'adminTwoFactor', 'adminEmailChange');
         $pending = $user->adminEmailChange;
         $twoFactor = $user->adminTwoFactor;
 

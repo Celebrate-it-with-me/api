@@ -54,7 +54,7 @@ final class ClientInfo
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
             $groups = explode(':', (string) inet_ntop((string) inet_pton($ip)));
 
-            return implode(':', array_slice($groups, 0, 3)).':x';
+            return implode(':', array_slice($groups, 0, 3)) . ':x';
         }
 
         return null;

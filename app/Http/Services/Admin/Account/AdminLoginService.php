@@ -121,7 +121,7 @@ class AdminLoginService
         $label = ClientInfo::device($this->request->userAgent());
         $isNewDevice = $this->isNewDevice($user, $label);
 
-        $audit = $this->audit->record('auth.login', $user, ['actor' => $user, 'after' => ['method' => $method, 'device' => $label]]);
+        $this->audit->record('auth.login', $user, ['actor' => $user, 'after' => ['method' => $method, 'device' => $label]]);
 
         $token = $user->createToken($device);
         $token->accessToken->forceFill([
@@ -134,7 +134,7 @@ class AdminLoginService
             $timezone = $user->preferences?->timezone ?: config('app.timezone');
             $this->security->notify($user, $user, 'new_device', [
                 'device' => $label,
-                'when' => $audit->created_at->copy()->timezone($timezone)->format('d/m/Y H:i'),
+                'when' => now()->timezone($timezone)->format('d/m/Y H:i'),
                 'ip' => ClientInfo::maskIp($this->request->ip()) ?? '-',
             ]);
         }
@@ -160,6 +160,6 @@ class AdminLoginService
 
     private function challengeKey(string $challenge): string
     {
-        return 'admin-2fa-challenge:'.hash('sha256', $challenge);
+        return 'admin-2fa-challenge:' . hash('sha256', $challenge);
     }
 }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin\Account;
 use App\Http\Controllers\Controller;
 use App\Http\Services\Admin\Account\AccountSecurity;
 use App\Http\Services\Admin\AdminAudit;
-use App\Http\Services\Admin\Impersonation\ImpersonationService;
+use App\Models\ImpersonationSession;
 use App\Support\ClientInfo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -88,6 +88,6 @@ class SessionController extends Controller
     {
         return $request->user()->tokens()
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->where(fn ($q) => $q->whereNull('abilities')->orWhere('abilities', 'not like', '%"'.\App\Models\ImpersonationSession::ABILITY.'"%'));
+            ->where(fn ($q) => $q->whereNull('abilities')->orWhere('abilities', 'not like', '%"' . ImpersonationSession::ABILITY . '"%'));
     }
 }

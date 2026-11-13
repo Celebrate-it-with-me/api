@@ -131,7 +131,8 @@ class TwoFactorService
             return false;
         }
 
-        $step = $this->google2fa->verifyKeyNewer($record->secret, $code, $record->last_used_step, 1);
+        // 0, not null: with null the library answers `true` instead of the time step and replay protection is lost.
+        $step = $this->google2fa->verifyKeyNewer($record->secret, $code, (int) $record->last_used_step, 1);
         if ($step === false) {
             return false;
         }
@@ -149,7 +150,7 @@ class TwoFactorService
             for ($j = 0; $j < 10; $j++) {
                 $raw .= self::ALPHABET[random_int(0, strlen(self::ALPHABET) - 1)];
             }
-            $plain[] = substr($raw, 0, 5).'-'.substr($raw, 5);
+            $plain[] = substr($raw, 0, 5) . '-' . substr($raw, 5);
         }
         $record->recovery_codes = array_map(fn (string $c) => ['hash' => $this->hash($c), 'used_at' => null], $plain);
 

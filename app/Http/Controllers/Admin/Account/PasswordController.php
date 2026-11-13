@@ -26,12 +26,12 @@ class PasswordController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'currentPassword' => ['required', 'string'],
-            'newPassword' => ['required', 'string', 'min:'.self::MIN_LENGTH, 'max:128'],
+            'newPassword' => ['required', 'string', 'min:' . self::MIN_LENGTH, 'max:128'],
             'newPasswordConfirmation' => ['required', 'same:newPassword'],
         ], [
             'currentPassword.required' => 'Escribe tu contraseña actual.',
             'newPassword.required' => 'Escribe la contraseña nueva.',
-            'newPassword.min' => 'La contraseña nueva debe tener al menos '.self::MIN_LENGTH.' caracteres.',
+            'newPassword.min' => 'La contraseña nueva debe tener al menos ' . self::MIN_LENGTH . ' caracteres.',
             'newPassword.max' => 'La contraseña nueva es demasiado larga.',
             'newPasswordConfirmation.required' => 'Repite la contraseña nueva.',
             'newPasswordConfirmation.same' => 'Las contraseñas no coinciden.',
