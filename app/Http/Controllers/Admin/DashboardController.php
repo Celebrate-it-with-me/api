@@ -13,6 +13,6 @@ class DashboardController extends Controller
     {
         $data = $request->validate(['days' => ['nullable', 'integer', 'in:7,30,90'], 'internal' => ['nullable', 'boolean']]);
 
-        return response()->json(['data' => $metrics->build((int) ($data['days'] ?? 30), (bool) ($data['internal'] ?? false))]);
+        return response()->json(['data' => $metrics->build((int) ($data['days'] ?? 30), (bool) ($data['internal'] ?? false), $request->user()->can('admin.purchases.manage'))]);
     }
 }
