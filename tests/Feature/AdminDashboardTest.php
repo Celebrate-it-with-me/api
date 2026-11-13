@@ -99,3 +99,34 @@ it('lists what needs attention', function () {
 it('rejects a period it does not know', function () {
     $this->actingAs(staff())->getJson('/api/v1/admin/dashboard?days=5')->assertStatus(422);
 });
+
+it('gives a value per day for the period and the one before, zeros included', function () {
+    [$event, $owner] = customerEvent();
+    $plan = EventPlan::where('slug', 'premium')->first();
+    $base = ['event_id' => $event->id, 'user_id' => $owner->id, 'event_plan_id' => $plan->id, 'gateway' => 'manual', 'list_price_cents' => 9900, 'currency' => 'USD', 'status' => 'paid'];
+    EventPurchase::create($base + ['amount_cents' => 7900, 'paid_at' => now()->subDays(2)]);
+    EventPurchase::create($base + ['amount_cents' => 9900, 'paid_at' => now()->subDays(9)]);
+
+    $series = $this->actingAs(staff())->getJson('/api/v1/admin/dashboard?days=7')->json('data.series');
+
+    expect($series['dates'])->toHaveCount(7)->and($series['dates'][6])->toBe(now()->toDateString())
+        ->and($series['metrics']['revenueCents']['current'])->toHaveCount(7)
+        ->and($series['metrics']['revenueCents']['current'][4])->toBe(7900)      // two days ago
+        ->and(array_sum($series['metrics']['revenueCents']['current']))->toBe(7900)
+        ->and(array_sum($series['metrics']['revenueCents']['previous']))->toBe(9900)
+        ->and($series['metrics']['paid']['current'][4])->toBe(1);
+});
+
+it('splits events by type, plan and stage, and lists the next eight weeks', function () {
+    customerEvent('a@example.com', ['start_date' => now()->addDays(10)]);
+    customerEvent('b@example.com', ['start_date' => now()->addDays(10), 'published_at' => now(), 'status' => 'published', 'invitation_stage' => 'save_the_date']);
+
+    $data = $this->actingAs(staff())->getJson('/api/v1/admin/dashboard')->json('data');
+    $stage = collect($data['mix']['stage'])->pluck('count', 'key');
+
+    expect($data['mix']['type'][0])->toMatchArray(['key' => 'quinceanera', 'count' => 2])
+        ->and($stage['draft'])->toBe(1)->and($stage['save_the_date'])->toBe(1)
+        ->and($data['upcomingWeeks'])->toHaveCount(8)
+        ->and(collect($data['upcomingWeeks'])->sum('draft'))->toBe(1)
+        ->and(collect($data['upcomingWeeks'])->sum('published'))->toBe(1);
+});

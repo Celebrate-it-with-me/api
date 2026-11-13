@@ -44,7 +44,10 @@ class DashboardMetrics
                 'revenueCents' => $this->pair(fn ($a, $b) => (int) $this->purchases()->where('status', 'paid')->whereBetween('paid_at', [$a, $b])->sum('amount_cents'), $prevFrom, $from, $now),
                 'refundedCents' => $this->pair(fn ($a, $b) => (int) $this->purchases()->where('status', 'refunded')->whereBetween('refunded_at', [$a, $b])->sum('amount_cents'), $prevFrom, $from, $now),
             ],
+            'series' => $this->series($days, $now),
             'funnel' => $this->funnel($from, $now),
+            'mix' => $this->mix(),
+            'upcomingWeeks' => $this->upcomingWeeks($now),
             'usage' => $this->usage($now),
             'attention' => $this->attention($now),
         ];
@@ -57,6 +60,82 @@ class DashboardMetrics
         $previous = $count($prevFrom, $from);
 
         return ['value' => $current, 'previous' => $previous, 'change' => $current - $previous];
+    }
+
+    /**
+     * One value per day for each metric: the period (`current`) and the one before it (`previous`), same length,
+     * so the chart can lay one over the other. Days with nothing are zeros, never gaps.
+     */
+    private function series(int $days, CarbonImmutable $now): array
+    {
+        $end = $now->startOfDay();
+        $start = $end->subDays($days - 1);
+        $prevStart = $start->subDays($days);
+        $range = fn ($a, $b) => [$a->startOfDay(), $b->endOfDay()];
+
+        $byDay = fn ($query, string $column, ?string $sum = null) => $query
+            ->whereBetween($column, $range($prevStart, $end))
+            ->selectRaw("DATE($column) as d, " . ($sum ? "COALESCE(SUM($sum), 0)" : 'COUNT(*)') . ' as v')
+            ->groupBy('d')->pluck('v', 'd');
+
+        $raw = [
+            'signups' => $byDay($this->users(), 'users.created_at'),
+            'eventsCreated' => $byDay($this->events(), 'events.created_at'),
+            'published' => $byDay($this->events(), 'events.published_at'),
+            'paid' => $byDay($this->purchases()->where('status', 'paid'), 'event_purchases.paid_at'),
+            'revenueCents' => $byDay($this->purchases()->where('status', 'paid'), 'event_purchases.paid_at', 'amount_cents'),
+        ];
+
+        $out = ['dates' => [], 'metrics' => []];
+        for ($i = 0; $i < $days; $i++) {
+            $out['dates'][] = $start->addDays($i)->toDateString();
+        }
+        foreach ($raw as $key => $values) {
+            $pick = fn ($from) => collect(range(0, $days - 1))->map(fn ($i) => (int) ($values[$from->addDays($i)->toDateString()] ?? 0))->all();
+            $out['metrics'][$key] = ['current' => $pick($start), 'previous' => $pick($prevStart)];
+        }
+
+        return $out;
+    }
+
+    /** What the live events are made of: by type, plan and stage. */
+    private function mix(): array
+    {
+        $count = fn ($query, string $column) => $query->selectRaw("$column as k, COUNT(*) as v")->groupBy('k')->orderByDesc('v')->pluck('v', 'k');
+
+        $byType = DB::table('events')->join('event_types', 'event_types.id', '=', 'events.event_type_id')->whereNull('events.deleted_at')
+            ->whereIn('events.id', $this->events()->select('events.id'));
+        $byPlan = DB::table('events')->join('event_plans', 'event_plans.id', '=', 'events.event_plan_id')->whereNull('events.deleted_at')
+            ->whereIn('events.id', $this->events()->select('events.id'));
+
+        $stage = $this->events()->selectRaw("CASE WHEN status = 'archived' THEN 'archived' WHEN published_at IS NULL THEN 'draft' WHEN invitation_stage = 'save_the_date' THEN 'save_the_date' ELSE 'invitation' END as k, COUNT(*) as v")
+            ->groupBy('k')->pluck('v', 'k');
+
+        return [
+            'type' => $count($byType, 'event_types.slug')->map(fn ($v, $k) => ['key' => $k, 'count' => (int) $v])->values()->all(),
+            'plan' => $count($byPlan, 'event_plans.slug')->map(fn ($v, $k) => ['key' => $k, 'count' => (int) $v])->values()->all(),
+            'stage' => collect(['draft', 'save_the_date', 'invitation', 'archived'])->map(fn ($k) => ['key' => $k, 'count' => (int) ($stage[$k] ?? 0)])->all(),
+        ];
+    }
+
+    /** Events per week for the next eight weeks, split by published and still draft: the support workload ahead. */
+    private function upcomingWeeks(CarbonImmutable $now): array
+    {
+        $first = $now->startOfWeek();
+        $rows = $this->events()->where('status', '!=', 'archived')
+            ->whereBetween('start_date', [$first, $first->addWeeks(8)->subSecond()])
+            ->get(['start_date', 'published_at']);
+
+        return collect(range(0, 7))->map(function ($i) use ($first, $rows) {
+            $weekStart = $first->addWeeks($i);
+            $inWeek = $rows->filter(fn ($e) => $e->start_date >= $weekStart && $e->start_date < $weekStart->addWeek());
+
+            return [
+                'weekStart' => $weekStart->toDateString(),
+                'published' => $inWeek->whereNotNull('published_at')->count(),
+                'draft' => $inWeek->whereNull('published_at')->count(),
+            ];
+        })->all();
     }
 
     /** Of the accounts that registered in the period, how many got to each step. */
