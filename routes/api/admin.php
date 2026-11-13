@@ -2,7 +2,6 @@
     
     use App\Http\Controllers\AuthenticationController;
     use App\Http\Controllers\GalleryController;
-    use App\Http\Controllers\MainGuestController;
     use App\Http\Controllers\S3ObjectsController;
     use App\Http\Controllers\SMSReminderController;
     use App\Http\Controllers\TotalsController;
@@ -47,8 +46,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     // The old endpoints of the first panel: superadmin only, until they are removed.
     Route::middleware('admin.can:admin.legacy')->group(function () {
-        Route::apiResource('main-guest', MainGuestController::class);
-
         Route::get('totals', [TotalsController::class, 'getTotals']);
         Route::get('totals/details/{type}', [TotalsController::class, 'totalDetails']);
         Route::get('totals/excel/{type}', [TotalsController::class, 'exportExcel']);
