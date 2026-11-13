@@ -1,6 +1,5 @@
 <?php
     
-    use App\Http\Controllers\AppControllers\RSVPController;
     use App\Http\Controllers\AuthenticationController;
     use App\Http\Controllers\GalleryController;
     use App\Http\Controllers\MainGuestController;
@@ -64,12 +63,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         Route::get('delete-folder/{folder}', [S3ObjectsController::class, 'deleteFolder']);
 
         Route::apiResource('sms-reminders', SMSReminderController::class);
-
-        Route::prefix('rsvp')->group(function () {
-            Route::get('{accessCode}', [RSVPController::class, 'checkAccessCode'])->name('checkRsvpAccessCode');
-            Route::post('/confirm', [RSVPController::class, 'guestConfirm'])->name('guestConfirm');
-            Route::post('/reset-access-code', [RSVPController::class, 'resetCode'])->name('resetCode');
-        });
 
         Route::prefix('gallery')->group(function () {
             Route::post('/upload-images/{userName}', [GalleryController::class, 'uploadImages'])->name('upload-images');
