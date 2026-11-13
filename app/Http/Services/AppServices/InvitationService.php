@@ -147,7 +147,7 @@ class InvitationService
         ]);
     }
 
-    private function resolveLocale(?string $lang, Guest $guest, Events $event): string
+    public function resolveLocale(?string $lang, Guest $guest, Events $event): string
     {
         foreach ([$lang, $guest->locale, $event->locale] as $candidate) {
             if (in_array($candidate, self::LOCALES, true)) {
