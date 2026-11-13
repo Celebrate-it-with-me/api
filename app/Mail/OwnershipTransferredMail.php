@@ -4,6 +4,8 @@ namespace App\Mail;
 
 use App\Models\Events;
 use App\Models\User;
+use App\Support\Mail\MailLinks;
+use App\Support\Mail\MailLocale;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,19 +18,20 @@ class OwnershipTransferredMail extends Mailable
     use Queueable, SerializesModels;
 
     /** @param 'new'|'previous' $side */
-    public function __construct(public Events $event, public User $user, public string $side) {}
+    public function __construct(public Events $event, public User $user, public string $side)
+    {
+        $this->locale(MailLocale::forUser($user));
+    }
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: $this->side === 'new'
-            ? "Ahora eres la dueña de {$this->event->event_name} / You are now the owner of {$this->event->event_name}"
-            : "Cambio de titularidad de {$this->event->event_name} / Ownership change of {$this->event->event_name}");
+        return new Envelope(subject: __("mail.ownership_{$this->side}.subject", ['event' => $this->event->event_name]));
     }
 
     public function content(): Content
     {
-        return new Content(view: 'emails.ownership-transferred', with: [
-            'eventUrl' => config('app.frontend_app.url') . "/dashboard/events/{$this->event->id}",
+        return new Content(markdown: 'mail.ownership-transferred', with: [
+            'eventUrl' => MailLinks::app("dashboard/events/{$this->event->id}"),
         ]);
     }
 }

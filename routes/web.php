@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Dev\MailGalleryController;
 use App\Http\Controllers\InvitationShareController;
 use App\Http\Controllers\S3ObjectsController;
 use App\Http\Controllers\SocialAuthController;
@@ -33,3 +34,10 @@ Route::prefix('oauth')->group(function () {
 
 // Link preview of an invitation (WhatsApp, Facebook, iMessage…). The app's host sends crawlers here.
 Route::get('og/{slug}/{code}', [InvitationShareController::class, 'show'])->middleware('throttle:60,1')->name('invitation.share');
+
+// Development gallery of every transactional mail. The controller answers 404 unless APP_ENV=local.
+Route::prefix('dev/mail')->controller(MailGalleryController::class)->group(function () {
+    Route::get('/', 'index')->name('dev.mail.index');
+    Route::get('{key}', 'show')->name('dev.mail.show');
+    Route::get('{key}/frame', 'frame')->name('dev.mail.frame');
+});

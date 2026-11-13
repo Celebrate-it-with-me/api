@@ -3,8 +3,9 @@
 namespace App\Mail;
 
 use App\Models\User;
+use App\Support\Mail\MailLinks;
+use App\Support\Mail\MailLocale;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,44 +14,22 @@ use Illuminate\Queue\SerializesModels;
 class WelcomeEmail extends Mailable
 {
     use Queueable, SerializesModels;
-    
+
     public User $user;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(User $user)
     {
         $this->user = $user;
+        $this->locale(MailLocale::forUser($user));
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Welcome to Celebrate it with me!',
-        );
+        return new Envelope(subject: __('mail.welcome.subject', ['name' => MailLocale::firstName($this->user->name)]));
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
-        return new Content(
-            view: 'emails.welcome',
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
+        return new Content(markdown: 'mail.welcome', with: ['dashboardUrl' => MailLinks::app('dashboard')]);
     }
 }

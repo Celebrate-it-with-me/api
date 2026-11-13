@@ -116,7 +116,7 @@ return [
     */
 
     'markdown' => [
-        'theme' => 'default',
+        'theme' => 'quinvite',
 
         'paths' => [
             resource_path('views/vendor/mail'),
