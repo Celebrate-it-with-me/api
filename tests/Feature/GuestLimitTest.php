@@ -55,7 +55,7 @@ describe('the plan limit', function () {
         [$lux] = limitedEvent('lux');
 
         expect(app(GuestLimit::class)->limitFor($free))->toBe(30)
-            ->and(app(GuestLimit::class)->limitFor($premium))->toBe(200)
+            ->and(app(GuestLimit::class)->limitFor($premium))->toBe(300)
             ->and(app(GuestLimit::class)->limitFor($lux))->toBeNull();
     });
 
@@ -105,9 +105,9 @@ describe('publishing', function () {
         $this->actingAs($luxOwner)->postJson("/api/v1/app/event/{$lux->id}/publish")->assertOk();
 
         [$premium, $premiumOwner] = limitedEvent('premium');
-        loadPeople($premium, 201);
+        loadPeople($premium, 301);
         $this->actingAs($premiumOwner)->postJson("/api/v1/app/event/{$premium->id}/publish")
-            ->assertStatus(402)->assertJson(['limit' => 200, 'total' => 201]);
+            ->assertStatus(402)->assertJson(['limit' => 300, 'total' => 301]);
     });
 });
 

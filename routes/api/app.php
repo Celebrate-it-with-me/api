@@ -73,6 +73,8 @@ Route::prefix('template')->name('template.')->group(function () {
 });
 
 // Authentication Routes
+Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseController::class, 'webhook'])->middleware('throttle:120,1')->name('payments.webhook');
+
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
     Route::post('login', [AuthenticationController::class, 'appLogin']);
@@ -168,6 +170,11 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
 
             Route::get('', [EventsController::class, 'show'])->name('show');
             Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
+            Route::prefix('purchase')->name('purchase.')->middleware('event.access:delete_event')->group(function () {
+                Route::get('quote', [\App\Http\Controllers\Payments\PurchaseController::class, 'quote'])->name('quote');
+                Route::post('checkout', [\App\Http\Controllers\Payments\PurchaseController::class, 'checkout'])->name('checkout');
+                Route::get('status', [\App\Http\Controllers\Payments\PurchaseController::class, 'status'])->name('status');
+            });
             Route::post('publish', [EventLifecycleController::class, 'publish'])->name('publish');
             Route::post('unpublish', [EventLifecycleController::class, 'unpublish'])->name('unpublish');
             Route::post('archive', [EventLifecycleController::class, 'archive'])->name('archive');

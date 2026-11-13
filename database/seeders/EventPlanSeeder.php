@@ -13,7 +13,7 @@ class EventPlanSeeder extends Seeder
             [
                 'slug' => 'basic',
                 'name' => 'Basic',
-                'description' => 'Up to 100 guests. Core features only.',
+                'description' => 'Free: up to 30 guests, core features.',
                 'max_guests' => 30,
                 'has_gallery' => false,
                 'has_music' => false,
@@ -28,8 +28,10 @@ class EventPlanSeeder extends Seeder
             [
                 'slug' => 'premium',
                 'name' => 'Premium',
-                'description' => 'Up to 200 guests. Includes gallery and music.',
-                'max_guests' => 200,
+                'description' => 'Full event: up to 300 guests, every module. One-time payment.',
+                'max_guests' => 300,
+                'price_cents' => 9900,
+                'currency' => 'USD',
                 'has_gallery' => true,
                 'has_music' => true,
                 'has_custom_design' => true,
@@ -58,10 +60,10 @@ class EventPlanSeeder extends Seeder
         ];
         
         foreach ($rows as $row) {
-            EventPlan::query()->updateOrCreate(
-                ['slug' => $row['slug']],
-                $row
-            );
+            // The price is edited by the admin: seeding again never overwrites it.
+            $plan = EventPlan::query()->firstOrNew(['slug' => $row['slug']]);
+            $price = $plan->exists ? [] : array_intersect_key($row, array_flip(['price_cents', 'currency']));
+            $plan->fill(array_diff_key($row, array_flip(['price_cents', 'currency'])) + $price)->save();
         }
     }
 }
