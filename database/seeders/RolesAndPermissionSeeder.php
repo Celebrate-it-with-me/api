@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\AdminPermissions;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -11,7 +12,7 @@ use Spatie\Permission\PermissionRegistrar;
  * Reference data: roles and permissions. Idempotent (safe to run many times).
  *
  * There are two kinds of roles in the same table:
- *  - Global roles: `admin` (admin panel) and `appUser`.
+ *  - Global roles: `superadmin` and `support` (admin panel, see App\Support\AdminPermissions) and `appUser`.
  *  - Event roles: `owner`, `editor`, `viewer`. They are attached to a user for a
  *    given event through the `event_user_roles` table, and the permissions of the
  *    role are what the frontend receives as `userPermissions` for that event
@@ -61,12 +62,13 @@ class RolesAndPermissionSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        foreach ([...self::GLOBAL_PERMISSIONS, ...self::EVENT_PERMISSIONS] as $name) {
+        foreach ([...self::GLOBAL_PERMISSIONS, ...self::EVENT_PERMISSIONS, ...AdminPermissions::all()] as $name) {
             Permission::findOrCreate($name, 'web');
         }
 
         // Global roles
-        Role::findOrCreate('admin', 'web')->syncPermissions(['manage']);
+        Role::findOrCreate(AdminPermissions::SUPERADMIN, 'web')->syncPermissions(['manage', ...AdminPermissions::for(AdminPermissions::SUPERADMIN)]);
+        Role::findOrCreate(AdminPermissions::SUPPORT, 'web')->syncPermissions(AdminPermissions::for(AdminPermissions::SUPPORT));
         Role::findOrCreate('appUser', 'web')->syncPermissions(['app']);
 
         // Event roles

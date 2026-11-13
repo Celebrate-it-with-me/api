@@ -4,6 +4,8 @@ namespace App\Http;
 
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RefreshTokenExpirationIfActive;
@@ -15,6 +17,7 @@ use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Auth\Middleware\RequirePassword;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
@@ -23,6 +26,7 @@ use Illuminate\Foundation\Http\Middleware\ValidatePostSize;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Middleware\SetCacheHeaders;
 use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Router;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
@@ -31,6 +35,18 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 class Kernel extends HttpKernel
 {
+    public function __construct(Application $app, Router $router)
+    {
+        parent::__construct($app, $router);
+
+        // The staff checks run before route-model binding: someone without access gets 403, not a 404 that
+        // says whether the record exists.
+        $this->addToMiddlewarePriorityBefore(SubstituteBindings::class, [
+            EnsureAdmin::class,
+            EnsureAdminPermission::class,
+        ]);
+    }
+
     protected $middleware = [
         TrustProxies::class,
         HandleCors::class,
@@ -75,6 +91,7 @@ class Kernel extends HttpKernel
         'verified' => EnsureEmailIsVerified::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
+        'admin.can' => \App\Http\Middleware\EnsureAdminPermission::class,
         'event.access' => \App\Http\Middleware\EnsureEventAccess::class,
         'event.guest' => \App\Http\Middleware\EnsureGuestEventAccess::class,
     ];

@@ -3,11 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Support\AdminPermissions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Creates the admin-panel user (role `admin`).
+ * Creates the admin-panel user (role `superadmin`).
  *
  * Credentials come from DEFAULT_ADMIN_EMAIL / DEFAULT_ADMIN_PASSWORD
  * (config `app.admin_user`). Outside production, if they are not set, a local
@@ -53,8 +54,8 @@ class AdminUserSeeder extends Seeder
             $admin->forceFill(['password' => Hash::make($password)])->save();
         }
 
-        if (! $admin->hasRole('admin')) {
-            $admin->assignRole('admin');
+        if (! $admin->hasRole(AdminPermissions::SUPERADMIN)) {
+            $admin->assignRole(AdminPermissions::SUPERADMIN);
         }
 
         $this->command?->info("Admin user ready: {$email}");

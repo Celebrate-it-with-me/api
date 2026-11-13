@@ -213,7 +213,7 @@ describe('routes outside an event', function () {
 describe('admin panel', function () {
     it('lets an administrator in', function () {
         $admin = User::factory()->create();
-        $admin->assignRole('admin');
+        $admin->assignRole('superadmin');
 
         $this->actingAs($admin)->getJson('/api/v1/admin/users')->assertOk();
         $this->actingAs($admin)->getJson('/api/v1/admin/userInfo')->assertOk();
@@ -221,7 +221,7 @@ describe('admin panel', function () {
 
     it('gives an admin token to administrators only', function () {
         $admin = User::factory()->create(['password' => bcrypt('s3cret-pass')]);
-        $admin->assignRole('admin');
+        $admin->assignRole('superadmin');
         $regular = User::factory()->create(['password' => bcrypt('s3cret-pass')]);
         $login = fn (User $u) => $this->postJson('/api/v1/admin/login', ['email' => $u->email, 'password' => 's3cret-pass', 'device' => 'test']);
 

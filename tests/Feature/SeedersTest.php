@@ -42,7 +42,7 @@ describe('reference data', function () {
     it('creates the global and event roles', function () {
         $this->seed(RolesAndPermissionSeeder::class);
 
-        expect(Role::pluck('name')->all())->toContain('admin', 'appUser', 'owner', 'editor', 'viewer');
+        expect(Role::pluck('name')->all())->toContain('superadmin', 'support', 'appUser', 'owner', 'editor', 'viewer')->not->toContain('admin');
     });
 
     it('gives each event role the expected permissions', function () {
@@ -60,16 +60,17 @@ describe('reference data', function () {
             // Event roles must never grant the admin-panel permission.
             ->and($owner->all())->not->toContain('manage')
             ->and($editor->all())->not->toContain('manage')
-            ->and($viewer->all())->not->toContain('manage');
+            ->and($viewer->all())->not->toContain('manage')
+            ->and(collect([...$owner, ...$editor, ...$viewer])->filter(fn ($p) => str_starts_with($p, 'admin.')))->toBeEmpty();
     });
 
-    it('creates the admin user with the admin role', function () {
+    it('creates the admin user with the superadmin role', function () {
         config(['app.admin_user.email' => 'root@example.test', 'app.admin_user.password' => 'secret-pass']);
 
         $this->seed(RolesAndPermissionSeeder::class);
         $this->seed(AdminUserSeeder::class);
 
-        expect(User::where('email', 'root@example.test')->first()->hasRole('admin'))->toBeTrue();
+        expect(User::where('email', 'root@example.test')->first()->hasRole('superadmin'))->toBeTrue();
     });
 });
 
@@ -85,7 +86,7 @@ describe('admin user', function () {
         $admin->refresh();
         expect(Hash::check('a-strong-pass', $admin->password))->toBeTrue()
             ->and(Hash::check('password', $admin->password))->toBeFalse()
-            ->and($admin->hasRole('admin'))->toBeTrue();
+            ->and($admin->hasRole('superadmin'))->toBeTrue();
     });
 
     it('never overwrites a password that was changed on purpose', function () {

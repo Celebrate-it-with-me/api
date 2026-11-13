@@ -8,6 +8,7 @@ use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\User;
+use App\Support\AdminPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -242,7 +243,7 @@ class DashboardMetrics
     {
         $staff = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-            ->where('roles.name', 'admin')->pluck('model_has_roles.model_id');
+            ->whereIn('roles.name', AdminPermissions::STAFF_ROLES)->pluck('model_has_roles.model_id');
 
         return User::query()->where('email', 'like', '%@cwm.test')->pluck('id')->merge($staff)->unique()->values()->all();
     }
