@@ -64,7 +64,7 @@ class EventDirectory
         ];
     }
 
-    public function summary(Events $event): array
+    public function summary(Events $event, bool $withPayments = false): array
     {
         $event->load(['eventType:id,name,slug', 'eventPlan']);
 
@@ -124,12 +124,12 @@ class EventDirectory
                 'slug' => $event->eventPlan->slug,
                 'name' => $event->eventPlan->name,
                 'guestLimit' => $event->eventPlan->max_guests,
-                'priceCents' => $event->eventPlan->price_cents,
+                'priceCents' => $withPayments ? $event->eventPlan->price_cents : null,
             ] : null,
-            'payment' => [
+            'payment' => $withPayments ? [
                 'lastPurchase' => $purchases->first(),
                 'purchases' => $purchases,
-            ],
+            ] : null,
             'publicLink' => [
                 'isLive' => $event->status === 'published' && $slug !== null,
                 // The real invitation route is /i/{slug}/{guestCode}: one link per main guest. Guest codes are not exposed here.

@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Events\EventIndexRequest;
 use App\Http\Services\Admin\Events\EventDirectory;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class EventController extends Controller
 {
@@ -17,8 +18,9 @@ class EventController extends Controller
         return response()->json($this->directory->list($request->validated()));
     }
 
-    public function show(Events $event): JsonResponse
+    public function show(Request $request, Events $event): JsonResponse
     {
-        return response()->json(['data' => $this->directory->summary($event)]);
+        // Support does not see payments or amounts (owner's decision): only who may manage purchases gets them.
+        return response()->json(['data' => $this->directory->summary($event, $request->user()->can('admin.purchases.manage'))]);
     }
 }
