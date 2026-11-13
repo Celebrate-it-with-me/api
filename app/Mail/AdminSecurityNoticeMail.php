@@ -52,7 +52,7 @@ class AdminSecurityNoticeMail extends Mailable
                 'name' => $this->user->name,
                 'preheader' => __("{$key}.preheader"),
                 'intro' => __("{$key}.intro", $replace),
-                'accountUrl' => MailLinks::admin('account'),
+                'accountUrl' => MailLinks::admin('dashboard/account'),
                 'supportEmail' => config('services.support.email'),
             ],
         );

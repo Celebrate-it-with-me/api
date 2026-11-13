@@ -72,7 +72,7 @@ class MailRegistry
                 fn (string $lang) => new ImpersonationEndedMail(self::session(), self::user($lang)),
                 'Al terminar una sesión de ayuda del equipo en su cuenta.'),
             new MailDefinition('admin-email-confirm', 'Panel: confirmar correo nuevo', AdminEmailConfirmMail::class, $both, ['mail'],
-                fn (string $lang) => new AdminEmailConfirmMail(self::user($lang), MailLinks::admin('account/confirm-email?token=sample-token'), 60),
+                fn (string $lang) => new AdminEmailConfirmMail(self::user($lang), MailLinks::admin('dashboard/account/confirm-email?token=sample-token'), 60),
                 'Al pedir el cambio de correo de acceso en Mi cuenta del admin; llega a la dirección nueva.'),
             new MailDefinition('admin-security-password-changed', 'Panel: contraseña cambiada', AdminSecurityNoticeMail::class, $both, ['mail'],
                 fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'password_changed', []),

@@ -94,7 +94,7 @@ class ProfileController extends Controller
         ]);
 
         $this->security->mailSafely(fn () => Mail::to($email)->send(
-            new AdminEmailConfirmMail($user, MailLinks::admin('account/confirm-email?token=' . $token), $minutes)
+            new AdminEmailConfirmMail($user, MailLinks::admin('dashboard/account/confirm-email?token=' . $token), $minutes)
         ), $user);
         $this->audit->record('account.email_change_requested', $user, ['after' => ['newEmail' => $email]]);
 
