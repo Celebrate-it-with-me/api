@@ -352,10 +352,10 @@ describe('guest voting on suggested music', function () {
         [$event] = accessEvent('premium', 'published');
         [$other] = accessEvent('premium', 'published');
         Guest::factory()->create(['event_id' => $event->id, 'code' => 'VAL001']);
-        $song = SuggestedMusic::create(['event_id' => $other->id, 'title' => 'Song', 'artist' => 'Band', 'album' => 'LP', 'platform' => 'spotify', 'platformId' => 'x1']);
+        $song = SuggestedMusic::create(['event_id' => $other->id, 'title' => 'Song', 'artist' => 'Band', 'album' => 'LP', 'platform' => 'spotify', 'platformId' => 'x1', 'thumbnailUrl' => 'u', 'previewUrl' => 'u', 'suggested_by_entity' => 'guest', 'suggested_by_id' => 1]);
 
         $this->getJson("/api/v1/app/template/event/{$event->id}/suggest-music/{$song->id}/vote?accessCode=VAL001")->assertNotFound();
-        $this->postJson("/api/v1/app/template/event/{$event->id}/suggest-music/{$song->id}/vote", ['accessCode' => 'VAL001'])->assertNotFound();
+        $this->postJson("/api/v1/app/template/event/{$event->id}/suggest-music/{$song->id}/vote", ['accessCode' => 'VAL001', 'direction' => 'up'])->assertNotFound();
     });
 });
 
