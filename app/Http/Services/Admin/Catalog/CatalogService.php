@@ -4,6 +4,7 @@ namespace App\Http\Services\Admin\Catalog;
 
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\AppServices\EventModules;
+use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\EventModuleOverride;
 use App\Models\EventPlan;
@@ -47,14 +48,7 @@ class CatalogService
 
         return [
             'modules' => $modules,
-            'plans' => $plans->map(fn (EventPlan $p) => [
-                'slug' => $p->slug,
-                'name' => $p->name,
-                'maxGuests' => $p->max_guests,
-                'priceCents' => $p->price_cents,
-                'isFullPlan' => $p->slug === PurchaseService::FULL_SLUG,
-                'eventsCount' => $eventsByPlan[$p->slug] ?? 0,
-            ])->values(),
+            'plans' => $plans->map(fn (EventPlan $p) => $this->planRow($p, $eventsByPlan[$p->slug] ?? 0))->values(),
         ];
     }
 
@@ -164,6 +158,101 @@ class CatalogService
             'overridesCreated' => $created,
             'eventsLocked' => $keepForExisting ? 0 : $affected,
         ];
+    }
+
+    /** Events of the plan whose guest list is above `$limit` (0 = unlimited, so none). Nobody is blocked: it is information. */
+    public function eventsOverLimit(EventPlan $plan, int $limit): int
+    {
+        if ($limit <= 0) {
+            return 0;
+        }
+
+        return Events::query()->where('events.event_plan_id', $plan->id)
+            ->whereRaw('(select count(*) from guests where guests.event_id = events.id and guests.deleted_at is null) > ?', [$limit])
+            ->count();
+    }
+
+    /** @return array{slug: string, maxGuests: int, eventsNowOver: int, eventsOverNewLimit: int} */
+    public function planImpact(string $slug, int $maxGuests): array
+    {
+        $plan = EventPlan::query()->where('slug', $slug)->firstOrFail();
+
+        return [
+            'slug' => $plan->slug,
+            'maxGuests' => $maxGuests,
+            'eventsNowOver' => $this->eventsOverLimit($plan, (int) $plan->max_guests),
+            'eventsOverNewLimit' => $this->eventsOverLimit($plan, $maxGuests),
+        ];
+    }
+
+    /**
+     * Edits name, description and guest limit of a plan. The limits of the sold plans stay coherent: the full plan
+     * is never below 1 (unless unlimited) and the free plan never exceeds it.
+     *
+     * @param  array{name?: string, description?: ?string, maxGuests?: int}  $changes
+     */
+    public function updatePlan(string $slug, array $changes, string $reason): array
+    {
+        $plan = EventPlan::query()->where('slug', $slug)->firstOrFail();
+        $before = ['name' => $plan->name, 'description' => $plan->description, 'maxGuests' => (int) $plan->max_guests];
+
+        $after = $before;
+        foreach (['name', 'description', 'maxGuests'] as $field) {
+            if (array_key_exists($field, $changes)) {
+                $after[$field] = $changes[$field];
+            }
+        }
+
+        $this->assertCoherentLimits($plan, (int) $after['maxGuests']);
+
+        $plan->update(['name' => $after['name'], 'description' => $after['description'], 'max_guests' => (int) $after['maxGuests']]);
+        app(EventCacheService::class)->clearPlans();
+
+        $over = $this->eventsOverLimit($plan, (int) $after['maxGuests']);
+
+        $this->audit->record('catalog.plan_updated', $plan, [
+            'reason' => $reason,
+            'before' => $before,
+            'after' => $after + ['eventsOverNewLimit' => $over],
+        ]);
+
+        $row = $this->planRow($plan->fresh(), Events::query()->where('event_plan_id', $plan->id)->count());
+        $row['eventsOverNewLimit'] = $over;
+
+        return $row;
+    }
+
+    private function planRow(EventPlan $p, int $events): array
+    {
+        return [
+            'slug' => $p->slug,
+            'name' => $p->name,
+            'maxGuests' => $p->max_guests,
+            'priceCents' => $p->price_cents,
+            'isFullPlan' => $p->slug === PurchaseService::FULL_SLUG,
+            'eventsCount' => $events,
+        ];
+    }
+
+    private function assertCoherentLimits(EventPlan $plan, int $newLimit): void
+    {
+        $full = $plan->slug === PurchaseService::FULL_SLUG ? $newLimit : (int) EventPlan::query()->where('slug', PurchaseService::FULL_SLUG)->value('max_guests');
+        $free = $plan->slug === PurchaseService::FREE_SLUG ? $newLimit : (int) EventPlan::query()->where('slug', PurchaseService::FREE_SLUG)->value('max_guests');
+
+        $problem = null;
+        if ($plan->slug === PurchaseService::FULL_SLUG && $full !== 0 && $full < 1) {
+            $problem = 'El plan completo no puede tener un límite menor a 1.';
+        } elseif (in_array($plan->slug, [PurchaseService::FREE_SLUG, PurchaseService::FULL_SLUG], true) && $full !== 0 && ($free === 0 || $free > $full)) {
+            $problem = 'El plan gratuito no puede superar al plan completo.';
+        }
+
+        if ($problem) {
+            throw new HttpResponseException(response()->json([
+                'message' => $problem,
+                'code' => 'incoherent_plan_limits',
+                'errors' => ['maxGuests' => [$problem]],
+            ], 422));
+        }
     }
 
     public function toggle(string $key, bool $enabled, string $reason): array

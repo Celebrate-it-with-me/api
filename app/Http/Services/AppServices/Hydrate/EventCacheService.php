@@ -68,6 +68,12 @@ class EventCacheService
         Cache::forget(self::EVENT_PLANS_KEY);
     }
 
+    /** Clear only the cached plans (after the admin edits a plan). */
+    public function clearPlans(): void
+    {
+        Cache::forget(self::EVENT_PLANS_KEY);
+    }
+
     /**
      * Warm up the cache by preloading data.
      *

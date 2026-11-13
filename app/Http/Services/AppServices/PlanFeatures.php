@@ -13,8 +13,12 @@ class PlanFeatures
 {
     public function isPremium(Events $event): bool
     {
-        $entry = EventPlan::query()->orderBy('id')->value('id');
+        return $event->event_plan_id !== null && (int) $event->event_plan_id !== $this->entryPlanId();
+    }
 
-        return $event->event_plan_id !== null && (int) $event->event_plan_id !== (int) $entry;
+    /** The entry plan every new event starts on (the lowest id; `basic` in the seeders). The single definition of it. */
+    public function entryPlanId(): int
+    {
+        return (int) EventPlan::query()->orderBy('id')->value('id');
     }
 }
