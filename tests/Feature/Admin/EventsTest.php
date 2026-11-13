@@ -139,7 +139,7 @@ describe('list', function () {
         $page2 = $this->actingAs($staff)->getJson('/api/v1/admin/events?perPage=2&page=2')->assertOk();
         $byDate = $this->actingAs($staff)->getJson('/api/v1/admin/events?sort=startDate')->assertOk();
 
-        expect($page1->json('meta'))->toBe(['page' => 1, 'perPage' => 2, 'total' => 3, 'lastPage' => 2])
+        expect($page1->json('meta'))->toBe(['page' => 1, 'perPage' => 2, 'total' => 3, 'lastPage' => 2, 'hiddenInternal' => 0])
             ->and(collect($page1->json('data'))->pluck('id')->all())->toBe([$e3->id, $e2->id])
             ->and(collect($page2->json('data'))->pluck('id')->all())->toBe([$e1->id])
             ->and(collect($byDate->json('data'))->pluck('id')->all())->toBe([$e2->id, $e3->id, $e1->id]);
