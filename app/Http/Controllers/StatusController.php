@@ -2,11 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\MainGuest\CreateMainGuestRequest;
-use App\Http\Resources\MainGuestResource;
 use App\Http\Resources\UserResource;
-use App\Http\Services\MainGuestServices;
-use App\Models\MainGuest;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\JsonResponse;

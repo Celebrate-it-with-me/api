@@ -12,25 +12,10 @@ use App\Support\AdminPermissions;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class UserController extends Controller
 {
     public function __construct(private UsersServices $userService, private AdminAudit $audit){}
-
-    /**
-     * User index.
-     * @param Request $request
-     * @return JsonResponse|AnonymousResourceCollection
-     */
-    public function index(Request $request): JsonResponse|AnonymousResourceCollection
-    {
-        try {
-            return $this->userService->getUsersWithPagination();
-        } catch(Exception $e) {
-            return response()->json(['message' => 'Unable to get the user list'], 409);
-        }
-    }
 
     /**
      * Create a new user.
@@ -43,20 +28,6 @@ class UserController extends Controller
             $user = $this->userService->create();
             $this->audit->record('user.create', $user, ['after' => $user->only(['name', 'email'])]);
 
-            return UserResource::make($user);
-        } catch(Exception $e) {
-            return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
-        }
-    }
-
-    /**
-     * Get user.
-     * @param User $user
-     * @return UserResource|JsonResponse
-     */
-    public function show(User $user): UserResource|JsonResponse
-    {
-        try {
             return UserResource::make($user);
         } catch(Exception $e) {
             return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
