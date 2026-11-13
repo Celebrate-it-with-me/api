@@ -26,7 +26,7 @@ class MenuItemController extends Controller
         $item = $menu->menuItems()->create([
             'name' => $data['name'],
             'type' => $data['itemType'],
-            'diet_type' => $data['dietType'],
+            'diet_type' => $data['dietType'] ?? null,
             'image_path' => $data['imagePath'] ?? null,
             'notes' => $data['notes'] ?? '',
         ]);
@@ -59,7 +59,7 @@ class MenuItemController extends Controller
         
         $menuItem->update([
             'name' => $data['name'],
-            'diet_type' => $data['dietType'],
+            'diet_type' => $data['dietType'] ?? null,
             'image_path' => $data['imagePath'],
             'notes' => $data['notes'],
         ]);

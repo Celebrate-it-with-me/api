@@ -11,7 +11,6 @@ use App\Models\Menu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 
 class MenuController extends Controller
 {
@@ -23,21 +22,10 @@ class MenuController extends Controller
      */
     public function index(Request $request, Events $event): JsonResponse
     {
-        try {
-            $menus = $event->menus()->with('menuItems')->get();
-            if (!$menus)  {
-                return response()->json(['message' => 'There is no menus for this event.'], 404);
-            }
-            Log::info('MenuController@index', [
-                'event_id' => $event->id,
-                'menus' => $menus,
-            ]);
-            return response()->json($menus);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
-        }
+        // No menus yet is a normal answer: an empty list.
+        return response()->json($event->menus()->with('menuItems')->get());
     }
-    
+
     /**
      *
      * @param Request $request
@@ -52,13 +40,12 @@ class MenuController extends Controller
                 ->where('event_id', $event->id)
                 ->paginate($request->get('per_page', 10));
             
-            if (!$guests->count()) {
-                return response()->json(['message' => 'There is no guests for this event.'], 404);
-            }
-            
+            // No guests yet is a normal answer: an empty page.
             return GuestMenuConfirmationResource::collection($guests);
-        } catch (\Throwable $e)    {
-            return response()->json(['message' => $e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['message' => 'The guest menu selections could not be loaded.'], 500);
         }
     }
     
@@ -84,6 +71,8 @@ class MenuController extends Controller
      */
     public function store(Request $request, Events $event): JsonResponse
     {
+        $this->acceptBothSpellings($request);
+
         $data = $request->validate([
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
@@ -92,17 +81,17 @@ class MenuController extends Controller
             'isDefault' => 'boolean',
         ]);
         
-        if ($data['isDefault']) {
+        if ($data['isDefault'] ?? false) {
             $event->menus()->update([
                 'is_default' => false,
             ]);
         }
         
         $menu = $event->menus()->create([
-            'title' => $data['title'],
-            'description' => $data['description'],
+            'title' => $data['title'] ?? null,
+            'description' => $data['description'] ?? null,
             'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
-            'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
+            'allow_custom_request' => $data['allowCustomRequests'] ?? false,
             'is_default' => $data['isDefault'] ?? $this->getIsDefaultMenu($event),
         ]);
         
@@ -115,7 +104,7 @@ class MenuController extends Controller
                 'title' => $menu->title,
                 'description' => $menu->description,
                 'allow_multiple_choices' => $menu->allow_multiple_choices,
-                'allow_custom_requests' => $menu->allow_custom_requests,
+                'allow_custom_request' => $menu->allow_custom_request,
                 'is_default' => $menu->is_default,
             ]
         );
@@ -138,49 +127,48 @@ class MenuController extends Controller
         return false;
     }
     
-    /**
-     * Update the menu for the given event.
-     *
-     * @param Request $request
-     * @param Events $event
-     * @return JsonResponse
-     */
     public function update(Request $request, Events $event, Menu $menu): JsonResponse
     {
-        try {
-            $data = $request->validate([
-                'title' => 'nullable|string|max:255',
-                'description' => 'nullable|string',
-                'allowMultipleChoices' => 'boolean',
-                'allowCustomRequests' => 'boolean',
-            ]);
-            
-            $menu->update([
-                'title' => $data['title'],
-                'description' => $data['description'],
-                'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
-                'allow_custom_requests' => $data['allowCustomRequests'] ?? false,
-            ]);
-            
-            EventActivityLogger::log(
-                $event->id,
-                'menu_updated',
-                auth()->user(),
-                $menu,
-                [
-                    'title' => $menu->title,
-                    'description' => $menu->description,
-                    'allow_multiple_choices' => $menu->allow_multiple_choices,
-                    'allow_custom_requests' => $menu->allow_custom_requests,
-                ]
-            );
-            
-            return response()->json($menu);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+        $this->acceptBothSpellings($request);
+
+        $data = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'allowMultipleChoices' => 'boolean',
+            'allowCustomRequests' => 'boolean',
+            'isDefault' => 'boolean',
+        ]);
+
+        // Only one menu is the main one: making this one main takes it from the others.
+        if ($data['isDefault'] ?? false) {
+            $event->menus()->where('id', '!=', $menu->id)->update(['is_default' => false]);
         }
+
+        $menu->update([
+            'title' => $data['title'] ?? null,
+            'description' => $data['description'] ?? null,
+            'allow_multiple_choices' => $data['allowMultipleChoices'] ?? false,
+            'allow_custom_request' => $data['allowCustomRequests'] ?? false,
+            'is_default' => $data['isDefault'] ?? $menu->is_default,
+        ]);
+
+        EventActivityLogger::log(
+            $event->id,
+            'menu_updated',
+            auth()->user(),
+            $menu,
+            [
+                'title' => $menu->title,
+                'description' => $menu->description,
+                'allow_multiple_choices' => $menu->allow_multiple_choices,
+                'allow_custom_request' => $menu->allow_custom_request,
+                'is_default' => $menu->is_default,
+            ]
+        );
+
+        return response()->json($menu);
     }
-    
+
     /**
      * Delete the menu for the given event.
      *
@@ -201,13 +189,23 @@ class MenuController extends Controller
                     'title' => $menu->title,
                     'description' => $menu->description,
                     'allow_multiple_choices' => $menu->allow_multiple_choices,
-                    'allow_custom_requests' => $menu->allow_custom_requests,
+                    'allow_custom_request' => $menu->allow_custom_request,
                 ]
             );
             
             return response()->json(['message' => 'Menu deleted successfully']);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Menu not found'], 404);
+            report($e);
+
+            return response()->json(['message' => 'The menu could not be deleted.'], 500);
+        }
+    }
+
+    /** The app has sent both spellings of this switch over time; the column is `allow_custom_request`. */
+    private function acceptBothSpellings(Request $request): void
+    {
+        if (! $request->has('allowCustomRequests') && $request->has('allowCustomRequest')) {
+            $request->merge(['allowCustomRequests' => $request->input('allowCustomRequest')]);
         }
     }
 }
