@@ -42,15 +42,19 @@ class MyPurchasesController extends Controller
         ])->values()]);
     }
 
-    public function invoicePdf(Invoice $invoice): Response
+    // The ids are looked up by hand (no implicit model binding): bindings run before the impersonation guard, and a
+    // support session has to be refused with 403 before anything about the document is revealed.
+    public function invoicePdf(int $invoice): Response
     {
+        $invoice = Invoice::query()->findOrFail($invoice);
         Gate::authorize('view', $invoice);
 
         return $this->download($invoice);
     }
 
-    public function creditNotePdf(CreditNote $creditNote): Response
+    public function creditNotePdf(int $creditNote): Response
     {
+        $creditNote = CreditNote::query()->with('invoice')->findOrFail($creditNote);
         Gate::authorize('viewCreditNote', [$creditNote->invoice]);
 
         return $this->download($creditNote);

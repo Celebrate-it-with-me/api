@@ -24,6 +24,10 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/rsvp/guests/download',
         'GET api/v1/app/event/{event}/suggest-music/export',
         'GET api/v1/app/exports/download',
+        // Billing documents of the owner: support sees them from the admin, not by impersonating.
+        'GET api/v1/app/account/purchases',
+        'GET api/v1/app/account/invoices/{invoice}/pdf',
+        'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
         'GET api/v1/app/user/2fa/recovery-codes',
         'GET api/v1/app/user/2fa/setup',
         'GET api/v1/app/user/2fa/status',
