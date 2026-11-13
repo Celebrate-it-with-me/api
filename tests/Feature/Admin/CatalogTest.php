@@ -161,6 +161,28 @@ describe('impact', function () {
         expect($e)->not->toBeNull();
     });
 
+    it('accepts an empty or absent planSlugs as "no plan at all" and counts what each current plan would lose', function () {
+        $key = catPremiumOnlyModule();
+        catEvent('premium');
+        $kept = catEvent('premium');
+        EventModuleOverride::create(['event_id' => $kept->id, 'module_key' => $key, 'state' => 'active', 'reason' => 'Regalo', 'created_by' => null]);
+        $current = Module::where('key', $key)->first()->plans()->pluck('slug')->sort()->values()->all();
+        $admin = catStaff('support');
+
+        foreach (["/api/v1/admin/catalog/impact?module={$key}", "/api/v1/admin/catalog/impact?module={$key}&planSlugs="] as $url) {
+            $data = $this->actingAs($admin)->getJson($url)->assertOk()->json('data');
+
+            expect($data['planSlugs'])->toBe([])
+                ->and($data['currentPlanSlugs'])->toBe($current)
+                ->and(collect($data['plans'])->pluck('change')->unique()->all())->toBe(['removed'])
+                ->and(collect($data['plans'])->pluck('slug')->sort()->values()->all())->toBe($current)
+                ->and(collect($data['plans'])->firstWhere('slug', 'premium')['toLocked'])->toBe(1)
+                ->and(collect($data['plans'])->firstWhere('slug', 'premium')['withOverride'])->toBe(1)
+                ->and($data['totalToLocked'])->toBe(1)
+                ->and($data['totalToActive'])->toBe(0);
+        }
+    });
+
     it('validates the module and the plans', function () {
         $admin = catStaff('support');
         $this->actingAs($admin)->getJson('/api/v1/admin/catalog/impact?module=nope&planSlugs[]=basic')->assertUnprocessable();
