@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Admin;
 
+use App\Http\Services\AppServices\PlanFeatures;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
@@ -208,8 +209,8 @@ class DashboardMetrics
         $push('stuck_purchases', $this->purchases()->whereIn('status', ['pending', 'failed'])->where('event_purchases.created_at', '<', $now->subHour())->with('event:id,event_name'),
             fn ($p) => ['eventId' => $p->event_id, 'label' => $p->event?->event_name, 'status' => $p->status]);
 
-        $freeId = EventPlan::query()->where('slug', 'basic')->value('id');
-        $limit = (int) EventPlan::query()->where('slug', 'basic')->value('max_guests');
+        $freeId = app(PlanFeatures::class)->entryPlanId();
+        $limit = (int) EventPlan::query()->whereKey($freeId)->value('max_guests');
         $over = $this->events()->where('events.event_plan_id', $freeId)
             ->whereRaw('(select count(*) from guests where guests.event_id = events.id and guests.deleted_at is null) > ?', [$limit]);
         $push('over_free_limit', $over, $event);

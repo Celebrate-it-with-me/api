@@ -245,7 +245,7 @@ class EventsServices
     /** The entry plan: the one with the lowest id (`basic` in the seeders). */
     private function defaultPlanId(): int
     {
-        return (int) EventPlan::query()->orderBy('id')->value('id');
+        return app(PlanFeatures::class)->entryPlanId();
     }
 
     public function getEventTypes(): Collection
