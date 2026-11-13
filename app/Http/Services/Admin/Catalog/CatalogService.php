@@ -227,6 +227,7 @@ class CatalogService
         return [
             'slug' => $p->slug,
             'name' => $p->name,
+            'description' => $p->description,
             'maxGuests' => $p->max_guests,
             'priceCents' => $p->price_cents,
             'isFullPlan' => $p->slug === PurchaseService::FULL_SLUG,

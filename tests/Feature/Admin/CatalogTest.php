@@ -98,7 +98,7 @@ describe('overview', function () {
             ->and($module)->toHaveKeys(['section', 'order']);
 
         $premium = collect($data['plans'])->firstWhere('slug', 'premium');
-        expect($premium)->toHaveKeys(['name', 'maxGuests', 'priceCents', 'isFullPlan', 'eventsCount'])
+        expect($premium)->toHaveKeys(['name', 'description', 'maxGuests', 'priceCents', 'isFullPlan', 'eventsCount'])
             ->and($premium['isFullPlan'])->toBeTrue()
             ->and($premium['eventsCount'])->toBe(2)
             ->and(collect($data['plans'])->firstWhere('slug', 'basic')['isFullPlan'])->toBeFalse();
