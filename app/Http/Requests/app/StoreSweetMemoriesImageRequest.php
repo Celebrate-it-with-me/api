@@ -23,7 +23,15 @@ class StoreSweetMemoriesImageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'files' => ['required', 'array'],
+            'files' => ['required', 'array', 'max:20'],
+            // Real images only, up to 5 MB each (the screen already promises 5 MB).
+            'files.*' => ['image', 'mimes:jpeg,png,webp,gif', 'max:5120'],
+            'title' => ['nullable', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'year' => ['nullable', 'integer', 'between:1900,2100'],
+            'visible' => ['nullable', 'boolean'],
+            'order' => ['nullable', 'integer', 'min:0'],
+            'metadata' => ['nullable', 'array'],
         ];
     }
 }

@@ -4,25 +4,26 @@ namespace App\Http\Requests\app;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/** Edit an image: its details, and optionally replace the file. A details-only edit needs no file. */
 class UpdateSweetMemoriesImageRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
+    /** @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string> */
     public function rules(): array
     {
         return [
-            //
+            'files' => ['nullable', 'array', 'max:1'],
+            'files.*' => ['image', 'mimes:jpeg,png,webp,gif', 'max:5120'],
+            'title' => ['nullable', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'year' => ['nullable', 'integer', 'between:1900,2100'],
+            'visible' => ['nullable', 'boolean'],
+            'order' => ['nullable', 'integer', 'min:0'],
+            'metadata' => ['nullable', 'array'],
         ];
     }
 }
