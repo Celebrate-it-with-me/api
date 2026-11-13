@@ -41,11 +41,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         Route::delete('{user}', [TeamController::class, 'destroy']);
     });
 
-    Route::get('users', [UserController::class, 'index'])->middleware('admin.can:admin.users.view');
-    Route::get('users/{user}', [UserController::class, 'show'])->middleware('admin.can:admin.users.view');
-    Route::post('users', [UserController::class, 'store'])->middleware('admin.can:admin.users.manage');
-    Route::match(['put', 'patch'], 'users/{user}', [UserController::class, 'update'])->middleware('admin.can:admin.users.manage');
-    Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('admin.can:admin.users.delete');
+    // One file per Operation module, so the agents that build them never edit the same file.
+    foreach (['events', 'users', 'support', 'moderation', 'impersonation'] as $module) {
+        require __DIR__."/admin/{$module}.php";
+    }
 
     // The old endpoints of the first panel: superadmin only, until they are removed.
     Route::middleware('admin.can:admin.legacy')->group(function () {
