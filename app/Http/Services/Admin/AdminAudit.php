@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class AdminAudit
         EventPurchase::class => 'purchase',
         Coupon::class => 'coupon',
         EventPlan::class => 'plan',
+        Module::class => 'module',
     ];
 
     public function __construct(private readonly Request $request) {}
