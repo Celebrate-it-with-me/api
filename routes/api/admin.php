@@ -36,7 +36,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     });
 
     // One file per Operation module, so the agents that build them never edit the same file.
-    foreach (['events', 'users', 'support', 'moderation', 'impersonation', 'revenue', 'catalog', 'health'] as $module) {
+    foreach (['events', 'users', 'support', 'moderation', 'impersonation', 'revenue', 'catalog', 'health', 'invoices'] as $module) {
         require __DIR__."/admin/{$module}.php";
     }
 });

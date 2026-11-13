@@ -47,7 +47,7 @@ it('issues one invoice with consecutive numbers per series and year', function (
 
     $year = now()->year;
     expect(Invoice::orderBy('id')->pluck('number')->all())->toBe([sprintf('QV-%d-000001', $year), sprintf('QV-%d-000002', $year)]);
-    $first = Invoice::first();
+    $first = Invoice::orderBy('id')->first();
     expect($first->purchase_id)->toBe($a->id)->and($first->total_cents)->toBe(7900)->and($first->subtotal_cents)->toBe(9900)
         ->and($first->discount_cents)->toBe(2000)->and($first->tax_cents)->toBe(0)->and($first->currency)->toBe('USD')
         ->and($first->issuer['name'])->toBe('[Razón social pendiente]');

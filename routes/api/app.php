@@ -444,3 +444,6 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     // Ends a support (impersonation) session; only works with an impersonation token.
     Route::post('impersonation/end', \App\Http\Controllers\AppControllers\Impersonation\ImpersonationEndController::class)->name('impersonation.end');
 });
+
+// "Mis compras" (invoices): its own file, own auth middleware.
+require __DIR__ . '/app/invoices.php';

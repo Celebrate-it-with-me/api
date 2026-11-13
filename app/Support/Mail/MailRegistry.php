@@ -4,9 +4,9 @@ namespace App\Support\Mail;
 
 use App\Mail\ConfirmAccountEmail;
 use App\Mail\ImpersonationEndedMail;
-use App\Mail\InvoiceMail;
 use App\Mail\InviteRegisteredUserMail;
 use App\Mail\InviteUnregisteredUserMail;
+use App\Mail\InvoiceMail;
 use App\Mail\OwnershipTransferredMail;
 use App\Mail\ResetPasswordEmail;
 use App\Mail\SupportRequestMail;

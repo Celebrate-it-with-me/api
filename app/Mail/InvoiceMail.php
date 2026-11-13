@@ -36,7 +36,7 @@ class InvoiceMail extends Mailable
         return new Content(markdown: 'mail.invoice', with: [
             'name' => MailLocale::firstName($invoice->recipient['name'] ?? ''),
             'number' => $invoice->number, 'total' => $invoice->currency === 'USD' ? $total : number_format($invoice->total_cents / 100, 2) . ' ' . $invoice->currency,
-            'event' => $invoice->lines[0]['event_name'] ?? '', 'purchasesUrl' => MailLinks::app('dashboard/purchases'),
+            'event' => $invoice->lines[0]['event_name'] ?? '', 'purchasesUrl' => MailLinks::app('settings/purchases'),
         ]);
     }
 
