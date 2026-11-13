@@ -221,3 +221,18 @@ describe('onboarding summary', function () {
         $this->actingAs($u['viewer'])->getJson("/api/v1/app/event/{$event->id}/onboarding")->assertOk();
     });
 });
+
+it('tells a new event creator they are its owner in the create answer', function () {
+    $user = User::factory()->create();
+    $user->assignRole('owner');
+
+    $response = $this->actingAs($user)->postJson('/api/v1/app/event', [
+        'eventType' => EventType::where('slug', 'quinceanera')->value('id'),
+        'eventName' => 'Los XV de Prueba',
+        'startDate' => '12/01/2027 18:00',
+        'endDate' => '12/01/2027 23:00',
+        'customUrlSlug' => 'xv-de-prueba',
+    ]);
+
+    expect($response->getStatusCode())->toBeIn([200, 201])->and($response->json('data.userRole'))->toBe('owner');
+});

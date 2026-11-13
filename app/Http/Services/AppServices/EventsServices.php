@@ -143,7 +143,9 @@ class EventsServices
             'role_id' => Role::query()->where('name', 'owner')->first()->id,
         ]);
 
-        return $event;
+        // The owner role was just created: load it, or the answer says the creator has no role and the app hides
+        // every edit button on a brand-new event.
+        return $event->load('userRoles.role');
     }
 
     /**
