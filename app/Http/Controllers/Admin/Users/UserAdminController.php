@@ -32,7 +32,11 @@ class UserAdminController extends Controller
 
         return response()->json([
             'data' => $page->getCollection()->map(fn (User $u) => $this->users->row($u))->values(),
-            'meta' => ['page' => $page->currentPage(), 'perPage' => $page->perPage(), 'total' => $page->total(), 'lastPage' => $page->lastPage()],
+            'meta' => [
+                'page' => $page->currentPage(), 'perPage' => $page->perPage(), 'total' => $page->total(), 'lastPage' => $page->lastPage(),
+                // How many more the same filters would find with internal accounts included (staff and @cwm.test).
+                'hiddenInternal' => filter_var($f['internal'] ?? false, FILTER_VALIDATE_BOOLEAN) ? 0 : max(0, $this->users->paginate($f + ['internal' => true, 'perPage' => 1, 'page' => 1])->total() - $page->total()),
+            ],
         ]);
     }
 
