@@ -72,9 +72,9 @@ class EventComment extends Model
         return $query->whereNull($query->qualifyColumn('hidden_at'));
     }
 
-    public function scopePinned($query)
+    public function scopePinned($query, ?bool $pinned = null)
     {
-        return $query->where('is_pinned', true);
+        return is_null($pinned) ? $query : $query->where('is_pinned', $pinned);
     }
 
     public function scopeFavorites($query)
