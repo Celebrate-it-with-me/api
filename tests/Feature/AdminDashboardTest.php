@@ -130,3 +130,20 @@ it('splits events by type, plan and stage, and lists the next eight weeks', func
         ->and(collect($data['upcomingWeeks'])->sum('draft'))->toBe(1)
         ->and(collect($data['upcomingWeeks'])->sum('published'))->toBe(1);
 });
+
+it('leaves the money numbers out for support and keeps them for who manages purchases', function () {
+    [$event, $owner] = customerEvent();
+    EventPurchase::create(['event_id' => $event->id, 'user_id' => $owner->id, 'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
+        'gateway' => 'manual', 'list_price_cents' => 9900, 'amount_cents' => 7900, 'status' => 'paid', 'paid_at' => now()]);
+    $support = User::factory()->create();
+    $support->assignRole('support');
+
+    $asSupport = $this->actingAs($support)->getJson('/api/v1/admin/dashboard')->assertOk();
+    $asSuper = $this->actingAs(staff())->getJson('/api/v1/admin/dashboard')->assertOk();
+
+    expect($asSupport->json('data.kpis'))->not->toHaveKeys(['revenueCents', 'refundedCents'])
+        ->and($asSupport->json('data.series.metrics'))->not->toHaveKey('revenueCents')
+        ->and($asSupport->json('data.kpis.paid.value'))->toBe(1)
+        ->and($asSuper->json('data.kpis.revenueCents.value'))->toBe(7900)
+        ->and($asSuper->json('data.series.metrics'))->toHaveKey('revenueCents');
+});
