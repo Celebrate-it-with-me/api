@@ -6,13 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\app\Seating\AssignGuestRequest;
 use App\Http\Requests\app\Seating\StoreTableRequest;
 use App\Http\Requests\app\Seating\UpdateTableRequest;
-use App\Http\Resources\AppResources\GuestResource;
+use App\Http\Resources\AppResources\Seating\SeatGuestResource;
 use App\Http\Resources\AppResources\Seating\TableResource;
 use App\Http\Services\AppServices\Seating\TableServices;
 use App\Models\Events;
+use App\Models\Guest;
 use App\Models\Seating\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TableController extends Controller
 {
@@ -35,11 +37,9 @@ class TableController extends Controller
                 'meta' => $result['meta']
             ]);
         } catch (\Throwable $th) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve tables for event.',
-                'error' => $th->getMessage() . ' ' . $th->getFile() . ' ' . $th->getLine(),
-            ], 500);
+            report($th);
+
+            return response()->json(['success' => false, 'message' => 'Failed to retrieve tables for event.'], 500);
         }
     }
     
@@ -117,7 +117,11 @@ class TableController extends Controller
     public function assignGuest(AssignGuestRequest $request, Events $event, Table $table): JsonResponse
     {
         abort_if($table->event_id !== $event->id, 404);
-        
+
+        if (! $table->hasAvailableSeats()) {
+            return response()->json(['success' => false, 'message' => 'This table is full.', 'errors' => ['table' => ['full']]], 422);
+        }
+
         try {
             $this->tableServices->assignGuest($table, $request->guest_id, $request->user()->id);
             
@@ -127,11 +131,9 @@ class TableController extends Controller
                 'data' => new TableResource($table->load('assignedGuests')),
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to assign guest.',
-                'error' => $e->getMessage(). ' ' . $e->getFile() . ' ' . $e->getLine(),
-            ], 500);
+            report($e);
+
+            return response()->json(['success' => false, 'message' => 'Failed to assign guest.'], 500);
         }
     }
     
@@ -160,11 +162,9 @@ class TableController extends Controller
                 'data' => new TableResource($table->load('assignedGuests')),
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to remove guest.',
-                'error' => $e->getMessage(),
-            ], 500);
+            report($e);
+
+            return response()->json(['success' => false, 'message' => 'Failed to remove guest.'], 500);
         }
     }
     
@@ -179,7 +179,7 @@ class TableController extends Controller
         
         return response()->json([
             'success' => true,
-            'data' => GuestResource::collection($unassignedGuests),
+            'data' => SeatGuestResource::collection($unassignedGuests),
             'meta' => [
                 'total_unassigned' => $unassignedGuests->count(),
             ]
@@ -195,9 +195,9 @@ class TableController extends Controller
         
         $request->validate([
             'assignments' => 'required|array',
-            'assignments.*.table_id' => 'required|exists:tables,id',
+            'assignments.*.table_id' => ['required', Rule::exists(Table::class, 'id')->where('event_id', $event->id)],
             'assignments.*.guest_ids' => 'required|array',
-            'assignments.*.guest_ids.*' => 'required|exists:guests,id',
+            'assignments.*.guest_ids.*' => ['required', Rule::exists(Guest::class, 'id')->where('event_id', $event->id)],
         ]);
         
         try {
@@ -209,11 +209,9 @@ class TableController extends Controller
                 'meta' => $result
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Bulk assignment failed.',
-                'error' => $e->getMessage(),
-            ], 500);
+            report($e);
+
+            return response()->json(['success' => false, 'message' => 'Bulk assignment failed.'], 500);
         }
     }
     
@@ -235,11 +233,9 @@ class TableController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to clear assignments.',
-                'error' => $e->getMessage(),
-            ], 500);
+            report($e);
+
+            return response()->json(['success' => false, 'message' => 'Failed to clear assignments.'], 500);
         }
     }
 }

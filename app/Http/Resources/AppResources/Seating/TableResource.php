@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\AppResources\Seating;
 
-use App\Http\Resources\AppResources\GuestResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,7 +31,7 @@ class TableResource extends JsonResource
             'is_full' => $this->isFull(),
             
             // Assigned guests (when loaded)
-            'assigned_guests' => GuestResource::collection($this->whenLoaded('assignedGuests')),
+            'assigned_guests' => SeatGuestResource::collection($this->whenLoaded('assignedGuests')),
             
             // Metadata
             'created_at' => $this->created_at?->toISOString(),
