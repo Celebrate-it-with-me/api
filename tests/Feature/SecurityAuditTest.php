@@ -169,7 +169,7 @@ describe('routes outside an event', function () {
         $user = User::factory()->create();
         $wrong = [];
         foreach (auditRoutes('api/v1/admin') as [$method, $uri]) {
-            if ($uri === 'api/v1/admin/login') {
+            if (in_array($uri, ['api/v1/admin/login', 'api/v1/admin/login/two-factor'], true)) {
                 continue;
             }
             $status = $this->actingAs($user)->json($method, '/' . preg_replace('/\{[^}]+\}/', '999999', $uri))->getStatusCode();
@@ -184,7 +184,7 @@ describe('routes outside an event', function () {
     it('treat the admin routes as closed to someone who is not logged in', function () {
         $wrong = [];
         foreach (auditRoutes('api/v1/admin') as [$method, $uri]) {
-            if ($uri === 'api/v1/admin/login') {
+            if (in_array($uri, ['api/v1/admin/login', 'api/v1/admin/login/two-factor'], true)) {
                 continue;
             }
             $status = $this->json($method, '/' . preg_replace('/\{[^}]+\}/', '999999', $uri))->getStatusCode();

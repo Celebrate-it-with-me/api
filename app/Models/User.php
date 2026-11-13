@@ -96,6 +96,12 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->hasOne(AdminTwoFactor::class);
     }
 
+    /** A pending change of sign-in email, waiting for the new address to confirm. */
+    public function adminEmailChange(): HasOne
+    {
+        return $this->hasOne(AdminEmailChange::class);
+    }
+
     public function hasAdminTwoFactor(): bool
     {
         return (bool) $this->adminTwoFactor?->isActive();

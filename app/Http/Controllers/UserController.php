@@ -8,6 +8,7 @@ use App\Http\Resources\UserResource;
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\UsersServices;
 use App\Models\User;
+use App\Http\Services\Admin\Account\TwoFactorService;
 use App\Support\AdminPermissions;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -51,6 +52,11 @@ class UserController extends Controller
                 'email' => $user->email,
                 'roles' => $user->getRoleNames()->intersect(AdminPermissions::STAFF_ROLES)->values(),
                 'permissions' => $user->getAllPermissions()->pluck('name')->filter(fn ($p) => str_starts_with($p, 'admin.'))->values(),
+                'security' => [
+                    'twoFactorEnabled' => $user->hasAdminTwoFactor(),
+                    // The server requires it for her role and she has not enrolled: the panel sends her to set it up.
+                    'twoFactorSetupRequired' => TwoFactorService::requiredFor($user) && ! $user->hasAdminTwoFactor(),
+                ],
             ]]);
         } catch(Exception $e) {
             return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
