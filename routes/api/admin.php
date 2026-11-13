@@ -2,7 +2,6 @@
     
     use App\Http\Controllers\AuthenticationController;
     use App\Http\Controllers\GalleryController;
-    use App\Http\Controllers\S3ObjectsController;
     use App\Http\Controllers\UserController;
     use App\Http\Controllers\Admin\AuditController;
     use App\Http\Controllers\Admin\DashboardController;
@@ -44,12 +43,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     // The old endpoints of the first panel: superadmin only, until they are removed.
     Route::middleware('admin.can:admin.legacy')->group(function () {
-        Route::get('username-folders', [S3ObjectsController::class, 'getFolders']);
-        Route::get('folder-objects/{folder}', [S3ObjectsController::class, 'getObjectsByFolder']);
-        Route::get('download-file/{folder}/{key}', [S3ObjectsController::class, 'downloadFile']);
-        Route::get('delete-file/{folder}/{key}', [S3ObjectsController::class, 'deleteFile']);
-        Route::get('delete-folder/{folder}', [S3ObjectsController::class, 'deleteFolder']);
-
         Route::prefix('gallery')->group(function () {
             Route::post('/upload-images/{userName}', [GalleryController::class, 'uploadImages'])->name('upload-images');
             Route::post('/show-images/{userName}', [GalleryController::class, 'showImages'])->name('show-images');
