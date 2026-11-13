@@ -111,6 +111,10 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
     //=========================================
     Route::get('/auth/ready', [AuthenticationController::class, 'checkAuthReady'])
         ->name('auth.ready');
+
+    // "Necesito ayuda": the organizer's own support requests.
+    Route::get('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'index'])->name('support.index');
+    Route::post('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'store'])->middleware('throttle:5,1')->name('support.store');
     
     // ========================================
     // USER MANAGEMENT ROUTES
