@@ -19,6 +19,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('budget-item:reminders')->daily();
         $schedule->command('admin:audit-prune')->dailyAt('03:00');
         $schedule->command('modules:prune-overrides')->dailyAt('03:30');
+        $schedule->command('impersonation:close-expired')->everyMinute();
     }
 
     /**

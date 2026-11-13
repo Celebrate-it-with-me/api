@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Services\Admin\Impersonation\ImpersonationService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +23,8 @@ class RefreshTokenExpirationIfActive
             $token = $user->currentAccessToken();
 
             // Only proceed if this is a real Personal Access Token (NOT SPA TransientToken)
-            if ($token instanceof PersonalAccessToken) {
+            // An impersonation token has a fixed life: it is never renewed.
+            if ($token instanceof PersonalAccessToken && ! ImpersonationService::isImpersonationToken($token)) {
                 if ($token->expires_at && $token->expires_at->gt($now)) {
                     $refreshThreshold = $now->copy()->addMinutes(10);
 
