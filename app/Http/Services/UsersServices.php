@@ -2,13 +2,11 @@
 
 namespace App\Http\Services;
 
-use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Hash;
 
 class UsersServices
@@ -20,37 +18,6 @@ class UsersServices
     {
         $this->request = $request;
         $this->user = new User();
-    }
-
-    /**
-     * Get User resource.
-     * @param User $user
-     * @return UserResource
-     */
-    public function getUser(User $user): UserResource
-    {
-        return UserResource::make($user);
-    }
-
-    /**
-     * Get All users.
-     * @return AnonymousResourceCollection
-     */
-    public function getUsersWithPagination(): AnonymousResourceCollection
-    {
-        $search = $this->request->input('search') ?? '';
-        $perPage = $this->request->input('itemsPerPage') ?? 25;
-
-        $userBuild = User::query();
-
-        if ($search) {
-            $userBuild = $userBuild->where(function($query) use ($search){
-                $query->where('name', 'LIKE', "%$search%")
-                    ->orWhere('email', 'LIKE', "%$search%");
-            });
-        }
-
-        return UserResource::collection($userBuild->paginate($perPage));
     }
 
     /**
