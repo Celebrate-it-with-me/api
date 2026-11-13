@@ -43,6 +43,8 @@ final class AdminPermissions
         'admin.users.export',
         'admin.team.manage',
         'admin.audit.view',
+        'admin.system.health',
+        'admin.system.manage',
     ];
 
     /** @return list<string> */
