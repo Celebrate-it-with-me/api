@@ -31,7 +31,7 @@ function customerEvent(string $email = 'ana@example.com', array $attrs = []): ar
 function staff(): User
 {
     $admin = User::factory()->create();
-    $admin->assignRole('admin');
+    $admin->assignRole('superadmin');
 
     return $admin;
 }

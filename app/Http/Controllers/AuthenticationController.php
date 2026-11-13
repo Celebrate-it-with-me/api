@@ -11,7 +11,9 @@ use App\Http\Requests\app\ResetPasswordRequest;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Services\Admin\AdminAudit;
 use App\Models\User;
+use App\Support\AdminPermissions;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,11 +32,13 @@ class AuthenticationController extends Controller
         $user = User::query()->where('email', $request->input('email'))->first();
 
         // A token for the admin panel is only for administrators; anyone else gets the same answer as a wrong password.
-        if (!$user || !Hash::check($request->input('password'), $user->password) || !$user->hasRole('admin')) {
+        if (!$user || !Hash::check($request->input('password'), $user->password) || !$user->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
+
+        app(AdminAudit::class)->record('auth.login', $user, ['actor' => $user]);
 
         return $user->createToken($request->input('device'))->plainTextToken;
     }

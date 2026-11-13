@@ -33,7 +33,7 @@ function ownedEvent(string $role = 'owner'): array
 function adminUser(): User
 {
     $admin = User::factory()->create();
-    $admin->assignRole('admin');
+    $admin->assignRole('superadmin');
 
     return $admin;
 }
@@ -128,7 +128,7 @@ describe('admin', function () {
     it('records a manual payment (Zelle) and unlocks the event', function () {
         [$event, $owner] = ownedEvent();
 
-        $this->actingAs(adminUser())->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'notes' => 'Zelle 11/13'])
+        $this->actingAs(adminUser())->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'notes' => 'Zelle 11/13', 'reason' => 'Zelle received'])
             ->assertCreated()->assertJsonPath('data.status', 'paid')->assertJsonPath('data.gateway', 'manual');
 
         expect($event->fresh()->eventPlan->slug)->toBe('premium');
@@ -137,21 +137,21 @@ describe('admin', function () {
     it('refunds in full only while the event is not published', function () {
         [$event, $owner] = ownedEvent();
         $admin = adminUser();
-        $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900])->json('data.id');
+        $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
 
         $event->update(['status' => 'published']);
-        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund")->assertStatus(422);
+        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertStatus(422);
 
         $event->update(['status' => 'draft']);
-        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund")->assertOk()->assertJsonPath('data.status', 'refunded');
+        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertOk()->assertJsonPath('data.status', 'refunded');
         expect($event->fresh()->eventPlan->slug)->toBe('basic');
     });
 
     it('changes the price and creates codes', function () {
         $admin = adminUser();
 
-        $this->actingAs($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 7900])->assertOk();
-        $this->actingAs($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'fundador1', 'kind' => 'fixed_price', 'value' => 5900, 'isFounder' => true, 'maxUses' => 10])
+        $this->actingAs($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 7900, 'reason' => 'Launch price'])->assertOk();
+        $this->actingAs($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'fundador1', 'kind' => 'fixed_price', 'value' => 5900, 'isFounder' => true, 'maxUses' => 10, 'reason' => 'Founders'])
             ->assertCreated()->assertJsonPath('data.code', 'FUNDADOR1');
 
         expect(EventPlan::where('slug', 'premium')->value('price_cents'))->toBe(7900);
@@ -161,7 +161,7 @@ describe('admin', function () {
         [$event, $owner] = ownedEvent();
 
         $this->actingAs($owner)->getJson('/api/v1/admin/payments')->assertForbidden();
-        $this->actingAs($owner)->putJson('/api/v1/admin/payments/price', ['priceCents' => 1])->assertForbidden();
+        $this->actingAs($owner)->putJson('/api/v1/admin/payments/price', ['priceCents' => 1, 'reason' => 'Trying it out'])->assertForbidden();
     });
 });
 

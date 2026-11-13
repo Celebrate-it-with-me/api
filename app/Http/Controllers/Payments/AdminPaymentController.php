@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Payments;
 
 use App\Http\Controllers\Controller;
+use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
 use App\Models\EventPurchase;
@@ -12,9 +13,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
+/** Permissions are on the routes (`admin.can:`); every write here is in the audit log with its reason. */
 class AdminPaymentController extends Controller
 {
-    public function __construct(private readonly PurchaseService $purchases) {}
+    public function __construct(private readonly PurchaseService $purchases, private readonly AdminAudit $audit) {}
 
     public function index(): JsonResponse
     {
@@ -27,22 +29,44 @@ class AdminPaymentController extends Controller
             'userId' => ['nullable', 'integer', 'exists:users,id'],
             'amountCents' => ['required', 'integer', 'min:0'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'reason' => AdminAudit::reasonRule(),
         ]);
         $buyer = isset($data['userId']) ? User::findOrFail($data['userId']) : $request->user();
 
-        return response()->json(['data' => $this->purchases->recordManual($event, $buyer, $request->user(), $data['amountCents'], $data['notes'] ?? null)], 201);
+        $beforePlan = $event->eventPlan?->slug;
+        $purchase = $this->purchases->recordManual($event, $buyer, $request->user(), $data['amountCents'], $data['notes'] ?? null);
+
+        $this->audit->record('payment.manual', $purchase, [
+            'event_id' => $event->id, 'user_id' => $buyer->id, 'reason' => $data['reason'],
+            'before' => ['plan' => $beforePlan],
+            'after' => ['plan' => $purchase->plan?->slug, 'amountCents' => $purchase->amount_cents, 'gateway' => 'manual'],
+        ]);
+
+        return response()->json(['data' => $purchase], 201);
     }
 
-    public function refund(EventPurchase $purchase): JsonResponse
+    public function refund(Request $request, EventPurchase $purchase): JsonResponse
     {
-        return response()->json(['data' => $this->purchases->refund($purchase)]);
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+        $refunded = $this->purchases->refund($purchase);
+
+        $this->audit->record('payment.refund', $refunded, [
+            'event_id' => $refunded->event_id, 'user_id' => $refunded->user_id, 'reason' => $data['reason'],
+            'before' => ['status' => 'paid', 'amountCents' => $refunded->amount_cents],
+            'after' => ['status' => 'refunded'],
+        ]);
+
+        return response()->json(['data' => $refunded]);
     }
 
     public function updatePrice(Request $request): JsonResponse
     {
-        $data = $request->validate(['priceCents' => ['required', 'integer', 'min:0', 'max:1000000']]);
+        $data = $request->validate(['priceCents' => ['required', 'integer', 'min:0', 'max:1000000'], 'reason' => AdminAudit::reasonRule()]);
         $plan = $this->purchases->fullPlan();
+        $before = $plan->price_cents;
         $plan->update(['price_cents' => $data['priceCents']]);
+
+        $this->audit->record('pricing.update', $plan, ['reason' => $data['reason'], 'before' => ['priceCents' => $before], 'after' => ['priceCents' => $plan->price_cents]]);
 
         return response()->json(['data' => $plan]);
     }
@@ -62,6 +86,7 @@ class AdminPaymentController extends Controller
             'maxUses' => ['nullable', 'integer', 'min:1'],
             'expiresAt' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:255'],
+            'reason' => AdminAudit::reasonRule(),
         ]);
 
         $coupon = Coupon::create([
@@ -70,15 +95,29 @@ class AdminPaymentController extends Controller
             'expires_at' => $data['expiresAt'] ?? null, 'notes' => $data['notes'] ?? null,
         ]);
 
+        $this->audit->record('coupon.create', $coupon, [
+            'reason' => $data['reason'],
+            'after' => $coupon->only(['code', 'kind', 'value', 'is_founder', 'max_uses', 'expires_at']),
+        ]);
+
         return response()->json(['data' => $coupon], 201);
     }
 
     public function updateCoupon(Request $request, Coupon $coupon): JsonResponse
     {
-        $data = $request->validate(['isActive' => ['boolean'], 'maxUses' => ['nullable', 'integer', 'min:1'], 'expiresAt' => ['nullable', 'date']]);
+        $data = $request->validate([
+            'isActive' => ['boolean'], 'maxUses' => ['nullable', 'integer', 'min:1'], 'expiresAt' => ['nullable', 'date'],
+            'reason' => AdminAudit::reasonRule(),
+        ]);
+        $fields = ['is_active', 'max_uses', 'expires_at'];
+        $before = $coupon->only($fields);
         $coupon->update(array_filter([
             'is_active' => $data['isActive'] ?? null, 'max_uses' => $data['maxUses'] ?? null, 'expires_at' => $data['expiresAt'] ?? null,
         ], fn ($v) => $v !== null));
+
+        $this->audit->record(($data['isActive'] ?? true) === false ? 'coupon.deactivate' : 'coupon.update', $coupon, [
+            'reason' => $data['reason'], 'before' => $before, 'after' => $coupon->only($fields),
+        ]);
 
         return response()->json(['data' => $coupon]);
     }
