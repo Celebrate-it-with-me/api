@@ -119,9 +119,26 @@ describe('route classification', function () {
             'POST api/v1/app/support',
             'POST api/v1/app/event/{event}/collaborators',
             'DELETE api/v1/app/event/{event}/collaborators/{user}',
+            'GET api/v1/app/event/{event}/suggest-music/export',
+            'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
         ];
 
-        expect(array_values(array_diff($mustBeBlocked, ImpersonationRules::BLOCKED)))->toBe([]);
+        // Exactly the blocked list: moving any blocked route to ALLOWED (or adding one) has to be a decision made here too.
+        expect(array_values(array_diff($mustBeBlocked, ImpersonationRules::BLOCKED)))->toBe([])
+            ->and(array_values(array_diff(ImpersonationRules::BLOCKED, $mustBeBlocked)))->toBe([]);
+    });
+
+    it('has no route with several methods besides the PUT/PATCH pair (the rules classify by the first method)', function () {
+        $multi = [];
+        foreach (guardedAppRoutes() as $route) {
+            $methods = array_values(array_diff($route->methods(), ['HEAD']));
+            sort($methods);
+            if (count($methods) > 1 && $methods !== ['PATCH', 'PUT']) {
+                $multi[] = implode('|', $methods) . ' ' . $route->uri();
+            }
+        }
+
+        expect($multi)->toBe([]);
     });
 
     it('treats anything sensitive by name as blocked: no allowed route looks like password, payment, export or 2fa', function () {

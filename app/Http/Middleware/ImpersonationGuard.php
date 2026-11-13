@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\Admin\Impersonation\ImpersonationService;
 use App\Models\ImpersonationSession;
+use App\Support\AdminPermissions;
 use App\Support\ImpersonationRules;
 use Closure;
 use Illuminate\Http\Request;
@@ -30,6 +32,19 @@ class ImpersonationGuard
             return response()->json(['message' => 'Unauthenticated.', 'code' => 'impersonation_ended'], 401);
         }
 
+        // The staff member and the account are checked on every request, not only when the session starts.
+        $staff = $session->staff;
+        if (! $staff || $staff->suspended_at || ! $staff->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
+            app(ImpersonationService::class)->finish($session, 'staff');
+
+            return response()->json(['message' => 'Unauthenticated.', 'code' => 'impersonation_ended'], 401);
+        }
+        if ($request->user()->anonymized_at || $request->user()->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
+            app(ImpersonationService::class)->finish($session, 'staff', mail: false);
+
+            return response()->json(['message' => 'Unauthenticated.', 'code' => 'impersonation_ended'], 401);
+        }
+
         $request->attributes->set('impersonated_by', $session->staff_id);
         $request->attributes->set('impersonation_session', $session);
 
@@ -42,6 +57,18 @@ class ImpersonationGuard
             ], 403);
         }
 
-        return $next($request);
+        $response = $next($request);
+
+        // Whatever the staff member changes while acting as the user leaves a row (no bodies, only what was done).
+        if (! in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true) && $response->getStatusCode() < 400) {
+            $event = $route->parameter('event');
+            app(AdminAudit::class)->record('impersonation.action', $request->user(), [
+                'actor' => $staff,
+                'event_id' => is_object($event) ? $event->getKey() : (is_numeric($event) ? (int) $event : null),
+                'after' => ['sessionId' => $session->id, 'method' => $request->method(), 'route' => $route->uri(), 'status' => $response->getStatusCode()],
+            ]);
+        }
+
+        return $response;
     }
 }

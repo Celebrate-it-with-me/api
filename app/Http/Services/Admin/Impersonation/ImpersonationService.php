@@ -8,6 +8,7 @@ use App\Models\ImpersonationSession;
 use App\Models\User;
 use App\Support\AdminPermissions;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
@@ -42,24 +43,30 @@ class ImpersonationService
     /** @return array{0: ImpersonationSession, 1: string} the session and the plain-text token */
     public function start(User $staff, User $target, string $reason, ?int $supportRequestId, bool $notify): array
     {
-        // One live session per staff member and account: asking again replaces the old one (no mail for it).
-        ImpersonationSession::query()->where('staff_id', $staff->id)->where('user_id', $target->id)
-            ->whereNull('ended_at')->get()
-            ->each(fn (ImpersonationSession $old) => $this->finish($old, 'staff', mail: false, replaced: true));
-
         $expiresAt = now()->addMinutes(max(1, (int) config('impersonation.ttl_minutes', 45)));
-        $token = $target->createToken('impersonation', [ImpersonationSession::ABILITY], $expiresAt);
 
-        $session = ImpersonationSession::create([
-            'staff_id' => $staff->id,
-            'user_id' => $target->id,
-            'reason' => $reason,
-            'support_request_id' => $supportRequestId,
-            'notify' => $notify,
-            'token_id' => $token->accessToken->id,
-            'started_at' => now(),
-            'expires_at' => $expiresAt,
-        ]);
+        // In one transaction, locking the open sessions of the pair: two simultaneous requests cannot leave two live sessions.
+        [$session, $token] = DB::transaction(function () use ($staff, $target, $reason, $supportRequestId, $notify, $expiresAt) {
+            // One live session per staff member and account: asking again replaces the old one (no mail for it).
+            ImpersonationSession::query()->where('staff_id', $staff->id)->where('user_id', $target->id)
+                ->whereNull('ended_at')->lockForUpdate()->get()
+                ->each(fn (ImpersonationSession $old) => $this->finish($old, 'staff', mail: false, replaced: true));
+
+            $token = $target->createToken('impersonation', [ImpersonationSession::ABILITY], $expiresAt);
+
+            $session = ImpersonationSession::create([
+                'staff_id' => $staff->id,
+                'user_id' => $target->id,
+                'reason' => $reason,
+                'support_request_id' => $supportRequestId,
+                'notify' => $notify,
+                'token_id' => $token->accessToken->id,
+                'started_at' => now(),
+                'expires_at' => $expiresAt,
+            ]);
+
+            return [$session, $token];
+        });
 
         $this->record('impersonation.start', $session, [
             'reason' => $reason,
@@ -76,10 +83,17 @@ class ImpersonationService
             return;
         }
 
-        PersonalAccessToken::query()->whereKey($session->token_id)->delete();
-
+        // Claim the end atomically: the "Salir" button and the expiry command may arrive together, and only one may
+        // audit and write to the user.
         $endedAt = $endedBy === 'expired' ? $session->expires_at : now();
-        $session->forceFill(['ended_at' => $endedAt, 'ended_by' => $endedBy])->save();
+        $claimed = ImpersonationSession::query()->whereKey($session->id)->whereNull('ended_at')
+            ->update(['ended_at' => $endedAt, 'ended_by' => $endedBy]);
+        if (! $claimed) {
+            return;
+        }
+        $session->refresh();
+
+        PersonalAccessToken::query()->whereKey($session->token_id)->delete();
 
         $this->record('impersonation.end', $session, [
             'reason' => $session->reason,
@@ -90,6 +104,20 @@ class ImpersonationService
         if ($mail && $session->notify) {
             $this->notifyUser($session);
         }
+    }
+
+    /** The staff member lost the role or was removed: every session they had open ends (the user is told). */
+    public function finishForStaff(User $staff): void
+    {
+        ImpersonationSession::query()->where('staff_id', $staff->id)->whereNull('ended_at')->get()
+            ->each(fn (ImpersonationSession $s) => $this->finish($s, 'staff'));
+    }
+
+    /** The account was suspended or anonymized: the sessions on it end, without mailing a closed account. */
+    public function finishForUser(User $user): void
+    {
+        ImpersonationSession::query()->where('user_id', $user->id)->whereNull('ended_at')->get()
+            ->each(fn (ImpersonationSession $s) => $this->finish($s, 'staff', mail: false));
     }
 
     public function minutes(ImpersonationSession $session): int

@@ -66,6 +66,9 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // Never serialized: whoever reads this user over the API (including a support session) must not get the TOTP secret.
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**

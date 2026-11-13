@@ -94,6 +94,7 @@ class TeamController extends Controller
 
         $user->removeRole(AdminPermissions::SUPERADMIN);
         $user->removeRole(AdminPermissions::SUPPORT);
+        app(\App\Http\Services\Admin\Impersonation\ImpersonationService::class)->finishForStaff($user);
 
         $this->audit->record('team.removed', $user, ['reason' => $data['reason'], 'before' => ['role' => $current]]);
 

@@ -100,6 +100,8 @@ describe('starting', function () {
         $request = SupportRequest::create(['user_id' => $target->id, 'message' => 'Ayuda', 'status' => 'new']);
 
         impStart($this, impStaff(), $target, ['supportRequestId' => 999999])->assertUnprocessable()->assertJsonValidationErrors('supportRequestId');
+        $someoneElses = SupportRequest::create(['user_id' => User::factory()->create()->id, 'message' => 'Otra', 'status' => 'new']);
+        impStart($this, impStaff(), $target, ['supportRequestId' => $someoneElses->id])->assertUnprocessable()->assertJsonValidationErrors('supportRequestId');
         $id = impStart($this, impStaff(), $target, ['supportRequestId' => $request->id])->assertCreated()->json('sessionId');
 
         expect(ImpersonationSession::find($id)->support_request_id)->toBe($request->id);
@@ -310,7 +312,8 @@ describe('the mail', function () {
             return $mail->hasTo($target->email)
                 && str_contains($html, 'El equipo de Quinvite entró a tu cuenta el')
                 && str_contains($html, '7 minutos')
-                && str_contains($html, 'Ayudar con las fotos de la quince')
+                && ! str_contains($html, 'Ayudar con las fotos de la quince')
+                && str_contains($html, 'para ayudarte con tu cuenta')
                 && str_contains($html, config('services.support.email'))
                 && ! str_contains($html, 'Nombre Secreto');
         });
@@ -344,5 +347,86 @@ describe('event activity', function () {
             ->and($mine->actor_id)->toBe($owner->id)
             ->and(collect($logs)->pluck('message')->first(fn ($m) => str_contains($m, 'updated')))->toContain('Soporte')->not->toContain('Marisol')
             ->and(EventActivity::where('event_id', $id)->where('type', 'event_created')->first()->payload)->not->toHaveKey('impersonated_by');
+    });
+});
+
+describe('what the security review found', function () {
+    it('never hands out the two-factor secret or the recovery codes through the user endpoints', function () {
+        $user = User::factory()->create();
+        $user->forceFill(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_recovery_codes' => json_encode(['abcd-1234'])])->save();
+        $tok = impStart($this, impStaff(), $user)->json('token');
+
+        $asSupport = $this->getJson('/api/v1/app/user', impTok($tok))->assertOk();
+        $asHerself = $this->getJson('/api/v1/app/user', impAs($user))->assertOk();
+
+        foreach ([$asSupport, $asHerself] as $response) {
+            expect($response->getContent())->not->toContain('JBSWY3DPEHPK3PXP')->not->toContain('abcd-1234')->not->toContain('two_factor_secret');
+        }
+    });
+
+    it('leaves a row for every change made during a session, with the event and no request body', function () {
+        $staff = impStaff();
+        $owner = User::factory()->create();
+        $token = impStart($this, $staff, $owner)->json('token');
+        $before = AdminAuditLog::where('action', 'impersonation.action')->count();
+
+        $this->getJson('/api/v1/app/auth/ready', impTok($token))->assertOk();
+        expect(AdminAuditLog::where('action', 'impersonation.action')->count())->toBe($before);
+
+        $this->postJson('/api/v1/app/event', ['eventName' => 'Los XV de prueba', 'eventType' => EventType::where('slug', 'quinceanera')->value('id'), 'startDate' => '12/01/2027 18:00'], impTok($token))->assertSuccessful();
+
+        $row = AdminAuditLog::where('action', 'impersonation.action')->latest('id')->first();
+        expect($row)->not->toBeNull()
+            ->and($row->actor_id)->toBe($staff->id)->and($row->impersonated_by)->toBe($staff->id)->and($row->user_id)->toBe($owner->id)
+            ->and($row->after['method'])->toBe('POST')->and($row->after['route'])->toContain('event')
+            ->and(json_encode($row->after))->not->toContain('Los XV de prueba');
+    });
+
+    it('ends the session when the staff member stops being staff, and tells the user', function () {
+        $staff = impStaff();
+        $user = User::factory()->create();
+        $session = impStart($this, $staff, $user)->json();
+
+        $staff->syncRoles([]);
+
+        $this->getJson('/api/v1/app/auth/ready', impTok($session['token']))->assertUnauthorized()->assertJsonPath('code', 'impersonation_ended');
+        expect(ImpersonationSession::find($session['sessionId'])->ended_at)->not->toBeNull();
+        Mail::assertSent(ImpersonationEndedMail::class, 1);
+    });
+
+    it('ends every open session of a staff member who is removed from the team', function () {
+        $super = impStaff('superadmin');
+        $staff = impStaff();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        impStart($this, $staff, $a);
+        impStart($this, $staff, $b);
+
+        $this->deleteJson("/api/v1/admin/team/{$staff->id}", ['reason' => 'Ya no trabaja con nosotros'], impAs($super))->assertOk();
+
+        expect(ImpersonationSession::where('staff_id', $staff->id)->whereNull('ended_at')->count())->toBe(0);
+    });
+
+    it('ends the sessions on an account that is suspended, without mailing a closed account', function () {
+        $super = impStaff('superadmin');
+        $user = User::factory()->create();
+        $session = impStart($this, impStaff(), $user)->json();
+
+        $this->postJson("/api/v1/admin/users/{$user->id}/suspend", ['reason' => 'Contenido indebido'], impAs($super))->assertOk();
+
+        expect(ImpersonationSession::find($session['sessionId'])->ended_at)->not->toBeNull();
+        Mail::assertNotSent(ImpersonationEndedMail::class);
+    });
+
+    it('does not let two ends audit and mail twice', function () {
+        $user = User::factory()->create();
+        $session = ImpersonationSession::find(impStart($this, impStaff(), $user)->json('sessionId'));
+        $service = app(ImpersonationService::class);
+
+        $service->finish($session, 'staff');
+        $service->finish(ImpersonationSession::find($session->id)->forceFill(['ended_at' => null]), 'staff');
+
+        expect(AdminAuditLog::where('action', 'impersonation.end')->count())->toBe(1);
+        Mail::assertSent(ImpersonationEndedMail::class, 1);
     });
 });

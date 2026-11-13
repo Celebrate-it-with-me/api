@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\AdminPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ImpersonationController extends Controller
 {
@@ -19,7 +20,8 @@ class ImpersonationController extends Controller
     {
         $data = $request->validate([
             'reason' => AdminAudit::reasonRule(),
-            'supportRequestId' => ['nullable', 'integer', 'exists:support_requests,id'],
+            // It has to be a request of the same account: it is the justification that stays in the record.
+            'supportRequestId' => ['nullable', 'integer', Rule::exists('support_requests', 'id')->where('user_id', $user->id)],
             'notify' => ['nullable', 'boolean'],
         ]);
         $staff = $request->user();

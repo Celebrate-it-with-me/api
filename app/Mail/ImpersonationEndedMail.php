@@ -10,7 +10,6 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Str;
 
 /**
  * Tells a user that the Quinvite team entered their account to help them. es/en by the user's language; it never
@@ -48,7 +47,9 @@ class ImpersonationEndedMail extends Mailable
                 'name' => $this->user->name,
                 'date' => $date,
                 'minutes' => app(ImpersonationService::class)->minutes($this->session),
-                'reason' => Str::limit(trim((string) $this->session->reason), 140),
+                // The internal reason is free text written by staff: it never goes to the user. If the session came from
+                // one of her help requests we say so; otherwise a generic line.
+                'fromRequest' => (bool) $this->session->support_request_id,
                 'supportEmail' => config('services.support.email'),
             ],
         );
