@@ -23,6 +23,7 @@ class EventCommentService
     {
         return EventComment::query()
             ->forEvent($event)
+            ->notModerated()
             ->with(['authorable'])
             ->withStatus(data_get($filters, 'status'))
             ->pinned(data_get($filters, 'pinned'))
@@ -43,6 +44,7 @@ class EventCommentService
     {
         return EventComment::query()
             ->forEvent($event)
+            ->notModerated()
             ->when(isset($filters['status']), function ($query) use ($filters) {
                 $query->withStatus(data_get($filters, 'status'));
             })
@@ -68,6 +70,7 @@ class EventCommentService
     {
         return EventComment::query()
             ->forEvent($event)
+            ->notModerated()
             ->where('status', EventCommentStatus::VISIBLE->value)
             ->with(['authorable'])
             ->orderByDesc('is_pinned')

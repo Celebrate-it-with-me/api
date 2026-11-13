@@ -222,7 +222,8 @@ class Events extends Model
 
     public function sweetMemoriesImages(): HasMany
     {
-        return $this->hasMany(SweetMemoriesImage::class, 'event_id', 'id');
+        // Photos hidden by staff moderation never reach guests or organizers.
+        return $this->hasMany(SweetMemoriesImage::class, 'event_id', 'id')->whereNull('sweet_memories_images.hidden_at');
     }
 
     /**

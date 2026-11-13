@@ -30,12 +30,17 @@ class EventComment extends Model
         'status',
         'is_pinned',
         'is_favorite',
+
+        // Staff moderation (admin A6)
+        'hidden_at',
+        'hidden_by',
     ];
 
     protected $casts = [
         'is_pinned' => 'boolean',
         'is_favorite' => 'boolean',
         'status' => EventCommentStatus::class,
+        'hidden_at' => 'datetime',
     ];
 
     public function event(): BelongsTo
@@ -59,6 +64,12 @@ class EventComment extends Model
     public function scopeHidden($query)
     {
         return $query->where('status', EventCommentStatus::HIDDEN->value);
+    }
+
+    /** Not hidden by staff moderation: what guests and organizers may see (admin A6). */
+    public function scopeNotModerated($query)
+    {
+        return $query->whereNull($query->qualifyColumn('hidden_at'));
     }
 
     public function scopePinned($query)

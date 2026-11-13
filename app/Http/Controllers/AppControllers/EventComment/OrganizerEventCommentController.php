@@ -101,6 +101,9 @@ class OrganizerEventCommentController extends Controller
      */
     public function updateStatus(OrganizerUpdateCommentStatusRequest $request, Events $event, EventComment $comment): JsonResponse
     {
+        // A comment hidden by staff stays hidden: the organizer cannot bring it back.
+        abort_if($comment->hidden_at !== null, 403, 'This comment was hidden by moderation.');
+
         $status = EventCommentStatus::from($request->validated()['status']);
 
         $updated = $this->eventCommentService->updateStatus($comment, $status);
