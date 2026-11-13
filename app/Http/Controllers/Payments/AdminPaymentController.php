@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Payments;
 use App\Http\Controllers\Controller;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
-use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\User;

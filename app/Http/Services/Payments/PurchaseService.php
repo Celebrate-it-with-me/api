@@ -88,6 +88,12 @@ class PurchaseService
         $session = $gateway->createSession($purchase, $successUrl, $cancelUrl);
         $purchase->update(['gateway_session_id' => $session['id']]);
 
+        // Nothing to charge (a free code), or the stand-in gateway on a developer machine: no one is going to pay
+        // anywhere, so confirm now. In production the webhook is the only thing that activates the plan.
+        if ($amount === 0 || ($gateway instanceof FakeGateway && app()->environment('local'))) {
+            $purchase = $this->markPaid($purchase);
+        }
+
         return ['purchase' => $purchase, 'url' => $session['url']];
     }
 

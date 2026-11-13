@@ -25,9 +25,9 @@ class PurchaseController extends Controller
     public function checkout(Request $request, Events $event): JsonResponse
     {
         $data = $request->validate(['code' => ['nullable', 'string', 'max:64']]);
-        $front = rtrim((string) config('app.frontend_app.url'), '/')."/dashboard/events/{$event->id}/unlock";
+        $front = rtrim((string) config('app.frontend_app.url'), '/') . "/dashboard/events/{$event->id}/unlock";
 
-        $result = $this->purchases->checkout($event, $request->user(), $data['code'] ?? null, $front.'?paid=1', $front.'?cancelled=1');
+        $result = $this->purchases->checkout($event, $request->user(), $data['code'] ?? null, $front . '?paid=1', $front . '?cancelled=1');
 
         return response()->json(['data' => ['purchaseId' => $result['purchase']->id, 'url' => $result['url']]], 201);
     }
