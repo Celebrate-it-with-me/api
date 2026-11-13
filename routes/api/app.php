@@ -13,10 +13,12 @@
     use App\Http\Controllers\AppControllers\EventsController;
     use App\Http\Controllers\AppControllers\ExportController;
     use App\Http\Controllers\AppControllers\GuestController;
+    use App\Http\Controllers\AppControllers\GuestImportController;
     use App\Http\Controllers\AppControllers\GuestRosterController;
     use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
     use App\Http\Controllers\AppControllers\MenuController;
     use App\Http\Controllers\AppControllers\MenuItemController;
+    use App\Http\Controllers\AppControllers\OnboardingController;
     use App\Http\Controllers\AppControllers\OrganizerRsvpController;
     use App\Http\Controllers\AppControllers\PadrinoController;
     use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
@@ -194,9 +196,14 @@ Route::middleware(['auth:sanctum', 'refresh.token'])->group(function () {
             // ========================================
             // GUESTS & RSVP
             // ========================================
+            Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding');
+
             // The unified "Invitados" screen: status tabs, event-wide counters, edit people.
             Route::prefix('roster')->name('roster.')->group(function () {
                 Route::get('', [GuestRosterController::class, 'index'])->name('index');
+                Route::get('import/template', [GuestImportController::class, 'template'])->name('import.template');
+                Route::post('import/preview', [GuestImportController::class, 'preview'])->name('import.preview');
+                Route::post('import', [GuestImportController::class, 'store'])->name('import.store');
                 Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
                 Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');
                 Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');

@@ -151,6 +151,10 @@ class EventActivity extends Model
                 'user' => $this->actor ? $this->actor->name : 'System',
             ]),
             
+            'guests_imported' => __(':count guests imported by :user', [
+                'count' => $this->payload['count'] ?? 0,
+                'user' => $this->actor ? $this->actor->name : 'System',
+            ]),
             'guest_confirmed' => __('Guest :name, has confirmed their attendance.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'photo_uploaded' => __('Photo uploaded by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'music_added' => __('Music added by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
