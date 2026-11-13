@@ -4,7 +4,6 @@
     use App\Http\Controllers\GalleryController;
     use App\Http\Controllers\S3ObjectsController;
     use App\Http\Controllers\SMSReminderController;
-    use App\Http\Controllers\TotalsController;
     use App\Http\Controllers\UserController;
     use App\Http\Controllers\Admin\AuditController;
     use App\Http\Controllers\Admin\DashboardController;
@@ -46,10 +45,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     // The old endpoints of the first panel: superadmin only, until they are removed.
     Route::middleware('admin.can:admin.legacy')->group(function () {
-        Route::get('totals', [TotalsController::class, 'getTotals']);
-        Route::get('totals/details/{type}', [TotalsController::class, 'totalDetails']);
-        Route::get('totals/excel/{type}', [TotalsController::class, 'exportExcel']);
-
         Route::get('sms-reminders/get-recipients', [SMSReminderController::class, 'getRecipients'])
             ->name('smsReminders.getRecipients');
 

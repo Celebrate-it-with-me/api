@@ -64,7 +64,6 @@ describe('roles and permissions', function () {
         $this->actingAs($support)->getJson('/api/v1/admin/team')->assertForbidden();
         $this->actingAs($support)->getJson('/api/v1/admin/audit')->assertForbidden();
         $this->actingAs($support)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id, ['reason' => 'trying it out'])->assertForbidden();
-        $this->actingAs($support)->getJson('/api/v1/admin/totals')->assertForbidden();
     });
 
     it('tells the panel the roles and permissions of whoever is logged in', function () {
