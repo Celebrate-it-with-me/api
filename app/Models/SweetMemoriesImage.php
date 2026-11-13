@@ -25,8 +25,20 @@ class SweetMemoriesImage extends Model
         'description',
         'year',
         'visible',
-        'order'
+        'order',
+        'hidden_at',
+        'hidden_by',
     ];
+
+    protected $casts = [
+        'hidden_at' => 'datetime',
+    ];
+
+    /** Not hidden by staff moderation (admin A6). Every guest/organizer output must use it. */
+    public function scopeNotHidden($query)
+    {
+        return $query->whereNull($query->qualifyColumn('hidden_at'));
+    }
 
     /**
      * Defines the relationship between the current model and the Events model.
