@@ -138,7 +138,8 @@ describe('the API', function () {
         $queries = count(DB::getQueryLog());
         DB::disableQueryLog();
 
-        expect($queries)->toBeLessThanOrEqual(2);
+        // The catalog, the plan's modules, and the staff exceptions of every event at once: constant.
+        expect($queries)->toBeLessThanOrEqual(3);
     });
 });
 
