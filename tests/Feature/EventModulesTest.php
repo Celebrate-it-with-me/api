@@ -134,11 +134,12 @@ describe('the API', function () {
 
         DB::flushQueryLog();
         DB::enableQueryLog();
+        $service->preload($events); // lists do this once; a single event only reads its own exceptions
         $events->each(fn ($event) => $service->forEvent($event));
         $queries = count(DB::getQueryLog());
         DB::disableQueryLog();
 
-        // The catalog, the plan's modules, and the staff exceptions of every event at once: constant.
+        // The catalog, the plan's modules, and the staff exceptions of every listed event at once: constant.
         expect($queries)->toBeLessThanOrEqual(3);
     });
 });

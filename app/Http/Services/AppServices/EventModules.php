@@ -5,6 +5,7 @@ namespace App\Http\Services\AppServices;
 use App\Models\EventModuleOverride;
 use App\Models\Events;
 use App\Models\Module;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -102,13 +103,13 @@ class EventModules
     /**
      * Read the exceptions of several events in one query (a list of events), so asking about each costs nothing more.
      *
-     * @param  iterable<int, Events|int>|\Illuminate\Pagination\AbstractPaginator  $events
+     * @param  iterable<int, Events|int>|AbstractPaginator  $events
      */
     public function preload(iterable $events): void
     {
         $this->resetIfNewRequest();
 
-        if ($events instanceof \Illuminate\Pagination\AbstractPaginator) {
+        if ($events instanceof AbstractPaginator) {
             $events = $events->items();
         }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Services\AppServices\EventModules;
 use App\Models\EventModuleOverride;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -7,11 +8,10 @@ use App\Models\EventType;
 use App\Models\EventUserRole;
 use App\Models\Guest;
 use App\Models\Module;
+use App\Models\SuggestedMusic;
 use App\Models\SweetMemoriesImage;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
-use App\Http\Services\AppServices\EventModules;
-use App\Models\SuggestedMusic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
