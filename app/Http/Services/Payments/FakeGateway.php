@@ -15,9 +15,9 @@ class FakeGateway implements PaymentGateway
 
     public function createSession(EventPurchase $purchase, string $successUrl, string $cancelUrl): array
     {
-        $id = 'fake_'.Str::random(24);
+        $id = 'fake_' . Str::random(24);
 
-        return ['id' => $id, 'url' => $successUrl.(str_contains($successUrl, '?') ? '&' : '?').'session='.$id];
+        return ['id' => $id, 'url' => $successUrl . (str_contains($successUrl, '?') ? '&' : '?') . 'session=' . $id];
     }
 
     public function refund(EventPurchase $purchase): void {}
