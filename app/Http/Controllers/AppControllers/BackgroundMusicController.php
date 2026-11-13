@@ -28,7 +28,10 @@ class BackgroundMusicController extends Controller
     public function index(Request $request, Events $event): JsonResponse|BackgroundMusicResource
     {
         try {
-            return BackgroundMusicResource::make($event->backgroundMusic);
+            // No background music yet is a normal answer, not an error.
+            return $event->backgroundMusic
+                ? BackgroundMusicResource::make($event->backgroundMusic)
+                : response()->json(['data' => null]);
         } catch (Throwable $th) {
             report($th);
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);

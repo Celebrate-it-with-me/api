@@ -29,7 +29,8 @@ class AuthenticationController extends Controller
     {
         $user = User::query()->where('email', $request->input('email'))->first();
 
-        if (!$user || !Hash::check($request->input('password'), $user->password)) {
+        // A token for the admin panel is only for administrators; anyone else gets the same answer as a wrong password.
+        if (!$user || !Hash::check($request->input('password'), $user->password) || !$user->hasRole('admin')) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);

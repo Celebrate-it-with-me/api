@@ -44,8 +44,8 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        // The 2025_04_05 migration creates an admin with the well-known password
-        // 'password'. If it is still untouched, replace it with the configured one;
+        // Older databases got an admin with the well-known password 'password' from a migration that no longer
+        // does that. If it is still untouched, replace it with the configured one;
         // a password that was changed on purpose is never overwritten.
         if (! $admin->wasRecentlyCreated
             && $password !== self::LOCAL_PASSWORD
