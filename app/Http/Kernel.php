@@ -89,6 +89,7 @@ class Kernel extends HttpKernel
         'signed' => ValidateSignature::class,
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,
+        'not.suspended' => \App\Http\Middleware\EnsureNotSuspended::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
         'admin.can' => \App\Http\Middleware\EnsureAdminPermission::class,

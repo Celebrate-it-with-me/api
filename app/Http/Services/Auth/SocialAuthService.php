@@ -39,6 +39,10 @@ class SocialAuthService
             ->where('provider_user_id', $providerUserId)
             ->first();
 
+        if ($account?->user?->suspended_at) {
+            return $this->redirectToSpa('error', $provider, 'account_suspended');
+        }
+
         if ($account?->user) {
             Auth::login($account->user);
             return $this->redirectToSpa('ok', $provider);
@@ -58,6 +62,10 @@ class SocialAuthService
                 'email' => $email,
                 'password' => bcrypt(Str::random(32)),
             ]);
+        }
+
+        if ($user->suspended_at) {
+            return $this->redirectToSpa('error', $provider, 'account_suspended');
         }
 
         SocialAccount::query()->create([
