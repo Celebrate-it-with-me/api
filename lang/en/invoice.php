@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'invoice' => 'Invoice',
+    'credit_note' => 'Credit note',
+    'void' => 'Void',
+    'issuer' => 'Issued by',
+    'bill_to' => 'Billed to',
+    'date' => 'Date',
+    'payment' => 'Payment',
+    'refers_to' => 'Cancels invoice',
+    'description' => 'Description',
+    'qty' => 'Qty',
+    'unit' => 'Price',
+    'amount' => 'Amount',
+    'subtotal' => 'Subtotal',
+    'discount' => 'Discount',
+    'tax_included' => 'Tax included (:rate%)',
+    'total' => 'Total paid',
+    'total_credited' => 'Total credited',
+    'refund_of' => 'Refund of invoice :number',
+    'footer' => 'Thank you for celebrating with Quinvite.',
+    'lines' => ['full_event' => 'Quinvite full event'],
+    'methods' => ['stripe' => 'Card', 'manual' => 'Manual payment', 'fake' => 'Card'],
+];

@@ -22,6 +22,14 @@ return [
         'outro' => 'If you did not create this account, you can ignore this message; nothing will happen.',
     ],
 
+    'invoice' => [
+        'subject' => 'Your Quinvite invoice :number',
+        'preheader' => 'Your invoice is attached.',
+        'title' => 'Thank you for your purchase, :name',
+        'intro' => 'Attached is invoice :number for :total, for ":event". You can also download it any time from My purchases.',
+        'action' => 'View my purchases',
+    ],
+
     'welcome' => [
         'subject' => 'Welcome to Quinvite, :name',
         'preheader' => 'Your quinceañera or wedding, organized in one place.',

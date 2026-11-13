@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'invoice' => 'Factura',
+    'credit_note' => 'Nota de crédito',
+    'void' => 'Anulada',
+    'issuer' => 'Emisor',
+    'bill_to' => 'Facturado a',
+    'date' => 'Fecha',
+    'payment' => 'Pago',
+    'refers_to' => 'Anula la factura',
+    'description' => 'Descripción',
+    'qty' => 'Cant.',
+    'unit' => 'Precio',
+    'amount' => 'Importe',
+    'subtotal' => 'Subtotal',
+    'discount' => 'Descuento',
+    'tax_included' => 'Impuesto incluido (:rate %)',
+    'total' => 'Total pagado',
+    'total_credited' => 'Total acreditado',
+    'refund_of' => 'Reembolso de la factura :number',
+    'footer' => 'Gracias por celebrar con Quinvite.',
+    'lines' => ['full_event' => 'Evento completo Quinvite'],
+    'methods' => ['stripe' => 'Tarjeta', 'manual' => 'Pago manual', 'fake' => 'Tarjeta'],
+];

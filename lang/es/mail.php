@@ -23,6 +23,14 @@ return [
         'outro' => 'Si no creaste esta cuenta, puedes ignorar este mensaje; no pasará nada.',
     ],
 
+    'invoice' => [
+        'subject' => 'Tu factura :number de Quinvite',
+        'preheader' => 'Adjuntamos la factura de tu compra.',
+        'title' => 'Gracias por tu compra, :name',
+        'intro' => 'Adjuntamos la factura :number por :total, correspondiente a «:event». También puedes descargarla cuando quieras desde Mis compras.',
+        'action' => 'Ver mis compras',
+    ],
+
     'welcome' => [
         'subject' => 'Te damos la bienvenida a Quinvite, :name',
         'preheader' => 'Tu quinceañera o tu boda, organizada en un solo lugar.',

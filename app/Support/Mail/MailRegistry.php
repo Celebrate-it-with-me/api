@@ -4,6 +4,7 @@ namespace App\Support\Mail;
 
 use App\Mail\ConfirmAccountEmail;
 use App\Mail\ImpersonationEndedMail;
+use App\Mail\InvoiceMail;
 use App\Mail\InviteRegisteredUserMail;
 use App\Mail\InviteUnregisteredUserMail;
 use App\Mail\OwnershipTransferredMail;
@@ -15,6 +16,7 @@ use App\Models\BudgetItem;
 use App\Models\EventCollaborationInvite;
 use App\Models\Events;
 use App\Models\ImpersonationSession;
+use App\Models\Invoice;
 use App\Models\SupportRequest;
 use App\Models\User;
 use App\Models\UserPreference;
@@ -51,6 +53,9 @@ class MailRegistry
             new MailDefinition('welcome', 'Bienvenida', WelcomeEmail::class, $both, ['mail'],
                 fn (string $lang) => new WelcomeEmail(self::user($lang)),
                 'Cuando el equipo crea el evento de una dueña ya confirmada.'),
+            new MailDefinition('invoice', 'Factura de la compra', InvoiceMail::class, $both, ['mail'],
+                fn (string $lang) => new InvoiceMail(self::invoice($lang)),
+                'Al confirmarse un pago (también el manual) y al reenviarla desde el admin; lleva el PDF adjunto.'),
             new MailDefinition('reset-password', 'Restablecer contraseña', ResetPasswordEmail::class, $both, ['mail'],
                 fn (string $lang) => new ResetPasswordEmail(self::user($lang), MailLinks::app('check-password-link?confirm=sample-signed-token')),
                 'Al pedir "Olvidé mi contraseña" (o desde el admin).'),
@@ -114,6 +119,18 @@ class MailRegistry
         $user->setRelation('preferences', new UserPreference(['language' => $lang, 'timezone' => 'America/New_York']));
 
         return $user;
+    }
+
+    private static function invoice(string $lang): Invoice
+    {
+        return new Invoice([
+            'number' => 'QV-2026-000001', 'series' => 'QV', 'year' => 2026, 'sequence' => 1, 'status' => 'issued', 'locale' => $lang,
+            'issuer' => config('invoicing.issuer'),
+            'recipient' => ['name' => 'Valentina Ríos', 'email' => 'valentina@example.com'],
+            'lines' => [['description_key' => 'full_event', 'event_name' => 'Los XV de Valentina', 'quantity' => 1, 'unit_cents' => 9900, 'total_cents' => 9900]],
+            'subtotal_cents' => 9900, 'discount_cents' => 2000, 'tax_rate' => 0, 'tax_cents' => 0, 'total_cents' => 7900, 'currency' => 'USD',
+            'payment_method' => 'stripe', 'payment_reference' => 'pi_sample', 'issued_at' => now(),
+        ]);
     }
 
     private static function event(): Events
