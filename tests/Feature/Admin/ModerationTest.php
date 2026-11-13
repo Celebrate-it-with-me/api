@@ -200,7 +200,6 @@ describe('what guests and organizers see', function () {
         expect(collect($public->json('data'))->pluck('id')->all())->toBe([$ok->id]);
 
         $owner = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
-        // (The organizer's unpaginated list has an old bug: scopePinned() ignores its argument. Not touched: frozen module.)
         $ids = collect($this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/comments/paginated")->assertOk()->json('data'))->pluck('id')->all();
         expect($ids)->toContain($ok->id, $byOrganizer->id)->not->toContain($bad->id);
         $service = app(EventCommentService::class);
