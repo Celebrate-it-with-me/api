@@ -1,11 +1,14 @@
 <?php
 
 use App\Models\EventLocation;
+use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
 use App\Models\Guest;
 use App\Models\GuestRsvpLog;
+use Database\Seeders\EventPlanSeeder;
 use Database\Seeders\InvitationTemplateSeeder;
+use Database\Seeders\ModuleSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +22,15 @@ function invitationFixture(string $typeSlug = 'quinceanera', array $event = []):
 {
     $type = EventType::factory()->create(['slug' => $typeSlug, 'name' => ucfirst($typeSlug)]);
     test()->seed(InvitationTemplateSeeder::class);
+    // The public RSVP is guarded by the `rsvp` module, so the event needs a plan that includes it.
+    test()->seed([EventPlanSeeder::class, ModuleSeeder::class]);
 
     $event = Events::factory()->create(array_merge([
         'event_type_id' => $type->id,
         'event_name' => 'Los XV de Valentina',
         'custom_url_slug' => 'xv-de-valentina',
         'status' => 'published',
+        'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
     ], $event));
 
     $main = Guest::factory()->create([
