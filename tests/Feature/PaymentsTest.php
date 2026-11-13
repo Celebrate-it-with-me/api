@@ -83,6 +83,15 @@ it('unlocks the event once the signed webhook arrives, and only once', function 
     $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertStatus(422);
 });
 
+it('unlocks at once when a code brings the price to zero', function () {
+    [$event, $owner] = ownedEvent();
+    Coupon::create(['code' => 'GIFT', 'kind' => 'percent_off', 'value' => 100]);
+
+    $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => 'GIFT'])->assertCreated();
+
+    expect($event->fresh()->eventPlan->slug)->toBe('premium');
+});
+
 it('rejects a webhook with a bad signature', function () {
     [$event, $owner] = ownedEvent();
     $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertCreated();
