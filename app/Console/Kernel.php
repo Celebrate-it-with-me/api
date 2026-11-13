@@ -20,6 +20,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('admin:audit-prune')->dailyAt('03:00');
         $schedule->command('modules:prune-overrides')->dailyAt('03:30');
         $schedule->command('impersonation:close-expired')->everyMinute();
+        $schedule->call(fn () => \Illuminate\Support\Facades\Cache::put(\App\Http\Services\Admin\Health\QueueStatus::HEARTBEAT_KEY, now()->toIso8601String(), 600))->name('health-heartbeat')->everyMinute();
     }
 
     /**
