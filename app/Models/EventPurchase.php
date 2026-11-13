@@ -25,6 +25,17 @@ class EventPurchase extends Model
         return $this->belongsTo(EventPlan::class, 'event_plan_id');
     }
 
+    public function buyer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** The admin who recorded a manual payment. */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
