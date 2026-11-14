@@ -101,3 +101,13 @@ it('answers unknown, non staff and wrong password the same (S-22)', function () 
 
     expect($a->status())->toBe(422)->and($b->status())->toBe(422)->and($a->json())->toBe($b->json());
 });
+
+it('does not let a staff account with an unverified email into the panel (S-29)', function () {
+    $staff = User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => null]);
+    $staff->assignRole('support');
+
+    $this->postJson('/api/v1/admin/login', ['email' => $staff->email, 'password' => 'OriginalPass1', 'device' => 'x'])->assertStatus(422);
+
+    $staff->forceFill(['email_verified_at' => now()])->save();
+    $this->postJson('/api/v1/admin/login', ['email' => $staff->email, 'password' => 'OriginalPass1', 'device' => 'x'])->assertOk();
+});

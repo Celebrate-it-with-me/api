@@ -62,7 +62,9 @@ class AdminLoginService
         $passwordOk = Hash::check($password, $user?->password ?? (self::$dummyHash ??= Hash::make('not-a-real-password')));
 
         // A token for the admin panel is only for administrators; anyone else gets the same answer as a wrong password.
-        if (! $user || ! $passwordOk || ! $isStaff) {
+        // A staff account whose mailbox was never verified is not let in either: the password may have been chosen by
+        // whoever registered that address first (S-29).
+        if (! $user || ! $passwordOk || ! $isStaff || ! $user->hasVerifiedEmail()) {
             RateLimiter::hit($passwordLimiter, 900);
 
             // A failed attempt on a real staff account leaves a trace in her own history (throttled by IP on the route).
