@@ -11,4 +11,13 @@ return [
 
     // How long the link to confirm a new sign-in email lives, in minutes.
     'email_change_minutes' => (int) env('ADMIN_EMAIL_CHANGE_MINUTES', 60),
+
+    // Lifetime of the admin panel's tokens (client = 'admin'). A token that stays unused for this many hours dies
+    // (idle), and none lives longer than this many days since sign-in (absolute). Both answer 401 `session_expired`.
+    // Impersonation tokens (their own 45-minute life) and the organizers' app tokens are not governed by these.
+    'token_idle_hours' => (int) env('ADMIN_TOKEN_IDLE_HOURS', 12),
+    'token_max_days' => (int) env('ADMIN_TOKEN_MAX_DAYS', 7),
+
+    // How long a successful re-authentication (`POST admin/account/reauth`) keeps the very sensitive actions open, in minutes.
+    'reauth_minutes' => (int) env('ADMIN_REAUTH_MINUTES', 10),
 ];
