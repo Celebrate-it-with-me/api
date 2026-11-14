@@ -11,6 +11,7 @@ use App\Models\EventUserRole;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\EventPlanSeeder;
+use Database\Seeders\LaunchCouponSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 
@@ -171,4 +172,44 @@ it('does not overwrite an edited price when seeded again', function () {
     $this->seed(EventPlanSeeder::class);
 
     expect(EventPlan::where('slug', 'premium')->value('price_cents'))->toBe(7900);
+});
+
+describe('launch offer', function () {
+    it('totals 99 without a code and 79 with the launch code, the same for quince and wedding', function () {
+        $this->seed(LaunchCouponSeeder::class);
+
+        foreach (['quinceanera', 'wedding'] as $type) {
+            [$event, $owner] = ownedEvent();
+            $event->update(['event_type_id' => EventType::where('slug', $type)->value('id')]);
+
+            $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/quote")
+                ->assertOk()->assertJsonPath('data.amountCents', 9900)->assertJsonPath('data.listPriceCents', 9900);
+            $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/quote?code=lanzamiento79")
+                ->assertOk()->assertJsonPath('data.amountCents', 7900)->assertJsonPath('data.listPriceCents', 9900)
+                ->assertJsonPath('data.code', LaunchCouponSeeder::CODE);
+
+            $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => LaunchCouponSeeder::CODE])->assertCreated();
+            expect(EventPurchase::find($res->json('data.purchaseId')))->amount_cents->toBe(7900)->list_price_cents->toBe(9900)->is_founder->toBeTrue();
+        }
+    });
+
+    it('is rejected once the 100 uses are spent', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        Coupon::where('code', LaunchCouponSeeder::CODE)->update(['times_used' => 100]);
+        [$event, $owner] = ownedEvent();
+
+        expect(Coupon::where('code', LaunchCouponSeeder::CODE)->value('max_uses'))->toBe(100);
+        $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/quote?code=" . LaunchCouponSeeder::CODE)->assertStatus(422);
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => LaunchCouponSeeder::CODE])->assertStatus(422);
+    });
+
+    it('seeding again never overwrites what the admin changed', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        Coupon::where('code', LaunchCouponSeeder::CODE)->update(['max_uses' => 250, 'is_active' => false]);
+
+        $this->seed(LaunchCouponSeeder::class);
+
+        expect(Coupon::where('code', LaunchCouponSeeder::CODE)->count())->toBe(1)
+            ->and(Coupon::where('code', LaunchCouponSeeder::CODE)->first())->max_uses->toBe(250)->is_active->toBeFalse();
+    });
 });
