@@ -35,6 +35,8 @@ final class ImpersonationRules
         'GET api/v1/app/user/2fa/status',
         'POST api/v1/app/account/credit-notes/{creditNote}/resend',
         'POST api/v1/app/account/invoices/{invoice}/resend',
+        // Nothing is dismissed on behalf of the user.
+        'POST api/v1/app/announcements/{announcement}/dismiss',
         'POST api/v1/app/event/{event}/collaborators',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
         'POST api/v1/app/event/{event}/purchase/checkout',
@@ -68,6 +70,7 @@ final class ImpersonationRules
         'DELETE api/v1/app/event/{event}/tables/{table}',
         'DELETE api/v1/app/event/{event}/tables/{table}/guest/{guest}',
         'DELETE api/v1/app/event/{event}/timeline/{timeline}',
+        'GET api/v1/app/announcements',
         'GET api/v1/app/auth/ready',
         'GET api/v1/app/event/filters',
         'GET api/v1/app/event/{event}',
