@@ -72,3 +72,18 @@ it('stops guessing the current password after 5 tries', function () {
     }
     $this->actingAs($user)->postJson('/api/v1/app/user/update-password', ['currentPassword' => 'OriginalPass1'] + $payload)->assertStatus(429);
 });
+
+it('exposes Retry-After (and Content-Disposition) to the browser on a 429 login', function () {
+    config(['cors.allowed_origins' => ['http://dev.app.cwm.com']]);
+    $user = User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => now()]);
+    $headers = ['Origin' => 'http://dev.app.cwm.com'];
+
+    foreach (range(1, 5) as $i) {
+        $this->withHeaders($headers)->postJson('/api/v1/app/login', ['email' => $user->email, 'password' => 'wrong', 'device' => 'x'])->assertStatus(401);
+    }
+    $res = $this->withHeaders($headers)->postJson('/api/v1/app/login', ['email' => $user->email, 'password' => 'wrong', 'device' => 'x'])->assertStatus(429);
+
+    expect($res->headers->get('Retry-After'))->not->toBeNull();
+    $exposed = strtolower((string) $res->headers->get('Access-Control-Expose-Headers'));
+    expect($exposed)->toContain('retry-after')->and($exposed)->toContain('content-disposition');
+});
