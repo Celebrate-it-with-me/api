@@ -157,7 +157,6 @@ describe('demo data', function () {
 
         expect($response->getStatusCode())->toBe(200)
             ->and($data['userPermissions'])->toContain('view_event')
-            ->and($data['eventFeatures'])->not->toBeNull()
             ->and($data['menus'])->not->toBeEmpty();
     });
 

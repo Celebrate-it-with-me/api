@@ -3,7 +3,6 @@
 namespace App\Http\Services\AppServices\Hydrate;
 
 use App\Http\Resources\AppResources\EventComment\EventCommentResource;
-use App\Http\Resources\AppResources\EventFeatureResource;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
 use App\Http\Resources\AppResources\MenuResource;
 use App\Http\Resources\AppResources\SaveTheDateResource;
@@ -51,7 +50,6 @@ class EventDataLoader
 
         return [
             'menus' => $active('menus') ? $this->loadMenus($event) : null,
-            'eventFeatures' => $this->loadEventFeatures($event),
             // The guest list and the answers have their own screen and endpoints; loading them here cost a QR per guest on every app load.
             'guests' => null,
             'rsvp' => null,
@@ -75,21 +73,6 @@ class EventDataLoader
         }
 
         return MenuResource::collection($event->menus);
-    }
-
-    /**
-     * Loads event features.
-     *
-     * @param Events $event
-     * @return EventFeatureResource|null
-     */
-    private function loadEventFeatures(Events $event): ?EventFeatureResource
-    {
-        if (!$event->eventFeature) {
-            return null;
-        }
-
-        return EventFeatureResource::make($event->eventFeature);
     }
 
     /**

@@ -86,7 +86,6 @@ class HydrationResponseBuilder
             events: $this->formatEvents(),
             activeEvent: $this->formatActiveEvent(),
             menus: $this->eventData['menus'] ?? null,
-            eventFeatures: $this->eventData['eventFeatures'] ?? null,
             guests: $this->eventData['guests'] ?? null,
             rsvp: $this->eventData['rsvp'] ?? null,
             saveTheDate: $this->eventData['saveTheDate'] ?? null,
