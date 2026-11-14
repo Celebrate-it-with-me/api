@@ -33,7 +33,7 @@ function limitedCoupon(): Coupon
 describe('updating coupon limits', function () {
     it('removes the usage cap with an explicit null and leaves the expiry alone', function () {
         $coupon = limitedCoupon();
-        $this->actingAs(couponStaff(AdminPermissions::SUPERADMIN))
+        $this->actingAsReauthed(couponStaff(AdminPermissions::SUPERADMIN))
             ->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['maxUses' => null, 'reason' => 'Open to everyone'])
             ->assertOk();
 
@@ -46,7 +46,7 @@ describe('updating coupon limits', function () {
 
     it('removes the expiry with an explicit null and leaves the cap alone', function () {
         $coupon = limitedCoupon();
-        $this->actingAs(couponStaff(AdminPermissions::SUPERADMIN))
+        $this->actingAsReauthed(couponStaff(AdminPermissions::SUPERADMIN))
             ->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['expiresAt' => null, 'reason' => 'No deadline'])
             ->assertOk();
 
@@ -59,7 +59,7 @@ describe('updating coupon limits', function () {
 
     it('does not touch absent fields', function () {
         $coupon = limitedCoupon();
-        $this->actingAs(couponStaff(AdminPermissions::SUPERADMIN))
+        $this->actingAsReauthed(couponStaff(AdminPermissions::SUPERADMIN))
             ->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['isActive' => false, 'reason' => 'Campaign over'])
             ->assertOk();
 
@@ -70,7 +70,7 @@ describe('updating coupon limits', function () {
 
     it('still sets new values', function () {
         $coupon = limitedCoupon();
-        $this->actingAs(couponStaff(AdminPermissions::SUPERADMIN))
+        $this->actingAsReauthed(couponStaff(AdminPermissions::SUPERADMIN))
             ->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['maxUses' => 10, 'expiresAt' => '2027-03-01', 'reason' => 'Extended'])
             ->assertOk();
 
@@ -80,9 +80,9 @@ describe('updating coupon limits', function () {
     it('requires a reason and validates the cap', function () {
         $coupon = limitedCoupon();
         $admin = couponStaff(AdminPermissions::SUPERADMIN);
-        $this->actingAs($admin)->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['maxUses' => null])
+        $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['maxUses' => null])
             ->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['maxUses' => 0, 'reason' => 'Nope nope'])
+        $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/payments/coupons/{$coupon->id}", ['maxUses' => 0, 'reason' => 'Nope nope'])
             ->assertStatus(422)->assertJsonValidationErrors('maxUses');
         expect($coupon->refresh()->max_uses)->toBe(50);
     });
@@ -93,8 +93,8 @@ describe('updating coupon limits', function () {
         $url = "/api/v1/admin/payments/coupons/{$coupon->id}";
 
         $this->patchJson($url, $payload)->assertUnauthorized();
-        $this->actingAs(User::factory()->create())->patchJson($url, $payload)->assertForbidden();
-        $this->actingAs(couponStaff(AdminPermissions::SUPPORT))->patchJson($url, $payload)->assertForbidden();
+        $this->actingAsReauthed(User::factory()->create())->patchJson($url, $payload)->assertForbidden();
+        $this->actingAsReauthed(couponStaff(AdminPermissions::SUPPORT))->patchJson($url, $payload)->assertForbidden();
         expect($coupon->refresh()->max_uses)->toBe(50);
     });
 });
