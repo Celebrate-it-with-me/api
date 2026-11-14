@@ -98,7 +98,7 @@ describe('overview', function () {
             ->and($module)->toHaveKeys(['section', 'order']);
 
         $premium = collect($data['plans'])->firstWhere('slug', 'premium');
-        expect($premium)->toHaveKeys(['name', 'maxGuests', 'priceCents', 'isFullPlan', 'eventsCount'])
+        expect($premium)->toHaveKeys(['name', 'description', 'maxGuests', 'priceCents', 'isFullPlan', 'eventsCount'])
             ->and($premium['isFullPlan'])->toBeTrue()
             ->and($premium['eventsCount'])->toBe(2)
             ->and(collect($data['plans'])->firstWhere('slug', 'basic')['isFullPlan'])->toBeFalse();
@@ -159,6 +159,28 @@ describe('impact', function () {
         $row = collect($out['plans'])->firstWhere('slug', 'basic');
         expect($row['change'])->toBe('removed')->and($row['toLocked'])->toBe(3)->and($row['events'])->toBe(3);
         expect($e)->not->toBeNull();
+    });
+
+    it('accepts an empty or absent planSlugs as "no plan at all" and counts what each current plan would lose', function () {
+        $key = catPremiumOnlyModule();
+        catEvent('premium');
+        $kept = catEvent('premium');
+        EventModuleOverride::create(['event_id' => $kept->id, 'module_key' => $key, 'state' => 'active', 'reason' => 'Regalo', 'created_by' => null]);
+        $current = Module::where('key', $key)->first()->plans()->pluck('slug')->sort()->values()->all();
+        $admin = catStaff('support');
+
+        foreach (["/api/v1/admin/catalog/impact?module={$key}", "/api/v1/admin/catalog/impact?module={$key}&planSlugs="] as $url) {
+            $data = $this->actingAs($admin)->getJson($url)->assertOk()->json('data');
+
+            expect($data['planSlugs'])->toBe([])
+                ->and($data['currentPlanSlugs'])->toBe($current)
+                ->and(collect($data['plans'])->pluck('change')->unique()->all())->toBe(['removed'])
+                ->and(collect($data['plans'])->pluck('slug')->sort()->values()->all())->toBe($current)
+                ->and(collect($data['plans'])->firstWhere('slug', 'premium')['toLocked'])->toBe(1)
+                ->and(collect($data['plans'])->firstWhere('slug', 'premium')['withOverride'])->toBe(1)
+                ->and($data['totalToLocked'])->toBe(1)
+                ->and($data['totalToActive'])->toBe(0);
+        }
     });
 
     it('validates the module and the plans', function () {
