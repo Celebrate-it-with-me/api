@@ -7,7 +7,6 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class UsersServices
 {
@@ -29,29 +28,8 @@ class UsersServices
         return User::query()->create([
             'name' => $this->request->input('name'),
             'email' => $this->request->input('email'),
-            'password' => Hash::make($this->request->input('password')),
+            'password' => $this->request->input('password'), // hashed by the model cast
         ]);
-    }
-
-    /**
-     * Update user info;
-     * @param User $user
-     * @return User|Authenticatable
-     */
-    public function update(User $user): User|Authenticatable
-    {
-        $this->user = $user;
-
-        $this->user->name = $this->request->name;
-        $this->user->email = $this->request->email;
-
-        if ($this->request->has('password')) {
-            $this->user->password = Hash::make($this->request->input('password'));
-        }
-
-        $this->user->save();
-
-        return $this->user;
     }
 
     /**

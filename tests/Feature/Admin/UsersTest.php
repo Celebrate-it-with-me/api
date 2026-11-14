@@ -323,3 +323,41 @@ describe('delete (anonymise)', function () {
         $this->postJson('/api/v1/app/login', ['device' => 'test', 'email' => $email, 'password' => 'password'])->assertUnauthorized();
     });
 });
+
+describe('legacy user edit (S-04)', function () {
+    it('no longer exists: nobody can rewrite the email or password of another account from the panel', function () {
+        $super = User::factory()->create();
+        $super->assignRole('superadmin');
+        $target = User::factory()->create(['password' => 'OriginalPass1']);
+        $other = User::factory()->create();
+        $other->assignRole('superadmin');
+
+        foreach (['putJson', 'patchJson'] as $method) {
+            foreach ([$target, $other] as $victim) {
+                $this->actingAsReauthed($super)->{$method}("/api/v1/admin/users/{$victim->id}", ['name' => 'x', 'email' => 'taken@example.com', 'password' => 'Hacked1234567'])
+                    ->assertStatus(405);
+            }
+        }
+
+        expect($target->fresh()->email)->not->toBe('taken@example.com')
+            ->and(\Illuminate\Support\Facades\Hash::check('OriginalPass1', $target->fresh()->password))->toBeTrue();
+    });
+
+    it('refuses a duplicated email or a short password on create', function () {
+        $super = User::factory()->create();
+        $super->assignRole('superadmin');
+        $existing = User::factory()->create();
+
+        $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => $existing->email, 'password' => 'LongEnough1234'])->assertStatus(422);
+        $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'short'])->assertStatus(422);
+    });
+
+    it('creates a user that can sign in (the password is hashed once)', function () {
+        $super = User::factory()->create();
+        $super->assignRole('superadmin');
+
+        $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'LongEnough1234'])->assertSuccessful();
+
+        expect(\Illuminate\Support\Facades\Hash::check('LongEnough1234', User::where('email', 'new@example.com')->value('password')))->toBeTrue();
+    });
+});
