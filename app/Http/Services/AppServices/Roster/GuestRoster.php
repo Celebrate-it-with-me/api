@@ -83,6 +83,7 @@ class GuestRoster
             'name' => $guest->name,
             'email' => $guest->email,
             'phone' => $guest->phone,
+            'whatsappOptedOut' => $guest->whatsapp_opted_out_at !== null,
             'gender' => $guest->gender,
             'status' => $guest->rsvp_status,
             'statusDate' => $guest->rsvp_status_date?->toIso8601String(),

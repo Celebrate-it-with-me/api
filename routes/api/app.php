@@ -79,6 +79,7 @@ Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseControll
 // "Mis compras" (invoices): its own file, own auth middleware. Keep it above the group that ends the impersonation
 // session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
 require __DIR__ . '/app/invoices.php';
+require __DIR__ . '/app/whatsapp.php';
 
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);

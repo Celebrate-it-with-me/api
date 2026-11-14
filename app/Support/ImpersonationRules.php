@@ -38,6 +38,9 @@ final class ImpersonationRules
         'POST api/v1/app/event/{event}/collaborators',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
         'POST api/v1/app/event/{event}/purchase/checkout',
+        // Messaging real guests is the organizer's act, never support's.
+        'POST api/v1/app/event/{event}/whatsapp/send',
+        'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
         'POST api/v1/app/logout',
         'POST api/v1/app/support',
         'POST api/v1/app/user/2fa/disable',
@@ -50,6 +53,8 @@ final class ImpersonationRules
 
     /** Everything else the organizer does in her own account, so support can reproduce and fix what she sees. */
     public const ALLOWED = [
+        'GET api/v1/app/event/{event}/whatsapp/messages',
+        'GET api/v1/app/event/{event}/whatsapp/summary',
         'DELETE api/v1/app/event/{event}/budget/categories/{category}',
         'DELETE api/v1/app/event/{event}/budget/items/{item}',
         'DELETE api/v1/app/event/{event}/budget/items/{item}/payments/{payment}',
