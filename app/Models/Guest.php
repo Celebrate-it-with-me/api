@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Seating\TableAssignment;
+use App\Models\WhatsApp\OptOut;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,30 @@ class Guest extends Model
         'whatsapp_opted_out_at' => 'datetime',
         'tags' => 'array'
     ];
+
+    /**
+     * The WhatsApp opt-out lives with the phone number (whatsapp_opt_outs); the column is kept in step with it whenever
+     * a guest is created or gets a new phone, so a recreated guest or a changed number never gets messaged again.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Guest $guest) {
+            if (! $guest->exists || $guest->isDirty('phone')) {
+                $opted = OptOut::has($guest->phone);
+                if ($opted && $guest->whatsapp_opted_out_at === null) {
+                    $guest->whatsapp_opted_out_at = now();
+                } elseif (! $opted && $guest->exists) {
+                    $guest->whatsapp_opted_out_at = null;
+                }
+            }
+        });
+    }
+
+    /** True when this guest must not get WhatsApp messages: opted out on the row or on the phone number. */
+    public function whatsappBlocked(): bool
+    {
+        return $this->whatsapp_opted_out_at !== null || OptOut::has($this->phone);
+    }
 
     /**
      * Get the event that this guest belongs to.
