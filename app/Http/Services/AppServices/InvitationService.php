@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\Payments\PurchaseService;
 use App\Models\DressCode;
 use App\Models\EventLocation;
 use App\Models\Events;
@@ -85,8 +86,8 @@ class InvitationService
             'locale' => $locale,
             'theme' => $this->themePayload($version['theme'], $event->template_config['theme'] ?? []),
             'sections' => $this->resolveSections($event, $guest, $version['sections'], $locale),
-            // Free-plan watermark. Premium removes it once the plan model exists.
-            'branding' => ['watermark' => true],
+            // Basic-plan watermark; the full event (paid, or on the premium plan) removes it. A refund puts the event back on basic.
+            'branding' => ['watermark' => ! app(PurchaseService::class)->isUnlocked($event)],
         ];
     }
 

@@ -22,7 +22,7 @@ function eventWithMembers(): array
 {
     $event = Events::factory()->create([
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
-        'event_plan_id' => EventPlan::orderBy('id')->value('id'),
+        'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
         'status' => 'draft',
         'event_name' => 'Los XV de Valentina',
     ]);
@@ -142,6 +142,7 @@ describe('an owner', function () {
     it('does not change the plan when editing', function () {
         [$event, $m] = eventWithMembers();
         $premium = EventPlan::orderByDesc('id')->value('id');
+        $event->update(['event_plan_id' => EventPlan::orderBy('id')->value('id')]);
 
         $this->actingAs($m['owner'])->putJson("/api/v1/app/event/{$event->id}", updatePayload($event) + ['eventPlan' => $premium])->assertOk();
         expect($event->fresh()->event_plan_id)->toBe(EventPlan::orderBy('id')->value('id'));
