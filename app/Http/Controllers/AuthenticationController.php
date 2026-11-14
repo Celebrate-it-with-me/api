@@ -23,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -120,9 +121,12 @@ class AuthenticationController extends Controller
     {
         $user = User::query()->where('email', $request->input('email'))->first();
 
-        if (!$user) {
+        // At most 3 emails per hour to one address: the answer stays the same so it does not reveal anything.
+        $limitKey = 'app-forgot:' . Str::lower((string) $request->input('email'));
+        if (!$user || RateLimiter::tooManyAttempts($limitKey, 3)) {
             return response()->json(['message' => 'Password reset link sent successfully!']);
         }
+        RateLimiter::hit($limitKey, 3600);
 
         ResetPasswordEvent::dispatch($user);
 
@@ -155,6 +159,11 @@ class AuthenticationController extends Controller
      */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
+        $limitKey = 'app-reset:' . Str::lower((string) $request->input('email'));
+        if (RateLimiter::tooManyAttempts($limitKey, 5)) {
+            return response()->json(['message' => 'Too many attempts. Try again later.', 'code' => 'too_many_attempts'], 429);
+        }
+
         $status = Password::broker()->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password) {
@@ -169,6 +178,8 @@ class AuthenticationController extends Controller
         );
 
         if ($status !== Password::PASSWORD_RESET) {
+            RateLimiter::hit($limitKey, 15 * 60);
+
             return response()->json(['message' => 'Invalid or expired reset token.', 'code' => 'invalid_reset_token'], 422);
         }
 
@@ -201,9 +212,20 @@ class AuthenticationController extends Controller
             ->whereNotNull('email_verified_at')
             ->first();
 
+        // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.
+        $limitKey = 'app-login:' . Str::lower((string) $request->input('email')) . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($limitKey, 5)) {
+            return response()->json(['message' => 'Too many attempts. Try again later.', 'code' => 'too_many_attempts'], 429)
+                ->header('Retry-After', RateLimiter::availableIn($limitKey));
+        }
+
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
+            RateLimiter::hit($limitKey, 15 * 60);
+
             return response()->json(['message' => 'Invalid Credentials'], 401);
         }
+
+        RateLimiter::clear($limitKey);
 
         if ($user->suspended_at) {
             return EnsureNotSuspended::response();
