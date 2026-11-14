@@ -202,13 +202,21 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // COLLABORATORS
             // ========================================
             Route::prefix('collaborators')->name('collaborators.')->group(function () {
+                Route::get('', [InviteCollaboratorController::class, 'index'])
+                    ->middleware('event.access:manage_collaborators')->name('index');
                 Route::post('', [InviteCollaboratorController::class, 'invite'])
                     ->middleware('event.access:manage_collaborators')->name('store');
                 // The invitee is not a member yet; the controller checks the invite belongs to their email.
                 Route::post('invite/{id}/accept', [InviteCollaboratorController::class, 'accept'])
                     ->withoutMiddleware('event.access')->name('accept');
+                Route::post('invite/{id}/resend', [InviteCollaboratorController::class, 'resend'])
+                    ->whereNumber('id')->middleware(['event.access:manage_collaborators', 'throttle:10,1'])->name('resend');
+                Route::delete('invite/{id}', [InviteCollaboratorController::class, 'cancel'])
+                    ->whereNumber('id')->middleware('event.access:manage_collaborators')->name('cancel');
+                Route::patch('{user}', [InviteCollaboratorController::class, 'changeRole'])
+                    ->whereNumber('user')->middleware('event.access:manage_collaborators')->name('role');
                 Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])
-                    ->middleware('event.access:manage_collaborators')->name('destroy');
+                    ->whereNumber('user')->middleware('event.access:manage_collaborators')->name('destroy');
             });
 
             // ========================================

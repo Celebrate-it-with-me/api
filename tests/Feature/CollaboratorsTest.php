@@ -1,104 +1,159 @@
 <?php
 
+use App\Mail\InviteRegisteredUserMail;
+use App\Mail\InviteUnregisteredUserMail;
 use App\Models\EventCollaborationInvite;
-use App\Models\EventFeature;
-use App\Models\EventPlan;
 use App\Models\Events;
-use App\Models\EventType;
 use App\Models\EventUserRole;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Mail;
+
+require_once __DIR__ . '/EventAccessTest.php';
 
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => $this->seed(DatabaseSeeder::class));
 
-function collabEvent(): array
+function collabApi(Events $event, string $path = ''): string
 {
-    $event = Events::factory()->draft()->create([
-        'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
-        'event_plan_id' => EventPlan::orderBy('id')->value('id'),
-    ]);
-    EventFeature::create(['event_id' => $event->id]);
-    $owner = User::factory()->create();
-    EventUserRole::create(['event_id' => $event->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
-
-    return [$event, $owner, "/api/v1/app/event/{$event->id}/collaborators"];
+    return "/api/v1/app/event/{$event->id}/collaborators{$path}";
 }
 
-function collabInvite(Events $event, User $owner, array $attrs = []): EventCollaborationInvite
+function pendingInvite(Events $event, User $by, array $attrs = []): EventCollaborationInvite
 {
     return EventCollaborationInvite::create($attrs + [
-        'event_id' => $event->id, 'email' => 'guy@example.com', 'role' => 'editor', 'token' => (string) Str::uuid(),
-        'status' => 'pending', 'invited_by_user_id' => $owner->id, 'expires_at' => now()->addDays(3),
+        'event_id' => $event->id, 'email' => 'nueva@x.test', 'role' => 'viewer', 'token' => EventCollaborationInvite::generateToken(),
+        'status' => 'pending', 'invited_by_user_id' => $by->id, 'expires_at' => now()->addDays(7),
     ]);
 }
 
-it('only invites editors or viewers (S-08)', function () {
-    [, $owner, $url] = collabEvent();
+it('lists members and open invitations in the screen contract', function () {
+    [$event, $m] = eventWithMembers();
+    pendingInvite($event, $m['owner']);
+    pendingInvite($event, $m['owner'], ['email' => 'vieja@x.test', 'expires_at' => now()->subDay()]);
+    pendingInvite($event, $m['owner'], ['email' => 'ok@x.test', 'status' => 'accepted']);
 
-    foreach (['superadmin', 'owner', 'nonsense'] as $role) {
-        $this->actingAs($owner)->postJson($url, ['email' => 'new@example.com', 'role' => $role])->assertStatus(422);
-    }
-    expect(EventCollaborationInvite::count())->toBe(0);
+    $rows = $this->actingAs($m['owner'])->getJson(collabApi($event))->assertOk()->json('data');
+
+    expect($rows)->toHaveCount(5);
+    $owner = collect($rows)->firstWhere('role', 'owner');
+    expect($owner)->toMatchArray(['type' => 'member', 'user_id' => $m['owner']->id, 'email' => $m['owner']->email, 'status' => 'active'])
+        ->and($owner)->toHaveKeys(['id', 'name', 'avatar_url']);
+    $invites = collect($rows)->where('type', 'invite')->keyBy('email');
+    expect($invites)->toHaveCount(2)
+        ->and($invites['nueva@x.test']['status'])->toBe('pending')
+        ->and($invites['vieja@x.test']['status'])->toBe('expired')
+        ->and($invites['nueva@x.test'])->not->toHaveKey('token');
 });
 
-it('adds an existing account without an SQL error (S-08)', function () {
-    [$event, $owner, $url] = collabEvent();
-    $guy = User::factory()->create();
-
-    $this->actingAs($owner)->postJson($url, ['email' => $guy->email, 'role' => 'viewer'])->assertOk();
-
-    expect(EventUserRole::where('event_id', $event->id)->where('user_id', $guy->id)->exists())->toBeTrue();
-    $this->actingAs($owner)->postJson($url, ['email' => $guy->email, 'role' => 'viewer'])->assertStatus(400);
+it('hides the team from strangers and other events', function () {
+    [$event, $m] = eventWithMembers();
+    $this->actingAs($m['stranger'])->getJson(collabApi($event))->assertNotFound();
+    $this->actingAs($m['editor'])->getJson(collabApi($event))->assertForbidden();
+    $this->actingAs($m['viewer'])->getJson(collabApi($event))->assertForbidden();
 });
 
-it('does not accept an expired, declined or used invitation (S-08)', function () {
-    [$event, $owner] = collabEvent();
-    $guy = User::factory()->create(['email' => 'guy@example.com']);
+it('invites a new email with a pending invitation and a mail', function () {
+    Mail::fake();
+    [$event, $m] = eventWithMembers();
 
-    foreach ([['status' => 'declined', 'expires_at' => now()->subDays(30)], ['status' => 'pending', 'expires_at' => now()->subMinute()], ['status' => 'accepted'], ['status' => 'declined']] as $state) {
-        $inv = collabInvite($event, $owner, $state);
-        $this->actingAs($guy)->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept")->assertNotFound();
-    }
-    expect(EventUserRole::where('user_id', $guy->id)->exists())->toBeFalse();
+    $this->actingAs($m['owner'])->postJson(collabApi($event), ['email' => 'Nueva@X.test', 'role' => 'editor'])
+        ->assertOk()->assertJsonPath('data.type', 'invite')->assertJsonPath('data.status', 'pending')->assertJsonPath('data.role', 'editor');
+
+    expect(EventCollaborationInvite::where('event_id', $event->id)->where('email', 'nueva@x.test')->where('status', 'pending')->exists())->toBeTrue();
+    Mail::assertSent(InviteUnregisteredUserMail::class);
+
+    $this->actingAs($m['owner'])->postJson(collabApi($event), ['email' => 'nueva@x.test', 'role' => 'viewer'])->assertUnprocessable();
 });
 
-it('accepts a pending invitation once, only for its email', function () {
-    [$event, $owner] = collabEvent();
-    $guy = User::factory()->create(['email' => 'guy@example.com']);
-    $other = User::factory()->create();
-    $inv = collabInvite($event, $owner);
+it('adds an existing account straight away', function () {
+    Mail::fake();
+    [$event, $m] = eventWithMembers();
+    $lucia = User::factory()->create();
 
-    $this->actingAs($other)->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept")->assertStatus(400);
-    $this->actingAs($guy)->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept")->assertOk();
-    $this->actingAs($guy)->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept")->assertNotFound();
+    $this->actingAs($m['owner'])->postJson(collabApi($event), ['email' => $lucia->email, 'role' => 'viewer'])
+        ->assertOk()->assertJsonPath('data.type', 'member')->assertJsonPath('data.user_id', $lucia->id)->assertJsonPath('data.role', 'viewer');
+
+    expect($lucia->hasEventRole($event, 'viewer'))->toBeTrue();
+    Mail::assertSent(InviteRegisteredUserMail::class);
+    $this->actingAs($m['owner'])->postJson(collabApi($event), ['email' => $lucia->email, 'role' => 'viewer'])->assertUnprocessable();
 });
 
-it('lets the owner remove a collaborator, but never the owner (S-08)', function () {
-    [$event, $owner, $url] = collabEvent();
-    $guy = User::factory()->create();
-    EventUserRole::create(['event_id' => $event->id, 'user_id' => $guy->id, 'role_id' => Role::where('name', 'editor')->value('id')]);
-    $stranger = User::factory()->create();
+it('refuses to invite the owner, a bad role or without permission', function () {
+    [$event, $m] = eventWithMembers();
 
-    $this->actingAs($stranger)->deleteJson("$url/{$guy->id}")->assertNotFound();
-    $this->actingAs($guy)->deleteJson("$url/{$owner->id}")->assertForbidden();
-    $this->actingAs($owner)->deleteJson("$url/{$owner->id}")->assertStatus(422);
-    $this->actingAs($owner)->deleteJson("$url/{$guy->id}")->assertOk();
-
-    expect(EventUserRole::where('event_id', $event->id)->where('user_id', $guy->id)->exists())->toBeFalse();
-    $this->actingAs($guy)->getJson("/api/v1/app/event/{$event->id}/dress-code")->assertNotFound();
-    $this->actingAs($owner)->deleteJson("$url/{$guy->id}")->assertNotFound();
+    $this->actingAs($m['owner'])->postJson(collabApi($event), ['email' => $m['owner']->email, 'role' => 'editor'])->assertUnprocessable();
+    $this->actingAs($m['owner'])->postJson(collabApi($event), ['email' => 'a@x.test', 'role' => 'owner'])->assertUnprocessable();
+    $this->actingAs($m['editor'])->postJson(collabApi($event), ['email' => 'a@x.test', 'role' => 'viewer'])->assertForbidden();
+    $this->actingAs($m['stranger'])->postJson(collabApi($event), ['email' => 'a@x.test', 'role' => 'viewer'])->assertNotFound();
 });
 
-it('only reveals an invitation through its own event (S-08)', function () {
-    [$event, $owner] = collabEvent();
-    [$other] = collabEvent();
-    $inv = collabInvite($event, $owner);
+it('changes the role of a member', function () {
+    [$event, $m] = eventWithMembers();
 
-    $this->getJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->token}")->assertOk();
-    $this->getJson("/api/v1/app/event/{$other->id}/collaborators/invite/{$inv->token}")->assertStatus(422);
+    $this->actingAs($m['owner'])->patchJson(collabApi($event, "/{$m['viewer']->id}"), ['role' => 'editor'])
+        ->assertOk()->assertJsonPath('data.role', 'editor');
+    expect($m['viewer']->hasEventRole($event, 'editor'))->toBeTrue();
+
+    $this->actingAs($m['owner'])->patchJson(collabApi($event, "/{$m['viewer']->id}"), ['role' => 'owner'])->assertUnprocessable();
+    $this->actingAs($m['owner'])->patchJson(collabApi($event, "/{$m['owner']->id}"), ['role' => 'viewer'])->assertForbidden();
+    $this->actingAs($m['owner'])->patchJson(collabApi($event, "/{$m['stranger']->id}"), ['role' => 'viewer'])->assertNotFound();
+    $this->actingAs($m['editor'])->patchJson(collabApi($event, "/{$m['viewer']->id}"), ['role' => 'viewer'])->assertForbidden();
+    $this->actingAs($m['stranger'])->patchJson(collabApi($event, "/{$m['viewer']->id}"), ['role' => 'viewer'])->assertNotFound();
+});
+
+it('removes a member but never the owner', function () {
+    [$event, $m] = eventWithMembers();
+    $m['viewer']->update(['last_active_event_id' => $event->id]);
+
+    $this->actingAs($m['editor'])->deleteJson(collabApi($event, "/{$m['viewer']->id}"))->assertForbidden();
+    $this->actingAs($m['owner'])->deleteJson(collabApi($event, "/{$m['owner']->id}"))->assertForbidden();
+    $this->actingAs($m['owner'])->deleteJson(collabApi($event, "/{$m['stranger']->id}"))->assertNotFound();
+    $this->actingAs($m['owner'])->deleteJson(collabApi($event, "/{$m['viewer']->id}"))->assertOk();
+
+    expect($m['viewer']->hasEventRole($event))->toBeFalse()
+        ->and($m['viewer']->fresh()->last_active_event_id)->toBeNull()
+        ->and($m['owner']->hasEventRole($event, 'owner'))->toBeTrue();
+});
+
+it('does not touch the team of another event', function () {
+    [$eventA, $a] = eventWithMembers();
+    [$eventB, $b] = eventWithMembers();
+    $invite = pendingInvite($eventB, $b['owner']);
+
+    $this->actingAs($a['owner'])->deleteJson(collabApi($eventA, "/{$b['viewer']->id}"))->assertNotFound();
+    $this->actingAs($a['owner'])->postJson(collabApi($eventA, "/invite/{$invite->id}/resend"))->assertNotFound();
+    $this->actingAs($a['owner'])->deleteJson(collabApi($eventA, "/invite/{$invite->id}"))->assertNotFound();
+    expect(EventUserRole::where('event_id', $eventB->id)->count())->toBe(3)->and($invite->fresh())->not->toBeNull();
+});
+
+it('resends a pending or expired invitation and renews it', function () {
+    Mail::fake();
+    [$event, $m] = eventWithMembers();
+    $expired = pendingInvite($event, $m['owner'], ['expires_at' => now()->subDay()]);
+
+    $this->actingAs($m['editor'])->postJson(collabApi($event, "/invite/{$expired->id}/resend"))->assertForbidden();
+    $this->actingAs($m['owner'])->postJson(collabApi($event, "/invite/{$expired->id}/resend"))
+        ->assertOk()->assertJsonPath('data.status', 'pending');
+
+    $fresh = $expired->fresh();
+    expect($fresh->resend_count)->toBe(1)->and($fresh->expires_at->isFuture())->toBeTrue();
+    Mail::assertSent(InviteUnregisteredUserMail::class, 1);
+
+    $declined = pendingInvite($event, $m['owner'], ['email' => 'no@x.test', 'status' => 'declined']);
+    $this->actingAs($m['owner'])->postJson(collabApi($event, "/invite/{$declined->id}/resend"))->assertUnprocessable();
+});
+
+it('cancels an invitation', function () {
+    [$event, $m] = eventWithMembers();
+    $invite = pendingInvite($event, $m['owner']);
+    $accepted = pendingInvite($event, $m['owner'], ['email' => 'ok@x.test', 'status' => 'accepted']);
+
+    $this->actingAs($m['viewer'])->deleteJson(collabApi($event, "/invite/{$invite->id}"))->assertForbidden();
+    $this->actingAs($m['owner'])->deleteJson(collabApi($event, "/invite/{$accepted->id}"))->assertNotFound();
+    $this->actingAs($m['owner'])->deleteJson(collabApi($event, "/invite/{$invite->id}"))->assertOk();
+    expect(EventCollaborationInvite::find($invite->id))->toBeNull();
+    $this->actingAs($m['owner'])->deleteJson(collabApi($event, "/invite/{$invite->id}"))->assertNotFound();
 });
