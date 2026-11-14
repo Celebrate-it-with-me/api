@@ -37,8 +37,9 @@ return [
     ],
 
     'hcaptcha' => [
-        'site_key' => env('HCAPTCHA_SECRET'),
-        'secret' => env('HCAPTCHA_ENABLED', false),
+        'enabled' => (bool) env('HCAPTCHA_ENABLED', false),
+        'site_key' => env('HCAPTCHA_SITE_KEY'),
+        'secret' => env('HCAPTCHA_SECRET'),
     ],
 
     'google' => [
