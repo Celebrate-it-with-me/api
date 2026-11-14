@@ -143,6 +143,11 @@ return [
                 'preheader' => 'The previous codes no longer work.',
                 'intro' => 'New recovery codes were generated for your admin panel account. The previous ones stopped working.',
             ],
+            'two_factor_reset_by_admin' => [
+                'subject' => 'Two-factor authentication on your Quinvite account was reset',
+                'preheader' => 'We signed you out everywhere.',
+                'intro' => 'A team member (:actor) turned off two-factor authentication on your admin panel account and we closed all your sessions. When you sign in again you can turn it back on from My account.',
+            ],
             'new_device' => [
                 'subject' => 'New sign-in to the Quinvite admin panel',
                 'preheader' => 'You signed in from a device we did not know.',

@@ -11,6 +11,7 @@
 use App\Http\Controllers\Admin\Account\ActivityController;
 use App\Http\Controllers\Admin\Account\PasswordController;
 use App\Http\Controllers\Admin\Account\ProfileController;
+use App\Http\Controllers\Admin\Account\ReauthController;
 use App\Http\Controllers\Admin\Account\SessionController;
 use App\Http\Controllers\Admin\Account\TwoFactorController;
 use Illuminate\Support\Facades\Route;
@@ -27,9 +28,12 @@ Route::prefix('account')->name('admin.account.')->middleware('throttle:60,1,acco
         Route::post('two-factor/setup', [TwoFactorController::class, 'setup'])->name('2fa.setup');
         Route::post('two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('2fa.confirm');
         Route::post('two-factor/recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->name('2fa.codes');
+        // Step-up: password (+ TOTP code) marks this token as recently re-authenticated (`admin.reauth` routes).
+        Route::post('reauth', [ReauthController::class, 'store'])->name('reauth');
         Route::post('two-factor/disable', [TwoFactorController::class, 'disable'])->name('2fa.disable');
     });
     Route::delete('email', [ProfileController::class, 'cancelEmailChange'])->name('email.cancel');
+    Route::get('reauth', [ReauthController::class, 'show'])->name('reauth.show');
     Route::get('two-factor', [TwoFactorController::class, 'show'])->name('2fa.show');
 
     Route::get('sessions', [SessionController::class, 'index'])->name('sessions');

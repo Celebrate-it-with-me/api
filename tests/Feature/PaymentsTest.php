@@ -140,18 +140,18 @@ describe('admin', function () {
         $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
 
         $event->update(['status' => 'published']);
-        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertStatus(422);
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertStatus(422);
 
         $event->update(['status' => 'draft']);
-        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertOk()->assertJsonPath('data.status', 'refunded');
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertOk()->assertJsonPath('data.status', 'refunded');
         expect($event->fresh()->eventPlan->slug)->toBe('basic');
     });
 
     it('changes the price and creates codes', function () {
         $admin = adminUser();
 
-        $this->actingAs($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 7900, 'reason' => 'Launch price'])->assertOk();
-        $this->actingAs($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'fundador1', 'kind' => 'fixed_price', 'value' => 5900, 'isFounder' => true, 'maxUses' => 10, 'reason' => 'Founders'])
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 7900, 'reason' => 'Launch price'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'fundador1', 'kind' => 'fixed_price', 'value' => 5900, 'isFounder' => true, 'maxUses' => 10, 'reason' => 'Founders'])
             ->assertCreated()->assertJsonPath('data.code', 'FUNDADOR1');
 
         expect(EventPlan::where('slug', 'premium')->value('price_cents'))->toBe(7900);
@@ -161,7 +161,7 @@ describe('admin', function () {
         [$event, $owner] = ownedEvent();
 
         $this->actingAs($owner)->getJson('/api/v1/admin/payments')->assertForbidden();
-        $this->actingAs($owner)->putJson('/api/v1/admin/payments/price', ['priceCents' => 1, 'reason' => 'Trying it out'])->assertForbidden();
+        $this->actingAsReauthed($owner)->putJson('/api/v1/admin/payments/price', ['priceCents' => 1, 'reason' => 'Trying it out'])->assertForbidden();
     });
 });
 
