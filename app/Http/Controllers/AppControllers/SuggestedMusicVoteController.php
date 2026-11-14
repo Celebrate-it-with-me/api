@@ -66,6 +66,9 @@ class SuggestedMusicVoteController extends Controller
         SuggestedMusic $suggestedMusic
     ): JsonResponse
     {
+        // The song must belong to the event in the address (and its guest code): no voting on other events' songs.
+        abort_unless((int) $suggestedMusic->event_id === (int) $event->id, 404);
+
         try {
             $accessCode = $request->input('accessCode');
 
@@ -120,6 +123,9 @@ class SuggestedMusicVoteController extends Controller
         SuggestedMusic $suggestedMusic
     ): JsonResponse
     {
+        // The song must belong to the event in the address (and its guest code): no voting on other events' songs.
+        abort_unless((int) $suggestedMusic->event_id === (int) $event->id, 404);
+
         try {
             $accessCode = $request->input('accessCode');
 

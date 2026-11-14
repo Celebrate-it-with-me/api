@@ -36,6 +36,15 @@ class InvitationService
     /** Section types the renderer understands in this release. */
     private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'rsvp', 'closing'];
 
+    /** The catalog module that owns each public section; a section whose module is not active for the event is left out. */
+    private const SECTION_MODULES = [
+        'itinerary' => 'timeline',
+        'locations' => 'locations',
+        'dress_code' => 'dress_code',
+        'padrinos' => 'padrinos',
+        'rsvp' => 'rsvp',
+    ];
+
     /** Only published events have a public invitation. */
     public function findEvent(string $slug): ?Events
     {
@@ -195,8 +204,13 @@ class InvitationService
     private function resolveSections(Events $event, Guest $guest, InvitationTemplate $template, string $locale): array
     {
         if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
-            return $this->saveTheDateSections($event, $locale);
+            // The Save the date is the `save_the_date` module: locked, there is nothing to show yet.
+            return app(EventModules::class)->isActive($event, 'save_the_date')
+                ? $this->saveTheDateSections($event, $locale)
+                : [];
         }
+
+        $modules = app(EventModules::class);
 
         $base = collect($template->default_sections)->keyBy('type');
         $overrides = collect($event->template_config['sections'] ?? [])->keyBy('type');
@@ -205,6 +219,8 @@ class InvitationService
             ->filter(fn (string $type) => in_array($type, self::SECTION_TYPES, true))
             ->map(fn (string $type) => array_merge($base[$type] ?? ['type' => $type, 'enabled' => false, 'order' => 99], $overrides[$type] ?? []))
             ->filter(fn (array $section) => $section['enabled'] ?? false)
+            ->filter(fn (array $section) => ! isset(self::SECTION_MODULES[$section['type']])
+                || $modules->isActive($event, self::SECTION_MODULES[$section['type']]))
             ->sortBy(fn (array $section) => $section['order'] ?? 99)
             ->map(function (array $section) use ($event, $guest, $locale) {
                 $data = $this->sectionData($section['type'], $event, $guest, $section);
@@ -349,7 +365,8 @@ class InvitationService
 
     /**
      * "Con el cariño de": the padrinos the organizer chose to show, with what they sponsor and an optional message.
-     * Premium. Never amounts or payments.
+     * Premium: shown when the catalog has `padrinos` active (checked by resolveSections) AND the plan is above the
+     * entry one, as before the catalog existed. Never amounts or payments.
      *
      * @return array<string, mixed>|null
      */

@@ -27,6 +27,7 @@ class EventsController extends Controller
     {
         try {
             [$events, $lastActiveEvent] = $this->eventsServices->getUserEvents();
+            app(\App\Http\Services\AppServices\EventModules::class)->preload($events);
             
             return response()->json([
                 'message' => 'Events retrieved successfully.',
@@ -82,8 +83,10 @@ class EventsController extends Controller
     public function filterEvents(Request $request): JsonResponse|AnonymousResourceCollection
     {
         try {
-            return EventResource::collection($this->eventsServices->getFilteredEvents(
-                $request->input('query') ?? ''));
+            $events = $this->eventsServices->getFilteredEvents($request->input('query') ?? '');
+            app(\App\Http\Services\AppServices\EventModules::class)->preload($events);
+
+            return EventResource::collection($events);
         } catch (Throwable $th) {
             return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
         }

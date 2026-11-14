@@ -46,7 +46,7 @@
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
     Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:60,1')->name('show');
-    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware('throttle:20,1')->name('rsvp');
+    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:20,1', 'module.access:rsvp'])->name('rsvp');
     Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:30,1')->name('calendar');
 });
 
@@ -55,10 +55,10 @@ Route::prefix('template')->name('template.')->group(function () {
     // Guest-facing: a valid access code of this event is required, even to read (see EnsureGuestEventAccess).
     Route::prefix('event/{event}')->middleware(['event.guest', 'throttle:60,1'])->name('event.')->group(function () {
         Route::get('comments', [PublicEventCommentController::class, 'index'])
-            ->name('comments.index');
+            ->middleware('module.access:comments')->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
-            ->name('comments.store');
-        Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
+            ->middleware('module.access:comments')->name('comments.store');
+        Route::prefix('suggest-music')->name('suggest-music.')->middleware('module.access:suggested_music')->group(function () {
             Route::get('', [PublicSuggestedMusicController::class, 'index'])->name('index');
             Route::post('', [PublicSuggestedMusicController::class, 'store'])->name('store');
             Route::delete('', [PublicSuggestedMusicController::class, 'destroy'])->name('destroy');
@@ -167,7 +167,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
         Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');
 
         Route::prefix('{event}')->middleware('event.access')->group(function () {
-            Route::prefix('suggest-music')->name('suggest-music.')->group(function () {
+            Route::prefix('suggest-music')->name('suggest-music.')->middleware('module.access:suggested_music')->group(function () {
                 Route::get('export', [SuggestedMusicController::class, 'export'])->name('export');
                 Route::get('', [SuggestedMusicController::class, 'index'])->name('index');
                 Route::post('', [SuggestedMusicController::class, 'store'])->name('store');
@@ -212,7 +212,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding');
 
             // The unified "Invitados" screen: status tabs, event-wide counters, edit people.
-            Route::prefix('roster')->name('roster.')->group(function () {
+            Route::prefix('roster')->name('roster.')->middleware('module.access:guests')->group(function () {
                 Route::get('', [GuestRosterController::class, 'index'])->name('index');
                 Route::get('import/template', [GuestImportController::class, 'template'])->name('import.template');
                 Route::post('import/preview', [GuestImportController::class, 'preview'])->name('import.preview');
@@ -225,12 +225,12 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');
             });
 
-            Route::prefix('guests')->name('guests.')->group(function () {
+            Route::prefix('guests')->name('guests.')->middleware('module.access:guests')->group(function () {
                 Route::post('', [GuestController::class, 'store'])->name('store');
             });
 
             // Organizer RSVP Management Routes
-            Route::prefix('organizer/rsvp')->name('organizer.rsvp.')->group(function () {
+            Route::prefix('organizer/rsvp')->name('organizer.rsvp.')->middleware('module.access:rsvp')->group(function () {
 
                 // Get RSVP status for modal pre-population
                 Route::get('/{guest}/status', [OrganizerRsvpController::class, 'getRsvpStatus'])
@@ -245,7 +245,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                     ->name('organizer.rsvp.bulk-companions');
             });
 
-            Route::prefix('rsvp')->name('rsvp.')->group(function () {
+            Route::prefix('rsvp')->name('rsvp.')->middleware('module.access:rsvp')->group(function () {
                 Route::get('stats', [RsvpController::class, 'getRsvpStats'])->name('getRsvpStats');
 
                 Route::prefix('guests')->name('guests.')->group(function () {
@@ -257,7 +257,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // SAVE THE DATE
             // ========================================
-            Route::prefix('save-the-date')->name('save-the-date.')->group(function () {
+            Route::prefix('save-the-date')->name('save-the-date.')->middleware('module.access:save_the_date')->group(function () {
                 Route::get('', [SaveTheDateController::class, 'show'])->name('index');
                 Route::put('', [SaveTheDateController::class, 'upsert'])->name('upsert');
                 Route::delete('', [SaveTheDateController::class, 'destroy'])->name('destroy');
@@ -266,7 +266,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // DRESS CODE
             // ========================================
-            Route::prefix('dress-code')->name('dress-code.')->group(function () {
+            Route::prefix('dress-code')->name('dress-code.')->middleware('module.access:dress_code')->group(function () {
                 Route::get('', [DressCodeController::class, 'index'])->name('index');
                 Route::post('', [DressCodeController::class, 'store'])->name('store'); // create or replace
                 Route::delete('', [DressCodeController::class, 'destroy'])->name('destroy');
@@ -275,7 +275,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // Timeline
             // ========================================
-            Route::prefix('timeline')->name('timeline.')->group(function () {
+            Route::prefix('timeline')->name('timeline.')->middleware('module.access:timeline')->group(function () {
                 Route::get('', [TimelineController::class, 'index'])->name('index');
                 Route::post('typical', [TimelineController::class, 'typical'])->name('typical');
                 Route::post('', [TimelineController::class, 'store'])->name('store');
@@ -288,7 +288,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // Seating
             // ========================================
                 // Tables
-            Route::prefix('tables')->name('tables.')->group(function() {
+            Route::prefix('tables')->name('tables.')->middleware('module.access:seating')->group(function() {
                 Route::get('', [TableController::class, 'index'])->name('index');
                 Route::post('', [TableController::class, 'store'])->name('store');
                 Route::get('{table}', [TableController::class, 'show'])->name('show');
@@ -300,7 +300,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             });
             
                 // Seating
-            Route::prefix('seating')->name('seating.')->group(function() {
+            Route::prefix('seating')->name('seating.')->middleware('module.access:seating')->group(function() {
                 Route::get('unassigned', [TableController::class, 'unassignedGuests'])->name('unassigned-guests');
                 Route::post('bulk-assign', [TableController::class, 'bulkAssign'])->name('bulk-assign');
                 Route::delete('clear-all', [TableController::class, 'clearAll'])->name('clear-all');
@@ -310,7 +310,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // LOCATION
             // ========================================
-            Route::prefix('location')->name('location.')->group(function () {
+            Route::prefix('location')->name('location.')->middleware('module.access:locations')->group(function () {
                 Route::get('', [EventLocationController::class, 'index'])->name('index');
                 Route::post('', [EventLocationController::class, 'store'])->name('store');
                 Route::get('{location}', [EventLocationController::class, 'show'])->name('show');
@@ -324,7 +324,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // MENUS
             // ========================================
-            Route::prefix('menus')->name('menus.')->group(function () {
+            Route::prefix('menus')->name('menus.')->middleware('module.access:menus')->group(function () {
                 Route::get('', [MenuController::class, 'index'])->name('index');
                 Route::post('', [MenuController::class, 'store'])->name('store');
                 Route::get('guests', [MenuController::class, 'getGuestsMenu'])->name('guests');
@@ -345,7 +345,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // BUDGET
             // ========================================
-            Route::prefix('budget')->name('budget.')->group(function () {
+            Route::prefix('budget')->name('budget.')->middleware('module.access:budget')->group(function () {
                 Route::get('', [BudgetController::class, 'show'])->name('show');
                 Route::put('', [BudgetController::class, 'update'])->name('update');
                 Route::get('export', [BudgetController::class, 'export'])->name('export');
@@ -367,7 +367,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // PADRINOS
             // ========================================
-            Route::prefix('padrinos')->name('padrinos.')->group(function () {
+            Route::prefix('padrinos')->name('padrinos.')->middleware('module.access:padrinos')->group(function () {
                 Route::get('', [PadrinoController::class, 'index'])->name('index');
                 Route::post('', [PadrinoController::class, 'store'])->name('store');
                 Route::put('{padrino}', [PadrinoController::class, 'update'])->name('update');
@@ -383,7 +383,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::post('', [BackgroundMusicController::class, 'store'])->name('store');
             });
 
-            Route::prefix('suggest-music-config')->name('suggest-music-config.')->group(function () {
+            Route::prefix('suggest-music-config')->name('suggest-music-config.')->middleware('module.access:suggested_music')->group(function () {
                 Route::get('', [SuggestedMusicConfigController::class, 'index'])->name('index');
                 Route::post('', [SuggestedMusicConfigController::class, 'store'])->name('store');
             });
@@ -391,13 +391,13 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // SWEET MEMORIES
             // ========================================
-            Route::prefix('sweet-memories-config')->name('sweet-memories-config.')->group(function () {
+            Route::prefix('sweet-memories-config')->name('sweet-memories-config.')->middleware('module.access:memories')->group(function () {
                 Route::get('', [SweetMemoriesConfigController::class, 'index'])->name('index');
                 Route::post('', [SweetMemoriesConfigController::class, 'store'])->name('store');
                 Route::put('{sweetMemoriesConfig}', [SweetMemoriesConfigController::class, 'update'])->name('update');
             });
 
-            Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->group(function () {
+            Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->middleware('module.access:memories')->group(function () {
                 Route::get('', [SweetMemoriesImageController::class, 'index'])->name('index');
                 Route::post('', [SweetMemoriesImageController::class, 'store'])->name('store');
                 Route::put('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'update'])->name('update');
@@ -407,13 +407,13 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // COMMENTS CONFIGURATION
             // ========================================
-            Route::prefix('comments-config')->name('comments-config.')->group(function () {
+            Route::prefix('comments-config')->name('comments-config.')->middleware('module.access:comments')->group(function () {
                 Route::get('', [EventConfigCommentsController::class, 'index'])->name('index');
                 Route::post('', [EventConfigCommentsController::class, 'store'])->name('store');
                 Route::put('{commentConfig}', [EventConfigCommentsController::class, 'update'])->name('update');
             });
 
-            Route::scopeBindings()->prefix('comments')->name('comments.')->group(function() {
+            Route::scopeBindings()->prefix('comments')->name('comments.')->middleware('module.access:comments')->group(function() {
                 Route::get('', [OrganizerEventCommentController::class, 'index'])->name('index');
                 Route::get('paginated', [OrganizerEventCommentController::class, 'indexPaginated'])->name('indexPaginated');
                 Route::post('', [OrganizerEventCommentController::class, 'store'])->name('store');
@@ -430,7 +430,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     // STANDALONE FEATURE ROUTES (Outside event context)
     // ========================================
     Route::prefix('sweet-memories-images')->name('sweet-memories-images.')->group(function () {
-        Route::patch('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])->name('update-name');
+        Route::patch('{sweetMemoriesImage}', [SweetMemoriesImageController::class, 'updateName'])
+            ->middleware('module.access:memories')->name('update-name');
     });
 
     // ========================================

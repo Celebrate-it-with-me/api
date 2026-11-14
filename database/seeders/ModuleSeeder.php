@@ -17,7 +17,7 @@ class ModuleSeeder extends Seeder
      * `premium` modules are included only in the plans above the entry one; the rest are in every plan.
      * Modules that are not built yet start disabled: turning the switch on is how they go live.
      */
-    private const CATALOG = [
+    public const CATALOG = [
         'invitation' => ['main', 10, false, false],
 
         'guests' => ['guests', 10, true, false],

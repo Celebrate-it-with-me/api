@@ -5,8 +5,10 @@ namespace App\Http\Services\AppServices;
 use App\Models\EventModuleOverride;
 use App\Models\Events;
 use App\Models\Module;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Which modules an event shows, and in what state, from the catalog in the database:
@@ -16,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  *   (absent) the admin disabled the module: nobody sees it
  *
  * A staff exception for the event (`event_module_overrides`, not expired) wins over the plan: gifted modules are
- * active, hand-locked ones are locked. The exceptions of all events are read in one query per request.
+ * active, hand-locked ones are locked. The exceptions are read per event (one query each), or for a whole list at once with preload().
  *
  * The answer is kept only while the same request is being handled, so a list of events costs two
  * queries, not two per event, and nothing goes stale between requests.
@@ -31,11 +33,13 @@ class EventModules
 
     private ?Collection $catalog = null;
 
+    private bool $warned = false;
+
     /** @var array<int, list<string>> */
     private array $includedByPlan = [];
 
-    /** @var array<int, array<string, string>>|null event id => module key => state */
-    private ?array $overrides = null;
+    /** @var array<int, array<string, string>> event id => module key => state, for the events read so far */
+    private array $overrides = [];
 
     /** @return list<array{key: string, section: string, order: int, state: string}> */
     public function forEvent(Events $event): array
@@ -76,7 +80,7 @@ class EventModules
     /** Drop what was read in this request (after a staff exception changed). */
     public function forget(): void
     {
-        $this->overrides = null;
+        $this->overrides = [];
     }
 
     /** `active`, `locked`, or null when the module does not exist or the admin turned it off. */
@@ -96,17 +100,51 @@ class EventModules
         return $this->stateOf($event, $key) === self::ACTIVE;
     }
 
+    /**
+     * Read the exceptions of several events in one query (a list of events), so asking about each costs nothing more.
+     *
+     * @param  iterable<int, Events|int>|AbstractPaginator  $events
+     */
+    public function preload(iterable $events): void
+    {
+        $this->resetIfNewRequest();
+
+        if ($events instanceof AbstractPaginator) {
+            $events = $events->items();
+        }
+
+        $ids = collect($events)->map(fn ($e) => $e instanceof Events ? $e->id : (int) $e)
+            ->reject(fn ($id) => array_key_exists($id, $this->overrides))->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $this->readOverrides($ids->all());
+    }
+
     /** @return array<string, string> module key => state, for the event's current exceptions */
     private function overridesFor(int $eventId): array
     {
         $this->resetIfNewRequest();
 
-        $this->overrides ??= EventModuleOverride::query()->current()->get(['event_id', 'module_key', 'state'])
-            ->groupBy('event_id')
-            ->map(fn (Collection $rows) => $rows->pluck('state', 'module_key')->all())
-            ->all();
+        // Only this event's rows: a single question never reads the exceptions of every event.
+        if (! array_key_exists($eventId, $this->overrides)) {
+            $this->readOverrides([$eventId]);
+        }
 
-        return $this->overrides[$eventId] ?? [];
+        return $this->overrides[$eventId];
+    }
+
+    /** @param list<int> $eventIds */
+    private function readOverrides(array $eventIds): void
+    {
+        $rows = EventModuleOverride::query()->current()->whereIn('event_id', $eventIds)
+            ->get(['event_id', 'module_key', 'state'])->groupBy('event_id');
+
+        foreach ($eventIds as $id) {
+            $this->overrides[$id] = isset($rows[$id]) ? $rows[$id]->pluck('state', 'module_key')->all() : [];
+        }
     }
 
     /** Enabled modules in menu order: by section, then by their own order. */
@@ -114,12 +152,20 @@ class EventModules
     {
         $this->resetIfNewRequest();
 
-        return $this->catalog ??= Module::query()->enabled()->get()
+        $this->catalog ??= Module::query()->enabled()->get()
             ->sortBy([
                 fn (Module $a, Module $b) => array_search($a->section, Module::SECTIONS, true) <=> array_search($b->section, Module::SECTIONS, true),
                 ['sort_order', 'asc'],
             ])
             ->values();
+
+        // Fail closed, but loudly: an empty catalog locks every module, which is almost surely a missing seed.
+        if ($this->catalog->isEmpty() && ! $this->warned) {
+            $this->warned = true;
+            Log::warning('The module catalog is empty: every module is locked. Run the migrations or `db:seed --class=ModuleSeeder`.');
+        }
+
+        return $this->catalog;
     }
 
     /** @return list<string> */
@@ -146,7 +192,8 @@ class EventModules
             $this->requestId = $current;
             $this->catalog = null;
             $this->includedByPlan = [];
-            $this->overrides = null;
+            $this->overrides = [];
+            $this->warned = false;
         }
     }
 }

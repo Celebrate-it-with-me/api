@@ -7,6 +7,7 @@ use App\Http\Resources\AppResources\EventFeatureResource;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
 use App\Http\Resources\AppResources\MenuResource;
 use App\Http\Resources\AppResources\SaveTheDateResource;
+use App\Http\Services\AppServices\EventModules;
 use App\Http\Services\AppServices\GuestServices;
 use App\Http\Services\AppServices\LocationsServices;
 use App\Http\Services\AppServices\RsvpServices;
@@ -32,7 +33,8 @@ class EventDataLoader
         private LocationsServices   $locationsServices,
         private GuestServices       $guestServices,
         private RsvpServices        $rsvpServices,
-        private EventCommentService $eventCommentService
+        private EventCommentService $eventCommentService,
+        private EventModules        $modules,
     ) {}
 
     /**
@@ -44,16 +46,19 @@ class EventDataLoader
      */
     public function loadEventData(Events $event): array
     {
+        // A module that is not active for this event hydrates as null: the data of a locked module is not handed out.
+        $active = fn (string $module) => $this->modules->isActive($event, $module);
+
         return [
-            'menus' => $this->loadMenus($event),
+            'menus' => $active('menus') ? $this->loadMenus($event) : null,
             'eventFeatures' => $this->loadEventFeatures($event),
             // The guest list and the answers have their own screen and endpoints; loading them here cost a QR per guest on every app load.
             'guests' => null,
             'rsvp' => null,
-            'saveTheDate' => $this->loadSaveTheDate($event),
-            'menuGuests' => $this->loadMenuGuests($event),
-            'location' => $this->loadLocation($event),
-            'comments' => $this->loadComments($event),
+            'saveTheDate' => $active('save_the_date') ? $this->loadSaveTheDate($event) : null,
+            'menuGuests' => $active('menus') ? $this->loadMenuGuests($event) : null,
+            'location' => $active('locations') ? $this->loadLocation($event) : null,
+            'comments' => $active('comments') ? $this->loadComments($event) : null,
         ];
     }
 
