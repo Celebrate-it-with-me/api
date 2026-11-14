@@ -188,3 +188,98 @@ it('redacts the usual sensitive shapes', function (string $input, string $absent
     ["Invalid value 'María Pérez' for guest", 'María'],
     ['password=hunter2 rejected', 'hunter2'],
 ]);
+
+it('gives support no access to the health screen and lets only superadmin read it', function () {
+    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->getJson('/api/v1/admin/health/failed-jobs')->assertForbidden();
+    expect(AdminPermissions::for(AdminPermissions::SUPPORT))->not->toContain('admin.system.health', 'admin.system.manage');
+    expect(AdminPermissions::for(AdminPermissions::SUPERADMIN))->toContain('admin.system.health', 'admin.system.manage');
+});
+
+function healthPayload(string $name = 'App\\Jobs\\SendInvite'): string
+{
+    return json_encode(['uuid' => (string) Str::uuid(), 'displayName' => $name, 'job' => 'Illuminate\\Queue\\CallQueuedHandler@call', 'data' => ['commandName' => 'stdClass', 'command' => 'O:8:"stdClass":1:{s:5:"email";s:' . strlen(HEALTH_SECRET_EMAIL) . ':"' . HEALTH_SECRET_EMAIL . '";}']]);
+}
+
+it('requires manage permission and a reason to retry or delete a failed job', function () {
+    config(['queue.default' => 'database']);
+    healthFailedJob(['uuid' => $uuid = (string) Str::uuid(), 'payload' => healthPayload()]);
+    $retry = "/api/v1/admin/health/failed-jobs/{$uuid}/retry";
+
+    $this->postJson($retry, ['reason' => 'Se arregló el correo'])->assertUnauthorized();
+    $this->actingAs(User::factory()->create())->postJson($retry, ['reason' => 'Se arregló el correo'])->assertForbidden();
+    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->postJson($retry, ['reason' => 'Se arregló el correo'])->assertForbidden();
+    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", ['reason' => 'Basura conocida'])->assertForbidden();
+
+    $admin = healthStaff(AdminPermissions::SUPERADMIN);
+    $this->actingAs($admin)->postJson($retry, [])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->actingAs($admin)->postJson($retry, ['reason' => 'abc'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->actingAs($admin)->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", [])->assertUnprocessable();
+    expect(DB::table('failed_jobs')->count())->toBe(1)->and(DB::table('jobs')->count())->toBe(0);
+});
+
+it('retries one failed job, puts it back on the queue and audits without the payload', function () {
+    config(['queue.default' => 'database']);
+    healthFailedJob(['uuid' => $uuid = (string) Str::uuid(), 'payload' => healthPayload(), 'queue' => 'mail']);
+    $admin = healthStaff(AdminPermissions::SUPERADMIN);
+
+    $this->actingAs($admin)->postJson("/api/v1/admin/health/failed-jobs/{$uuid}/retry", ['reason' => 'Se arregló el correo'])
+        ->assertOk()->assertJsonPath('retried', 1);
+
+    expect(DB::table('failed_jobs')->count())->toBe(0)->and(DB::table('jobs')->where('queue', 'mail')->count())->toBe(1);
+    $log = DB::table('admin_audit_log')->where('action', 'health.failed_job_retry')->first();
+    expect($log->actor_id)->toBe($admin->id)->and($log->reason)->toBe('Se arregló el correo');
+    expect(json_decode($log->after, true))->toBe(['job' => 'App\\Jobs\\SendInvite', 'queue' => 'mail']);
+    expect(json_encode($log))->not->toContain(HEALTH_SECRET_EMAIL);
+});
+
+it('deletes one failed job and audits it', function () {
+    healthFailedJob(['uuid' => $uuid = (string) Str::uuid(), 'payload' => healthPayload()]);
+    healthFailedJob();
+
+    $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", ['reason' => 'Basura conocida'])
+        ->assertOk()->assertJsonPath('deleted', 1);
+
+    expect(DB::table('failed_jobs')->count())->toBe(1);
+    $log = DB::table('admin_audit_log')->where('action', 'health.failed_job_forget')->first();
+    expect(json_decode($log->before, true)['job'])->toBe('App\\Jobs\\SendInvite');
+    expect(json_encode($log))->not->toContain(HEALTH_SECRET_EMAIL);
+});
+
+it('keeps a corrupt failed job in the list instead of failing with a 500', function () {
+    config(['queue.default' => 'database']);
+    healthFailedJob(['uuid' => $uuid = (string) Str::uuid(), 'payload' => json_encode(['displayName' => 'App\\Jobs\\Broken', 'data' => ['command' => 'garbage']])]);
+    healthFailedJob(['payload' => healthPayload(), 'queue' => 'default']);
+    $admin = healthStaff(AdminPermissions::SUPERADMIN);
+
+    $this->actingAs($admin)->postJson("/api/v1/admin/health/failed-jobs/{$uuid}/retry", ['reason' => 'Se arregló el correo'])->assertUnprocessable();
+    $this->actingAs($admin)->postJson('/api/v1/admin/health/failed-jobs/retry', ['queue' => 'default', 'reason' => 'Se arregló el correo'])
+        ->assertOk()->assertJsonPath('retried', 1);
+    expect(DB::table('failed_jobs')->where('uuid', $uuid)->exists())->toBeTrue();
+});
+
+it('answers 404 for an unknown or malformed failed job id', function () {
+    $admin = healthStaff(AdminPermissions::SUPERADMIN);
+    $this->actingAs($admin)->postJson('/api/v1/admin/health/failed-jobs/' . Str::uuid() . '/retry', ['reason' => 'Se arregló el correo'])->assertNotFound();
+    $this->actingAs($admin)->deleteJson('/api/v1/admin/health/failed-jobs/not-a-uuid', ['reason' => 'Basura conocida'])->assertNotFound();
+});
+
+it('retries a whole queue in bounded batches', function () {
+    config(['queue.default' => 'database']);
+    foreach (range(1, 55) as $_) {
+        healthFailedJob(['payload' => healthPayload(), 'queue' => 'mail']);
+    }
+    healthFailedJob(['payload' => healthPayload('App\\Jobs\\Other'), 'queue' => 'default']);
+    $admin = healthStaff(AdminPermissions::SUPERADMIN);
+    $url = '/api/v1/admin/health/failed-jobs/retry';
+
+    $this->actingAs($admin)->postJson($url, ['reason' => 'Se arregló el correo'])->assertUnprocessable()->assertJsonValidationErrors('queue');
+    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->postJson($url, ['queue' => 'mail', 'reason' => 'Se arregló el correo'])->assertForbidden();
+
+    $this->actingAs($admin)->postJson($url, ['queue' => 'mail', 'reason' => 'Se arregló el correo'])
+        ->assertOk()->assertJsonPath('retried', 50)->assertJsonPath('remaining', 5)->assertJsonPath('limit', 50);
+
+    expect(DB::table('jobs')->where('queue', 'mail')->count())->toBe(50)->and(DB::table('failed_jobs')->where('queue', 'default')->count())->toBe(1);
+    $log = DB::table('admin_audit_log')->where('action', 'health.failed_jobs_retry_queue')->first();
+    expect(json_decode($log->after, true))->toBe(['queue' => 'mail', 'count' => 50, 'jobs' => ['App\\Jobs\\SendInvite' => 50]]);
+    expect(json_encode($log))->not->toContain(HEALTH_SECRET_EMAIL);
+});
