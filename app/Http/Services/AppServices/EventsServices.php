@@ -163,6 +163,12 @@ class EventsServices
             }
         }
 
+        foreach (['locale', 'currency', 'timezone'] as $column) {
+            if ($input->has($column) && $input->input($column)) {
+                $event->{$column} = $input->input($column);
+            }
+        }
+
         // The form request already rejected a different address once the event has been published.
         if ($input->has('customUrlSlug') && $input->input('customUrlSlug')) {
             $event->custom_url_slug = $input->input('customUrlSlug');
@@ -219,6 +225,9 @@ class EventsServices
             'end_date' => $event->end_date,
             'status' => $event->status,
             'custom_url_slug' => $event->custom_url_slug,
+            'locale' => $event->locale,
+            'currency' => $event->currency,
+            'timezone' => $event->timezone,
         ];
     }
 
