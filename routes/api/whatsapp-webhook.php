@@ -5,5 +5,5 @@
 use App\Http\Controllers\WhatsApp\WebhookController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('webhooks/whatsapp', [WebhookController::class, 'verify'])->middleware('throttle:60,1');
-Route::post('webhooks/whatsapp', [WebhookController::class, 'receive'])->middleware('throttle:1200,1');
+Route::get('webhooks/whatsapp', [WebhookController::class, 'verify'])->middleware('throttle:whatsapp-webhook-verify');
+Route::post('webhooks/whatsapp', [WebhookController::class, 'receive'])->middleware('throttle:whatsapp-webhook-receive');

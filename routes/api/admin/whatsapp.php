@@ -20,6 +20,6 @@ Route::prefix('whatsapp')->group(function () {
         Route::put('templates/{id}', [WhatsAppAdminController::class, 'updateTemplate'])->whereNumber('id');
         Route::post('templates/sync', [WhatsAppAdminController::class, 'syncTemplates']);
         Route::post('templates/{id}/submit', [WhatsAppAdminController::class, 'submitTemplate'])->whereNumber('id');
-        Route::post('test', [WhatsAppAdminController::class, 'test'])->middleware('throttle:10,1');
+        Route::post('test', [WhatsAppAdminController::class, 'test'])->middleware('throttle:admin-whatsapp-test');
     });
 });
