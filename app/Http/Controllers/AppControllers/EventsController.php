@@ -37,9 +37,8 @@ class EventsController extends Controller
                 ]
             ]);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => [
-                'trace' => $th->getTraceAsString()
-            ]], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
     
@@ -69,7 +68,8 @@ class EventsController extends Controller
                 'data' => EventResource::make($event)
             ]);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
     
@@ -88,7 +88,8 @@ class EventsController extends Controller
 
             return EventResource::collection($events);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -102,7 +103,8 @@ class EventsController extends Controller
         try {
             return EventResource::make($this->eventsServices->create());
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -114,7 +116,8 @@ class EventsController extends Controller
         try {
             return EventResource::make($event);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -126,7 +129,8 @@ class EventsController extends Controller
         try {
             return EventResource::make($this->eventsServices->update($event));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -141,7 +145,8 @@ class EventsController extends Controller
                 'data' => $this->eventsServices->destroy($event)
             ]);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
     
@@ -163,7 +168,8 @@ class EventsController extends Controller
                 ]
             ]);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
     
@@ -179,7 +185,8 @@ class EventsController extends Controller
             
             return response()->json($suggestions);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
     

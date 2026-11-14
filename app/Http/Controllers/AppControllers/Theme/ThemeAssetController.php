@@ -74,7 +74,7 @@ class ThemeAssetController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload asset: ' . $e->getMessage()
+                'message' => 'Failed to upload asset'
             ], 500);
         }
     }
@@ -112,7 +112,7 @@ class ThemeAssetController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update asset: ' . $e->getMessage()
+                'message' => 'Failed to update asset'
             ], 500);
         }
     }
@@ -141,7 +141,7 @@ class ThemeAssetController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete asset: ' . $e->getMessage()
+                'message' => 'Failed to delete asset'
             ], 500);
         }
     }
@@ -177,7 +177,7 @@ class ThemeAssetController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to replace asset: ' . $e->getMessage()
+                'message' => 'Failed to replace asset'
             ], 500);
         }
     }
@@ -239,7 +239,7 @@ class ThemeAssetController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reorder assets: ' . $e->getMessage()
+                'message' => 'Failed to reorder assets'
             ], 500);
         }
     }

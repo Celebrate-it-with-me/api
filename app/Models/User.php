@@ -245,17 +245,6 @@ class User extends Authenticatable implements HasLocalePreference
         }
         
 
-        Log::info('Checking event permission for user',
-        [
-            'event_id' => $event->id,
-            'user_id' => $this->id,
-            'permission_slug' => $permissionSlug,
-            'event_user_rol' => $eventUserRole->role
-                ->permissions()
-                ->where('name', $permissionSlug)
-                ->exists()
-        ]);
-
         return $eventUserRole->role
             ->permissions()
             ->where('name', $permissionSlug)
