@@ -144,6 +144,11 @@ return [
                 'preheader' => 'Los códigos anteriores ya no sirven.',
                 'intro' => 'Se generaron códigos de recuperación nuevos para tu cuenta del panel de administración. Los anteriores dejaron de funcionar.',
             ],
+            'two_factor_reset_by_admin' => [
+                'subject' => 'Reiniciaron la verificación en dos pasos de tu cuenta de Quinvite',
+                'preheader' => 'Cerramos todas tus sesiones.',
+                'intro' => 'El equipo (:actor) desactivó la verificación en dos pasos de tu cuenta del panel de administración y cerramos todas tus sesiones. Al entrar de nuevo puedes volver a activarla desde Mi cuenta.',
+            ],
             'new_device' => [
                 'subject' => 'Nuevo inicio de sesión en el panel de Quinvite',
                 'preheader' => 'Entraste desde un dispositivo que no conocíamos.',

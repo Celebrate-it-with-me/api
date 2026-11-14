@@ -20,11 +20,11 @@ class AdminSecurityNoticeMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public const TYPES = ['password_changed', 'email_changed', 'two_factor_enabled', 'two_factor_disabled', 'recovery_codes_regenerated', 'new_device'];
+    public const TYPES = ['password_changed', 'email_changed', 'two_factor_enabled', 'two_factor_disabled', 'recovery_codes_regenerated', 'new_device', 'two_factor_reset_by_admin'];
 
     public string $lang;
 
-    /** @param  array{newEmail?: string, device?: string, when?: string, ip?: string}  $details */
+    /** @param  array{newEmail?: string, actor?: string, device?: string, when?: string, ip?: string}  $details */
     public function __construct(public User $user, public string $type, public array $details = [])
     {
         $this->lang = MailLocale::forUser($user);
@@ -41,6 +41,7 @@ class AdminSecurityNoticeMail extends Mailable
         $key = "mail.admin_security.types.{$this->type}";
         $replace = [
             'email' => $this->details['newEmail'] ?? '',
+            'actor' => $this->details['actor'] ?? '',
             'device' => $this->details['device'] ?? '',
             'when' => $this->details['when'] ?? '',
             'ip' => $this->details['ip'] ?? '',
