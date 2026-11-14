@@ -7,6 +7,8 @@ return [
     // Two-factor authentication (TOTP) of the staff is optional per person. Setting ADMIN_REQUIRE_2FA_SUPERADMIN=true
     // forces it for every `superadmin`: until they enrol, the only things they can open are their own account pages
     // (`admin.account.*`) and `userInfo`; the rest answers 403 with code `two_factor_required`. Off by default.
+    // The panel has its own switch (System > Security, stored in `system_flags`) that requires it from ALL staff. The two
+    // rules are ORed: this variable stays as a fallback for superadmins and cannot be turned off from the panel.
     'require_two_factor_superadmin' => (bool) env('ADMIN_REQUIRE_2FA_SUPERADMIN', false),
 
     // How long the link to confirm a new sign-in email lives, in minutes.

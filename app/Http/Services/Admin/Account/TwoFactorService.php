@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Admin\Account;
 
+use App\Http\Services\Admin\System\TwoFactorEnforcement;
 use App\Models\AdminTwoFactor;
 use App\Models\User;
 use App\Support\AdminPermissions;
@@ -19,10 +20,19 @@ class TwoFactorService
 
     private const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-    /** Whether the server forces this person to have two-factor on (config `admin.require_two_factor_superadmin`, superadmins only). */
+    /**
+     * Whether the server forces this person to have two-factor on. Two independent rules, ORed:
+     *  - the switch in System > Security (`system_flags`, see TwoFactorEnforcement): every person with a staff role;
+     *  - the environment variable (config `admin.require_two_factor_superadmin`): superadmins only. It is kept as a
+     *    fallback and, being an OR, it cannot be turned off from the panel.
+     */
     public static function requiredFor(User $user): bool
     {
-        return (bool) config('admin.require_two_factor_superadmin') && $user->hasRole(AdminPermissions::SUPERADMIN);
+        if ((bool) config('admin.require_two_factor_superadmin') && $user->hasRole(AdminPermissions::SUPERADMIN)) {
+            return true;
+        }
+
+        return $user->hasAnyRole(AdminPermissions::STAFF_ROLES) && app(TwoFactorEnforcement::class)->enabled();
     }
 
     public function __construct(private readonly Google2FA $google2fa) {}
