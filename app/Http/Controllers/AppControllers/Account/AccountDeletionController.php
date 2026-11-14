@@ -41,13 +41,13 @@ class AccountDeletionController extends Controller
         // Every attempt counts, right or wrong: a stolen session cannot guess the password or hammer the endpoint.
         $key = 'account-delete:' . $user->id;
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
-            return response()->json(['message' => 'Too many attempts. Try again later.', 'code' => 'too_many_attempts'], 429)
+            return response()->json(['message' => __('errors.too_many_attempts'), 'code' => 'too_many_attempts'], 429)
                 ->header('Retry-After', (string) RateLimiter::availableIn($key));
         }
         RateLimiter::hit($key, self::DECAY_SECONDS);
 
         if ($this->deletion->isStaff($user)) {
-            return response()->json(['message' => 'Staff accounts must be removed from the team first.', 'code' => 'staff_account'], 403);
+            return response()->json(['message' => __('errors.account_deletion.staff_account'), 'code' => 'staff_account'], 403);
         }
 
         $errors = [];
@@ -62,11 +62,11 @@ class AccountDeletionController extends Controller
             }
         }
         if ($errors) {
-            return response()->json(['message' => 'The given data was invalid.', 'errors' => $errors], 422);
+            return response()->json(['message' => __('errors.account_deletion.invalid'), 'errors' => $errors], 422);
         }
 
         if ($this->deletion->pendingPurchases($user) > 0) {
-            return response()->json(['message' => 'A payment is in progress. Wait for it or cancel it first.', 'code' => 'pending_payment'], 409);
+            return response()->json(['message' => __('errors.account_deletion.pending_payment'), 'code' => 'pending_payment'], 409);
         }
 
         $token = $user->currentAccessToken();

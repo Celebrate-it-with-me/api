@@ -35,7 +35,7 @@ class SpotifySearchController extends Controller
         try {
             $data = $this->spotify->searchTracks(trim($q), $limit === null || $limit === '' ? 5 : (int) $limit);
         } catch (SpotifyUnavailable) {
-            return response()->json(['message' => 'Music search is not available right now.', 'code' => 'spotify_unavailable'], 503);
+            return response()->json(['message' => __('errors.spotify.unavailable'), 'code' => 'spotify_unavailable'], 503);
         }
 
         return response()->json(['data' => $data]);

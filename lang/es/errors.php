@@ -65,6 +65,7 @@ return [
         'only_failed_retry' => 'Solo se pueden reintentar los mensajes que fallaron.',
         'retry_limit' => 'Este mensaje ya se reintentó demasiadas veces.',
         'template_not_approved' => 'La plantilla de WhatsApp todavía no está aprobada.',
+        'event_archived' => 'Este evento está archivado.',
         'unavailable' => 'WhatsApp no está conectado.',
     ],
     'collaborators' => [
@@ -132,5 +133,17 @@ return [
     ],
     'event_location' => [
         'images_limit' => 'Un lugar puede tener como máximo :max fotos.',
+    ],
+    'account_deletion' => [
+        'staff_account' => 'Las cuentas del equipo se quitan primero desde Equipo.',
+        'pending_payment' => 'Hay un pago en curso. Espera a que termine o cancélalo primero.',
+        'invalid' => 'Los datos que enviaste no son válidos.',
+        'event_archived' => 'Este evento se archivó al eliminar la cuenta y no se puede restaurar.',
+    ],
+    'messages' => [
+        'not_found' => 'No encontramos ese mensaje.',
+    ],
+    'spotify' => [
+        'unavailable' => 'La búsqueda de música no está disponible en este momento.',
     ],
 ];

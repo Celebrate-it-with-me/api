@@ -107,7 +107,7 @@ class MessageController extends Controller
 
     private function find(string $key): void
     {
-        abort_unless(MessageCatalog::isEditable($key), response()->json(['message' => 'Message not found.', 'code' => 'message_not_found'], 404));
+        abort_unless(MessageCatalog::isEditable($key), response()->json(['message' => __('errors.messages.not_found'), 'code' => 'message_not_found'], 404));
     }
 
     /** @param  array<string, string>  $errors  field => code */

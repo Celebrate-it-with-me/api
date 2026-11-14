@@ -29,7 +29,7 @@ class WhatsAppBroadcaster
     {
         // The owner deleted her account: the invitation is kept to be read, not to message guests.
         if ($event->isAccountArchived()) {
-            $this->conflict('event_archived', 'This event is archived.');
+            $this->conflict('event_archived', __('errors.whatsapp.event_archived'));
         }
 
         if (! $this->whatsapp->isAvailable()) {

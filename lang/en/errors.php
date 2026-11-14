@@ -65,6 +65,7 @@ return [
         'only_failed_retry' => 'Only failed messages can be retried.',
         'retry_limit' => 'This message was already retried too many times.',
         'template_not_approved' => 'The WhatsApp template is not approved yet.',
+        'event_archived' => 'This event is archived.',
         'unavailable' => 'WhatsApp is not connected.',
     ],
     'collaborators' => [
@@ -132,5 +133,17 @@ return [
     ],
     'event_location' => [
         'images_limit' => 'A place can have at most :max pictures.',
+    ],
+    'account_deletion' => [
+        'staff_account' => 'Staff accounts must be removed from the team first.',
+        'pending_payment' => 'A payment is in progress. Wait for it or cancel it first.',
+        'invalid' => 'The data you sent is not valid.',
+        'event_archived' => 'This event was archived with a deleted account and cannot be restored.',
+    ],
+    'messages' => [
+        'not_found' => 'Message not found.',
+    ],
+    'spotify' => [
+        'unavailable' => 'Music search is not available right now.',
     ],
 ];
