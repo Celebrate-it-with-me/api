@@ -214,31 +214,7 @@ describe('team', function () {
         expect(collect($data)->pluck('role', 'id')->sortKeys()->all())->toBe(collect([$super->id => 'superadmin', $support->id => 'support'])->sortKeys()->all());
     });
 
-    it('gives a role to an existing account', function () {
-        $super = staffAs('superadmin');
-        $user = User::factory()->create(['email' => 'lucia@example.com']);
-
-        $res = $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'lucia@example.com', 'role' => 'support', 'reason' => 'New support person'])->assertCreated();
-
-        expect($user->refresh()->hasRole('support'))->toBeTrue()->and($res->json('temporaryPassword'))->toBeNull()
-            ->and(AdminAuditLog::where('action', 'team.add')->where('user_id', $user->id)->exists())->toBeTrue();
-        $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'lucia@example.com', 'role' => 'superadmin', 'reason' => 'Again'])->assertStatus(422)->assertJsonValidationErrors('email');
-    });
-
-    it('creates the account with a temporary password shown once', function () {
-        $super = staffAs('superadmin');
-
-        $res = $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'new@example.com', 'name' => 'New Person', 'role' => 'support', 'reason' => 'Hired for support'])->assertCreated();
-        $password = $res->json('temporaryPassword');
-
-        expect($password)->toBeString()->and(strlen($password))->toBe(16);
-        $this->postJson('/api/v1/admin/login', ['email' => 'new@example.com', 'password' => $password, 'device' => 'x'])->assertOk();
-        $this->actingAs($super)->getJson('/api/v1/admin/team')->assertJsonMissing(['temporaryPassword' => $password]);
-        // the password itself is never written to the log
-        expect(json_encode(AdminAuditLog::all()->toArray()))->not->toContain($password);
-
-        $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'noname@example.com', 'role' => 'support', 'reason' => 'Hired for support'])->assertStatus(422)->assertJsonValidationErrors('name');
-    });
+    // Adding people is by invitation now: see tests/Feature/Admin/TeamInvitationsTest.php.
 
     it('changes a role and removes access, with a reason, and records it', function () {
         $super = staffAs('superadmin');

@@ -21,6 +21,11 @@ class EnsureAdmin
         abort_if(ImpersonationService::isImpersonationToken($request->user()?->currentAccessToken()), 403, 'This area is for administrators.');
         abort_unless($request->user()?->hasAnyRole(AdminPermissions::STAFF_ROLES), 403, 'This area is for administrators.');
 
+        // A suspended member keeps the role but not the access (her tokens were revoked when she was suspended).
+        if ($request->user()->admin_suspended_at) {
+            return response()->json(['message' => 'Your access to the admin panel is suspended.', 'code' => 'account_suspended'], 403);
+        }
+
         // Idle and absolute expiry of the panel's tokens. The panel's own tokens are revoked; a token of another client
         // (the organizers' app) is only refused here and keeps working where it belongs. Real tokens only: a cookie
         // session (TransientToken) has no timestamps.

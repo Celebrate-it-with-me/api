@@ -28,11 +28,23 @@ class TwoFactorService
      */
     public static function requiredFor(User $user): bool
     {
-        if ((bool) config('admin.require_two_factor_superadmin') && $user->hasRole(AdminPermissions::SUPERADMIN)) {
+        foreach (AdminPermissions::STAFF_ROLES as $role) {
+            if ($user->hasRole($role) && self::requiredForRole($role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** The same rules for a staff role a person does not hold yet (an invitation that is still pending). */
+    public static function requiredForRole(string $role): bool
+    {
+        if ((bool) config('admin.require_two_factor_superadmin') && $role === AdminPermissions::SUPERADMIN) {
             return true;
         }
 
-        return $user->hasAnyRole(AdminPermissions::STAFF_ROLES) && app(TwoFactorEnforcement::class)->enabled();
+        return in_array($role, AdminPermissions::STAFF_ROLES, true) && app(TwoFactorEnforcement::class)->enabled();
     }
 
     public function __construct(private readonly Google2FA $google2fa) {}

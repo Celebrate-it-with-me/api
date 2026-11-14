@@ -7,6 +7,7 @@ use App\Models\AdminAuditLog;
 use App\Models\User;
 use App\Support\AdminPermissions;
 use App\Support\ClientInfo;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -56,6 +57,8 @@ class AdminLoginService
             throw ValidationException::withMessages(['email' => ['The provided credentials are incorrect.']]);
         }
 
+        $this->assertNotSuspended($user);
+
         if ($user->hasAdminTwoFactor()) {
             return ['twoFactorRequired' => true, 'challenge' => $this->openChallenge($user)];
         }
@@ -80,6 +83,8 @@ class AdminLoginService
 
             throw ValidationException::withMessages(['challenge' => ['The sign-in attempt expired. Start again.']]);
         }
+
+        $this->assertNotSuspended($user);
 
         $limiter = "admin-2fa-failures:{$user->id}";
         if (RateLimiter::tooManyAttempts($limiter, self::USER_MAX_FAILURES)) {
@@ -116,8 +121,17 @@ class AdminLoginService
         return $this->issueToken($user, $device, $usingRecovery ? 'recovery_code' : 'two_factor');
     }
 
+    /** The password was right, so it is safe to say why she cannot come in. */
+    private function assertNotSuspended(User $user): void
+    {
+        if ($user->admin_suspended_at) {
+            throw new HttpResponseException(response()->json(['message' => 'Your access to the admin panel is suspended.', 'code' => 'account_suspended'], 403));
+        }
+    }
+
     private function issueToken(User $user, string $device, string $method): string
     {
+        User::query()->whereKey($user->id)->update(['admin_last_login_at' => now()]);
         $label = ClientInfo::device($this->request->userAgent());
         $isNewDevice = $this->isNewDevice($user, $label);
 
