@@ -5,9 +5,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 
 it('no longer ships Twilio or the SMS reminder command', function () {
-    expect(class_exists('App\\Http\\Services\\TwilioServices'))->toBeFalse()
-        ->and(class_exists('App\\Console\\Commands\\SentSmsReminder'))->toBeFalse()
-        ->and(class_exists('App\\Models\\SmsReminder'))->toBeFalse()
+    expect(file_exists(base_path('app/Http/Services/TwilioServices.php')))->toBeFalse()
+        ->and(file_exists(base_path('app/Console/Commands/SentSmsReminder.php')))->toBeFalse()
+        ->and(file_exists(base_path('app/Models/SmsReminder.php')))->toBeFalse()
         ->and(file_get_contents(base_path('composer.json')))->not->toContain('twilio')
         ->and(config('services.twilio'))->toBeNull()
         ->and(array_key_exists('cwm:sent-sms-reminder', Artisan::all()))->toBeFalse()
