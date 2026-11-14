@@ -102,11 +102,11 @@ Route::prefix('')->name('auth.')->group(function () {
 
 // Public Collaborator Invitation Routes
 Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])
-    ->name('collaborators.checkToken');
+    ->middleware('throttle:30,1')->name('collaborators.checkToken');
 Route::post('event/{event}/collaborators/invite/{token}/decline', [InviteCollaboratorController::class, 'declineInvite'])
-    ->name('collaborators.declineInvite');
+    ->middleware('throttle:30,1')->name('collaborators.declineInvite');
 Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, 'eventTokens'])
-    ->name('collaborators.eventTokens');
+    ->middleware('throttle:30,1')->name('collaborators.eventTokens');
 
 // ========================================
 // PROTECTED ROUTES (Require Authentication)
@@ -207,7 +207,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('', [InviteCollaboratorController::class, 'index'])
                     ->middleware('event.access:manage_collaborators')->name('index');
                 Route::post('', [InviteCollaboratorController::class, 'invite'])
-                    ->middleware('event.access:manage_collaborators')->name('store');
+                    ->middleware(['event.access:manage_collaborators', 'throttle:collaborator-invites'])->name('store');
                 // The invitee is not a member yet; the controller checks the invite belongs to their email.
                 Route::post('invite/{id}/accept', [InviteCollaboratorController::class, 'accept'])
                     ->withoutMiddleware('event.access')->name('accept');

@@ -28,6 +28,16 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Inviting collaborators sends mail from our domain and tells whether an account exists (audit W-03).
+        RateLimiter::for('collaborator-invites', function (Request $request) {
+            $event = $request->route('event');
+
+            return [
+                Limit::perMinute(10)->by('collab-user:' . ($request->user()?->id ?: $request->ip())),
+                Limit::perDay(30)->by('collab-event:' . (is_object($event) ? $event->getKey() : $event)),
+            ];
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api/v1/')

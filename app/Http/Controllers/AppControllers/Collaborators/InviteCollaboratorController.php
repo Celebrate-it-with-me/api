@@ -210,6 +210,7 @@ class InviteCollaboratorController extends Controller
         $invite = EventCollaborationInvite::query()
             ->where('event_id', $event->id)
             ->where('token', $token)
+            ->valid()
             ->first();
 
         if (! $invite) {
@@ -284,7 +285,7 @@ class InviteCollaboratorController extends Controller
             return response()->json(['message' => 'Invalid or expired invitation.'], 404);
         }
 
-        if ($invite->email !== $user->email) {
+        if (strtolower((string) $invite->email) !== strtolower((string) $user->email)) {
             return response()->json(['message' => 'You are not authorized to accept this invitation.'], 400);
         }
 
@@ -335,8 +336,9 @@ class InviteCollaboratorController extends Controller
      */
     public function eventTokens(Request $request): JsonResponse
     {
+        $data = $request->validate(['tokens' => ['required', 'array', 'max:20'], 'tokens.*' => ['required', 'uuid']]);
         $invites = EventCollaborationInvite::query()
-            ->whereIn('token', $request->tokens)
+            ->whereIn('token', $data['tokens'])
             ->valid()
             ->get();
 
