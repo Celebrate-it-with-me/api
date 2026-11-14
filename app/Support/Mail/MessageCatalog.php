@@ -32,6 +32,7 @@ class MessageCatalog
         'admin-security-two-factor-reset' => 'admin_security.types.two_factor_reset_by_admin',
         'admin-security-new-device' => 'admin_security.types.new_device',
         'budget-reminder' => 'budget_reminder',
+        'account-deleted' => 'account_deleted',
         'test' => 'test',
     ];
 
