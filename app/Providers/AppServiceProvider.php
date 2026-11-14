@@ -35,6 +35,12 @@ class AppServiceProvider extends ServiceProvider
             'user' => User::class,
         ]);
 
+        // A production server must not start taking payments with the stand-in gateway or an unset webhook secret.
+        if ($this->app->environment('production') && ! $this->app->runningInConsole()
+            && (config('services.payments.gateway') === 'fake' || blank(config('services.payments.webhook_secret')))) {
+            throw new \RuntimeException('PAYMENTS_GATEWAY must not be "fake" and PAYMENTS_WEBHOOK_SECRET must be set in production.');
+        }
+
         // Sanctum overwrites `last_used_at` while authenticating; keep the previous value for the idle check of the admin panel.
         Event::listen(TokenAuthenticated::class, fn (TokenAuthenticated $e) => TokenLifetime::remember(request(), $e->token));
     }

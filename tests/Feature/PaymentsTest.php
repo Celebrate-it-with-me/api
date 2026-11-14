@@ -172,3 +172,38 @@ it('does not overwrite an edited price when seeded again', function () {
 
     expect(EventPlan::where('slug', 'premium')->value('price_cents'))->toBe(7900);
 });
+
+it('refuses every webhook when no secret is configured and ignores the old public default (S-03)', function () {
+    [$event, $owner] = ownedEvent();
+    $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertCreated();
+    $purchase = EventPurchase::find($res->json('data.purchaseId'));
+    $raw = json_encode(['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id]);
+
+    // Signed with the secret that used to be the default in the repository.
+    sendWebhook($this, json_decode($raw, true), hash_hmac('sha256', $raw, 'local-webhook-secret'))->assertStatus(400);
+
+    config(['services.payments.webhook_secret' => null]);
+    $forged = hash_hmac('sha256', $raw, '');
+    $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $forged], $raw)
+        ->assertStatus(503);
+
+    expect($event->fresh()->eventPlan->slug)->toBe('basic');
+});
+
+it('rejects a webhook whose amount does not match the purchase', function () {
+    [$event, $owner] = ownedEvent();
+    $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertCreated();
+    $purchase = EventPurchase::find($res->json('data.purchaseId'));
+
+    sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => 1])->assertStatus(400);
+    expect($purchase->fresh()->status)->toBe('pending');
+
+    sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => $purchase->amount_cents, 'currency' => $purchase->currency])->assertOk();
+    expect($purchase->fresh()->status)->toBe('paid');
+});
+
+it('never resolves the fake gateway in production', function () {
+    $this->app['env'] = 'production';
+
+    expect(fn () => app(\App\Http\Services\Payments\PurchaseService::class)->gateway('fake'))->toThrow(RuntimeException::class);
+});

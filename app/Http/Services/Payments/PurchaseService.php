@@ -24,7 +24,14 @@ class PurchaseService
 
     public function gateway(?string $name = null): PaymentGateway
     {
-        return match ($name ?? config('services.payments.gateway')) {
+        $name ??= config('services.payments.gateway');
+
+        // The stand-in gateway confirms with a locally signed webhook: never on a production server.
+        if ($name === 'fake' && app()->environment('production')) {
+            throw new \RuntimeException('The fake payment gateway cannot be used in production.');
+        }
+
+        return match ($name) {
             'manual' => new ManualGateway,
             default => new FakeGateway,
         };
