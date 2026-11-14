@@ -76,6 +76,10 @@ Route::prefix('template')->name('template.')->group(function () {
 // Authentication Routes
 Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseController::class, 'webhook'])->middleware('throttle:120,1')->name('payments.webhook');
 
+// "Mis compras" (invoices): its own file, own auth middleware. Keep it above the group that ends the impersonation
+// session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
+require __DIR__ . '/app/invoices.php';
+
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
     Route::post('login', [AuthenticationController::class, 'appLogin']);
