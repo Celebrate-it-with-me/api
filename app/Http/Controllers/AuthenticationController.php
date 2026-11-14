@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
@@ -270,9 +271,22 @@ class AuthenticationController extends Controller
      */
     public function appLogout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $token = $user->currentAccessToken();
 
-        UserLoggedOutEvent::dispatch($request->user());
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        } else {
+            // A cookie session (the SPA login) has no token to delete: close the session itself.
+            Auth::guard('web')->logout();
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+        }
+
+        UserLoggedOutEvent::dispatch($user);
 
         return response()->json(['message' => 'Logged out successfully!']);
     }
