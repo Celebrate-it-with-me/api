@@ -11,11 +11,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Throwable;
 
 class InviteCollaboratorController extends Controller
 {
+    /** The roles a collaborator can be given. `owner` only changes through an ownership transfer. */
+    private const ROLES = ['editor', 'viewer'];
+
     /**
      * @param Request $request
      * @param Events $event
@@ -25,7 +29,7 @@ class InviteCollaboratorController extends Controller
     {
         $data = $request->validate([
             'email' => 'required|email',
-            'role' => 'required|string',
+            'role' => ['required', 'string', Rule::in(self::ROLES)],
         ]);
         
         if($data['email'] === $event->organizer->email) {
@@ -35,11 +39,15 @@ class InviteCollaboratorController extends Controller
         $existingUser = User::query()->where('email', $data['email'])->first();
         
         if ($existingUser) {
-            if ($event->collaborators()->where('user_id', $existingUser->id)->exists()) {
+            if (EventUserRole::query()->where('event_id', $event->id)->where('user_id', $existingUser->id)->exists()) {
                 return response()->json(['message' => 'User is already a collaborator.'], 400);
             }
             
-            $event->collaborators()->attach($existingUser->id, ['role' => $data['role']]);
+            EventUserRole::query()->create([
+                'event_id' => $event->id,
+                'user_id' => $existingUser->id,
+                'role_id' => Role::query()->where('name', $data['role'])->firstOrFail()->id,
+            ]);
             
             return response()->json(['message' => 'User has been added as a collaborator.']);
         }
@@ -77,6 +85,7 @@ class InviteCollaboratorController extends Controller
     public function checkToken(Events $event, string $token): JsonResponse
     {
         $invite = EventCollaborationInvite::query()
+            ->where('event_id', $event->id)
             ->where('token', $token)
             ->first();
         
@@ -107,6 +116,7 @@ class InviteCollaboratorController extends Controller
     public function declineInvite(Events $event, string $token): JsonResponse
     {
         $invite = EventCollaborationInvite::query()
+            ->where('event_id', $event->id)
             ->where('token', $token)
             ->valid()
             ->first();
@@ -146,13 +156,8 @@ class InviteCollaboratorController extends Controller
             ->where('id', $id)
             ->first();
         
-        Log::info('Accepting invite for user: ' . $user->email . ' with token: ' . $id, [
-            $event->id,
-            $id,
-            $invite
-        ]);
-        
-        if (!$invite) {
+        // Only a pending invitation that has not expired can be accepted (and only once: accepting closes it).
+        if (!$invite || $invite->status !== 'pending' || ($invite->expires_at && $invite->expires_at->isPast()) || !in_array($invite->role, self::ROLES, true)) {
             return response()->json(['message' => 'Invalid or expired invitation.'], 404);
         }
         
@@ -188,13 +193,38 @@ class InviteCollaboratorController extends Controller
             
         } catch (Throwable $th) {
             DB::rollBack();
-            return response()->json([
-                'message' => 'An error occurred while accepting the invitation.',
-                'error' => $th->getMessage(),
-            ], 500);
+            report($th);
+
+            return response()->json(['message' => 'An error occurred while accepting the invitation.'], 500);
         }
     }
     
+    /**
+     * Removes a collaborator from the event. The owner cannot be removed (ownership moves with a transfer).
+     */
+    public function destroy(Events $event, User $user): JsonResponse
+    {
+        $membership = EventUserRole::query()->where('event_id', $event->id)->where('user_id', $user->id)->first();
+
+        if (!$membership) {
+            return response()->json(['message' => 'User is not a collaborator of this event.'], 404);
+        }
+
+        if ($membership->role_id === Role::query()->where('name', 'owner')->value('id')) {
+            return response()->json(['message' => 'The owner cannot be removed.'], 422);
+        }
+
+        DB::transaction(function () use ($membership, $event, $user) {
+            $membership->delete();
+
+            if ($user->last_active_event_id === $event->id) {
+                $user->forceFill(['last_active_event_id' => null])->save();
+            }
+        });
+
+        return response()->json(['message' => 'Collaborator removed.']);
+    }
+
     /**
      * Retrieve and display event collaboration invitations based on provided tokens.
      *
