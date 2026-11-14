@@ -1,7 +1,7 @@
 <x-mail::message :preheader="trans_choice('mail.budget_reminder.preheader', count($budgetItems), ['count' => count($budgetItems), 'event' => $event->event_name])">
-# {{ __('mail.budget_reminder.title', ['name' => \App\Support\Mail\MailLocale::firstName($user->name)]) }}
+# {{ __('mail.budget_reminder.title', ['name' => \App\Support\Mail\MailLocale::md(\App\Support\Mail\MailLocale::firstName($user->name))]) }}
 
-{{ __('mail.budget_reminder.intro', ['event' => $event->event_name]) }}
+{{ __('mail.budget_reminder.intro', ['event' => \App\Support\Mail\MailLocale::md($event->event_name)]) }}
 
 <x-mail::table>
 | {{ __('mail.budget_reminder.item') }} | {{ __('mail.budget_reminder.due') }} | {{ __('mail.budget_reminder.cost') }} |
