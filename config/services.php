@@ -61,6 +61,17 @@ return [
         'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET', 'local-webhook-secret'),
     ],
 
+    // WhatsApp (Meta Cloud API): `fake` until the Meta account exists (docs/plans/communications.md).
+    'whatsapp' => [
+        'driver' => env('WHATSAPP_DRIVER', 'fake'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'business_account_id' => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+        'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v26.0'),
+    ],
+
     // Where suspended users and the "Necesito ayuda" button send people, and the admin panel the support mail links to.
     'support' => [
         'email' => env('SUPPORT_EMAIL', 'soporte@quinvite.com'),
