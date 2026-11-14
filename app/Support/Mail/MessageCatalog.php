@@ -101,7 +101,7 @@ class MessageCatalog
     /** @return list<string> the `:placeholder` names of a text, in order of appearance */
     public static function variables(string $text): array
     {
-        preg_match_all('/(?<![\w:\/]):([A-Za-z_][A-Za-z0-9_]*)/', $text, $m);
+        preg_match_all('/(?<![A-Za-z0-9_]):([A-Za-z_]\w*)/', $text, $m);
 
         return array_values(array_unique($m[1]));
     }

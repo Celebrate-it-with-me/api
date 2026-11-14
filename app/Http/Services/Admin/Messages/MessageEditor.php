@@ -183,10 +183,10 @@ class MessageEditor
         if (mb_strlen($text) > MessageCatalog::maxLength($field)) {
             return 'too_long';
         }
-        if (preg_match('/<\s*\/?\s*[a-z!?]/i', $text)) {
+        if (preg_match('/<\s*\/?\s*[a-z][^>]*>/i', $text)) {
             return 'html_not_allowed';
         }
-        if (preg_match('/\]\s*[\(\[]|^\s*\[[^\]]+\]:|https?:|ftp:|mailto:|www\.|\b[\w.+-]+@[\w-]+\.[\w.-]+/im', $text)) {
+        if (preg_match('~https?://|www\.|\]\s*\(|mailto:|\b[\w.+-]+@[\w-]+\.[\w.-]+~i', $text)) {
             return 'links_not_allowed';
         }
         $original = MessageCatalog::variables(MessageCatalog::default($key, $locale, $field));
