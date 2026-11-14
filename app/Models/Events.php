@@ -34,6 +34,7 @@ class Events extends Model
         'published_at',
         'custom_url_slug',
         'template_id',
+        'template_version_id',
         'template_config',
         'locale',
         'currency',
@@ -118,6 +119,14 @@ class Events extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(InvitationTemplate::class, 'template_id');
+    }
+
+    /**
+     * The template version fixed when the event was first published (null while it follows the current one).
+     */
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(InvitationTemplateVersion::class, 'template_version_id');
     }
 
     /**

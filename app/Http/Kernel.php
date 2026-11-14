@@ -93,8 +93,10 @@ class Kernel extends HttpKernel
         'refresh.token' => RefreshTokenExpirationIfActive::class,
         'impersonation.guard' => \App\Http\Middleware\ImpersonationGuard::class,
         'admin' => \App\Http\Middleware\EnsureAdmin::class,
+        'admin.reauth' => \App\Http\Middleware\EnsureRecentReauth::class,
         'admin.can' => \App\Http\Middleware\EnsureAdminPermission::class,
         'event.access' => \App\Http\Middleware\EnsureEventAccess::class,
         'event.guest' => \App\Http\Middleware\EnsureGuestEventAccess::class,
+        'module.access' => \App\Http\Middleware\EnsureModuleAccess::class,
     ];
 }

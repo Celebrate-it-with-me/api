@@ -23,11 +23,12 @@ class CatalogController extends Controller
     {
         $data = $request->validate([
             'module' => ['required', 'string', 'exists:modules,key'],
-            'planSlugs' => ['present', 'array'],
+            // Absent or empty means "the module would be in no plan" (a GET cannot carry an empty array).
+            'planSlugs' => ['nullable', 'array'],
             'planSlugs.*' => ['string', 'distinct', 'exists:event_plans,slug'],
         ]);
 
-        return response()->json(['data' => $this->catalog->impact($data['module'], $data['planSlugs'])]);
+        return response()->json(['data' => $this->catalog->impact($data['module'], array_values($data['planSlugs'] ?? []))]);
     }
 
     public function updatePlans(UpdateModulePlansRequest $request, string $module): JsonResponse

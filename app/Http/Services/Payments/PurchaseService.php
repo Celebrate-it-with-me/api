@@ -2,12 +2,14 @@
 
 namespace App\Http\Services\Payments;
 
+use App\Http\Services\Invoices\InvoiceService;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -100,6 +102,32 @@ class PurchaseService
     /** Payment confirmed: activate the full plan. Idempotent. */
     public function markPaid(EventPurchase $purchase, ?string $paymentId = null): EventPurchase
     {
+        $purchase = $this->activate($purchase, $paymentId);
+        $this->invoice($purchase);
+
+        return $purchase;
+    }
+
+    /**
+     * Every confirmed payment gets its invoice (docs/plans/invoices.md), by mail the first time. Issuing is idempotent,
+     * and a failure here never undoes a payment that already happened: it is logged and `invoices:backfill` retries.
+     */
+    private function invoice(EventPurchase $purchase): void
+    {
+        try {
+            $invoices = app(InvoiceService::class);
+            [$invoice, $created] = $invoices->issueForPurchase($purchase);
+            if ($created) {
+                $invoices->deliver($invoice);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Invoice issuing or delivery failed', ['purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
+            report($e);
+        }
+    }
+
+    private function activate(EventPurchase $purchase, ?string $paymentId): EventPurchase
+    {
         return DB::transaction(function () use ($purchase, $paymentId) {
             $purchase = EventPurchase::query()->lockForUpdate()->findOrFail($purchase->id);
 
@@ -133,7 +161,7 @@ class PurchaseService
     }
 
     /** Refunds are full and only while the invitation is not published (the event goes back to the free plan). */
-    public function refund(EventPurchase $purchase): EventPurchase
+    public function refund(EventPurchase $purchase, ?string $reason = null): EventPurchase
     {
         if ($purchase->status !== 'paid') {
             throw ValidationException::withMessages(['purchase' => ['not_paid']]);
@@ -142,13 +170,22 @@ class PurchaseService
             throw ValidationException::withMessages(['purchase' => ['event_published']]);
         }
 
-        return DB::transaction(function () use ($purchase) {
+        $note = null;
+        $refunded = DB::transaction(function () use ($purchase, $reason, &$note) {
             $this->gateway($purchase->gateway)->refund($purchase);
             $purchase->update(['status' => 'refunded', 'refunded_at' => now()]);
+            $note = app(InvoiceService::class)->creditForRefund($purchase, $reason ?: 'Refund');
             $free = EventPlan::query()->where('slug', self::FREE_SLUG)->value('id');
             $purchase->event()->update(['event_plan_id' => $free]);
 
             return $purchase->refresh();
         });
+
+        // After the commit, so a mail failure can never undo the refund (the service swallows and logs it).
+        if ($note) {
+            app(InvoiceService::class)->deliverCreditNote($note);
+        }
+
+        return $refunded;
     }
 }

@@ -21,6 +21,7 @@ class InvitationTemplate extends Model
         'default_sections',
         'theme_defaults',
         'is_active',
+        'current_version_id',
     ];
 
     protected $casts = [
@@ -32,6 +33,16 @@ class InvitationTemplate extends Model
     public function eventType(): BelongsTo
     {
         return $this->belongsTo(EventType::class);
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(InvitationTemplateVersion::class, 'template_id');
+    }
+
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(InvitationTemplateVersion::class, 'current_version_id');
     }
 
     public function events(): HasMany

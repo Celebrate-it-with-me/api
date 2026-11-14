@@ -58,12 +58,12 @@ describe('roles and permissions', function () {
         $this->actingAs($support)->getJson('/api/v1/admin/dashboard')->assertOk();
         $this->actingAs($support)->getJson('/api/v1/admin/users')->assertOk();
         $this->actingAs($support)->getJson('/api/v1/admin/payments')->assertForbidden();
-        $this->actingAs($support)->putJson('/api/v1/admin/payments/price', ['priceCents' => 100, 'reason' => 'trying it out'])->assertForbidden();
+        $this->actingAsReauthed($support)->putJson('/api/v1/admin/payments/price', ['priceCents' => 100, 'reason' => 'trying it out'])->assertForbidden();
         $this->actingAs($support)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['amountCents' => 1, 'reason' => 'trying it out'])->assertForbidden();
-        $this->actingAs($support)->postJson('/api/v1/admin/payments/1/refund', ['reason' => 'trying it out'])->assertForbidden();
+        $this->actingAsReauthed($support)->postJson('/api/v1/admin/payments/1/refund', ['reason' => 'trying it out'])->assertForbidden();
         $this->actingAs($support)->getJson('/api/v1/admin/team')->assertForbidden();
         $this->actingAs($support)->getJson('/api/v1/admin/audit')->assertForbidden();
-        $this->actingAs($support)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id, ['reason' => 'trying it out'])->assertForbidden();
+        $this->actingAsReauthed($support)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id, ['reason' => 'trying it out'])->assertForbidden();
     });
 
     it('tells the panel the roles and permissions of whoever is logged in', function () {
@@ -100,12 +100,12 @@ describe('the audit log', function () {
         $admin = staffAs('superadmin');
         $event = eventFor(User::factory()->create());
 
-        $this->actingAs($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900, 'reason' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900, 'reason' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('reason');
         $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['amountCents' => 9900])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'X', 'kind' => 'fixed_price', 'value' => 100])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id)->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->postJson('/api/v1/admin/team', ['email' => 'a@example.com', 'role' => 'support', 'name' => 'A'])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'X', 'kind' => 'fixed_price', 'value' => 100])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id)->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->postJson('/api/v1/admin/team', ['email' => 'a@example.com', 'role' => 'support', 'name' => 'A'])->assertStatus(422)->assertJsonValidationErrors('reason');
 
         expect(AdminAuditLog::where('action', '!=', 'auth.login')->count())->toBe(0);
     });
@@ -131,12 +131,12 @@ describe('the audit log', function () {
         $event = eventFor($owner);
         $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
 
-        $this->actingAs($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked before publishing'])->assertOk();
-        $this->actingAs($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900, 'reason' => 'Launch price'])->assertOk();
-        $couponId = $this->actingAs($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'amigos', 'kind' => 'fixed_price', 'value' => 5900, 'reason' => 'Friends and family'])->assertCreated()->json('data.id');
-        $this->actingAs($admin)->patchJson("/api/v1/admin/payments/coupons/{$couponId}", ['isActive' => false, 'reason' => 'Campaign over'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked before publishing'])->assertOk();
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900, 'reason' => 'Launch price'])->assertOk();
+        $couponId = $this->actingAsReauthed($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'amigos', 'kind' => 'fixed_price', 'value' => 5900, 'reason' => 'Friends and family'])->assertCreated()->json('data.id');
+        $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/payments/coupons/{$couponId}", ['isActive' => false, 'reason' => 'Campaign over'])->assertOk();
         $victim = User::factory()->create();
-        $this->actingAs($admin)->deleteJson("/api/v1/admin/users/{$victim->id}", ['reason' => 'Asked to delete their account', 'confirmEmail' => $victim->email])->assertOk();
+        $this->actingAsReauthed($admin)->deleteJson("/api/v1/admin/users/{$victim->id}", ['reason' => 'Asked to delete their account', 'confirmEmail' => $victim->email])->assertOk();
 
         $actions = AdminAuditLog::orderBy('id')->pluck('action')->all();
         expect($actions)->toBe(['payment.manual', 'payment.refund', 'pricing.update', 'coupon.create', 'coupon.deactivate', 'user.delete']);
@@ -218,17 +218,17 @@ describe('team', function () {
         $super = staffAs('superadmin');
         $user = User::factory()->create(['email' => 'lucia@example.com']);
 
-        $res = $this->actingAs($super)->postJson('/api/v1/admin/team', ['email' => 'lucia@example.com', 'role' => 'support', 'reason' => 'New support person'])->assertCreated();
+        $res = $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'lucia@example.com', 'role' => 'support', 'reason' => 'New support person'])->assertCreated();
 
         expect($user->refresh()->hasRole('support'))->toBeTrue()->and($res->json('temporaryPassword'))->toBeNull()
             ->and(AdminAuditLog::where('action', 'team.add')->where('user_id', $user->id)->exists())->toBeTrue();
-        $this->actingAs($super)->postJson('/api/v1/admin/team', ['email' => 'lucia@example.com', 'role' => 'superadmin', 'reason' => 'Again'])->assertStatus(422)->assertJsonValidationErrors('email');
+        $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'lucia@example.com', 'role' => 'superadmin', 'reason' => 'Again'])->assertStatus(422)->assertJsonValidationErrors('email');
     });
 
     it('creates the account with a temporary password shown once', function () {
         $super = staffAs('superadmin');
 
-        $res = $this->actingAs($super)->postJson('/api/v1/admin/team', ['email' => 'new@example.com', 'name' => 'New Person', 'role' => 'support', 'reason' => 'Hired for support'])->assertCreated();
+        $res = $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'new@example.com', 'name' => 'New Person', 'role' => 'support', 'reason' => 'Hired for support'])->assertCreated();
         $password = $res->json('temporaryPassword');
 
         expect($password)->toBeString()->and(strlen($password))->toBe(16);
@@ -237,7 +237,7 @@ describe('team', function () {
         // the password itself is never written to the log
         expect(json_encode(AdminAuditLog::all()->toArray()))->not->toContain($password);
 
-        $this->actingAs($super)->postJson('/api/v1/admin/team', ['email' => 'noname@example.com', 'role' => 'support', 'reason' => 'Hired for support'])->assertStatus(422)->assertJsonValidationErrors('name');
+        $this->actingAsReauthed($super)->postJson('/api/v1/admin/team', ['email' => 'noname@example.com', 'role' => 'support', 'reason' => 'Hired for support'])->assertStatus(422)->assertJsonValidationErrors('name');
     });
 
     it('changes a role and removes access, with a reason, and records it', function () {
@@ -245,9 +245,9 @@ describe('team', function () {
         $other = staffAs('superadmin');
         $support = staffAs('support');
 
-        $this->actingAs($super)->patchJson("/api/v1/admin/team/{$support->id}", ['role' => 'superadmin', 'reason' => 'Promoted'])->assertOk()->assertJsonPath('data.role', 'superadmin');
-        $this->actingAs($super)->patchJson("/api/v1/admin/team/{$support->id}", ['role' => 'support'])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($super)->deleteJson("/api/v1/admin/team/{$other->id}", ['reason' => 'Left the company'])->assertOk();
+        $this->actingAsReauthed($super)->patchJson("/api/v1/admin/team/{$support->id}", ['role' => 'superadmin', 'reason' => 'Promoted'])->assertOk()->assertJsonPath('data.role', 'superadmin');
+        $this->actingAsReauthed($super)->patchJson("/api/v1/admin/team/{$support->id}", ['role' => 'support'])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($super)->deleteJson("/api/v1/admin/team/{$other->id}", ['reason' => 'Left the company'])->assertOk();
 
         expect($other->refresh()->hasAnyRole(AdminPermissions::STAFF_ROLES))->toBeFalse()->and($other->exists)->toBeTrue()
             ->and(AdminAuditLog::orderBy('id')->pluck('action')->all())->toBe(['team.role_changed', 'team.removed'])
@@ -260,18 +260,18 @@ describe('team', function () {
         $second = staffAs('superadmin');
 
         // yourself
-        $this->actingAs($super)->patchJson("/api/v1/admin/team/{$super->id}", ['role' => 'support', 'reason' => 'Testing myself'])->assertStatus(422);
-        $this->actingAs($super)->deleteJson("/api/v1/admin/team/{$super->id}", ['reason' => 'Testing myself'])->assertStatus(422);
+        $this->actingAsReauthed($super)->patchJson("/api/v1/admin/team/{$super->id}", ['role' => 'support', 'reason' => 'Testing myself'])->assertStatus(422);
+        $this->actingAsReauthed($super)->deleteJson("/api/v1/admin/team/{$super->id}", ['reason' => 'Testing myself'])->assertStatus(422);
 
         // two superadmins: one can demote the other, but then the remaining one is the last
-        $this->actingAs($super)->patchJson("/api/v1/admin/team/{$second->id}", ['role' => 'support', 'reason' => 'Step down'])->assertOk();
+        $this->actingAsReauthed($super)->patchJson("/api/v1/admin/team/{$second->id}", ['role' => 'support', 'reason' => 'Step down'])->assertOk();
         $third = staffAs('support');
-        $this->actingAs($super)->patchJson("/api/v1/admin/team/{$third->id}", ['role' => 'superadmin', 'reason' => 'Promote'])->assertOk();
-        $this->actingAs($third)->deleteJson("/api/v1/admin/team/{$super->id}", ['reason' => 'Remove other'])->assertOk();
+        $this->actingAsReauthed($super)->patchJson("/api/v1/admin/team/{$third->id}", ['role' => 'superadmin', 'reason' => 'Promote'])->assertOk();
+        $this->actingAsReauthed($third)->deleteJson("/api/v1/admin/team/{$super->id}", ['reason' => 'Remove other'])->assertOk();
 
         // `third` is now the only superadmin and cannot remove themselves.
         expect(User::role('superadmin')->count())->toBe(1);
-        $this->actingAs($third)->deleteJson("/api/v1/admin/team/{$third->id}", ['reason' => 'Last one'])->assertStatus(422);
+        $this->actingAsReauthed($third)->deleteJson("/api/v1/admin/team/{$third->id}", ['reason' => 'Last one'])->assertStatus(422);
         expect(User::role('superadmin')->count())->toBe(1);
     });
 
@@ -279,7 +279,7 @@ describe('team', function () {
         $super = staffAs('superadmin');
         $support = staffAs('support');
 
-        $this->actingAs($super)->deleteJson("/api/v1/admin/users/{$support->id}", ['reason' => 'Should not work'])->assertStatus(422);
+        $this->actingAsReauthed($super)->deleteJson("/api/v1/admin/users/{$support->id}", ['reason' => 'Should not work'])->assertStatus(422);
         expect(User::find($support->id))->not->toBeNull();
     });
 });

@@ -22,6 +22,22 @@ return [
         'outro' => 'If you did not create this account, you can ignore this message; nothing will happen.',
     ],
 
+    'invoice' => [
+        'subject' => 'Your Quinvite invoice :number',
+        'preheader' => 'Your invoice is attached.',
+        'title' => 'Thank you for your purchase, :name',
+        'intro' => 'Attached is invoice :number for :total, for ":event". You can also download it any time from My purchases.',
+        'action' => 'View my purchases',
+    ],
+
+    'credit_note' => [
+        'subject' => 'Your Quinvite credit note :number',
+        'preheader' => 'The credit note for your refund is attached.',
+        'title' => 'Your refund is on its way, :name',
+        'intro' => 'We refunded :amount for ":event" and cancelled invoice :invoice. Attached is credit note :number; you can also download it from My purchases. Your bank may take a few days to show the money.',
+        'action' => 'View my purchases',
+    ],
+
     'welcome' => [
         'subject' => 'Welcome to Quinvite, :name',
         'preheader' => 'Your quinceañera or wedding, organized in one place.',
@@ -110,5 +126,59 @@ return [
         'title' => 'All good',
         'intro' => 'This is a test email from **Quinvite**. If you are reading it, mail delivery works.',
         'action' => 'Go to my dashboard',
+    ],
+
+    'admin_security' => [
+        'title' => 'Hi, :name',
+        'if_not_you' => 'If this was not you, change your password right away and close your other sessions from My account, or tell another team member. Questions? Write to :email.',
+        'action' => 'Review my account',
+        'signature' => 'The Quinvite team',
+        'types' => [
+            'password_changed' => [
+                'subject' => 'You changed your Quinvite admin password',
+                'preheader' => 'We closed your other sessions for safety.',
+                'intro' => 'The password of your admin panel account was changed and we closed your other open sessions.',
+            ],
+            'email_changed' => [
+                'subject' => 'The email of your Quinvite admin account changed',
+                'preheader' => 'Your account now signs in with another email.',
+                'intro' => 'The sign-in email of your admin panel account changed to :email. This notice goes to the previous address.',
+            ],
+            'two_factor_enabled' => [
+                'subject' => 'You turned on two-step verification on Quinvite',
+                'preheader' => 'From now on we will ask for a code when you sign in.',
+                'intro' => 'Two-step verification is now on for your admin panel account. When you sign in we will ask for a code from your authenticator app.',
+            ],
+            'two_factor_disabled' => [
+                'subject' => 'You turned off two-step verification on Quinvite',
+                'preheader' => 'Your account no longer asks for a second step.',
+                'intro' => 'Two-step verification was turned off for your admin panel account and we closed your other sessions.',
+            ],
+            'recovery_codes_regenerated' => [
+                'subject' => 'You generated new recovery codes on Quinvite',
+                'preheader' => 'The previous codes no longer work.',
+                'intro' => 'New recovery codes were generated for your admin panel account. The previous ones stopped working.',
+            ],
+            'two_factor_reset_by_admin' => [
+                'subject' => 'Two-factor authentication on your Quinvite account was reset',
+                'preheader' => 'We signed you out everywhere.',
+                'intro' => 'A team member (:actor) turned off two-factor authentication on your admin panel account and we closed all your sessions. When you sign in again you can turn it back on from My account.',
+            ],
+            'new_device' => [
+                'subject' => 'New sign-in to the Quinvite admin panel',
+                'preheader' => 'You signed in from a device we did not know.',
+                'intro' => 'Someone signed in to your admin panel account from a new device. Device, :device. Date, :when. Network location, :ip.',
+            ],
+        ],
+    ],
+
+    'admin_email_confirm' => [
+        'subject' => 'Confirm your new Quinvite admin email',
+        'preheader' => 'One click and your account signs in with this email.',
+        'title' => 'Hi, :name',
+        'intro' => 'You asked to use this email to sign in to the Quinvite admin panel. Confirm it with the button; the link expires in :minutes minutes.',
+        'action' => 'Confirm my new email',
+        'outro' => 'If you did not ask for this, ignore this message and your email will not change.',
+        'signature' => 'The Quinvite team',
     ],
 ];

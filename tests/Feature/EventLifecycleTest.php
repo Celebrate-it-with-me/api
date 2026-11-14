@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EventActivity;
 use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -115,6 +116,47 @@ describe('editing the details', function () {
         $this->actingAs($m['owner'])->patchJson("/api/v1/app/event/{$event->id}", ['eventDescription' => null, 'endDate' => null])->assertOk();
 
         expect($event->fresh())->event_description->toBeNull()->end_date->toBeNull();
+    });
+
+    it('changes language, currency and time zone, and leaves them alone when not sent', function () {
+        [$event, $m] = lifecycleEvent();
+        $api = "/api/v1/app/event/{$event->id}";
+
+        $this->actingAs($m['editor'])->patchJson($api, ['locale' => 'en', 'currency' => 'MXN', 'timezone' => 'America/Mexico_City'])
+            ->assertOk()->assertJsonPath('data.locale', 'en')->assertJsonPath('data.currency', 'MXN')->assertJsonPath('data.timezone', 'America/Mexico_City');
+        $this->actingAs($m['editor'])->patchJson($api, ['eventName' => 'Otro nombre'])->assertOk();
+
+        expect($event->fresh())->locale->toBe('en')->currency->toBe('MXN')->timezone->toBe('America/Mexico_City');
+    });
+
+    it('rejects an unknown language, currency or time zone, field by field', function () {
+        [$event, $m] = lifecycleEvent();
+
+        $this->actingAs($m['owner'])->patchJson("/api/v1/app/event/{$event->id}", ['locale' => 'fr', 'currency' => 'XXX', 'timezone' => 'Mars/Olympus'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['locale', 'currency', 'timezone']);
+        $this->actingAs($m['owner'])->patchJson("/api/v1/app/event/{$event->id}", ['timezone' => ''])->assertUnprocessable()->assertJsonValidationErrors(['timezone']);
+        expect($event->fresh())->locale->toBe('es')->currency->toBe('USD')->timezone->toBe('America/New_York');
+    });
+
+    it('keeps the published address while the regional settings change, and records them in the activity', function () {
+        [$event, $m] = lifecycleEvent();
+        $api = "/api/v1/app/event/{$event->id}";
+        $this->actingAs($m['owner'])->postJson("$api/publish")->assertOk();
+
+        $this->actingAs($m['owner'])->patchJson($api, ['timezone' => 'America/Bogota', 'customUrlSlug' => 'otra'])->assertUnprocessable()->assertJsonValidationErrors(['customUrlSlug']);
+        $this->actingAs($m['owner'])->patchJson($api, ['timezone' => 'America/Bogota'])->assertOk();
+
+        expect($event->fresh())->timezone->toBe('America/Bogota')->custom_url_slug->toBe('los-xv-de-valentina')
+            ->and(EventActivity::where('event_id', $event->id)->where('type', 'event_updated')->latest('id')->first()->payload['timezone'])->toBe('America/Bogota');
+    });
+
+    it('does not let a viewer or a stranger change the regional settings', function () {
+        [$event, $m] = lifecycleEvent();
+        $api = "/api/v1/app/event/{$event->id}";
+
+        $this->actingAs($m['viewer'])->patchJson($api, ['currency' => 'EUR'])->assertForbidden();
+        $this->actingAs($m['stranger'])->patchJson($api, ['currency' => 'EUR'])->assertNotFound();
+        expect($event->fresh()->currency)->toBe('USD');
     });
 
     it('still accepts PUT for older clients, and keeps the budget feature on', function () {

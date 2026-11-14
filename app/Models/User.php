@@ -71,6 +71,7 @@ class User extends Authenticatable implements HasLocalePreference
         // Never serialized: whoever reads this user over the API (including a support session) must not get the TOTP secret.
         'two_factor_secret',
         'two_factor_recovery_codes',
+        'two_factor_last_used_step',
     ];
 
     /**
@@ -81,13 +82,34 @@ class User extends Authenticatable implements HasLocalePreference
     protected $casts = [
         'email_verified_at' => 'datetime',
         'suspended_at' => 'datetime',
+        'password_changed_at' => 'datetime',
         'anonymized_at' => 'datetime',
         'password' => 'hashed',
+        'two_factor_secret' => 'encrypted',
+        'two_factor_recovery_codes' => 'array',
+        'two_factor_confirmed_at' => 'datetime',
     ];
 
     protected $appends = [
       'avatar_url'
     ];
+
+    /** Two-factor enrolment of a staff member (admin panel); null when she never started it. */
+    public function adminTwoFactor(): HasOne
+    {
+        return $this->hasOne(AdminTwoFactor::class);
+    }
+
+    /** A pending change of sign-in email, waiting for the new address to confirm. */
+    public function adminEmailChange(): HasOne
+    {
+        return $this->hasOne(AdminEmailChange::class);
+    }
+
+    public function hasAdminTwoFactor(): bool
+    {
+        return (bool) $this->adminTwoFactor?->isActive();
+    }
 
     /**
      * Relation with user login sessions.

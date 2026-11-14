@@ -13,6 +13,11 @@ use Illuminate\Validation\Rule;
  */
 class UpdateEventsRequest extends FormRequest
 {
+    /** Languages an event can be run in, and currencies the budget and gifts can use. */
+    public const LOCALES = ['es', 'en'];
+
+    public const CURRENCIES = ['USD', 'EUR', 'MXN', 'COP', 'ARS', 'PEN', 'CLP', 'DOP', 'GTQ', 'UYU', 'CRC', 'HNL', 'PAB', 'BOB', 'PYG', 'VES', 'BRL', 'CAD', 'GBP'];
+
     public function authorize(): bool
     {
         return true;
@@ -38,6 +43,9 @@ class UpdateEventsRequest extends FormRequest
             'eventDescription' => 'sometimes|nullable|string|max:5000',
             'startDate' => 'sometimes|required|date_format:m/d/Y H:i',
             'endDate' => 'sometimes|nullable|date_format:m/d/Y H:i',
+            'locale' => ['sometimes', 'required', 'string', Rule::in(self::LOCALES)],
+            'currency' => ['sometimes', 'required', 'string', Rule::in(self::CURRENCIES)],
+            'timezone' => ['sometimes', 'required', 'string', 'timezone:all'],
             'customUrlSlug' => [
                 'sometimes',
                 'string',

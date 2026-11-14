@@ -10,7 +10,9 @@ use App\Http\Requests\app\ForgotPasswordRequest;
 use App\Http\Requests\app\ResetPasswordRequest;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
+use App\Http\Requests\Auth\AdminTwoFactorLoginRequest;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Services\Admin\Account\AdminLoginService;
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Models\User;
@@ -26,22 +28,26 @@ use Illuminate\Validation\ValidationException;
 class AuthenticationController extends Controller
 {
     /**
+     * Step one of the admin sign-in. Without two-factor it answers the plain token (as always); with it, a JSON
+     * `{twoFactorRequired: true, challenge}` that `adminTwoFactorLogin` trades for the token.
+     *
      * @throws ValidationException
      */
-    public function adminLogin(LoginRequest $request): string
+    public function adminLogin(LoginRequest $request, AdminLoginService $login): JsonResponse|string
     {
-        $user = User::query()->where('email', $request->input('email'))->first();
+        $result = $login->attempt($request->input('email'), $request->input('password'), $request->input('device'));
 
-        // A token for the admin panel is only for administrators; anyone else gets the same answer as a wrong password.
-        if (!$user || !Hash::check($request->input('password'), $user->password) || !$user->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
+        return is_array($result) ? response()->json($result) : $result;
+    }
 
-        app(AdminAudit::class)->record('auth.login', $user, ['actor' => $user]);
-
-        return $user->createToken($request->input('device'))->plainTextToken;
+    /**
+     * Step two: the challenge plus a TOTP code or a recovery code gives the token.
+     *
+     * @throws ValidationException
+     */
+    public function adminTwoFactorLogin(AdminTwoFactorLoginRequest $request, AdminLoginService $login): string
+    {
+        return $login->complete($request->input('challenge'), $request->input('code'), $request->input('recoveryCode'), $request->input('device'));
     }
 
     /**

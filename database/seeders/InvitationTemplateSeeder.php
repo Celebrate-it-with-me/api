@@ -4,11 +4,13 @@ namespace Database\Seeders;
 
 use App\Models\EventType;
 use App\Models\InvitationTemplate;
+use App\Models\InvitationTemplateVersion;
 use Illuminate\Database\Seeder;
 
 /**
  * Reference data: the free "Clásica" invitation template, one row per event type
- * so the default copy speaks about the quinceañera or the wedding. Idempotent.
+ * so the default copy speaks about the quinceañera or the wedding. Create-if-missing: it never overwrites what
+ * the admin edited in the template manager (each template gets its version 1, published, when it has none).
  */
 class InvitationTemplateSeeder extends Seeder
 {
@@ -99,7 +101,7 @@ class InvitationTemplateSeeder extends Seeder
             ];
         }
 
-        InvitationTemplate::query()->updateOrCreate(
+        $template = InvitationTemplate::query()->firstOrCreate(
             ['slug' => $slug],
             [
                 'name' => $name,
@@ -110,6 +112,18 @@ class InvitationTemplateSeeder extends Seeder
                 'is_active' => true,
             ],
         );
+
+        if ($template->current_version_id === null && ! $template->versions()->exists()) {
+            $version = $template->versions()->create([
+                'version' => 1,
+                'status' => InvitationTemplateVersion::PUBLISHED,
+                'sections' => $sections,
+                'theme' => self::classicTheme(),
+                'schema_version' => InvitationTemplateVersion::SCHEMA_VERSION,
+                'published_at' => now(),
+            ]);
+            $template->forceFill(['current_version_id' => $version->id])->save();
+        }
     }
 
     /**

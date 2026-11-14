@@ -17,7 +17,7 @@ Route::post('users/{user}/password-reset', [UserAdminController::class, 'passwor
 Route::post('users/{user}/suspend', [UserAdminController::class, 'suspend'])->middleware('admin.can:admin.users.suspend');
 Route::post('users/{user}/unsuspend', [UserAdminController::class, 'unsuspend'])->middleware('admin.can:admin.users.suspend');
 Route::get('users/{user}/export', [UserAdminController::class, 'export'])->middleware('admin.can:admin.users.export');
-Route::delete('users/{user}', [UserAdminController::class, 'destroy'])->middleware('admin.can:admin.users.delete');
+Route::delete('users/{user}', [UserAdminController::class, 'destroy'])->middleware(['admin.can:admin.users.delete', 'admin.reauth']);
 
 // Legacy create/edit, still used by the old screen. Audited.
 Route::post('users', [UserController::class, 'store'])->middleware('admin.can:admin.users.manage');

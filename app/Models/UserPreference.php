@@ -9,6 +9,11 @@ class UserPreference extends Model
 {
     protected $table = 'user_preferences';
     
+    /** Spanish first: a row created without a language speaks Spanish (same as the column default). */
+    protected $attributes = [
+        'language' => 'es',
+    ];
+
     protected $fillable = [
         'user_id',
         'language',

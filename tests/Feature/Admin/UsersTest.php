@@ -83,7 +83,7 @@ describe('permissions', function () {
         $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'Abuse reports'])->assertForbidden();
         $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/unsuspend", ['reason' => 'Abuse reports'])->assertForbidden();
         $this->actingAs($support)->getJson(ADMIN_USERS . "/{$target->id}/export")->assertForbidden();
-        $this->actingAs($support)->deleteJson(ADMIN_USERS . "/{$target->id}", ['reason' => 'Because', 'confirmEmail' => $target->email])->assertForbidden();
+        $this->actingAsReauthed($support)->deleteJson(ADMIN_USERS . "/{$target->id}", ['reason' => 'Because', 'confirmEmail' => $target->email])->assertForbidden();
     });
 });
 
@@ -279,11 +279,11 @@ describe('delete (anonymise)', function () {
         $staff = usersStaff('support');
         $target = User::factory()->create();
 
-        $this->actingAs($admin)->deleteJson(ADMIN_USERS . "/{$target->id}")->assertStatus(422)->assertJsonValidationErrors(['reason', 'confirmEmail']);
-        $this->actingAs($admin)->deleteJson(ADMIN_USERS . "/{$target->id}", ['reason' => 'Asked by user', 'confirmEmail' => 'nope@example.com'])
+        $this->actingAsReauthed($admin)->deleteJson(ADMIN_USERS . "/{$target->id}")->assertStatus(422)->assertJsonValidationErrors(['reason', 'confirmEmail']);
+        $this->actingAsReauthed($admin)->deleteJson(ADMIN_USERS . "/{$target->id}", ['reason' => 'Asked by user', 'confirmEmail' => 'nope@example.com'])
             ->assertStatus(422)->assertJsonValidationErrors('confirmEmail');
-        $this->actingAs($admin)->deleteJson(ADMIN_USERS . "/{$staff->id}", ['reason' => 'Asked by user', 'confirmEmail' => $staff->email])->assertStatus(422);
-        $this->actingAs($admin)->deleteJson(ADMIN_USERS . "/{$admin->id}", ['reason' => 'Asked by user', 'confirmEmail' => $admin->email])->assertStatus(422);
+        $this->actingAsReauthed($admin)->deleteJson(ADMIN_USERS . "/{$staff->id}", ['reason' => 'Asked by user', 'confirmEmail' => $staff->email])->assertStatus(422);
+        $this->actingAsReauthed($admin)->deleteJson(ADMIN_USERS . "/{$admin->id}", ['reason' => 'Asked by user', 'confirmEmail' => $admin->email])->assertStatus(422);
 
         expect($target->refresh()->anonymized_at)->toBeNull()->and(AdminAuditLog::count())->toBe(0);
     });
@@ -300,7 +300,7 @@ describe('delete (anonymise)', function () {
         $purchase = usersPurchase($ana, $solo);
         $ana->createToken('spa');
 
-        $res = $this->actingAs($admin)->deleteJson(ADMIN_USERS . "/{$ana->id}", ['reason' => 'Asked to erase data', 'confirmEmail' => strtoupper($email)])->assertOk();
+        $res = $this->actingAsReauthed($admin)->deleteJson(ADMIN_USERS . "/{$ana->id}", ['reason' => 'Asked to erase data', 'confirmEmail' => strtoupper($email)])->assertOk();
 
         $ana->refresh();
         expect($ana->name)->not->toBe('Ana')
@@ -319,7 +319,7 @@ describe('delete (anonymise)', function () {
         expect($log->user_id)->toBe($ana->id)->and($log->reason)->toBe('Asked to erase data')->and($log->before['email'])->toBe($email);
 
         // Cannot be deleted twice, and the old address no longer logs in.
-        $this->actingAs($admin)->deleteJson(ADMIN_USERS . "/{$ana->id}", ['reason' => 'Asked to erase data', 'confirmEmail' => $ana->email])->assertStatus(422);
+        $this->actingAsReauthed($admin)->deleteJson(ADMIN_USERS . "/{$ana->id}", ['reason' => 'Asked to erase data', 'confirmEmail' => $ana->email])->assertStatus(422);
         $this->postJson('/api/v1/app/login', ['device' => 'test', 'email' => $email, 'password' => 'password'])->assertUnauthorized();
     });
 });

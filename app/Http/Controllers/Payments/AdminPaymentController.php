@@ -48,7 +48,7 @@ class AdminPaymentController extends Controller
     public function refund(Request $request, EventPurchase $purchase): JsonResponse
     {
         $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
-        $refunded = $this->purchases->refund($purchase);
+        $refunded = $this->purchases->refund($purchase, $data['reason']);
 
         $this->audit->record('payment.refund', $refunded, [
             'event_id' => $refunded->event_id, 'user_id' => $refunded->user_id, 'reason' => $data['reason'],

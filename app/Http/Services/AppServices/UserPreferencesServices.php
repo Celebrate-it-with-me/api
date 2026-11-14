@@ -24,21 +24,18 @@ class UserPreferencesServices
      */
     public function updateUserPreferences($user, $validated): Model
     {
-        return UserPreference::query()->updateOrCreate(
-            [
-                'user_id' => $user->id,
-            ],
-            [
-                'language' => $validated['language'] ?? null,
-                'timezone' => $validated['timezone'] ?? null,
-                'visual_theme' => $validated['visualTheme'] ?? null,
-                'date_format' => $validated['dateFormat'] ?? null,
-                
-                'notify_by_email' => $validated['notifyByEmail'] ?? null,
-                'notify_by_sms' => $validated['notifyBySms'] ?? null,
-                'smart_tips' => $validated['smartTips'] ?? null,
-            ]
-        );
+        // Only what came in: a missing field keeps its value (or the column default on creation), never a NULL.
+        $values = array_filter([
+            'language' => $validated['language'] ?? null,
+            'timezone' => $validated['timezone'] ?? null,
+            'visual_theme' => $validated['visualTheme'] ?? null,
+            'date_format' => $validated['dateFormat'] ?? null,
+            'notify_by_email' => $validated['notifyByEmail'] ?? null,
+            'notify_by_sms' => $validated['notifyBySms'] ?? null,
+            'smart_tips' => $validated['smartTips'] ?? null,
+        ], fn ($v) => $v !== null);
+
+        return UserPreference::query()->updateOrCreate(['user_id' => $user->id], $values);
     }
     
 }
