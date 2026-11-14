@@ -80,6 +80,7 @@ Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseControll
 // session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
 require __DIR__ . '/app/invoices.php';
 require __DIR__ . '/app/whatsapp.php';
+require __DIR__ . '/app/announcements.php';
 
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
