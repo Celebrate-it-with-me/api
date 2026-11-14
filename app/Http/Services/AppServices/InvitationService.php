@@ -8,11 +8,13 @@ use App\Models\Events;
 use App\Models\Guest;
 use App\Models\GuestRsvpLog;
 use App\Models\InvitationTemplate;
+use App\Models\InvitationTemplateVersion;
 use App\Models\Padrino;
 use App\Models\Rsvp;
 use App\Models\SaveTheDate;
 use App\Models\Timeline;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -67,7 +69,7 @@ class InvitationService
     public function build(Events $event, Guest $guest, ?string $lang = null): array
     {
         $locale = $this->resolveLocale($lang, $guest, $event);
-        $template = $this->templateFor($event);
+        $version = $this->versionContent($event);
 
         return [
             'event' => [
@@ -81,8 +83,8 @@ class InvitationService
             // Which version of the link this is: the Save the date or the full invitation.
             'stage' => $event->invitation_stage,
             'locale' => $locale,
-            'theme' => $this->resolveTheme($event, $template),
-            'sections' => $this->resolveSections($event, $guest, $template, $locale),
+            'theme' => $this->themePayload($version['theme'], $event->template_config['theme'] ?? []),
+            'sections' => $this->resolveSections($event, $guest, $version['sections'], $locale),
             // Free-plan watermark. Premium removes it once the plan model exists.
             'branding' => ['watermark' => true],
         ];
@@ -182,12 +184,81 @@ class InvitationService
             ?? $free->firstOrFail();
     }
 
-    /** @return array<string, mixed> */
-    private function resolveTheme(Events $event, InvitationTemplate $template): array
+    /**
+     * The sections and theme this event shows: the version fixed when it was first published, or (while it has
+     * none) the published version of its template. The JSON of a version never changes once it is out of draft,
+     * so it is cached by version id.
+     *
+     * @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>}
+     */
+    private function versionContent(Events $event): array
     {
-        $defaults = $template->theme_defaults;
-        $override = $event->template_config['theme'] ?? [];
+        if ($event->template_version_id) {
+            return $this->cachedVersion($event->template_version_id)
+                ?? $this->templateContent($this->templateFor($event));
+        }
 
+        return $this->templateContent($this->templateFor($event));
+    }
+
+    /**
+     * Fixes the template version on an event that is being published (the caller saves it): from then on the
+     * invitation keeps this look even if the template publishes a new version. Already fixed events keep theirs.
+     */
+    public function pinVersion(Events $event): void
+    {
+        if ($event->template_version_id === null) {
+            try {
+                $event->template_version_id = $this->templateFor($event)->current_version_id;
+            } catch (ModelNotFoundException) {
+                // No template exists yet (fresh install without seed): nothing to fix.
+            }
+        }
+    }
+
+    /** @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>} */
+    private function templateContent(InvitationTemplate $template): array
+    {
+        if ($template->current_version_id && ($content = $this->cachedVersion($template->current_version_id))) {
+            return $content;
+        }
+
+        // A template without versions (data that never went through the backfill): the old columns.
+        return ['sections' => $template->default_sections ?? [], 'theme' => $template->theme_defaults ?? []];
+    }
+
+    /** @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>}|null */
+    private function cachedVersion(int $versionId): ?array
+    {
+        $key = "invitation.version.{$versionId}";
+
+        if (($hit = Cache::get($key)) !== null) {
+            return $hit;
+        }
+
+        $version = InvitationTemplateVersion::query()->find($versionId);
+
+        if (! $version) {
+            return null;
+        }
+
+        $content = ['sections' => $version->sections ?? [], 'theme' => $version->theme ?? []];
+
+        // A draft can still change: only published and archived versions are immutable.
+        if (! $version->isDraft()) {
+            Cache::forever($key, $content);
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults  the theme of the version
+     * @param  array<string, mixed>  $override  what the organizer changed on the event
+     * @return array<string, mixed>
+     */
+    public function themePayload(array $defaults, array $override = []): array
+    {
         $presets = $defaults['presets'] ?? [];
         $key = $override['preset'] ?? $defaults['preset'] ?? array_key_first($presets);
         $colors = $presets[$key]['colors'] ?? ($presets[array_key_first($presets)]['colors'] ?? []);
@@ -201,7 +272,7 @@ class InvitationService
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function resolveSections(Events $event, Guest $guest, InvitationTemplate $template, string $locale): array
+    private function resolveSections(Events $event, Guest $guest, array $templateSections, string $locale): array
     {
         if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
             // The Save the date is the `save_the_date` module: locked, there is nothing to show yet.
@@ -212,7 +283,7 @@ class InvitationService
 
         $modules = app(EventModules::class);
 
-        $base = collect($template->default_sections)->keyBy('type');
+        $base = collect($templateSections)->keyBy('type');
         $overrides = collect($event->template_config['sections'] ?? [])->keyBy('type');
 
         return $base->keys()->merge($overrides->keys())->unique()
@@ -335,7 +406,7 @@ class InvitationService
     }
 
     /** @param string|array<string, ?string>|null $value */
-    private function localized(string|array|null $value, string $locale): ?string
+    public function localized(string|array|null $value, string $locale): ?string
     {
         if (is_array($value)) {
             return $value[$locale] ?? $value['es'] ?? null;
