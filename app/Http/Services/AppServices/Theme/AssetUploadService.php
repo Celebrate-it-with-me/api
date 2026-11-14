@@ -129,7 +129,7 @@ class AssetUploadService
      */
     private function generateAssetPath(Events $event, string $section, string $assetType, UploadedFile $file): string
     {
-        $extension = $file->getClientOriginalExtension();
+        $extension = $file->extension();
         $filename = Str::slug($assetType . '-' . $section . '-' . time()) . '.' . $extension;
 
         return "events/{$event->id}/theme/{$section}/{$filename}";

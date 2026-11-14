@@ -137,3 +137,35 @@ it('lets a viewer read but not change, and hides the event from strangers', func
 it('maps the legacy casual type to smart-casual in the migration', function () {
     expect(DressCode::TYPES)->toContain('smart-casual')->not->toContain('casual');
 });
+
+it('stores an upload with the extension of its content, never the one the client chose (S-05)', function () {
+    [, $u, $url] = dressEvent();
+    $im = imagecreatetruecolor(4, 4);
+    ob_start();
+    imagepng($im);
+    $png = ob_get_clean();
+
+    foreach (['x.html', 'x.svg', 'x.htm', 'x.xhtml'] as $name) {
+        $tmp = tempnam(sys_get_temp_dir(), 'up');
+        file_put_contents($tmp, $png . '<script>alert(document.domain)</script>');
+        $file = new UploadedFile($tmp, $name, 'image/png', null, true);
+
+        $this->actingAs($u['owner'])->post($url, dressPayload(['dressCodeImages' => [$file]]), ['Accept' => 'application/json']);
+    }
+
+    $stored = Storage::disk('public')->allFiles('dress-code-images');
+    expect($stored)->not->toBeEmpty();
+    foreach ($stored as $path) {
+        expect($path)->toEndWith('.png');
+    }
+});
+
+it('refuses a file that is not an image whatever its name says', function () {
+    [, $u, $url] = dressEvent();
+    $tmp = tempnam(sys_get_temp_dir(), 'up');
+    file_put_contents($tmp, '<html><script>alert(1)</script></html>');
+
+    $this->actingAs($u['owner'])->post($url, dressPayload(['dressCodeImages' => [new UploadedFile($tmp, 'x.png', 'image/png', null, true)]]), ['Accept' => 'application/json'])
+        ->assertStatus(422);
+    expect(Storage::disk('public')->allFiles('dress-code-images'))->toBeEmpty();
+});

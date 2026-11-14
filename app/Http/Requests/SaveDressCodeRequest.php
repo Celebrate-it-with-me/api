@@ -40,7 +40,7 @@ class SaveDressCodeRequest extends FormRequest
             'bankImages' => 'nullable|array',
             'bankImages.*' => ['string', 'max:80', 'regex:/^[a-z0-9-]+\/[a-z0-9-]+$/'],
             'dressCodeImages' => 'nullable|array',
-            'dressCodeImages.*' => 'image|mimes:jpeg,png,webp|max:2048',
+            'dressCodeImages.*' => 'image|mimes:jpeg,png,webp|mimetypes:image/jpeg,image/png,image/webp|max:2048',
         ];
     }
 
