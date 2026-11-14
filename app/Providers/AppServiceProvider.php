@@ -5,10 +5,13 @@ namespace App\Providers;
 use App\Models\Guest;
 use App\Models\User;
 use App\Http\Services\Admin\Account\TokenLifetime;
+use App\Support\Mail\MessageOverrides;
+use App\Support\Mail\OverridableTranslator;
 use App\Support\ProductionSafetyCheck;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Translation\Translator;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 use Laravel\Sanctum\Events\TokenAuthenticated;
@@ -22,6 +25,15 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ImageManager::class, function($app) {
             return new ImageManager(new Driver());
+        });
+
+        // Lines of the `mail` lang group can be overridden by the admin (message editor); everything else is untouched.
+        $this->app->singleton(MessageOverrides::class);
+        $this->app->extend('translator', function (Translator $translator) {
+            $custom = new OverridableTranslator($translator->getLoader(), $translator->getLocale());
+            $custom->setFallback($translator->getFallback());
+
+            return $custom;
         });
     }
 

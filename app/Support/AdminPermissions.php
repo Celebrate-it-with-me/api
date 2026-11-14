@@ -47,6 +47,7 @@ final class AdminPermissions
         'admin.system.manage',
         'admin.security.manage',
         'admin.whatsapp.manage',
+        'admin.messages.manage',
     ];
 
     /** @return list<string> */
