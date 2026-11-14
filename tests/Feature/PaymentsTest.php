@@ -207,3 +207,26 @@ it('never resolves the fake gateway in production', function () {
 
     expect(fn () => app(\App\Http\Services\Payments\PurchaseService::class)->gateway('fake'))->toThrow(RuntimeException::class);
 });
+
+it('does not let simultaneous checkouts exceed a coupon cap (S-19)', function () {
+    Coupon::create(['code' => 'ONE', 'kind' => 'fixed_price', 'value' => 5000, 'max_uses' => 1]);
+    [$eventA, $ownerA] = ownedEvent();
+    [$eventB, $ownerB] = ownedEvent();
+
+    $this->actingAs($ownerA)->postJson("/api/v1/app/event/{$eventA->id}/purchase/checkout", ['code' => 'ONE'])->assertCreated();
+    // The first purchase is still pending (not paid): it already holds the only use.
+    $this->actingAs($ownerB)->postJson("/api/v1/app/event/{$eventB->id}/purchase/checkout", ['code' => 'ONE'])->assertStatus(422);
+
+    expect(EventPurchase::where('event_id', $eventB->id)->exists())->toBeFalse();
+});
+
+it('releases the held use after an hour without payment', function () {
+    Coupon::create(['code' => 'ONE', 'kind' => 'fixed_price', 'value' => 5000, 'max_uses' => 1]);
+    [$eventA, $ownerA] = ownedEvent();
+    [$eventB, $ownerB] = ownedEvent();
+
+    $this->actingAs($ownerA)->postJson("/api/v1/app/event/{$eventA->id}/purchase/checkout", ['code' => 'ONE'])->assertCreated();
+    $this->travel(61)->minutes();
+
+    $this->actingAs($ownerB)->postJson("/api/v1/app/event/{$eventB->id}/purchase/checkout", ['code' => 'ONE'])->assertCreated();
+});
