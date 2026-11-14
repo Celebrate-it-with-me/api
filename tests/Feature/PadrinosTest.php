@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -25,7 +24,6 @@ function padrinoEvent(string $plan = 'basic', array $extra = []): array
         'status' => 'draft',
         'custom_url_slug' => 'xv-pad-' . uniqid(),
     ], $extra));
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

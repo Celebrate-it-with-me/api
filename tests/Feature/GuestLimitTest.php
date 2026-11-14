@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Services\AppServices\GuestLimit;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -24,7 +23,6 @@ function limitedEvent(string $plan = 'basic'): array
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
         'event_plan_id' => EventPlan::where('slug', $plan)->value('id'),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     EventUserRole::create(['event_id' => $event->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
 
     return [$event, $owner];

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -33,7 +32,6 @@ function exportEvent(string $plan = 'basic', string $locale = 'es'): array
         'event_name' => 'Los XV de Valentina',
         'custom_url_slug' => 'xv-export-' . uniqid(),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'editor', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

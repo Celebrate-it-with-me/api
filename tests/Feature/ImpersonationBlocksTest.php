@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\ImpersonationGuard;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -54,7 +53,6 @@ function blkSetup($test): array
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
         'event_plan_id' => EventPlan::orderBy('id')->value('id'),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     app('auth')->forgetGuards();
     $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $test->adminBearer($staff)])
         ->assertCreated()->json('token');

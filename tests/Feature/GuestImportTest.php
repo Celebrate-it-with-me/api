@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -28,7 +27,6 @@ function importEvent(string $status = 'draft'): array
         'status' => $status,
         'locale' => 'es',
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

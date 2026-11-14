@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\EventCollaborationInvite;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -22,7 +21,6 @@ function collabEvent(): array
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
         'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $owner = User::factory()->create();
     EventUserRole::create(['event_id' => $event->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
 

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -23,7 +22,6 @@ function rosterEvent(string $plan = 'basic', string $status = 'draft'): array
         'status' => $status,
         'custom_url_slug' => 'xv-roster-' . uniqid(),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

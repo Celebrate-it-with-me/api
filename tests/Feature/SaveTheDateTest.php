@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventLocation;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -30,7 +29,6 @@ function stdEvent(string $status = 'draft', string $plan = 'basic'): array
         'end_date' => '2027-03-20 23:00:00',
         'timezone' => 'America/New_York',
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();
