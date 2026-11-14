@@ -195,4 +195,13 @@ return [
         'outro' => 'Si no esperabas esta invitación, ignora este mensaje: no pasará nada y nadie entrará con tu correo.',
         'signature' => 'Equipo Quinvite',
     ],
+    'account_deleted' => [
+        'subject' => 'Tu cuenta fue eliminada',
+        'preheader' => 'Eliminamos tu cuenta y tus datos personales, como pediste.',
+        'title' => 'Hasta pronto, :name',
+        'intro' => 'Tu cuenta de Quinvite fue eliminada y borramos tus datos personales. Esta acción no se puede deshacer.',
+        'archived' => '{1} Tu evento publicado queda archivado :days días: las invitaciones ya enviadas siguen abriéndose, solo para leer. Pasado ese plazo lo borramos por completo.|[2,*] Tus :count eventos publicados quedan archivados :days días: las invitaciones ya enviadas siguen abriéndose, solo para leer. Pasado ese plazo los borramos por completo.',
+        'kept' => 'Por obligación contable conservamos tus compras y facturas.',
+        'outro' => 'Si no fuiste tú quien eliminó la cuenta, escríbenos de inmediato.',
+    ],
 ];

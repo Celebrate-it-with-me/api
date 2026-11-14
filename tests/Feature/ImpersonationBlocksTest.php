@@ -130,6 +130,7 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
             'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
             'POST api/v1/app/announcements/{announcement}/dismiss',
+            'DELETE api/v1/app/account', 'GET api/v1/app/account/deletion-preview',
         ];
 
         // Exactly the blocked list: moving any blocked route to ALLOWED (or adding one) has to be a decision made here too.
