@@ -12,6 +12,14 @@ class MailLinks
         return $base . '/' . ltrim($path, '/');
     }
 
+    /** A page of the admin panel (ADMIN_URL), for the security notices sent to staff. */
+    public static function admin(string $path = ''): string
+    {
+        $base = rtrim((string) (config('services.support.admin_url') ?: config('app.url')), '/');
+
+        return $base . '/' . ltrim($path, '/');
+    }
+
     public static function support(): string
     {
         return 'mailto:' . config('services.support.email');

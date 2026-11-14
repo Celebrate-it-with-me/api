@@ -7,7 +7,9 @@
     use App\Http\Controllers\Admin\TeamController;
     use App\Http\Controllers\Payments\AdminPaymentController;
     
-    Route::post('/login', [AuthenticationController::class, 'adminLogin']);
+    Route::post('/login', [AuthenticationController::class, 'adminLogin'])->middleware('throttle:10,1');
+    // Second step when the account has two-factor on: challenge + code (or recovery code) for the token.
+    Route::post('/login/two-factor', [AuthenticationController::class, 'adminTwoFactorLogin'])->middleware('throttle:10,1');
 
 // Everything in the admin panel needs a logged-in administrator. The legacy RSVP and gallery endpoints used to be
 // open to anyone (and the rest to any logged-in user): they are closed with the rest.
@@ -36,7 +38,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     });
 
     // One file per Operation module, so the agents that build them never edit the same file.
-    foreach (['events', 'users', 'support', 'moderation', 'impersonation', 'revenue', 'catalog', 'health', 'templates'] as $module) {
+    foreach (['events', 'users', 'support', 'moderation', 'impersonation', 'revenue', 'catalog', 'health', 'templates', 'account'] as $module) {
         require __DIR__."/admin/{$module}.php";
     }
 });
