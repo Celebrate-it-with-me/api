@@ -113,7 +113,7 @@ describe('route classification', function () {
             'GET api/v1/app/event/{event}/rsvp/guests/download',
             'GET api/v1/app/event/{event}/menus/guests/download',
             'GET api/v1/app/event/{event}/budget/export',
-            'POST api/v1/app/user/2fa/enable', 'POST api/v1/app/user/2fa/disable', 'POST api/v1/app/user/2fa/verify',
+            'POST api/v1/app/user/2fa/enable', 'POST api/v1/app/user/2fa/disable', 'POST api/v1/app/user/2fa/verify', 'POST api/v1/app/user/2fa/recovery-codes',
             'GET api/v1/app/user/2fa/setup', 'GET api/v1/app/user/2fa/status', 'GET api/v1/app/user/2fa/recovery-codes',
             'POST api/v1/app/logout',
             'POST api/v1/app/support',

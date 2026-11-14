@@ -34,6 +34,7 @@ final class ImpersonationRules
         'POST api/v1/app/support',
         'POST api/v1/app/user/2fa/disable',
         'POST api/v1/app/user/2fa/enable',
+        'POST api/v1/app/user/2fa/recovery-codes',
         'POST api/v1/app/user/2fa/verify',
         'POST api/v1/app/user/update-password',
     ];

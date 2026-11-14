@@ -142,6 +142,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::get('recovery-codes', [UserTwoFAController::class, 'recoveryCodes'])->name('recovery-codes');
             Route::post('enable', [UserTwoFAController::class, 'enable'])->name('enable');
             Route::post('disable', [UserTwoFAController::class, 'disable'])->name('disable');
+            Route::post('recovery-codes', [UserTwoFAController::class, 'regenerateRecoveryCodes'])->name('recovery-codes.regenerate');
             Route::post('verify', [UserTwoFAController::class, 'verify'])->name('verify');
         });
     });
