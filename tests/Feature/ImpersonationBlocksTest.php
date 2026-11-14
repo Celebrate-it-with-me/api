@@ -123,6 +123,9 @@ describe('route classification', function () {
             'POST api/v1/app/support',
             'POST api/v1/app/event/{event}/collaborators',
             'DELETE api/v1/app/event/{event}/collaborators/{user}',
+            'PATCH api/v1/app/event/{event}/collaborators/{user}',
+            'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
+            'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
             'GET api/v1/app/event/{event}/suggest-music/export',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
         ];

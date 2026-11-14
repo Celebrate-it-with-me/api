@@ -16,6 +16,7 @@ final class ImpersonationRules
     /** Passwords, 2FA, sessions, purchases and payments, exports of personal data, deleting, access to the event. */
     public const BLOCKED = [
         'DELETE api/v1/app/event/{event}',
+        'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
         'DELETE api/v1/app/event/{event}/collaborators/{user}',
         'GET api/v1/app/event/{event}/budget/export',
         'GET api/v1/app/event/{event}/menus/guests/download',
@@ -36,7 +37,9 @@ final class ImpersonationRules
         'POST api/v1/app/account/credit-notes/{creditNote}/resend',
         'POST api/v1/app/account/invoices/{invoice}/resend',
         'POST api/v1/app/event/{event}/collaborators',
+        'PATCH api/v1/app/event/{event}/collaborators/{user}',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
+        'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
         'POST api/v1/app/event/{event}/purchase/checkout',
         'POST api/v1/app/logout',
         'POST api/v1/app/support',
@@ -68,6 +71,7 @@ final class ImpersonationRules
         'DELETE api/v1/app/event/{event}/tables/{table}',
         'DELETE api/v1/app/event/{event}/tables/{table}/guest/{guest}',
         'DELETE api/v1/app/event/{event}/timeline/{timeline}',
+        'GET api/v1/app/event/{event}/collaborators',
         'GET api/v1/app/auth/ready',
         'GET api/v1/app/event/filters',
         'GET api/v1/app/event/{event}',
