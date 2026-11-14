@@ -31,3 +31,13 @@ it('revokes the bearer token on logout', function () {
 
     expect($user->tokens()->count())->toBe(0);
 });
+
+it('issues a new session id when signing in (S-28)', function () {
+    $user = User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => now()]);
+
+    $this->withHeaders(LO_HEADERS)->get('/sanctum/csrf-cookie');
+    $before = app('session.store')->getId();
+    $this->withHeaders(LO_HEADERS)->postJson('/api/v1/app/login', ['email' => $user->email, 'password' => 'OriginalPass1', 'device' => 'x'])->assertOk();
+
+    expect(app('session.store')->getId())->not->toBe($before);
+});

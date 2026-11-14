@@ -233,6 +233,11 @@ class AuthenticationController extends Controller
 
         $remember = $request->input('remember', false);
         Auth::login($user, $remember);
+
+        // A new session id after signing in: a session id planted before the login must not survive it.
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
         
         if ($user->is_first_login) {
             $user->is_first_login = false;
