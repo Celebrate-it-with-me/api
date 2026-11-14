@@ -2,6 +2,7 @@
 
 use App\Http\Services\AppServices\GuestLimit;
 use App\Http\Services\Payments\FakeGateway;
+use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
@@ -205,7 +206,7 @@ it('rejects a webhook whose amount does not match the purchase', function () {
 it('never resolves the fake gateway in production', function () {
     $this->app['env'] = 'production';
 
-    expect(fn () => app(\App\Http\Services\Payments\PurchaseService::class)->gateway('fake'))->toThrow(RuntimeException::class);
+    expect(fn () => app(PurchaseService::class)->gateway('fake'))->toThrow(RuntimeException::class);
 });
 
 it('does not let simultaneous checkouts exceed a coupon cap (S-19)', function () {

@@ -340,7 +340,7 @@ describe('legacy user edit (S-04)', function () {
         }
 
         expect($target->fresh()->email)->not->toBe('taken@example.com')
-            ->and(\Illuminate\Support\Facades\Hash::check('OriginalPass1', $target->fresh()->password))->toBeTrue();
+            ->and(Hash::check('OriginalPass1', $target->fresh()->password))->toBeTrue();
     });
 
     it('refuses a duplicated email or a short password on create', function () {
@@ -358,6 +358,6 @@ describe('legacy user edit (S-04)', function () {
 
         $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'LongEnough1234'])->assertSuccessful();
 
-        expect(\Illuminate\Support\Facades\Hash::check('LongEnough1234', User::where('email', 'new@example.com')->value('password')))->toBeTrue();
+        expect(Hash::check('LongEnough1234', User::where('email', 'new@example.com')->value('password')))->toBeTrue();
     });
 });
