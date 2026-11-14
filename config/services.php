@@ -55,6 +55,12 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URL'),
     ],
 
+    // Spotify catalogue search (client-credentials). No defaults: without both the endpoint answers 503.
+    'spotify' => [
+        'client_id' => env('SPOTIFY_CLIENT_ID'),
+        'client_secret' => env('SPOTIFY_CLIENT_SECRET'),
+    ],
+
     // Payments: `fake` until the Stripe account exists. The webhook secret signs the calls the gateway makes.
     'payments' => [
         'gateway' => env('PAYMENTS_GATEWAY', 'fake'),
