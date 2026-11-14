@@ -28,6 +28,7 @@ class GuestResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'whatsappOptedOut' => $this->whatsapp_opted_out_at !== null,
             'gender' => $this->gender,
             'rsvpStatus' => $this->rsvp_status,
             'rsvpStatusDate' => $this->rsvp_status_date

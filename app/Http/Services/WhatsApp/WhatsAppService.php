@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Services\WhatsApp;
+
+use App\Models\WhatsApp\Template;
+use App\Support\WhatsApp\TemplateCatalog;
+
+/** Picks the driver (WHATSAPP_DRIVER) and answers the questions every entry point asks: can we send, is this template sendable. */
+class WhatsAppService
+{
+    public function driverName(): string
+    {
+        return config('services.whatsapp.driver') === 'meta' ? 'meta' : 'fake';
+    }
+
+    public function gateway(): WhatsAppGateway
+    {
+        return $this->driverName() === 'meta' ? new MetaGateway : new FakeGateway;
+    }
+
+    /** False when the driver is `meta` and some credential is missing. */
+    public function isAvailable(): bool
+    {
+        return $this->gateway()->isConfigured();
+    }
+
+    /**
+     * The template for (key, locale) if it can be sent. Under the fake driver a draft is approved on the spot (the fake
+     * "approves at once"); `padrino_reminder` stays unsendable until Padrinos exists. Null when it cannot be sent.
+     */
+    public function sendable(string $key, string $locale): ?Template
+    {
+        $template = Template::query()->where('key', $key)->where('locale', $locale)->first();
+
+        if ($template && ! $template->isApproved() && $this->driverName() === 'fake' && $template->status === 'draft' && in_array($key, TemplateCatalog::SENDABLE_KEYS, true)) {
+            $template->forceFill(['status' => 'approved', 'approved_at' => now()])->save();
+        }
+
+        return $template?->isApproved() ? $template : null;
+    }
+}

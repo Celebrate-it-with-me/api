@@ -128,6 +128,7 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
             'GET api/v1/app/event/{event}/suggest-music/export',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
+            'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
         ];
 
         // Exactly the blocked list: moving any blocked route to ALLOWED (or adding one) has to be a decision made here too.

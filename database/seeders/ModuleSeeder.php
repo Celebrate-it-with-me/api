@@ -23,6 +23,8 @@ class ModuleSeeder extends Seeder
         'guests' => ['guests', 10, true, false],
         'rsvp' => ['guests', 20, true, false],
         'save_the_date' => ['guests', 30, true, false],
+        // WhatsApp sending: off until the Meta account is connected; then on, for paid plans only.
+        'whatsapp' => ['guests', 40, false, true],
 
         'timeline' => ['organization', 10, true, false],
         'locations' => ['organization', 20, true, false],
