@@ -114,7 +114,7 @@ class MessageCatalog
     /** Lang item (inside the `mail` group) of one field, e.g. `confirm.subject`. */
     public static function item(string $key, string $field): string
     {
-        return self::PATHS[$key].'.'.$field;
+        return self::PATHS[$key] . '.' . $field;
     }
 
     /** @return array<string, mixed> */
