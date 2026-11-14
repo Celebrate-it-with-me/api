@@ -4,7 +4,6 @@ namespace App\Http\Services\AppServices;
 
 use App\Enums\EventStatus;
 use App\Http\Services\Logger\EventActivityLogger;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -109,23 +108,7 @@ class EventsServices
                 ?: $this->uniqueSlug((string) $this->request()->input('eventName')),
         ]);
 
-        // A new event starts with the core only; the premium modules are not switched on here, the plan
-        // decides them (see EventModules). These flags are legacy: the menu no longer reads them.
-        EventFeature::query()->create([
-            'event_id' => $event->id,
-            'save_the_date' => true,
-            'rsvp' => true,
-            'location' => true,
-            'budget' => true,
-            'menu' => false,
-            'sweet_memories' => false,
-            'music' => false,
-            'background_music' => false,
-            'event_comments' => false,
-            'seats_accommodation' => false,
-            'preview' => false,
-            'analytics' => false,
-        ]);
+        // A new event starts with the core only: the plan decides its modules (see EventModules), nothing to create here.
 
         $actor = $this->request()->user();
 
@@ -278,6 +261,7 @@ class EventsServices
     public function getEventSuggestions(Events $event): array
     {
         $suggestions = [];
+        $modules = app(EventModules::class);
         $maxGuests = $event->eventPlan->max_guests;
         $eventGuestsCount = $event->guests()->count();
 
@@ -323,7 +307,7 @@ class EventsServices
         }
 
         // Location suggestions
-        if ($event->eventFeature->location) {
+        if ($modules->isActive($event, 'locations')) {
             $locationsCount = $event->locations()->count();
             if ($locationsCount === 0) {
                 $suggestions[] = [
@@ -335,7 +319,7 @@ class EventsServices
         }
 
         // Menu suggestions
-        if ($event->eventFeature->menu) {
+        if ($modules->isActive($event, 'menus')) {
             $menusCount = $event->menus()->count();
             if ($menusCount === 0) {
                 $suggestions[] = [
@@ -347,7 +331,7 @@ class EventsServices
         }
 
         // RSVP suggestions
-        if ($event->eventFeature->rsvp && !$event->rsvp) {
+        if ($modules->isActive($event, 'rsvp') && !$event->rsvp) {
             $suggestions[] = [
                 'name' => 'Set Up RSVP',
                 'description' => 'Configure RSVP settings for your event.',
@@ -356,7 +340,7 @@ class EventsServices
         }
 
         // Music suggestions
-        if ($event->eventFeature->music) {
+        if ($modules->isActive($event, 'suggested_music')) {
             $musicSuggestionsCount = $event->musicSuggestions()->count();
             if ($musicSuggestionsCount === 0) {
                 $suggestions[] = [
@@ -367,17 +351,8 @@ class EventsServices
             }
         }
 
-        // Background Music suggestions
-        if ($event->eventFeature->background_music && !$event->backgroundMusic) {
-            $suggestions[] = [
-                'name' => 'Set Up Background Music',
-                'description' => 'Add background music to your event page.',
-                'url' => '/dashboard/background-music/setup',
-            ];
-        }
-
         // Sweet Memories suggestions
-        if ($event->eventFeature->sweet_memories) {
+        if ($modules->isActive($event, 'memories')) {
             $sweetMemoriesImagesCount = $event->sweetMemoriesImages()->count();
             if (!$event->sweetMemoriesConfig) {
                 $suggestions[] = [
@@ -395,7 +370,7 @@ class EventsServices
         }
 
         // Event Comments suggestions
-        if ($event->eventFeature->event_comments && !$event->eventConfigComment) {
+        if ($modules->isActive($event, 'comments') && !$event->eventConfigComment) {
             $suggestions[] = [
                 'name' => 'Configure Event Comments',
                 'description' => 'Set up the comments feature for your event.',
@@ -404,7 +379,7 @@ class EventsServices
         }
 
         // Seats Accommodation suggestions
-        if ($event->eventFeature->seats_accommodation) {
+        if ($modules->isActive($event, 'seating')) {
             // Check if guests exist before suggesting seating arrangement
             if ($eventGuestsCount > 0) {
                 $suggestions[] = [
@@ -422,20 +397,11 @@ class EventsServices
         }
 
         // Budget suggestions
-        if ($event->eventFeature->budget) {
+        if ($modules->isActive($event, 'budget')) {
             $suggestions[] = [
                 'name' => 'Set Up Budget',
                 'description' => 'Create a budget for your event.',
                 'url' => '/dashboard/budget/setup',
-            ];
-        }
-
-        // Analytics suggestions
-        if ($event->eventFeature->analytics) {
-            $suggestions[] = [
-                'name' => 'View Analytics',
-                'description' => 'Check the analytics for your event.',
-                'url' => '/dashboard/analytics',
             ];
         }
 
