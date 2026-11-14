@@ -201,7 +201,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // COLLABORATORS
             // ========================================
             Route::prefix('collaborators')->name('collaborators.')->group(function () {
-                Route::get('', [InviteCollaboratorController::class, 'index'])->name('index');
+                Route::get('', [InviteCollaboratorController::class, 'index'])
+                    ->middleware('event.access:manage_collaborators')->name('index');
                 Route::post('', [InviteCollaboratorController::class, 'invite'])
                     ->middleware('event.access:manage_collaborators')->name('store');
                 // The invitee is not a member yet; the controller checks the invite belongs to their email.

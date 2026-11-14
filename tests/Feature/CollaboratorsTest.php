@@ -35,7 +35,7 @@ it('lists members and open invitations in the screen contract', function () {
     pendingInvite($event, $m['owner'], ['email' => 'vieja@x.test', 'expires_at' => now()->subDay()]);
     pendingInvite($event, $m['owner'], ['email' => 'ok@x.test', 'status' => 'accepted']);
 
-    $rows = $this->actingAs($m['viewer'])->getJson(collabApi($event))->assertOk()->json('data');
+    $rows = $this->actingAs($m['owner'])->getJson(collabApi($event))->assertOk()->json('data');
 
     expect($rows)->toHaveCount(5);
     $owner = collect($rows)->firstWhere('role', 'owner');
@@ -51,6 +51,8 @@ it('lists members and open invitations in the screen contract', function () {
 it('hides the team from strangers and other events', function () {
     [$event, $m] = eventWithMembers();
     $this->actingAs($m['stranger'])->getJson(collabApi($event))->assertNotFound();
+    $this->actingAs($m['editor'])->getJson(collabApi($event))->assertForbidden();
+    $this->actingAs($m['viewer'])->getJson(collabApi($event))->assertForbidden();
 });
 
 it('invites a new email with a pending invitation and a mail', function () {
