@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Services\Payments\PurchaseService;
 use App\Models\EventLocation;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
 use App\Models\Guest;
 use App\Models\GuestRsvpLog;
+use App\Models\User;
 use Database\Seeders\EventPlanSeeder;
 use Database\Seeders\InvitationTemplateSeeder;
 use Database\Seeders\ModuleSeeder;
@@ -55,7 +57,7 @@ describe('GET invitation', function () {
             ->and($response->json('data.locale'))->toBe('es')
             ->and($response->json('data.theme.name'))->toBe('classic')
             ->and($response->json('data.theme.preset'))->toBe('rose')
-            ->and($response->json('data.branding.watermark'))->toBeTrue()
+            ->and($response->json('data.branding.watermark'))->toBeFalse() // the fixture event is on the premium plan
             ->and(collect($response->json('data.sections'))->pluck('type')->all())
             ->toBe(['cover', 'rsvp', 'closing']); // no venue and no dress code yet
 
@@ -216,5 +218,34 @@ describe('schema', function () {
 
         expect(fn () => Events::factory()->create(['custom_url_slug' => 'repetido']))
             ->toThrow(QueryException::class);
+    });
+});
+
+describe('the watermark by plan', function () {
+    it('is on for the basic plan and off for premium', function () {
+        [$event] = invitationFixture();
+
+        $event->update(['event_plan_id' => EventPlan::where('slug', 'basic')->value('id')]);
+        $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk()->assertJsonPath('data.branding.watermark', true);
+
+        $event->update(['event_plan_id' => EventPlan::where('slug', 'premium')->value('id')]);
+        $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk()->assertJsonPath('data.branding.watermark', false);
+    });
+
+    it('goes off with a paid purchase and comes back after a refund', function () {
+        [$event] = invitationFixture(event: ['status' => 'draft']);
+        $event->update(['event_plan_id' => EventPlan::where('slug', 'basic')->value('id')]);
+        $buyer = User::factory()->create();
+        $service = app(PurchaseService::class);
+
+        $purchase = $service->recordManual($event, $buyer, User::factory()->create(), 1000, 'test');
+        expect($event->refresh()->eventPlan->slug)->toBe('premium');
+        $event->update(['status' => 'published']);
+        $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk()->assertJsonPath('data.branding.watermark', false);
+
+        $event->update(['status' => 'draft']);
+        $service->refund($purchase->refresh(), 'test');
+        $event->update(['status' => 'published']);
+        $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk()->assertJsonPath('data.branding.watermark', true);
     });
 });

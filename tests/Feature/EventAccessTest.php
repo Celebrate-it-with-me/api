@@ -22,7 +22,7 @@ function eventWithMembers(): array
 {
     $event = Events::factory()->create([
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
-        'event_plan_id' => EventPlan::orderBy('id')->value('id'),
+        'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
         'status' => 'draft',
         'event_name' => 'Los XV de Valentina',
     ]);

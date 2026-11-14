@@ -31,6 +31,8 @@ class ModuleSeeder extends Seeder
         'dress_code' => ['organization', 30, true, false],
         'budget' => ['organization', 40, true, false],
         'padrinos' => ['organization', 50, true, false],
+        // Control key only (no screen of its own): inviting, changing roles and resending invitations are premium.
+        'collaborators' => ['organization', 60, true, true],
 
         'menus' => ['extras', 10, true, true],
         'seating' => ['extras', 20, true, true],
