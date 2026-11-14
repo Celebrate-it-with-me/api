@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,8 +15,8 @@ it('no longer ships Twilio or the SMS reminder command', function () {
 });
 
 it('does not schedule any SMS task', function () {
-    $commands = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
-        ->map(fn ($e) => $e->command.' '.$e->description)->implode(' ');
+    $commands = collect(app(Schedule::class)->events())
+        ->map(fn ($e) => $e->command . ' ' . $e->description)->implode(' ');
 
     expect(strtolower($commands))->not->toContain('sms')->not->toContain('twilio');
 });
