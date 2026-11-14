@@ -81,3 +81,23 @@ it('suspending the panel access closes only her panel sessions', function () {
     expect($member->tokens()->where('client', 'admin')->count())->toBe(0)
         ->and($member->tokens()->count())->toBe(1);
 });
+
+it('caps wrong panel passwords per account and address, even for the right one afterwards (S-22)', function () {
+    $staff = User::factory()->create(['password' => 'OriginalPass1']);
+    $staff->assignRole('support');
+    $bad = ['email' => $staff->email, 'password' => 'wrong', 'device' => 'x'];
+
+    foreach (range(1, 5) as $i) {
+        $this->postJson('/api/v1/admin/login', $bad)->assertStatus(422);
+    }
+    $this->postJson('/api/v1/admin/login', ['password' => 'OriginalPass1'] + $bad)->assertStatus(429);
+});
+
+it('answers unknown, non staff and wrong password the same (S-22)', function () {
+    $user = User::factory()->create(['password' => 'OriginalPass1']);
+
+    $a = $this->postJson('/api/v1/admin/login', ['email' => 'nobody@example.com', 'password' => 'OriginalPass1', 'device' => 'x']);
+    $b = $this->postJson('/api/v1/admin/login', ['email' => $user->email, 'password' => 'OriginalPass1', 'device' => 'x']);
+
+    expect($a->status())->toBe(422)->and($b->status())->toBe(422)->and($a->json())->toBe($b->json());
+});
