@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Guest;
 use App\Models\User;
 use App\Http\Services\Admin\Account\TokenLifetime;
+use App\Support\ProductionSafetyCheck;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -35,10 +36,9 @@ class AppServiceProvider extends ServiceProvider
             'user' => User::class,
         ]);
 
-        // A production server must not start taking payments with the stand-in gateway or an unset webhook secret.
-        if ($this->app->environment('production') && ! $this->app->runningInConsole()
-            && (config('services.payments.gateway') === 'fake' || blank(config('services.payments.webhook_secret')))) {
-            throw new \RuntimeException('PAYMENTS_GATEWAY must not be "fake" and PAYMENTS_WEBHOOK_SECRET must be set in production.');
+        // A production server must not run with a development configuration (see ProductionSafetyCheck).
+        if ($this->app->environment('production') && ! $this->app->runningInConsole() && ($problems = ProductionSafetyCheck::problems())) {
+            throw new \RuntimeException('Unsafe production configuration: ' . implode(' ', $problems));
         }
 
         // Sanctum overwrites `last_used_at` while authenticating; keep the previous value for the idle check of the admin panel.
