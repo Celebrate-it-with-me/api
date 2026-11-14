@@ -22,8 +22,8 @@ class MessageComposer
     public function params(string $key, Events $event, Guest $guest, string $locale, ?string $rsvpStatus = null): array
     {
         $values = [
-            'guest_name' => $guest->name,
-            'event_name' => $event->event_name,
+            'guest_name' => $this->free((string) $guest->name),
+            'event_name' => $this->free((string) $event->event_name),
             'event_date' => $this->date($event, $locale),
             'link' => $this->link($event, $guest),
             'days_left' => $this->daysLeft($event, $locale),
@@ -78,6 +78,21 @@ class MessageComposer
             $attending => 'confirmaste tu asistencia y te esperamos con mucho cariño',
             default => 'nos avisas que no podrás acompañarnos, ¡te vamos a extrañar!',
         };
+    }
+
+    /**
+     * Free text typed by the organizer (guest and event names) goes into an approved template, so it must not carry
+     * links, e-mails, control characters or line breaks, and it is kept short (audit W-01).
+     */
+    private function free(string $value): string
+    {
+        $value = preg_replace('/[\x00-\x1F\x7F\p{Cc}\p{Cf}]+/u', ' ', $value) ?? '';
+        $value = preg_replace('~(?:[a-z][a-z0-9+.-]*://|www\.)\S*~iu', ' ', $value) ?? '';
+        $value = preg_replace('~\S+@\S+~u', ' ', $value) ?? '';
+        $value = preg_replace('~\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|me|ly|app|link|xyz|info|us|es|gl|to|cc|tk)\b\S*~iu', ' ', $value) ?? '';
+        $value = $this->clean($value);
+
+        return mb_strlen($value) > 60 ? rtrim(mb_substr($value, 0, 60)) : $value;
     }
 
     /** Meta rejects parameters with line breaks, tabs or long runs of spaces. */

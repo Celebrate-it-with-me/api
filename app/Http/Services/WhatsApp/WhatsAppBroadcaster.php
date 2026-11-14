@@ -6,6 +6,7 @@ use App\Jobs\SendWhatsAppMessage;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\WhatsApp\Message;
+use App\Models\WhatsApp\OptOut;
 use App\Support\WhatsApp\Phone;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class WhatsAppBroadcaster
 {
     public const MAX_BATCH = 500;
 
-    public function __construct(private readonly WhatsAppService $whatsapp, private readonly MessageComposer $composer) {}
+    public function __construct(private readonly WhatsAppService $whatsapp, private readonly MessageComposer $composer, private readonly DailyLimit $limits) {}
 
     /** @return array{batchId?: string, queued: int, skipped: list<array{guestId: int, guestName: string, reason: string}>} */
     public function send(Events $event, string $template, string $audience, ?array $guestIds = null, bool $force = false, bool $dryRun = false): array
@@ -56,19 +57,27 @@ class WhatsAppBroadcaster
             ->whereIn('guest_id', $guests->pluck('id'))->where('status', '!=', 'failed')
             ->where('queued_at', '>=', now()->subDay())->pluck('guest_id')->flip()->all();
 
+        // Daily cap (audit W-01): nothing left today is a 429; a partial budget queues the first guests and skips the rest.
+        $budget = $this->limits->remaining($event);
+        if ($budget <= 0 && ! $dryRun) {
+            throw new HttpResponseException(response()->json(['message' => 'The daily WhatsApp limit was reached.', 'code' => 'whatsapp_daily_limit'], 429));
+        }
+        $optedOut = OptOut::among($guests->map(fn (Guest $g) => Phone::normalize($g->phone))->filter()->all());
+
         $batch = (string) Str::uuid();
         $skipped = [];
         $created = [];
 
-        DB::transaction(function () use ($event, $template, $guests, $recent, $batch, $dryRun, &$skipped, &$created) {
+        DB::transaction(function () use ($event, $template, $guests, $recent, $batch, $dryRun, $optedOut, &$budget, &$skipped, &$created) {
             foreach ($guests as $guest) {
                 $phone = Phone::normalize($guest->phone);
                 $reason = match (true) {
-                    $guest->whatsapp_opted_out_at !== null => 'opted_out',
+                    $guest->whatsapp_opted_out_at !== null || ($phone !== null && isset($optedOut[$phone])) => 'opted_out',
                     trim((string) $guest->phone) === '' => 'no_phone',
                     $phone === null => 'invalid_phone',
                     $template === 'reminder_pending' && $guest->rsvp_status !== 'pending' => 'already_responded',
                     isset($recent[$guest->id]) => 'recently_sent',
+                    $budget <= 0 => 'daily_limit',
                     default => null,
                 };
 
@@ -78,6 +87,7 @@ class WhatsAppBroadcaster
                     continue;
                 }
 
+                $budget--;
                 $locale = $this->composer->localeFor($event, $guest);
                 if ($dryRun) {
                     $created[] = $guest->id;
