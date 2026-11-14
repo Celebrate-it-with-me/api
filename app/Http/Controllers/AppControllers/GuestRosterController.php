@@ -34,7 +34,19 @@ class GuestRosterController extends Controller
             'data' => collect($page->items())->map(fn (Guest $guest) => $this->roster->row($event, $guest))->all(),
             'meta' => ['currentPage' => $page->currentPage(), 'lastPage' => $page->lastPage(), 'perPage' => $page->perPage(), 'total' => $page->total()],
             'counts' => $this->roster->counts($event),
+            'eventLocale' => $event->locale ?: 'es',
         ]);
+    }
+
+    /** Set the language of one family's invitation: es, en, or null to follow the event. */
+    public function updateLocale(Request $request, Events $event, Guest $guest): JsonResponse
+    {
+        abort_unless($guest->parent_id === null, 422, 'The invitation language belongs to a main guest.');
+
+        $data = $request->validate(['locale' => ['present', 'nullable', 'string', 'in:es,en']]);
+        $guest->update(['locale' => $data['locale']]);
+
+        return response()->json(['data' => $this->roster->row($event, $guest->load('companions'))]);
     }
 
     public function update(RosterGuestRequest $request, Events $event, Guest $guest): JsonResponse

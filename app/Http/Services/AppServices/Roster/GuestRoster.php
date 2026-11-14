@@ -21,7 +21,13 @@ class GuestRoster
 
     public function page(Events $event, ?string $status, ?string $search, int $perPage): LengthAwarePaginator
     {
-        $query = Guest::query()
+        return $this->query($event, $status, $search)->paginate(min(max($perPage, 1), 100));
+    }
+
+    /** Main guests (families) of the event for a tab and a search term, in the order the screen shows them. */
+    public function query(Events $event, ?string $status, ?string $search): Builder
+    {
+        return Guest::query()
             ->with('companions')
             ->where('event_id', $event->id)
             ->whereNull('parent_id')
@@ -41,8 +47,6 @@ class GuestRoster
             })
             ->orderBy('name')
             ->orderBy('id');
-
-        return $query->paginate(min(max($perPage, 1), 100));
     }
 
     /**
@@ -83,6 +87,9 @@ class GuestRoster
             'status' => $guest->rsvp_status,
             'statusDate' => $guest->rsvp_status_date?->toIso8601String(),
             'notes' => $guest->notes,
+            // The invitation language: what the organizer set (null = the event's) and the one the guest will see.
+            'locale' => $guest->locale,
+            'effectiveLocale' => $guest->locale ?: ($event->locale ?: 'es'),
             'code' => $guest->code,
             'link' => $link,
             'companions' => $guest->companions->map(fn (Guest $c) => [

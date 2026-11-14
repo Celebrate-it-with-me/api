@@ -13,6 +13,7 @@
     use App\Http\Controllers\AppControllers\EventsController;
     use App\Http\Controllers\AppControllers\ExportController;
     use App\Http\Controllers\AppControllers\GuestController;
+    use App\Http\Controllers\AppControllers\GuestExportController;
     use App\Http\Controllers\AppControllers\GuestImportController;
     use App\Http\Controllers\AppControllers\GuestRosterController;
     use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
@@ -215,7 +216,10 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('import/template', [GuestImportController::class, 'template'])->name('import.template');
                 Route::post('import/preview', [GuestImportController::class, 'preview'])->name('import.preview');
                 Route::post('import', [GuestImportController::class, 'store'])->name('import.store');
+                Route::get('export', [GuestExportController::class, 'roster'])->middleware('throttle:10,1')->name('export');
+                Route::get('export/venue', [GuestExportController::class, 'venue'])->middleware('throttle:10,1')->name('export.venue');
                 Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
+                Route::patch('{guest}/locale', [GuestRosterController::class, 'updateLocale'])->name('locale');
                 Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');
                 Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');
             });
@@ -244,7 +248,6 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('stats', [RsvpController::class, 'getRsvpStats'])->name('getRsvpStats');
 
                 Route::prefix('guests')->name('guests.')->group(function () {
-                    Route::get('download', [ExportController::class, 'handleExportRequest'])->name('export');
                     Route::post('{guest}/revert-confirmation', [RsvpController::class, 'revertConfirmation'])
                         ->name('revert-confirmation');
                 });
