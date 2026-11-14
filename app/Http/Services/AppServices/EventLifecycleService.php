@@ -47,6 +47,8 @@ class EventLifecycleService
         $event->invitation_stage = $stage;
         // The first publication is remembered forever: it is what locks the public address.
         $event->published_at ??= now();
+        // The look of a published invitation never changes behind the organizer's back (template manager, A7).
+        app(InvitationService::class)->pinVersion($event);
 
         return $this->save($event, $actor, $upgrading ? 'event_stage_upgraded' : 'event_published');
     }
