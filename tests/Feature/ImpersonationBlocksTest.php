@@ -181,7 +181,7 @@ describe('with an impersonation token', function () {
         [, $event, $imp] = blkSetup($this);
 
         blkCall($this, 'POST', '/api/v1/app/user/update-password', $imp)
-            ->assertForbidden()->assertExactJson(['message' => 'Esta acción no está permitida durante una sesión de soporte.', 'code' => 'impersonation_blocked']);
+            ->assertForbidden()->assertExactJson(['message' => 'This action is not allowed during a support session.', 'code' => 'impersonation_blocked']);
         // A different 403 (hydrating somebody else's data) does not carry the code.
         blkCall($this, 'GET', '/api/v1/app/user/hydrate/' . User::factory()->create()->id, $imp)->assertForbidden()->assertJsonMissingPath('code');
     });

@@ -89,7 +89,7 @@ class ModuleOverrides
     private function ensureEnabled(string $key): void
     {
         if (! Module::query()->enabled()->where('key', $key)->exists()) {
-            throw ValidationException::withMessages(['module' => 'Este módulo no existe o está desactivado en el catálogo.']);
+            throw ValidationException::withMessages(['module' => __('errors.catalog.module_missing')]);
         }
     }
 

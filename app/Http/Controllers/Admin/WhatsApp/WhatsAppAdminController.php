@@ -167,7 +167,7 @@ class WhatsAppAdminController extends Controller
         $this->requireAvailable();
         $template = $this->whatsapp->sendable($data['template_key'], $data['locale']);
         if (! $template) {
-            return response()->json(['message' => 'The WhatsApp template is not approved yet.', 'code' => 'template_not_approved'], 409);
+            return response()->json(['message' => __('errors.whatsapp.template_not_approved'), 'code' => 'template_not_approved'], 409);
         }
 
         $message = Message::create([
@@ -192,6 +192,6 @@ class WhatsAppAdminController extends Controller
 
     private function unavailable(): JsonResponse
     {
-        return response()->json(['message' => 'WhatsApp is not connected.', 'code' => 'whatsapp_unavailable'], 409);
+        return response()->json(['message' => __('errors.whatsapp.unavailable'), 'code' => 'whatsapp_unavailable'], 409);
     }
 }

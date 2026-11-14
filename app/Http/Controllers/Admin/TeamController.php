@@ -174,10 +174,10 @@ class TeamController extends Controller
         $user = $this->member($request, $id);
 
         if ($user->hasRole(AdminPermissions::SUPERADMIN) && ! $request->user()->hasAdminTwoFactor()) {
-            return response()->json(['message' => 'Turn on your own two-factor authentication to reset a superadmin\'s.', 'code' => 'two_factor_required_to_reset'], 403);
+            return response()->json(['message' => __('errors.admin.two_factor_reset_needs_own'), 'code' => 'two_factor_required_to_reset'], 403);
         }
         if (! $user->hasAdminTwoFactor()) {
-            return response()->json(['message' => 'Two-factor authentication is not active.', 'code' => 'two_factor_not_enabled'], 409);
+            return response()->json(['message' => __('errors.two_factor.not_active'), 'code' => 'two_factor_not_enabled'], 409);
         }
 
         $closed = DB::transaction(function () use ($user) {
@@ -198,7 +198,7 @@ class TeamController extends Controller
     {
         $user = ctype_digit($id) ? User::query()->find((int) $id) : null;
         if (! $user || ! $user->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
-            throw new HttpResponseException(response()->json(['message' => 'This person is not on the team.', 'code' => 'member_not_found'], 404));
+            throw new HttpResponseException(response()->json(['message' => __('errors.team.member_not_found'), 'code' => 'member_not_found'], 404));
         }
         if ($request->user()->is($user)) {
             throw ValidationException::withMessages(['user' => ['cannot_change_self']]);

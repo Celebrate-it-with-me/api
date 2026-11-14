@@ -28,7 +28,7 @@ class ImpersonationController extends Controller
         $notify = (bool) ($data['notify'] ?? true);
 
         if (! $notify && ! $staff->hasRole(AdminPermissions::SUPERADMIN)) {
-            return response()->json(['message' => 'Solo un superadmin puede entrar sin avisar a la usuaria.', 'code' => 'impersonation_notify_forbidden'], 403);
+            return response()->json(['message' => __('errors.impersonation.notify_forbidden'), 'code' => 'impersonation_notify_forbidden'], 403);
         }
 
         if ($refusal = $this->service->refusal($staff, $user, $staff->currentAccessToken())) {

@@ -88,11 +88,11 @@ class ModerationController extends Controller
 
             return ['ok' => true, 'changed' => $r['changed'], 'error' => null];
         } catch (ModerationItemNotFound) {
-            return ['ok' => false, 'changed' => false, 'error' => ['code' => 'not_found', 'message' => 'El elemento ya no existe.']];
+            return ['ok' => false, 'changed' => false, 'error' => ['code' => 'not_found', 'message' => __('errors.moderation.not_found')]];
         } catch (\Throwable $e) {
             report($e);
 
-            return ['ok' => false, 'changed' => false, 'error' => ['code' => $e->getMessage() === 'storage_failed' ? 'storage_failed' : 'error', 'message' => 'No se pudo completar la acción.']];
+            return ['ok' => false, 'changed' => false, 'error' => ['code' => $e->getMessage() === 'storage_failed' ? 'storage_failed' : 'error', 'message' => __('errors.moderation.failed')]];
         }
     }
 
@@ -108,7 +108,7 @@ class ModerationController extends Controller
         } catch (\RuntimeException $e) {
             report($e);
 
-            return response()->json(['message' => 'No se pudieron borrar los archivos de la foto; no se borró nada.', 'code' => 'storage_failed'], 500);
+            return response()->json(['message' => __('errors.moderation.storage_failed'), 'code' => 'storage_failed'], 500);
         }
 
         return response()->json(['data' => ['changed' => $r['changed'], 'item' => $r['item']]]);

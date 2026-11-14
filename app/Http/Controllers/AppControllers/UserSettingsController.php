@@ -36,7 +36,7 @@ class UserSettingsController extends Controller
             return response()->json(['message' => 'Profile updated successfully.']);
         }
         
-        return response()->json(['message' => 'Failed to update profile.'], 500);
+        return response()->json(['message' => __('errors.generic.profile_update_failed')], 500);
     }
     
     /**
@@ -51,7 +51,7 @@ class UserSettingsController extends Controller
         $user = $request->user();
         
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated.'], 401);
+            return response()->json(['message' => __('errors.user.not_authenticated')], 401);
         }
         
         return response()->json([
@@ -85,7 +85,7 @@ class UserSettingsController extends Controller
             return response()->json(['message' => 'Password updated successfully.']);
         }
         
-        return response()->json(['message' => 'Failed to update password.'], 500);
+        return response()->json(['message' => __('errors.generic.password_update_failed')], 500);
     }
     
 }

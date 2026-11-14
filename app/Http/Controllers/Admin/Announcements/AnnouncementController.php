@@ -68,7 +68,7 @@ class AnnouncementController extends Controller
             'upcoming_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ], ['audience.required' => 'required', 'audience.in' => 'invalid_audience', 'upcoming_days.*' => 'invalid_days']);
         if ($data['audience'] === 'upcoming_event' && empty($data['upcoming_days'])) {
-            return response()->json(['message' => 'The given data was invalid.', 'errors' => ['upcoming_days' => ['upcoming_days_required']]], 422);
+            return response()->json(['message' => __('errors.announcement.invalid'), 'errors' => ['upcoming_days' => ['upcoming_days_required']]], 422);
         }
 
         return response()->json(['data' => ['count' => $this->audiences->count($data['audience'], $data['upcoming_days'] ?? null)]]);
@@ -76,7 +76,7 @@ class AnnouncementController extends Controller
 
     private function notFound(): JsonResponse
     {
-        return response()->json(['message' => 'Announcement not found.', 'code' => 'announcement_not_found'], 404);
+        return response()->json(['message' => __('errors.announcement.not_found'), 'code' => 'announcement_not_found'], 404);
     }
 
     private function present(Announcement $a): array

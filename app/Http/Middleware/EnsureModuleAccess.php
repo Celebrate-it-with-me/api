@@ -31,7 +31,7 @@ class EnsureModuleAccess
 
         if ($event && ! $this->modules->isActive($event, $module)) {
             return response()->json([
-                'message' => 'This module is not available for this event.',
+                'message' => __('errors.permission.module_unavailable'),
                 'code' => 'module_locked',
                 'module' => $module,
             ], 403);

@@ -60,7 +60,7 @@ class UserTwoFAController extends Controller
         if ($codes === null) {
             $this->hit($user->id);
 
-            return response()->json(['message' => 'Invalid verification code'], 422);
+            return response()->json(['message' => __('errors.two_factor.invalid_code')], 422);
         }
         RateLimiter::clear($this->key($user->id));
 
@@ -96,7 +96,7 @@ class UserTwoFAController extends Controller
     {
         $user = $request->user();
         if (! $this->twoFactor->isActive($user)) {
-            return response()->json(['message' => 'No recovery codes available'], 404);
+            return response()->json(['message' => __('errors.two_factor.no_recovery_codes')], 404);
         }
 
         return response()->json(['remaining' => $this->twoFactor->recoveryCodesRemaining($user)]);
@@ -108,7 +108,7 @@ class UserTwoFAController extends Controller
         $request->validate(['currentPassword' => 'required|string']);
         $user = $request->user();
         if (! $this->twoFactor->isActive($user)) {
-            return response()->json(['message' => 'Two-factor authentication is not active'], 409);
+            return response()->json(['message' => __('errors.two_factor.not_active')], 409);
         }
         $this->confirmPassword($request);
 
@@ -121,7 +121,7 @@ class UserTwoFAController extends Controller
         $request->validate(['code' => 'required|string|max:20']);
         $user = $request->user();
         if (! $this->twoFactor->isActive($user)) {
-            return response()->json(['message' => 'Two-factor authentication is not active'], 409);
+            return response()->json(['message' => __('errors.two_factor.not_active')], 409);
         }
         $this->throttle($user->id);
 
@@ -130,7 +130,7 @@ class UserTwoFAController extends Controller
         if (! $valid) {
             $this->hit($user->id);
 
-            return response()->json(['message' => 'Invalid verification code'], 422);
+            return response()->json(['message' => __('errors.two_factor.invalid_code')], 422);
         }
         RateLimiter::clear($this->key($user->id));
 
@@ -144,7 +144,7 @@ class UserTwoFAController extends Controller
         if (! Hash::check($request->input('currentPassword'), $user->password)) {
             $this->hit($user->id);
 
-            throw ValidationException::withMessages(['currentPassword' => ['The current password is not correct.']]);
+            throw ValidationException::withMessages(['currentPassword' => [__('errors.two_factor.current_password_wrong')]]);
         }
     }
 
@@ -156,7 +156,7 @@ class UserTwoFAController extends Controller
     private function throttle(int $userId): void
     {
         if (RateLimiter::tooManyAttempts($this->key($userId), self::MAX_ATTEMPTS)) {
-            abort(429, 'Too many attempts. Try again later.');
+            abort(429, __('errors.too_many_attempts'));
         }
     }
 
@@ -167,6 +167,6 @@ class UserTwoFAController extends Controller
 
     private function alreadyActive(): JsonResponse
     {
-        return response()->json(['message' => 'Two-factor authentication is already active'], 409);
+        return response()->json(['message' => __('errors.two_factor.already_active')], 409);
     }
 }

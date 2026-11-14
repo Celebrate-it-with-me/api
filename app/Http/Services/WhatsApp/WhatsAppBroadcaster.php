@@ -33,7 +33,7 @@ class WhatsAppBroadcaster
         }
 
         if (! $this->whatsapp->isAvailable()) {
-            $this->conflict('whatsapp_unavailable', 'WhatsApp is not connected.');
+            $this->conflict('whatsapp_unavailable', __('errors.whatsapp.unavailable'));
         }
 
         if ($audience === 'selected' && empty($guestIds)) {
@@ -53,7 +53,7 @@ class WhatsAppBroadcaster
         $locales = $guests->map(fn (Guest $g) => $this->composer->localeFor($event, $g))->unique();
         foreach ($locales as $locale) {
             if (! $this->whatsapp->sendable($template, $locale)) {
-                $this->conflict('template_not_approved', 'The WhatsApp template is not approved yet.');
+                $this->conflict('template_not_approved', __('errors.whatsapp.template_not_approved'));
             }
         }
 
@@ -65,7 +65,7 @@ class WhatsAppBroadcaster
         // Daily cap (audit W-01): nothing left today is a 429; a partial budget queues the first guests and skips the rest.
         $budget = $this->limits->remaining($event);
         if ($budget <= 0 && ! $dryRun) {
-            throw new HttpResponseException(response()->json(['message' => 'The daily WhatsApp limit was reached.', 'code' => 'whatsapp_daily_limit'], 429));
+            throw new HttpResponseException(response()->json(['message' => __('errors.whatsapp.daily_limit'), 'code' => 'whatsapp_daily_limit'], 429));
         }
         $optedOut = OptOut::among($guests->map(fn (Guest $g) => Phone::normalize($g->phone))->filter()->all());
 

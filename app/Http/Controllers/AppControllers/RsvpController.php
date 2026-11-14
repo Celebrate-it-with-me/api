@@ -30,7 +30,7 @@ class RsvpController extends Controller
             return RsvpResource::make($this->rsvpService->create($event));
         } catch (\Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 
@@ -67,7 +67,7 @@ class RsvpController extends Controller
             return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 

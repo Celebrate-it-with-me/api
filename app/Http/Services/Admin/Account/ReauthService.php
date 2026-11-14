@@ -50,7 +50,7 @@ class ReauthService
     {
         $key = "admin-reauth:{$user->id}";
         if (RateLimiter::tooManyAttempts($key, self::MAX_FAILURES)) {
-            throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($key)]);
+            throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($key)]);
         }
 
         $field = null;
@@ -65,7 +65,7 @@ class ReauthService
             // Only which factor failed is recorded, never what was typed.
             $this->audit->record('account.reauth_failed', $user, ['after' => ['factor' => $field === 'code' ? 'totp' : 'password']]);
 
-            throw ValidationException::withMessages([$field => [$field === 'password' ? 'La contraseña no es correcta.' : 'El código no es válido.']]);
+            throw ValidationException::withMessages([$field => [$field === 'password' ? __('errors.auth.reauth_password_wrong') : __('errors.auth.reauth_code_wrong')]]);
         }
 
         RateLimiter::clear($key);

@@ -43,7 +43,7 @@ class PadrinoController extends Controller
         $this->own($event, $padrino);
 
         if ($padrino->payments()->exists()) {
-            return response()->json(['message' => 'This padrino has payments.', 'errors' => ['padrino' => ['has_payments']]], 422);
+            return response()->json(['message' => __('errors.padrino.has_payments'), 'errors' => ['padrino' => ['has_payments']]], 422);
         }
 
         $padrino->delete();

@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RefreshTokenExpirationIfActive;
+use App\Http\Middleware\SetRequestLocale;
 use App\Http\Middleware\StatelessForImpersonation;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
@@ -74,6 +75,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            SetRequestLocale::class,
             StatelessForImpersonation::class,
             ThrottleRequests::class . ':api',
             SubstituteBindings::class,

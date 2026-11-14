@@ -19,7 +19,7 @@ class EnsureRecentReauth
     {
         if (! ReauthService::isFresh($request->user()?->currentAccessToken())) {
             return response()->json([
-                'message' => 'Confirm your password to continue.',
+                'message' => __('errors.auth.confirm_password'),
                 'code' => 'reauth_required',
                 'reauthMinutes' => (int) config('admin.reauth_minutes'),
             ], 403);

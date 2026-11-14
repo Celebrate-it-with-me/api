@@ -181,7 +181,7 @@ describe('collaboration invites', function () {
 
         $this->actingAs($m['stranger'])->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/999999/accept")
             ->assertNotFound()
-            ->assertJsonPath('message', 'Invalid or expired invitation.');
+            ->assertJsonPath('message', 'The invitation is not valid or has expired.');
     });
 });
 

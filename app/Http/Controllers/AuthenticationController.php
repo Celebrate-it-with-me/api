@@ -70,7 +70,7 @@ class AuthenticationController extends Controller
             $token = $request->input('hcaptcha_token');
 
             if (!$token || !$this->verifyHCaptcha($token) ) {
-                return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
+                return response()->json(['message' => __('errors.auth.captcha_invalid')], 422);
             }
         }
 
@@ -100,7 +100,7 @@ class AuthenticationController extends Controller
     public function confirmEmail(Request $request, User $user): JsonResponse
     {
         if (!$request->hasValidSignature() || !$request->user) {
-            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+            return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
         }
 
         $user = User::query()->find($request->user);
@@ -142,7 +142,7 @@ class AuthenticationController extends Controller
     public function checkPasswordLink(Request $request): JsonResponse
     {
         if (!$request->hasValidSignature() || !$request->user) {
-            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+            return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
         }
 
         return response()->json([
@@ -163,7 +163,7 @@ class AuthenticationController extends Controller
         // Failures are counted per e-mail AND address, so a stranger cannot lock the real owner out (audit W-04).
         $limitKey = 'app-reset:' . Str::lower((string) $request->input('email')) . '|' . $request->ip();
         if (RateLimiter::tooManyAttempts($limitKey, 5)) {
-            return response()->json(['message' => 'Too many attempts. Try again later.', 'code' => 'too_many_attempts'], 429);
+            return response()->json(['message' => __('errors.too_many_attempts'), 'code' => 'too_many_attempts'], 429);
         }
 
         $status = Password::broker()->reset(
@@ -188,7 +188,7 @@ class AuthenticationController extends Controller
         if ($status !== Password::PASSWORD_RESET) {
             RateLimiter::hit($limitKey, 15 * 60);
 
-            return response()->json(['message' => 'Invalid or expired reset token.', 'code' => 'invalid_reset_token'], 422);
+            return response()->json(['message' => __('errors.auth.invalid_reset_token'), 'code' => 'invalid_reset_token'], 422);
         }
 
         return response()->json(['message' => 'Password reset successfully!']);
@@ -210,7 +210,7 @@ class AuthenticationController extends Controller
             $token = $request->input('hcaptcha_token');
 
             if (!$token || !$this->verifyHCaptcha($token) ) {
-                return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
+                return response()->json(['message' => __('errors.auth.captcha_invalid')], 422);
             }
         }
 
@@ -223,14 +223,14 @@ class AuthenticationController extends Controller
         // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.
         $limitKey = 'app-login:' . Str::lower((string) $request->input('email')) . '|' . $request->ip();
         if (RateLimiter::tooManyAttempts($limitKey, 5)) {
-            return response()->json(['message' => 'Too many attempts. Try again later.', 'code' => 'too_many_attempts'], 429)
+            return response()->json(['message' => __('errors.too_many_attempts'), 'code' => 'too_many_attempts'], 429)
                 ->header('Retry-After', RateLimiter::availableIn($limitKey));
         }
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             RateLimiter::hit($limitKey, 15 * 60);
 
-            return response()->json(['message' => 'Invalid Credentials'], 401);
+            return response()->json(['message' => __('errors.auth.invalid_credentials')], 401);
         }
 
         RateLimiter::clear($limitKey);

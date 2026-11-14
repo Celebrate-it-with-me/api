@@ -31,7 +31,7 @@ class UserController extends Controller
             return UserResource::make($user);
         } catch(Exception $e) {
             report($e);
-            return response()->json(['message' => 'An error occurred.'],409);
+            return response()->json(['message' => __('errors.generic.error')],409);
         }
     }
 
@@ -60,7 +60,7 @@ class UserController extends Controller
             ]]);
         } catch(Exception $e) {
             report($e);
-            return response()->json(['message' => 'An error occurred.'],409);
+            return response()->json(['message' => __('errors.generic.error')],409);
         }
     }
 
@@ -82,7 +82,7 @@ class UserController extends Controller
             return UserResource::make($deleted);
         } catch (Exception $e) {
             report($e);
-            return response()->json(['message' => 'An error occurred.'],409);
+            return response()->json(['message' => __('errors.generic.error')],409);
         }
     }
 }

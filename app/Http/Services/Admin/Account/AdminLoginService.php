@@ -52,7 +52,7 @@ class AdminLoginService
         // Per email and address, on top of the per-IP limit of the route: wrong passwords for one account are capped.
         $passwordLimiter = 'admin-login-password:' . mb_strtolower($email) . '|' . $this->request->ip();
         if (RateLimiter::tooManyAttempts($passwordLimiter, self::PASSWORD_MAX_FAILURES)) {
-            throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($passwordLimiter)]);
+            throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($passwordLimiter)]);
         }
 
         $user = User::query()->where('email', $email)->first();
@@ -72,7 +72,7 @@ class AdminLoginService
                 $this->audit->record('auth.login_failed', $user, ['actor' => $user, 'after' => ['step' => 'password']]);
             }
 
-            throw ValidationException::withMessages(['email' => ['The provided credentials are incorrect.']]);
+            throw ValidationException::withMessages(['email' => [__('errors.admin_login.invalid_credentials')]]);
         }
 
         $this->assertNotSuspended($user);
@@ -99,14 +99,14 @@ class AdminLoginService
         if (! $user || ! $user->hasAnyRole(AdminPermissions::STAFF_ROLES) || ! $user->hasAdminTwoFactor()) {
             Cache::forget($key);
 
-            throw ValidationException::withMessages(['challenge' => ['The sign-in attempt expired. Start again.']]);
+            throw ValidationException::withMessages(['challenge' => [__('errors.admin_login.challenge_expired')]]);
         }
 
         $this->assertNotSuspended($user);
 
         $limiter = "admin-2fa-failures:{$user->id}";
         if (RateLimiter::tooManyAttempts($limiter, self::USER_MAX_FAILURES)) {
-            throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($limiter)]);
+            throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($limiter)]);
         }
 
         $usingRecovery = $recoveryCode !== null && $recoveryCode !== '';
@@ -122,11 +122,11 @@ class AdminLoginService
 
             if ($data['attempts'] >= self::CHALLENGE_MAX_ATTEMPTS) {
                 Cache::forget($key);
-                throw ValidationException::withMessages(['challenge' => ['Too many wrong codes. Start again.']]);
+                throw ValidationException::withMessages(['challenge' => [__('errors.admin_login.too_many_codes')]]);
             }
             Cache::put($key, $data, now()->addMinutes(self::CHALLENGE_MINUTES));
 
-            throw ValidationException::withMessages([$usingRecovery ? 'recoveryCode' : 'code' => ['The code is not valid.']]);
+            throw ValidationException::withMessages([$usingRecovery ? 'recoveryCode' : 'code' => [__('errors.admin_login.code_invalid')]]);
         }
 
         RateLimiter::clear($limiter);
@@ -143,7 +143,7 @@ class AdminLoginService
     private function assertNotSuspended(User $user): void
     {
         if ($user->admin_suspended_at) {
-            throw new HttpResponseException(response()->json(['message' => 'Your access to the admin panel is suspended.', 'code' => 'account_suspended'], 403));
+            throw new HttpResponseException(response()->json(['message' => __('errors.admin.suspended'), 'code' => 'account_suspended'], 403));
         }
     }
 

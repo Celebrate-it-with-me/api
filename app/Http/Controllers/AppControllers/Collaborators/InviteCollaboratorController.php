@@ -59,13 +59,13 @@ class InviteCollaboratorController extends Controller
         $existingUser = User::query()->whereRaw('lower(email) = ?', [$email])->first();
 
         if ($existingUser && EventUserRole::query()->where('event_id', $event->id)->where('user_id', $existingUser->id)->exists()) {
-            return response()->json(['message' => 'User is already a collaborator.'], 422);
+            return response()->json(['message' => __('errors.collaborators.already_member')], 422);
         }
 
         $pending = EventCollaborationInvite::query()->where('event_id', $event->id)
             ->whereRaw('lower(email) = ?', [$email])->where('status', 'pending')->exists();
         if ($pending) {
-            return response()->json(['message' => 'There is already a pending invitation for this email.'], 422);
+            return response()->json(['message' => __('errors.collaborators.pending_invite')], 422);
         }
 
         $invite = EventCollaborationInvite::query()->create([
@@ -104,7 +104,7 @@ class InviteCollaboratorController extends Controller
         abort_if(! $member, 404);
 
         if ($member->role?->name === 'owner') {
-            return response()->json(['message' => 'The owner role cannot be changed.'], 403);
+            return response()->json(['message' => __('errors.collaborators.owner_role_fixed')], 403);
         }
 
         $member->update(['role_id' => Role::query()->where('name', $data['role'])->value('id')]);
@@ -119,7 +119,7 @@ class InviteCollaboratorController extends Controller
         abort_if(! $member, 404);
 
         if ($member->role?->name === 'owner') {
-            return response()->json(['message' => 'The owner cannot be removed from the event.'], 403);
+            return response()->json(['message' => __('errors.collaborators.owner_not_removable')], 403);
         }
 
         DB::transaction(function () use ($member, $event) {
@@ -135,7 +135,7 @@ class InviteCollaboratorController extends Controller
     {
         $invite = $this->openInvite($event, $id, ['pending', 'expired']);
         if (! $invite) {
-            return response()->json(['message' => 'Only a pending or expired invitation can be resent.'], 422);
+            return response()->json(['message' => __('errors.collaborators.resend_not_allowed')], 422);
         }
 
         $invite->forceFill(['status' => 'pending', 'expires_at' => now()->addDays(7), 'sent_at' => now(), 'resend_count' => ($invite->resend_count ?? 0) + 1])->save();
@@ -214,7 +214,7 @@ class InviteCollaboratorController extends Controller
             ->first();
 
         if (! $invite) {
-            return response()->json(['message' => 'Invalid or expired invitation.'], 422);
+            return response()->json(['message' => __('errors.collaborators.invitation_invalid')], 422);
         }
 
         return response()->json([
@@ -246,7 +246,7 @@ class InviteCollaboratorController extends Controller
             ->first();
 
         if (! $invite) {
-            return response()->json(['message' => 'Invalid or expired invitation.'], 422);
+            return response()->json(['message' => __('errors.collaborators.invitation_invalid')], 422);
         }
 
         $invite->markAsDeclined();
@@ -282,11 +282,11 @@ class InviteCollaboratorController extends Controller
 
         // Only a pending invitation that has not expired can be accepted (and only once: accepting closes it).
         if (! $invite || $invite->status !== 'pending' || ($invite->expires_at && $invite->expires_at->isPast()) || ! in_array($invite->role, self::ASSIGNABLE_ROLES, true)) {
-            return response()->json(['message' => 'Invalid or expired invitation.'], 404);
+            return response()->json(['message' => __('errors.collaborators.invitation_invalid')], 404);
         }
 
         if (strtolower((string) $invite->email) !== strtolower((string) $user->email)) {
-            return response()->json(['message' => 'You are not authorized to accept this invitation.'], 400);
+            return response()->json(['message' => __('errors.collaborators.not_your_invitation')], 400);
         }
 
         DB::beginTransaction();
@@ -319,7 +319,7 @@ class InviteCollaboratorController extends Controller
             DB::rollBack();
             report($th);
 
-            return response()->json(['message' => 'An error occurred while accepting the invitation.'], 500);
+            return response()->json(['message' => __('errors.collaborators.accept_failed')], 500);
         }
     }
 
@@ -343,7 +343,7 @@ class InviteCollaboratorController extends Controller
             ->get();
 
         if (! $invites) {
-            return response()->json(['message' => 'Invalid or expired invitation.'], 404);
+            return response()->json(['message' => __('errors.collaborators.invitation_invalid')], 404);
         }
 
         $invitesTransformed = $invites->map(function ($invite) {

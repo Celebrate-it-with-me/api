@@ -30,7 +30,7 @@ class UserPreferenceController extends Controller
         $user = $request->user();
         
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated.'], 401);
+            return response()->json(['message' => __('errors.user.not_authenticated')], 401);
         }
         
         $preferences = $this->userPreferenceServices->getUserPreferences($user);
@@ -68,7 +68,7 @@ class UserPreferenceController extends Controller
         
         
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated.'], 401);
+            return response()->json(['message' => __('errors.user.not_authenticated')], 401);
         }
         
         $preferences = $this->userPreferenceServices->updateUserPreferences($user, $validated);
@@ -77,7 +77,7 @@ class UserPreferenceController extends Controller
             return UserPreferencesResource::make($preferences);
         }
         
-        return response()->json(['message' => 'User preferences not found.'], 404);
+        return response()->json(['message' => __('errors.user.preferences_not_found')], 404);
     }
     
 }
