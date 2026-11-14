@@ -41,7 +41,7 @@ class AdminInvitationMail extends Mailable
                 'link' => $this->link,
                 'inviter' => $this->inviter,
                 'hours' => $this->hours,
-                'role' => MailLocale::role('staff_'.$this->invitation->role, $this->lang),
+                'role' => MailLocale::role('staff_' . $this->invitation->role, $this->lang),
             ],
         );
     }

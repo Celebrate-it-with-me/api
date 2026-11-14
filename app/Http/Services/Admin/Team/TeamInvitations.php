@@ -131,7 +131,7 @@ class TeamInvitations
     private function send(AdminInvitation $invitation, string $token, User $actor): bool
     {
         try {
-            $link = MailLinks::admin('accept-invite?token='.$token);
+            $link = MailLinks::admin('accept-invite?token=' . $token);
             Mail::to($invitation->email)->send(new AdminInvitationMail($invitation, $link, $actor->name, self::hours(), self::accountFor($invitation->email)));
 
             return true;

@@ -10,10 +10,12 @@ use App\Models\User;
 use App\Support\AdminPermissions;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Sanctum\PersonalAccessToken;
 use PragmaRX\Google2FA\Google2FA;
 
 uses(RefreshDatabase::class);
@@ -48,7 +50,7 @@ function tiAs(User $user, bool $reauth = true): object
     return test()->withHeader('Authorization', 'Bearer ' . $plain);
 }
 
-/** @return array{0: string, 1: \Laravel\Sanctum\PersonalAccessToken} */
+/** @return array{0: string, 1: PersonalAccessToken} */
 function tiToken(User $user, bool $reauth = true): array
 {
     $new = $user->createToken('Chrome 130', ['*']);
@@ -79,7 +81,7 @@ describe('access', function () {
         $invitation = AdminInvitation::create(['email' => 'x@example.com', 'name' => 'X', 'role' => 'support', 'token_hash' => AdminInvitation::hashToken('t'), 'expires_at' => now()->addDay(), 'sent_at' => now()]);
         $id = $invitation->memberId();
         $routes = [
-            ['GET', TI], ['POST', TI], ["POST", TI . "/{$id}/invitation/resend"], ['DELETE', TI . "/{$id}/invitation"],
+            ['GET', TI], ['POST', TI], ['POST', TI . "/{$id}/invitation/resend"], ['DELETE', TI . "/{$id}/invitation"],
             ['POST', TI . '/1/suspend'], ['POST', TI . '/1/reactivate'],
         ];
 
@@ -461,6 +463,16 @@ describe('accepting', function () {
                 ->and(AdminAuditLog::where('action', 'team.invite_accept')->first()->after['accountExisted'])->toBeTrue();
         });
 
+        it('ignores any password fields: only current_password is read and hers does not change', function () use ($accept) {
+            $organizer = User::factory()->create(['email' => 'ana@example.com', 'password' => 'my-current-password-1']);
+            $hash = $organizer->password;
+            [, $token] = tiInvite(tiStaff());
+
+            $accept($token, ['current_password' => 'my-current-password-1', 'password' => 'x', 'password_confirmation' => 'does-not-match'])->assertOk();
+
+            expect($organizer->refresh()->password)->toBe($hash)->and($organizer->hasRole('support'))->toBeTrue();
+        });
+
         it('refuses a wrong or missing current password, without giving the role', function () use ($accept) {
             $organizer = User::factory()->create(['email' => 'ana@example.com', 'password' => 'my-current-password-1']);
             [, $token] = tiInvite(tiStaff());
@@ -475,7 +487,7 @@ describe('accepting', function () {
         it('locks after five wrong current passwords', function () use ($accept) {
             User::factory()->create(['email' => 'ana@example.com', 'password' => 'my-current-password-1']);
             [, $token] = tiInvite(tiStaff());
-            $this->withoutMiddleware(Illuminate\Routing\Middleware\ThrottleRequests::class);
+            $this->withoutMiddleware(ThrottleRequests::class);
 
             foreach (range(1, 5) as $i) {
                 $accept($token, ['current_password' => 'wrong-' . $i])->assertUnprocessable();

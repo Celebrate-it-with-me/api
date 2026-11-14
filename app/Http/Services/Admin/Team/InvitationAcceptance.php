@@ -66,13 +66,13 @@ class InvitationAcceptance
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
-            'password' => $account ? ['nullable'] : ['required', 'string', 'min:'.PasswordController::MIN_LENGTH, 'max:128', 'confirmed'],
+            'password' => $account ? ['nullable'] : ['required', 'string', 'min:' . PasswordController::MIN_LENGTH, 'max:128', 'confirmed'],
             'password_confirmation' => ['nullable', 'string'],
             'current_password' => ['nullable', 'string'],
             'device' => ['nullable', 'string', 'max:255'],
         ], [
             'password.required' => 'Escribe la contraseña.',
-            'password.min' => 'La contraseña debe tener al menos '.PasswordController::MIN_LENGTH.' caracteres.',
+            'password.min' => 'La contraseña debe tener al menos ' . PasswordController::MIN_LENGTH . ' caracteres.',
             'password.max' => 'La contraseña es demasiado larga.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
