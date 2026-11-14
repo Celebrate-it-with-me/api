@@ -3,19 +3,23 @@
 namespace App\Http\Controllers\AppControllers\Account;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Account\ResendDocumentRequest;
 use App\Http\Services\Invoices\InvoicePdf;
+use App\Http\Services\Invoices\InvoiceService;
+use App\Models\BillingProfile;
 use App\Models\CreditNote;
 use App\Models\EventPurchase;
 use App\Models\Invoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /** "Mis compras": the logged-in organizer's own paid purchases and their invoices. Nothing of anyone else's. */
 class MyPurchasesController extends Controller
 {
-    public function __construct(private readonly InvoicePdf $pdf) {}
+    public function __construct(private readonly InvoicePdf $pdf, private readonly InvoiceService $invoices) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -58,6 +62,38 @@ class MyPurchasesController extends Controller
         Gate::authorize('viewCreditNote', [$creditNote->invoice]);
 
         return $this->download($creditNote);
+    }
+
+    /** Sends the document again, only to one of her own two addresses (billing or account). Throttled on the route. */
+    public function resendInvoice(ResendDocumentRequest $request, int $invoice): JsonResponse
+    {
+        $invoice = Invoice::query()->findOrFail($invoice);
+        Gate::authorize('view', $invoice);
+
+        return $this->resend($request, $invoice, $invoice);
+    }
+
+    public function resendCreditNote(ResendDocumentRequest $request, int $creditNote): JsonResponse
+    {
+        $creditNote = CreditNote::query()->with('invoice')->findOrFail($creditNote);
+        Gate::authorize('viewCreditNote', [$creditNote->invoice]);
+
+        return $this->resend($request, $creditNote, $creditNote->invoice);
+    }
+
+    private function resend(ResendDocumentRequest $request, Invoice|CreditNote $doc, Invoice $invoice): JsonResponse
+    {
+        $user = $request->user();
+        $email = $request->validated('to') === 'billing'
+            ? BillingProfile::query()->where('user_id', $user->id)->value('billing_email')
+            : $user->email;
+        if (! $email) {
+            throw ValidationException::withMessages(['to' => ['no_billing_email']]);
+        }
+
+        $this->invoices->sendCopy($doc, $email);
+
+        return response()->json(['data' => ['sentTo' => $email]]);
     }
 
     private function download(Invoice|CreditNote $doc): Response

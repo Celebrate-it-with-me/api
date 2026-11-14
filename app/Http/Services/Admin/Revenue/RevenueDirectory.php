@@ -42,7 +42,7 @@ class RevenueDirectory
     {
         $purchase->load([
             'event' => fn ($q) => $q->withTrashed()->select('id', 'event_name', 'status', 'custom_url_slug'),
-            'coupon', 'buyer:id,name,email', 'plan:id,slug,name', 'creator:id,name,email', 'invoices:id,purchase_id,number,status',
+            'coupon', 'buyer:id,name,email', 'plan:id,slug,name', 'creator:id,name,email', 'invoices:id,purchase_id,number,status', 'invoices.creditNotes:id,invoice_id,number,amount_cents,currency,issued_at',
         ]);
 
         $timeline = array_values(array_filter([
@@ -65,7 +65,11 @@ class RevenueDirectory
             // Gateway identifiers are never shown whole.
             'gatewayRef' => $this->mask($purchase->gateway_payment_id ?? $purchase->gateway_session_id),
             'timeline' => $timeline,
-            'invoices' => $purchase->invoices->map(fn ($i) => ['id' => $i->id, 'number' => $i->number, 'status' => $i->status])->values(),
+            'invoices' => $purchase->invoices->map(fn ($i) => [
+                'id' => $i->id, 'number' => $i->number, 'status' => $i->status,
+                // Numbers and amounts only: the fiscal data of the recipient stays in the Invoices module.
+                'creditNotes' => $i->creditNotes->map(fn ($n) => ['id' => $n->id, 'number' => $n->number, 'amountCents' => $n->amount_cents, 'currency' => $n->currency, 'issuedAt' => $n->issued_at->toIso8601String()])->values(),
+            ])->values(),
         ];
     }
 

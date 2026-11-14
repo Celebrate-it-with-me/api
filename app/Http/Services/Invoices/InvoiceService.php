@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Invoices;
 
+use App\Mail\CreditNoteMail;
 use App\Mail\InvoiceMail;
 use App\Models\BillingProfile;
 use App\Models\CreditNote;
@@ -9,6 +10,7 @@ use App\Models\EventPurchase;
 use App\Models\Invoice;
 use App\Support\Mail\MailLocale;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
 
@@ -100,6 +102,38 @@ class InvoiceService
         $invoice->update(['emailed_at' => now()]);
     }
 
+    /**
+     * Mails the credit note of a refund once. The `emailed_at` mark is claimed with one conditional UPDATE before
+     * sending, so a retry or a concurrent call never sends it twice; if the mail fails the claim is released (so a
+     * later retry can send it) and the error is logged. It never throws: a refund is already done by now.
+     */
+    public function deliverCreditNote(CreditNote $note): bool
+    {
+        $claimed = CreditNote::query()->whereKey($note->id)->whereNull('emailed_at')->update(['emailed_at' => now()]);
+        if (! $claimed) {
+            return false;
+        }
+
+        try {
+            Mail::to($note->invoice->recipient['email'])->send(new CreditNoteMail($note->refresh()));
+
+            return true;
+        } catch (\Throwable $e) {
+            CreditNote::query()->whereKey($note->id)->update(['emailed_at' => null]);
+            Log::error('Credit note delivery failed', ['credit_note_id' => $note->id, 'error' => $e->getMessage()]);
+            report($e);
+
+            return false;
+        }
+    }
+
+    /** Sends a stored document to an address chosen by its owner (resend). Not idempotent on purpose. */
+    public function sendCopy(Invoice|CreditNote $doc, string $email): void
+    {
+        $mail = $doc instanceof CreditNote ? new CreditNoteMail($doc) : new InvoiceMail($doc);
+        Mail::to($email)->send($mail);
+    }
+
     private function nextSequence(string $series, int $year): int
     {
         DB::table('invoice_counters')->insertOrIgnore(['series' => $series, 'year' => $year, 'last_number' => 0, 'created_at' => now(), 'updated_at' => now()]);
@@ -132,7 +166,8 @@ class InvoiceService
 
         return [
             'name' => $profile?->name ?? $purchase->buyer?->name,
-            'email' => $purchase->buyer?->email,
+            // The invoice goes to the billing email when she gave one, otherwise to the account email.
+            'email' => $profile?->billing_email ?: $purchase->buyer?->email,
             'address' => $profile?->address, 'city' => $profile?->city, 'state' => $profile?->state,
             'postal_code' => $profile?->postal_code, 'country' => $profile?->country, 'tax_id' => $profile?->tax_id,
         ];

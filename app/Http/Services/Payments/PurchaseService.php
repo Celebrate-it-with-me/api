@@ -170,14 +170,22 @@ class PurchaseService
             throw ValidationException::withMessages(['purchase' => ['event_published']]);
         }
 
-        return DB::transaction(function () use ($purchase, $reason) {
+        $note = null;
+        $refunded = DB::transaction(function () use ($purchase, $reason, &$note) {
             $this->gateway($purchase->gateway)->refund($purchase);
             $purchase->update(['status' => 'refunded', 'refunded_at' => now()]);
-            app(InvoiceService::class)->creditForRefund($purchase, $reason ?: 'Refund');
+            $note = app(InvoiceService::class)->creditForRefund($purchase, $reason ?: 'Refund');
             $free = EventPlan::query()->where('slug', self::FREE_SLUG)->value('id');
             $purchase->event()->update(['event_plan_id' => $free]);
 
             return $purchase->refresh();
         });
+
+        // After the commit, so a mail failure can never undo the refund (the service swallows and logs it).
+        if ($note) {
+            app(InvoiceService::class)->deliverCreditNote($note);
+        }
+
+        return $refunded;
     }
 }

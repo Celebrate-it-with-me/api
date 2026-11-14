@@ -5,6 +5,7 @@ namespace App\Support\Mail;
 use App\Mail\AdminEmailConfirmMail;
 use App\Mail\AdminSecurityNoticeMail;
 use App\Mail\ConfirmAccountEmail;
+use App\Mail\CreditNoteMail;
 use App\Mail\ImpersonationEndedMail;
 use App\Mail\InviteRegisteredUserMail;
 use App\Mail\InviteUnregisteredUserMail;
@@ -15,6 +16,7 @@ use App\Mail\SupportRequestMail;
 use App\Mail\TestEmail;
 use App\Mail\WelcomeEmail;
 use App\Models\BudgetItem;
+use App\Models\CreditNote;
 use App\Models\EventCollaborationInvite;
 use App\Models\Events;
 use App\Models\ImpersonationSession;
@@ -58,6 +60,9 @@ class MailRegistry
             new MailDefinition('invoice', 'Factura de la compra', InvoiceMail::class, $both, ['mail'],
                 fn (string $lang) => new InvoiceMail(self::invoice($lang)),
                 'Al confirmarse un pago (también el manual) y al reenviarla desde el admin; lleva el PDF adjunto.'),
+            new MailDefinition('credit-note', 'Nota de crédito del reembolso', CreditNoteMail::class, $both, ['mail'],
+                fn (string $lang) => new CreditNoteMail(self::creditNote($lang)),
+                'Una sola vez, al reembolsar una compra con factura (el fallo del correo no deshace el reembolso); lleva el PDF adjunto.'),
             new MailDefinition('reset-password', 'Restablecer contraseña', ResetPasswordEmail::class, $both, ['mail'],
                 fn (string $lang) => new ResetPasswordEmail(self::user($lang), MailLinks::app('check-password-link?confirm=sample-signed-token')),
                 'Al pedir "Olvidé mi contraseña" (o desde el admin).'),
@@ -157,6 +162,17 @@ class MailRegistry
             'subtotal_cents' => 9900, 'discount_cents' => 2000, 'tax_rate' => 0, 'tax_cents' => 0, 'total_cents' => 7900, 'currency' => 'USD',
             'payment_method' => 'stripe', 'payment_reference' => 'pi_sample', 'issued_at' => now(),
         ]);
+    }
+
+    private static function creditNote(string $lang): CreditNote
+    {
+        $note = new CreditNote([
+            'number' => 'NC-2026-000001', 'series' => 'NC', 'year' => 2026, 'sequence' => 1, 'reason' => 'Refund requested by the customer',
+            'amount_cents' => 7900, 'tax_cents' => 0, 'currency' => 'USD', 'locale' => $lang, 'issued_at' => now(),
+        ]);
+        $note->setRelation('invoice', self::invoice($lang));
+
+        return $note;
     }
 
     private static function event(): Events

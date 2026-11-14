@@ -26,12 +26,15 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/suggest-music/export',
         'GET api/v1/app/exports/download',
         // Billing documents of the owner: support sees them from the admin, not by impersonating.
+        'GET api/v1/app/account/billing-profile',
         'GET api/v1/app/account/purchases',
         'GET api/v1/app/account/invoices/{invoice}/pdf',
         'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
         'GET api/v1/app/user/2fa/recovery-codes',
         'GET api/v1/app/user/2fa/setup',
         'GET api/v1/app/user/2fa/status',
+        'POST api/v1/app/account/credit-notes/{creditNote}/resend',
+        'POST api/v1/app/account/invoices/{invoice}/resend',
         'POST api/v1/app/event/{event}/collaborators',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
         'POST api/v1/app/event/{event}/purchase/checkout',
@@ -42,6 +45,7 @@ final class ImpersonationRules
         'POST api/v1/app/user/2fa/recovery-codes',
         'POST api/v1/app/user/2fa/verify',
         'POST api/v1/app/user/update-password',
+        'PUT api/v1/app/account/billing-profile',
     ];
 
     /** Everything else the organizer does in her own account, so support can reproduce and fix what she sees. */
