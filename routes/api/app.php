@@ -27,6 +27,7 @@
     use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
     use App\Http\Controllers\AppControllers\Seating\TableController;
     use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
+    use App\Http\Controllers\AppControllers\SpotifySearchController;
     use App\Http\Controllers\AppControllers\SuggestedMusicController;
     use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
     use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
@@ -177,6 +178,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
         Route::prefix('{event}')->middleware('event.access')->group(function () {
             Route::prefix('suggest-music')->name('suggest-music.')->middleware('module.access:suggested_music')->group(function () {
                 Route::get('export', [SuggestedMusicController::class, 'export'])->name('export');
+                Route::get('spotify-search', SpotifySearchController::class)->middleware(['event.access:edit_event', 'throttle:30,1'])->name('spotify-search');
                 Route::get('', [SuggestedMusicController::class, 'index'])->name('index');
                 Route::post('', [SuggestedMusicController::class, 'store'])->name('store');
                 Route::delete('{suggestedMusic}', [SuggestedMusicController::class, 'destroy'])->name('destroy');

@@ -111,6 +111,7 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/seating/unassigned',
         'GET api/v1/app/event/{event}/suggest-music',
         'GET api/v1/app/event/{event}/suggest-music-config',
+        'GET api/v1/app/event/{event}/suggest-music/spotify-search',
         'GET api/v1/app/event/{event}/suggestions',
         'GET api/v1/app/event/{event}/sweet-memories-config',
         'GET api/v1/app/event/{event}/sweet-memories-images',
