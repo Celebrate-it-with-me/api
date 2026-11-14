@@ -92,6 +92,7 @@ Route::prefix('')->name('auth.')->group(function () {
         ->name('check.password')
         ->middleware('signed');
     Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
         ->name('reset.password');
 });
 

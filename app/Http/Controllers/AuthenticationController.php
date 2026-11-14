@@ -22,6 +22,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
@@ -138,22 +141,35 @@ class AuthenticationController extends Controller
 
         return response()->json([
             'message' => 'Password Link is Valid!',
-            'data' => User::find($request->user),
+            'data' => User::query()->find($request->user)?->only(['id', 'name', 'email']),
+            // One-time broker token the SPA must send back to reset-password.
+            'token' => $request->query('token'),
         ]);
     }
 
+    /**
+     * Sets a new password with the one-time token of the Laravel password broker (the `token` the reset email carries).
+     * The token is single use and expires (config auth.passwords.users.expire); a wrong email or token answers the same
+     * 422 so the response does not reveal whether the account exists. Every API token of the account is revoked.
+     */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $user = User::query()
-            ->where('email', $request->input('email'))
-            ->first();
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => $password,
+                    'remember_token' => Str::random(60),
+                ])->save();
 
-        if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+                $user->tokens()->delete();
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json(['message' => 'Invalid or expired reset token.', 'code' => 'invalid_reset_token'], 422);
         }
-
-        $user->password = Hash::make($request->input('password'));
-        $user->save();
 
         return response()->json(['message' => 'Password reset successfully!']);
     }
