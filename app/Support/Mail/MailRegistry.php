@@ -3,6 +3,7 @@
 namespace App\Support\Mail;
 
 use App\Mail\AdminEmailConfirmMail;
+use App\Mail\AdminInvitationMail;
 use App\Mail\AdminSecurityNoticeMail;
 use App\Mail\ConfirmAccountEmail;
 use App\Mail\CreditNoteMail;
@@ -15,6 +16,7 @@ use App\Mail\ResetPasswordEmail;
 use App\Mail\SupportRequestMail;
 use App\Mail\TestEmail;
 use App\Mail\WelcomeEmail;
+use App\Models\AdminInvitation;
 use App\Models\BudgetItem;
 use App\Models\CreditNote;
 use App\Models\EventCollaborationInvite;
@@ -84,6 +86,15 @@ class MailRegistry
             new MailDefinition('admin-email-confirm', 'Panel: confirmar correo nuevo', AdminEmailConfirmMail::class, $both, ['mail'],
                 fn (string $lang) => new AdminEmailConfirmMail(self::user($lang), MailLinks::admin('dashboard/account/confirm-email?token=sample-token'), 60),
                 'Al pedir el cambio de correo de acceso en Mi cuenta del admin; llega a la dirección nueva.'),
+            new MailDefinition('admin-invitation', 'Panel: invitación al equipo', AdminInvitationMail::class, $both, ['mail'],
+                fn (string $lang) => new AdminInvitationMail(
+                    new AdminInvitation(['email' => 'ana@example.com', 'name' => 'Ana Soporte', 'role' => 'support']),
+                    MailLinks::admin('accept-invite?token=sample-token'),
+                    'Valentina Ríos',
+                    72,
+                    self::user($lang),
+                ),
+                'Cuando una persona superadmin invita a alguien al equipo desde Equipo y roles (y al reenviar la invitación); el enlace sirve una vez y vence en 72 horas.'),
             new MailDefinition('admin-security-password-changed', 'Panel: contraseña cambiada', AdminSecurityNoticeMail::class, $both, ['mail'],
                 fn (string $lang) => new AdminSecurityNoticeMail(self::user($lang), 'password_changed', []),
                 'Al cambiar la contraseña en Mi cuenta del admin.'),

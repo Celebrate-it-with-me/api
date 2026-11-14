@@ -8,6 +8,8 @@ return [
     ],
 
     'roles' => [
+        'staff_superadmin' => 'superadmin',
+        'staff_support' => 'support',
         'owner' => 'owner',
         'editor' => 'editor',
         'viewer' => 'view only',
@@ -179,6 +181,17 @@ return [
         'intro' => 'You asked to use this email to sign in to the Quinvite admin panel. Confirm it with the button; the link expires in :minutes minutes.',
         'action' => 'Confirm my new email',
         'outro' => 'If you did not ask for this, ignore this message and your email will not change.',
+        'signature' => 'The Quinvite team',
+    ],
+
+    'admin_invitation' => [
+        'subject' => 'You have been invited to the Quinvite team',
+        'preheader' => 'Create your password and sign in to the admin panel.',
+        'title' => 'Hi, :name',
+        'intro' => ':inviter invited you to join the Quinvite team as :role. Use the button to choose your password and open the admin panel; if you already have a Quinvite account with this email, you only confirm with your usual password.',
+        'action' => 'Accept the invitation',
+        'expires' => 'The link works once and expires in :hours hours. If it expires, ask for a new one.',
+        'outro' => 'If you were not expecting this invitation, ignore this message: nothing will happen and nobody can sign in with your email.',
         'signature' => 'The Quinvite team',
     ],
 ];
