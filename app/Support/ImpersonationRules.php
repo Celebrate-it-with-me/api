@@ -28,6 +28,9 @@ final class ImpersonationRules
         'GET api/v1/app/exports/download',
         // Billing documents of the owner: support sees them from the admin, not by impersonating.
         'GET api/v1/app/account/billing-profile',
+        // Support never deletes an account on behalf of its owner.
+        'DELETE api/v1/app/account',
+        'GET api/v1/app/account/deletion-preview',
         'GET api/v1/app/account/purchases',
         'GET api/v1/app/account/invoices/{invoice}/pdf',
         'GET api/v1/app/account/credit-notes/{creditNote}/pdf',

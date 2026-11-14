@@ -2,6 +2,7 @@
 
 namespace App\Support\Mail;
 
+use App\Mail\AccountDeletedMail;
 use App\Mail\AdminEmailConfirmMail;
 use App\Mail\AdminInvitationMail;
 use App\Mail\AdminSecurityNoticeMail;
@@ -122,6 +123,9 @@ class MailRegistry
             new MailDefinition('support-request', 'Solicitud de ayuda (interno)', SupportRequestMail::class, ['es'], ['mail'],
                 fn (string $lang) => new SupportRequestMail(self::supportRequest()),
                 'Al buzón de soporte cuando alguien pulsa "Necesito ayuda". Texto plano, en español: lo lee el equipo.'),
+            new MailDefinition('account-deleted', 'Cuenta eliminada', AccountDeletedMail::class, $both, ['mail'],
+                fn (string $lang) => new AccountDeletedMail(self::user($lang), 2, 30),
+                'Al eliminar su cuenta, a la dirección que tenía, justo antes de anonimizarla. Sin enlaces de acción.'),
             new MailDefinition('test', 'Correo de prueba', TestEmail::class, $both, ['mail'],
                 fn (string $lang) => new TestEmail($lang),
                 'Para comprobar que el SMTP funciona.'),

@@ -194,4 +194,13 @@ return [
         'outro' => 'If you were not expecting this invitation, ignore this message: nothing will happen and nobody can sign in with your email.',
         'signature' => 'The Quinvite team',
     ],
+    'account_deleted' => [
+        'subject' => 'Your account was deleted',
+        'preheader' => 'We deleted your account and your personal data, as you asked.',
+        'title' => 'See you soon, :name',
+        'intro' => 'Your Quinvite account was deleted and we erased your personal data. This cannot be undone.',
+        'archived' => '{1} Your published event is archived for :days days: invitations already sent keep opening, read only. After that we delete it completely.|[2,*] Your :count published events are archived for :days days: invitations already sent keep opening, read only. After that we delete them completely.',
+        'kept' => 'For accounting reasons we keep your purchases and invoices.',
+        'outro' => 'If you did not delete this account, write to us right away.',
+    ],
 ];

@@ -49,6 +49,11 @@ class User extends Authenticatable implements HasLocalePreference
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'has_password' => true,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -86,6 +91,8 @@ class User extends Authenticatable implements HasLocalePreference
         'admin_last_login_at' => 'datetime',
         'password_changed_at' => 'datetime',
         'anonymized_at' => 'datetime',
+        'account_deleted_at' => 'datetime',
+        'has_password' => 'boolean',
         'password' => 'hashed',
         'two_factor_secret' => 'encrypted',
         'two_factor_recovery_codes' => 'array',

@@ -27,6 +27,11 @@ class WhatsAppBroadcaster
     /** @return array{batchId?: string, queued: int, skipped: list<array{guestId: int, guestName: string, reason: string}>} */
     public function send(Events $event, string $template, string $audience, ?array $guestIds = null, bool $force = false, bool $dryRun = false): array
     {
+        // The owner deleted her account: the invitation is kept to be read, not to message guests.
+        if ($event->isAccountArchived()) {
+            $this->conflict('event_archived', 'This event is archived.');
+        }
+
         if (! $this->whatsapp->isAvailable()) {
             $this->conflict('whatsapp_unavailable', 'WhatsApp is not connected.');
         }

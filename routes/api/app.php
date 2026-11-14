@@ -81,6 +81,7 @@ Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseControll
 require __DIR__ . '/app/invoices.php';
 require __DIR__ . '/app/whatsapp.php';
 require __DIR__ . '/app/announcements.php';
+require __DIR__ . '/app/account-deletion.php';
 
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
