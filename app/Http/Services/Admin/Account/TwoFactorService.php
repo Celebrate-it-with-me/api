@@ -158,7 +158,18 @@ class TwoFactorService
         if ($step === false) {
             return false;
         }
+
+        // Compare-and-set in the database: of two simultaneous requests with the same code only one moves the step
+        // forward; the other finds it already used (a read-then-write would let both through).
+        $advanced = AdminTwoFactor::query()->whereKey($record->getKey())
+            ->where(fn ($q) => $q->whereNull('last_used_step')->orWhere('last_used_step', '<', (int) $step))
+            ->update(['last_used_step' => (int) $step]);
+        if ($advanced !== 1) {
+            return false;
+        }
+
         $record->last_used_step = (int) $step;
+        $record->syncOriginalAttribute('last_used_step');
 
         return true;
     }

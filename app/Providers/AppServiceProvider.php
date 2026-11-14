@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Guest;
 use App\Models\User;
 use App\Http\Services\Admin\Account\TokenLifetime;
+use App\Support\ProductionSafetyCheck;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
             'guest' => Guest::class,
             'user' => User::class,
         ]);
+
+        // A production server must not run with a development configuration (see ProductionSafetyCheck).
+        if ($this->app->environment('production') && ! $this->app->runningInConsole() && ($problems = ProductionSafetyCheck::problems())) {
+            throw new \RuntimeException('Unsafe production configuration: ' . implode(' ', $problems));
+        }
 
         // Sanctum overwrites `last_used_at` while authenticating; keep the previous value for the idle check of the admin panel.
         Event::listen(TokenAuthenticated::class, fn (TokenAuthenticated $e) => TokenLifetime::remember(request(), $e->token));

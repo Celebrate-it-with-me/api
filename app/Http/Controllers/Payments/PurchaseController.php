@@ -55,6 +55,14 @@ class PurchaseController extends Controller
         $data = json_decode($payload, true) ?: [];
         $purchase = EventPurchase::query()->where('gateway_session_id', $data['session'] ?? '')->first();
 
+        // A real gateway reports what was charged: it must match what was asked for.
+        if ($purchase && (
+            (isset($data['amount']) && (int) $data['amount'] !== (int) $purchase->amount_cents)
+            || (isset($data['currency']) && strtolower((string) $data['currency']) !== strtolower((string) $purchase->currency))
+        )) {
+            return response()->json(['message' => 'Amount mismatch.'], 400);
+        }
+
         if ($purchase && ($data['type'] ?? null) === 'payment.succeeded') {
             $this->purchases->markPaid($purchase, $data['payment'] ?? null);
         }

@@ -66,7 +66,7 @@ class EventThemeController extends Controller
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update theme: ' . $th->getMessage()
+                'message' => 'Failed to update theme'
             ], 500);
         }
     }
@@ -94,7 +94,7 @@ class EventThemeController extends Controller
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reset theme: ' . $th->getMessage()
+                'message' => 'Failed to reset theme'
             ], 500);
         }
     }
@@ -118,7 +118,7 @@ class EventThemeController extends Controller
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete theme: ' . $th->getMessage()
+                'message' => 'Failed to delete theme'
             ], 500);
         }
     }

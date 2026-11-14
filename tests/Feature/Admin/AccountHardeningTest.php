@@ -151,12 +151,12 @@ describe('token lifetime', function () {
         hdAs($plain)->getJson('/api/v1/app/auth/ready')->assertOk();
     });
 
-    it('does not touch the app tokens of the organizers (client null): refused on the panel, kept and usable in the app', function () {
+    it('refuses the app tokens of the organizers (client null) on the panel without touching them: kept and usable in the app', function () {
         $user = hdStaff();
         [$plain, $token] = hdToken($user, client: null);
         $token->forceFill(['created_at' => now()->subDays(10), 'last_used_at' => now()->subDays(9)])->save();
 
-        hdAs($plain)->getJson(HD . '/userInfo')->assertUnauthorized()->assertJsonPath('code', 'session_expired');
+        hdAs($plain)->getJson(HD . '/userInfo')->assertUnauthorized()->assertJsonPath('code', 'admin_session_required');
         expect(PersonalAccessToken::find($token->id))->not->toBeNull();
         hdAs($plain)->getJson('/api/v1/app/auth/ready')->assertOk();
     });
@@ -237,8 +237,8 @@ describe('reauth: the step-up endpoint', function () {
         $last->assertStatus(429);
     });
 
-    it('a cookie session cannot reauthenticate (nowhere to remember it): 409 token_required', function () {
-        $this->actingAs(hdStaff())->postJson(HD . '/account/reauth', ['password' => HD_PW])->assertStatus(409)->assertJsonPath('code', 'token_required');
+    it('a cookie session cannot reauthenticate: it does not even reach the panel', function () {
+        $this->actingAsCookie(hdStaff())->postJson(HD . '/account/reauth', ['password' => HD_PW])->assertStatus(401)->assertJsonPath('code', 'admin_session_required');
     });
 
     it('never returns the password, secrets or the token', function () {

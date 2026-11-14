@@ -28,7 +28,8 @@ class GuestController extends Controller
         } catch (PlanLimitExceeded $limit) {
             throw $limit; // renders as a 402 with the numbers (see the exception)
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 

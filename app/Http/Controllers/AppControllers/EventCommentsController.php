@@ -26,7 +26,8 @@ class EventCommentsController extends Controller
             return EventCommentResource::collection($this->eventCommentsServices->getEventComments($event))
                 ->response()->getData(true);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
     
@@ -42,11 +43,10 @@ class EventCommentsController extends Controller
             return EventCommentResource::make($this->eventCommentsServices->createEventComment($event));
         } catch (Throwable $th) {
             Log::error('Comment Error info', [
-                'message' => $th->getMessage(),
-                'request' => $request->all(),
                 'event_id' => $event->id,
             ]);
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 }

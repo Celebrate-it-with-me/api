@@ -1,7 +1,7 @@
 <x-mail::message :preheader="__('mail.ownership_'.$side.'.preheader')">
-# {{ __('mail.ownership_'.$side.'.title', ['name' => \App\Support\Mail\MailLocale::firstName($user->name)]) }}
+# {{ __('mail.ownership_'.$side.'.title', ['name' => \App\Support\Mail\MailLocale::md(\App\Support\Mail\MailLocale::firstName($user->name))]) }}
 
-{{ __('mail.ownership_'.$side.'.intro', ['event' => $event->event_name]) }}
+{{ __('mail.ownership_'.$side.'.intro', ['event' => \App\Support\Mail\MailLocale::md($event->event_name)]) }}
 
 <x-mail::button :url="$eventUrl">
 {{ __('mail.ownership_'.$side.'.action') }}

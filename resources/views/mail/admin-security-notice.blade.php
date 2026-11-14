@@ -1,5 +1,5 @@
 <x-mail::message :preheader="$preheader">
-# {{ __('mail.admin_security.title', ['name' => \App\Support\Mail\MailLocale::firstName($name)]) }}
+# {{ __('mail.admin_security.title', ['name' => \App\Support\Mail\MailLocale::md(\App\Support\Mail\MailLocale::firstName($name))]) }}
 
 {{ $intro }}
 

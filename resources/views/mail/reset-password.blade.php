@@ -1,5 +1,5 @@
 <x-mail::message :preheader="__('mail.reset.preheader')">
-# {{ __('mail.reset.title', ['name' => \App\Support\Mail\MailLocale::firstName($user->name)]) }}
+# {{ __('mail.reset.title', ['name' => \App\Support\Mail\MailLocale::md(\App\Support\Mail\MailLocale::firstName($user->name))]) }}
 
 {{ __('mail.reset.intro') }}
 

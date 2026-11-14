@@ -261,7 +261,7 @@ describe('impersonation', function () {
         $support = sfStaff(AdminPermissions::SUPPORT);
         $owner = User::factory()->create();
         app('auth')->forgetGuards();
-        $token = $this->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Revisar un problema'], ['Authorization' => 'Bearer ' . $support->createToken('t')->plainTextToken])
+        $token = $this->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Revisar un problema'], ['Authorization' => 'Bearer ' . $this->adminBearer($support)])
             ->assertCreated()->json('token');
 
         foreach (['getJson' => [SF_URL], 'putJson' => [SF_URL, ['enabled' => false, 'reason' => SF_REASON]]] as $method => $args) {

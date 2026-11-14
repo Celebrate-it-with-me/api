@@ -56,7 +56,7 @@ function blkSetup($test): array
     ]);
     EventFeature::create(['event_id' => $event->id]);
     app('auth')->forgetGuards();
-    $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $staff->createToken('t')->plainTextToken])
+    $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $test->adminBearer($staff)])
         ->assertCreated()->json('token');
 
     return [$owner, $event, $imp, $owner->createToken('normal')->plainTextToken];

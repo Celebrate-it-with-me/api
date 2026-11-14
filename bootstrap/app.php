@@ -42,6 +42,14 @@ $app->singleton(
 );
 
 /*
+| Security headers on every response (S-17).
+*/
+$app->afterResolving(
+    Illuminate\Contracts\Http\Kernel::class,
+    fn ($kernel) => $kernel->pushMiddleware(App\Http\Middleware\SecurityHeaders::class)
+);
+
+/*
 | Soft maintenance switch (system_flags), not `artisan down`. Pushed here because it must run for every request.
 */
 $app->afterResolving(

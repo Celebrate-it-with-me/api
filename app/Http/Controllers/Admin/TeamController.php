@@ -133,7 +133,8 @@ class TeamController extends Controller
             $closed = DB::transaction(function () use ($user) {
                 $user->forceFill(['admin_suspended_at' => now()])->save();
 
-                return $this->security->revokeTokens($user);
+                // Only her panel sessions: suspending the panel access does not sign her out of the organizers' app.
+                return $this->security->revokeTokens($user, null, 'admin');
             });
             app(ImpersonationService::class)->finishForStaff($user);
 

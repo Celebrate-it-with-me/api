@@ -24,7 +24,14 @@ class PurchaseService
 
     public function gateway(?string $name = null): PaymentGateway
     {
-        return match ($name ?? config('services.payments.gateway')) {
+        $name ??= config('services.payments.gateway');
+
+        // The stand-in gateway confirms with a locally signed webhook: never on a production server.
+        if ($name === 'fake' && app()->environment('production')) {
+            throw new \RuntimeException('The fake payment gateway cannot be used in production.');
+        }
+
+        return match ($name) {
             'manual' => new ManualGateway,
             default => new FakeGateway,
         };
@@ -69,6 +76,28 @@ class PurchaseService
         return $coupon;
     }
 
+    /** How long a pending checkout holds one use of a capped code. */
+    private const COUPON_HOLD_MINUTES = 60;
+
+    /** Locks the coupon row and fails when its uses (consumed plus held by recent pending checkouts) are exhausted. */
+    private function reserveCoupon(Coupon $coupon): void
+    {
+        $locked = Coupon::query()->lockForUpdate()->findOrFail($coupon->id);
+
+        if (! $locked->isUsable()) {
+            throw ValidationException::withMessages(['code' => ['invalid_code']]);
+        }
+
+        if ($locked->max_uses !== null) {
+            $held = EventPurchase::query()->where('coupon_id', $locked->id)->where('status', 'pending')
+                ->where('created_at', '>', now()->subMinutes(self::COUPON_HOLD_MINUTES))->count();
+
+            if ($locked->times_used + $held >= $locked->max_uses) {
+                throw ValidationException::withMessages(['code' => ['invalid_code']]);
+            }
+        }
+    }
+
     /** Create the pending purchase and start the payment. */
     public function checkout(Events $event, User $user, ?string $code, string $successUrl, string $cancelUrl): array
     {
@@ -81,11 +110,19 @@ class PurchaseService
         $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
         $gateway = $this->gateway();
 
-        $purchase = EventPurchase::create([
-            'event_id' => $event->id, 'user_id' => $user->id, 'event_plan_id' => $plan->id, 'coupon_id' => $coupon?->id,
-            'gateway' => $gateway->name(), 'list_price_cents' => $plan->price_cents, 'amount_cents' => $amount,
-            'currency' => $plan->currency, 'status' => 'pending', 'is_founder' => (bool) $coupon?->is_founder,
-        ]);
+        // The coupon's cap is checked and the use reserved under a lock, so N simultaneous checkouts of a 1-use code
+        // cannot all get through (a use is only counted as consumed when the payment confirms).
+        $purchase = DB::transaction(function () use ($event, $user, $plan, $coupon, $gateway, $amount) {
+            if ($coupon) {
+                $this->reserveCoupon($coupon);
+            }
+
+            return EventPurchase::create([
+                'event_id' => $event->id, 'user_id' => $user->id, 'event_plan_id' => $plan->id, 'coupon_id' => $coupon?->id,
+                'gateway' => $gateway->name(), 'list_price_cents' => $plan->price_cents, 'amount_cents' => $amount,
+                'currency' => $plan->currency, 'status' => 'pending', 'is_founder' => (bool) $coupon?->is_founder,
+            ]);
+        });
 
         $session = $gateway->createSession($purchase, $successUrl, $cancelUrl);
         $purchase->update(['gateway_session_id' => $session['id']]);
@@ -163,15 +200,18 @@ class PurchaseService
     /** Refunds are full and only while the invitation is not published (the event goes back to the free plan). */
     public function refund(EventPurchase $purchase, ?string $reason = null): EventPurchase
     {
-        if ($purchase->status !== 'paid') {
-            throw ValidationException::withMessages(['purchase' => ['not_paid']]);
-        }
-        if ($purchase->event->status === 'published') {
-            throw ValidationException::withMessages(['purchase' => ['event_published']]);
-        }
-
         $note = null;
         $refunded = DB::transaction(function () use ($purchase, $reason, &$note) {
+            // Checked on the locked row, so two simultaneous refunds cannot both reach the gateway.
+            $purchase = EventPurchase::query()->lockForUpdate()->findOrFail($purchase->id);
+
+            if ($purchase->status !== 'paid') {
+                throw ValidationException::withMessages(['purchase' => ['not_paid']]);
+            }
+            if ($purchase->event->status === 'published') {
+                throw ValidationException::withMessages(['purchase' => ['event_published']]);
+            }
+
             $this->gateway($purchase->gateway)->refund($purchase);
             $purchase->update(['status' => 'refunded', 'refunded_at' => now()]);
             $note = app(InvoiceService::class)->creditForRefund($purchase, $reason ?: 'Refund');

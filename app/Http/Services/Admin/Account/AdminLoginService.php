@@ -30,6 +30,11 @@ class AdminLoginService
     /** Wrong second-step codes allowed per person in 15 minutes, whatever the challenge. */
     private const USER_MAX_FAILURES = 10;
 
+    /** Wrong passwords allowed per email and address in 15 minutes. */
+    private const PASSWORD_MAX_FAILURES = 5;
+
+    private static ?string $dummyHash = null;
+
     public function __construct(
         private readonly TwoFactorService $twoFactor,
         private readonly AccountSecurity $security,
@@ -44,11 +49,24 @@ class AdminLoginService
      */
     public function attempt(string $email, string $password, string $device): string|array
     {
+        // Per email and address, on top of the per-IP limit of the route: wrong passwords for one account are capped.
+        $passwordLimiter = 'admin-login-password:' . mb_strtolower($email) . '|' . $this->request->ip();
+        if (RateLimiter::tooManyAttempts($passwordLimiter, self::PASSWORD_MAX_FAILURES)) {
+            throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($passwordLimiter)]);
+        }
+
         $user = User::query()->where('email', $email)->first();
         $isStaff = $user?->hasAnyRole(AdminPermissions::STAFF_ROLES);
 
+        // Same work whether or not the account exists, so the response time does not tell which emails are registered.
+        $passwordOk = Hash::check($password, $user?->password ?? (self::$dummyHash ??= Hash::make('not-a-real-password')));
+
         // A token for the admin panel is only for administrators; anyone else gets the same answer as a wrong password.
-        if (! $user || ! Hash::check($password, $user->password) || ! $isStaff) {
+        // A staff account whose mailbox was never verified is not let in either: the password may have been chosen by
+        // whoever registered that address first (S-29).
+        if (! $user || ! $passwordOk || ! $isStaff || ! $user->hasVerifiedEmail()) {
+            RateLimiter::hit($passwordLimiter, 900);
+
             // A failed attempt on a real staff account leaves a trace in her own history (throttled by IP on the route).
             if ($user && $isStaff) {
                 $this->audit->record('auth.login_failed', $user, ['actor' => $user, 'after' => ['step' => 'password']]);

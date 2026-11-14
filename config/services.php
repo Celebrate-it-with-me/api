@@ -37,8 +37,9 @@ return [
     ],
 
     'hcaptcha' => [
-        'site_key' => env('HCAPTCHA_SECRET'),
-        'secret' => env('HCAPTCHA_ENABLED', false),
+        'enabled' => (bool) env('HCAPTCHA_ENABLED', false),
+        'site_key' => env('HCAPTCHA_SITE_KEY'),
+        'secret' => env('HCAPTCHA_SECRET'),
     ],
 
     'google' => [
@@ -55,10 +56,11 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URL'),
     ],
 
-    // Payments: `fake` until the Stripe account exists. The webhook secret signs the calls the gateway makes.
+    // Payments: `fake` until the Stripe account exists. The webhook secret signs the calls the gateway makes and has no
+    // default: without it the webhook refuses everything. Production refuses to run with `fake` or without the secret.
     'payments' => [
         'gateway' => env('PAYMENTS_GATEWAY', 'fake'),
-        'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET', 'local-webhook-secret'),
+        'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET'),
     ],
 
     // Where suspended users and the "Necesito ayuda" button send people, and the admin panel the support mail links to.

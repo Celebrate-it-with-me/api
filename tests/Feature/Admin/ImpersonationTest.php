@@ -43,7 +43,7 @@ function impTok(string $plain): array
 
 function impAs(User $user): array
 {
-    return impTok($user->createToken('test')->plainTextToken);
+    return impTok(test()->adminBearer($user));
 }
 
 function impStart($test, User $staff, User $target, array $body = []): TestResponse
@@ -402,7 +402,7 @@ describe('what the security review found', function () {
         impStart($this, $staff, $a);
         impStart($this, $staff, $b);
 
-        $this->deleteJson("/api/v1/admin/team/{$staff->id}", ['reason' => 'Ya no trabaja con nosotros'], impTok(tap($super->createToken('test'), fn ($t) => $t->accessToken->forceFill(['reauthenticated_at' => now()])->save())->plainTextToken))->assertOk();
+        $this->deleteJson("/api/v1/admin/team/{$staff->id}", ['reason' => 'Ya no trabaja con nosotros'], impTok($this->adminBearer($super, true)))->assertOk();
 
         expect(ImpersonationSession::where('staff_id', $staff->id)->whereNull('ended_at')->count())->toBe(0);
     });

@@ -24,6 +24,12 @@ class MailLocale
         return trim(explode(' ', trim((string) $name))[0]);
     }
 
+    /** Escapes Markdown so user-provided text (event and person names) cannot add links or formatting to a mail. */
+    public static function md(?string $text): string
+    {
+        return preg_replace('/([\\\\`*_{}\[\]()<>#+!|~])/', '\\\\$1', (string) $text);
+    }
+
     /** Role of an event collaborator as a word in the mail language. */
     public static function role(?string $role, string $lang): string
     {

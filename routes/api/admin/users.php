@@ -19,6 +19,6 @@ Route::post('users/{user}/unsuspend', [UserAdminController::class, 'unsuspend'])
 Route::get('users/{user}/export', [UserAdminController::class, 'export'])->middleware('admin.can:admin.users.export');
 Route::delete('users/{user}', [UserAdminController::class, 'destroy'])->middleware(['admin.can:admin.users.delete', 'admin.reauth']);
 
-// Legacy create/edit, still used by the old screen. Audited.
+// Legacy create, still used by the old screen. Audited. The legacy edit (PUT|PATCH users/{user}) was removed: it changed
+// anybody's email and password with no reauthentication (S-04); the profile of an account is not edited from the panel.
 Route::post('users', [UserController::class, 'store'])->middleware('admin.can:admin.users.manage');
-Route::match(['put', 'patch'], 'users/{user}', [UserController::class, 'update'])->middleware('admin.can:admin.users.manage');
