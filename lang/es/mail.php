@@ -31,6 +31,14 @@ return [
         'action' => 'Ver mis compras',
     ],
 
+    'credit_note' => [
+        'subject' => 'Tu nota de crédito :number de Quinvite',
+        'preheader' => 'Adjuntamos la nota de crédito de tu reembolso.',
+        'title' => 'Tu reembolso está en camino, :name',
+        'intro' => 'Reembolsamos :amount de «:event» y anulamos la factura :invoice. Adjuntamos la nota de crédito :number; también puedes descargarla desde Mis compras. El banco puede tardar unos días en reflejar el dinero.',
+        'action' => 'Ver mis compras',
+    ],
+
     'welcome' => [
         'subject' => 'Te damos la bienvenida a Quinvite, :name',
         'preheader' => 'Tu quinceañera o tu boda, organizada en un solo lugar.',

@@ -30,6 +30,14 @@ return [
         'action' => 'View my purchases',
     ],
 
+    'credit_note' => [
+        'subject' => 'Your Quinvite credit note :number',
+        'preheader' => 'The credit note for your refund is attached.',
+        'title' => 'Your refund is on its way, :name',
+        'intro' => 'We refunded :amount for ":event" and cancelled invoice :invoice. Attached is credit note :number; you can also download it from My purchases. Your bank may take a few days to show the money.',
+        'action' => 'View my purchases',
+    ],
+
     'welcome' => [
         'subject' => 'Welcome to Quinvite, :name',
         'preheader' => 'Your quinceañera or wedding, organized in one place.',

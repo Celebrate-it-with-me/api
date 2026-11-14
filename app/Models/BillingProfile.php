@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** The buyer's billing data; copied onto each invoice when it is issued. */
 class BillingProfile extends Model
 {
-    protected $fillable = ['user_id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'tax_id'];
+    protected $fillable = ['user_id', 'name', 'billing_email', 'address', 'city', 'state', 'postal_code', 'country', 'tax_id'];
 
     public function user(): BelongsTo
     {
