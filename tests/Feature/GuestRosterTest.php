@@ -183,3 +183,63 @@ it('accepts the hyphenated status when confirming companions in bulk', function 
 
     expect($ana->companions()->first()->rsvp_status)->toBe('not-attending');
 });
+
+describe('the language of each invitation', function () {
+    it('shows hers and the effective one (hers, or the event\'s)', function () {
+        [$event, $u, $url] = rosterEvent();
+        $event->update(['locale' => 'en']);
+        family($event, 'Ana', 'pending', [], ['locale' => 'es']);
+        family($event, 'Beto', 'pending');
+
+        $response = $this->actingAs($u['owner'])->getJson($url)->assertOk();
+
+        expect($response->json('eventLocale'))->toBe('en')
+            ->and(collect($response->json('data'))->map(fn ($r) => [$r['name'], $r['locale'], $r['effectiveLocale']])->all())
+            ->toBe([['Ana', 'es', 'es'], ['Beto', null, 'en']]);
+    });
+
+    it('is set to es, en, or back to the event\'s with null', function () {
+        [$event, $u, $url] = rosterEvent();
+        $ana = family($event, 'Ana', 'pending');
+
+        $this->actingAs($u['owner'])->patchJson("$url/{$ana->id}/locale", ['locale' => 'en'])
+            ->assertOk()->assertJsonPath('data.locale', 'en')->assertJsonPath('data.effectiveLocale', 'en');
+        expect($ana->fresh()->locale)->toBe('en');
+
+        $this->actingAs($u['owner'])->patchJson("$url/{$ana->id}/locale", ['locale' => null])
+            ->assertOk()->assertJsonPath('data.locale', null)->assertJsonPath('data.effectiveLocale', 'es');
+        expect($ana->fresh()->locale)->toBeNull();
+    });
+
+    it('validates the value and requires it to be sent', function () {
+        [$event, $u, $url] = rosterEvent();
+        $ana = family($event, 'Ana', 'pending');
+
+        foreach ([['locale' => 'fr'], ['locale' => ['es']], []] as $body) {
+            $this->actingAs($u['owner'])->patchJson("$url/{$ana->id}/locale", $body)->assertUnprocessable();
+        }
+        expect($ana->fresh()->locale)->toBeNull();
+    });
+
+    it('needs edit_event: 401 anonymous, 404 outside, 403 for a viewer', function () {
+        [$event, $u, $url] = rosterEvent();
+        $ana = family($event, 'Ana', 'pending');
+
+        $this->patchJson("$url/{$ana->id}/locale", ['locale' => 'en'])->assertUnauthorized();
+        $this->actingAs($u['stranger'])->patchJson("$url/{$ana->id}/locale", ['locale' => 'en'])->assertNotFound();
+        $this->actingAs($u['viewer'])->patchJson("$url/{$ana->id}/locale", ['locale' => 'en'])->assertForbidden();
+        expect($ana->fresh()->locale)->toBeNull();
+    });
+
+    it('cannot reach a guest of another event, and belongs to the main guest only', function () {
+        [$event, $u, $url] = rosterEvent();
+        [$other] = rosterEvent();
+        $foreign = family($other, 'Ajena', 'pending');
+        $ana = family($event, 'Ana', 'pending', ['pending']);
+        $companion = Guest::query()->where('parent_id', $ana->id)->first();
+
+        $this->actingAs($u['owner'])->patchJson("$url/{$foreign->id}/locale", ['locale' => 'en'])->assertNotFound();
+        $this->actingAs($u['owner'])->patchJson("$url/{$companion->id}/locale", ['locale' => 'en'])->assertUnprocessable();
+        expect($foreign->fresh()->locale)->toBeNull();
+    });
+});
