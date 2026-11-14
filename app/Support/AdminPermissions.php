@@ -45,6 +45,7 @@ final class AdminPermissions
         'admin.audit.view',
         'admin.system.health',
         'admin.system.manage',
+        'admin.security.manage',
     ];
 
     /** @return list<string> */

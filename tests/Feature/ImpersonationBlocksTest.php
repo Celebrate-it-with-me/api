@@ -188,6 +188,13 @@ describe('with an impersonation token', function () {
         blkCall($this, 'GET', '/api/v1/app/zz-new-feature', $normal)->assertOk();
     });
 
+    it('keeps the staff security switch out of reach (admin routes are not in the app lists: the admin middleware refuses the token)', function () {
+        [, , $imp] = blkSetup($this);
+
+        blkCall($this, 'GET', '/api/v1/admin/system/security', $imp)->assertForbidden();
+        blkCall($this, 'PUT', '/api/v1/admin/system/security', $imp)->assertForbidden();
+    });
+
     it('blocks by the route, not by a lookalike url', function () {
         [, $event, $imp] = blkSetup($this);
 
