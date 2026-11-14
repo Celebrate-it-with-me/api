@@ -8,6 +8,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * WhatsApp Business Cloud API through the Graph API (graph.facebook.com, version from WHATSAPP_GRAPH_VERSION,
@@ -154,13 +155,25 @@ class MetaGateway implements WhatsAppGateway
     private function request(string $method, string $path, array $data): array
     {
         $http = $this->client();
-        $url = str_starts_with($path, 'http') ? $path : $this->base() . '/' . ltrim($path, '/');
+        if (str_starts_with($path, 'http')) {
+            // A paging URL is followed only on Graph itself: the access token must never go anywhere else (audit W-05).
+            $parts = parse_url($path);
+            $own = parse_url($this->base());
+            if (($parts['scheme'] ?? '') !== 'https' || ! hash_equals((string) $own['host'], strtolower((string) ($parts['host'] ?? ''))) || isset($parts['user']) || (isset($parts['port']) && $parts['port'] !== 443)) {
+                Log::warning('whatsapp: refused to follow a non-Graph URL');
+                throw new WhatsAppException('invalid_paging_url', 'WhatsApp returned an unexpected URL.', false);
+            }
+            $url = $path;
+        } else {
+            $url = $this->base() . '/' . ltrim($path, '/');
+        }
 
         try {
             // A `query` option would replace the query string of a paging URL, so only pass it when there is something to add.
             $response = $method === 'get' ? $http->get($url, $data ?: null) : $http->post($url, $data);
         } catch (ConnectionException $e) {
-            throw new WhatsAppException('connection', 'Could not reach WhatsApp.', true);
+            // A timeout may come after Meta accepted the request: a send must not be repeated blindly (audit W-06).
+            throw new WhatsAppException('connection', 'Could not reach WhatsApp.', true, $method === 'post');
         }
 
         if ($response->failed()) {
@@ -177,7 +190,10 @@ class MetaGateway implements WhatsAppGateway
         $message = (string) ($error['error_data']['details'] ?? $error['message'] ?? 'WhatsApp error');
         $retryable = $response->status() === 429 || $response->serverError() || in_array($code, self::RETRYABLE_CODES, true);
 
-        return new WhatsAppException((string) ($code ?: $response->status()), mb_substr($message, 0, 500), $retryable);
+        // A 5xx with no Meta error body says nothing about whether the message was taken.
+        $ambiguous = $response->serverError() && ! in_array($code, self::RETRYABLE_CODES, true);
+
+        return new WhatsAppException((string) ($code ?: $response->status()), mb_substr($message, 0, 500), $retryable, $ambiguous);
     }
 
     private function messageId(array $json): string
@@ -192,7 +208,7 @@ class MetaGateway implements WhatsAppGateway
 
     private function client(): PendingRequest
     {
-        return Http::withToken((string) config('services.whatsapp.access_token'))->acceptJson()->asJson()->timeout(15);
+        return Http::withToken((string) config('services.whatsapp.access_token'))->acceptJson()->asJson()->timeout(15)->withoutRedirecting();
     }
 
     private function base(): string

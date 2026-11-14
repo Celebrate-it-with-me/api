@@ -7,6 +7,7 @@ use App\Jobs\SendWhatsAppMessage;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\WhatsApp\Message;
+use App\Models\WhatsApp\OptOut;
 use App\Models\WhatsApp\Template;
 use App\Support\WhatsApp\Phone;
 use Carbon\Carbon;
@@ -49,11 +50,33 @@ class WebhookProcessor
     private function messages(array $value): void
     {
         foreach ($value['statuses'] ?? [] as $st) {
+            if ($this->parkIfUnknown($st)) {
+                continue;
+            }
             $this->once('st:' . ($st['id'] ?? '') . ':' . ($st['status'] ?? ''), 'status', fn () => $this->status($st));
         }
         foreach ($value['messages'] ?? [] as $msg) {
             $this->once('msg:' . ($msg['id'] ?? Str::uuid()), 'message', fn () => $this->inbound($msg));
         }
+    }
+
+    /**
+     * A delivery update can beat the save of the message id (audit W-09). Keep it, unclaimed, and apply it as soon as the id
+     * is stored; look again after saving it because the id may have landed in between.
+     */
+    private function parkIfUnknown(array $st): bool
+    {
+        $id = (string) ($st['id'] ?? '');
+        if ($id === '' || Message::query()->where('wa_message_id', $id)->exists()) {
+            return false;
+        }
+        DB::table('whatsapp_pending_statuses')->insert([
+            'wa_message_id' => mb_substr($id, 0, 120), 'status' => mb_substr((string) ($st['status'] ?? ''), 0, 12),
+            'payload' => json_encode($st), 'created_at' => now(),
+        ]);
+        $this->statuses->applyPending($id);
+
+        return true;
     }
 
     private function once(string $key, string $kind, callable $work): void
@@ -186,7 +209,15 @@ class WebhookProcessor
 
     private function optOut(string $from): void
     {
-        $ids = Message::query()->where('to_phone', $from)->whereNotNull('guest_id')->distinct()->pluck('guest_id');
+        // The opt-out belongs to the number (audit W-02): stored even when we never messaged it, and for every guest with it.
+        $e164 = Phone::normalize($from);
+        if ($e164 === null) {
+            return;
+        }
+        OptOut::add($e164);
+        $tail = substr($e164, -7); // PostgreSQL only, like the rest of the app
+        $byPhone = Guest::query()->whereRaw("regexp_replace(phone, '[^0-9]', '', 'g') like ?", ['%' . $tail])->get()->filter(fn (Guest $g) => Phone::normalize($g->phone) === $e164)->pluck('id');
+        $ids = Message::query()->where('to_phone', $e164)->whereNotNull('guest_id')->distinct()->pluck('guest_id')->merge($byPhone)->unique();
         Guest::query()->whereIn('id', $ids)->whereNull('whatsapp_opted_out_at')->update(['whatsapp_opted_out_at' => now()]);
     }
 

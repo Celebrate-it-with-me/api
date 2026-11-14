@@ -25,8 +25,21 @@ class ProductionSafetyCheck
         if (config('session.secure') !== true) {
             $problems[] = 'SESSION_SECURE_COOKIE must be true.';
         }
-        if (blank(config('sanctum.stateful')) || array_filter(config('sanctum.stateful'), fn ($d) => preg_match('/^(localhost|127\.|::1|.*\.cwm\.com)/', $d))) {
+        $stateful = array_values(array_filter((array) config('sanctum.stateful'), fn ($d) => trim((string) $d) !== ''));
+        if ($stateful === [] || array_filter($stateful, fn ($d) => preg_match('/^(localhost|127\.|::1|.*\.cwm\.com)/', $d))) {
             $problems[] = 'SANCTUM_STATEFUL_DOMAINS must list only the real SPA domains.';
+        }
+
+        // WhatsApp (audit W-10): the fake driver "sends" nothing; Meta without its secrets leaves the webhook answering 403.
+        $driver = config('services.whatsapp.driver');
+        if ($driver === 'fake') {
+            $problems[] = 'WHATSAPP_DRIVER must not be "fake".';
+        } elseif ($driver === 'meta') {
+            foreach (['app_secret' => 'WHATSAPP_APP_SECRET', 'verify_token' => 'WHATSAPP_VERIFY_TOKEN'] as $key => $env) {
+                if (blank(config("services.whatsapp.$key"))) {
+                    $problems[] = "$env must be set.";
+                }
+            }
         }
 
         return $problems;

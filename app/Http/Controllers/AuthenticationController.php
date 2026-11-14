@@ -23,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
@@ -159,7 +160,8 @@ class AuthenticationController extends Controller
      */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $limitKey = 'app-reset:' . Str::lower((string) $request->input('email'));
+        // Failures are counted per e-mail AND address, so a stranger cannot lock the real owner out (audit W-04).
+        $limitKey = 'app-reset:' . Str::lower((string) $request->input('email')) . '|' . $request->ip();
         if (RateLimiter::tooManyAttempts($limitKey, 5)) {
             return response()->json(['message' => 'Too many attempts. Try again later.', 'code' => 'too_many_attempts'], 429);
         }
@@ -173,6 +175,10 @@ class AuthenticationController extends Controller
                 ])->save();
 
                 $user->tokens()->delete();
+                // Browser sessions (cookie auth) die with the password too.
+                if (config('session.driver') === 'database') {
+                    DB::table(config('session.table', 'sessions'))->where('user_id', $user->getKey())->delete();
+                }
                 event(new PasswordReset($user));
             }
         );

@@ -72,6 +72,9 @@ return [
         'app_secret' => env('WHATSAPP_APP_SECRET'),
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
         'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v26.0'),
+        // Daily caps (rolling 24 h, audit W-01). Event: null = 3 x guests with a phone (min 100). Account = owner of the events.
+        'max_daily_per_event' => env('WHATSAPP_MAX_DAILY_PER_EVENT'),
+        'max_daily_per_account' => env('WHATSAPP_MAX_DAILY_PER_ACCOUNT', 1000),
     ],
 
     // Where suspended users and the "Necesito ayuda" button send people, and the admin panel the support mail links to.

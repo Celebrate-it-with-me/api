@@ -7,6 +7,7 @@ use App\Http\Services\WhatsApp\MessageStatus;
 use App\Http\Services\WhatsApp\WhatsAppException;
 use App\Http\Services\WhatsApp\WhatsAppService;
 use App\Models\WhatsApp\Message;
+use App\Models\WhatsApp\OptOut;
 use App\Support\WhatsApp\Phone;
 use Illuminate\Bus\Queueable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -54,9 +55,16 @@ class SendWhatsAppMessage implements ShouldQueue
             return;
         }
 
-        if ($message->type === 'template' && $message->guest?->whatsapp_opted_out_at) {
+        if ($message->type === 'template' && ($message->guest?->whatsapp_opted_out_at || OptOut::has($message->to_phone))) {
             $status->fail($message, 'opted_out', 'The guest opted out of WhatsApp messages.');
 
+            return;
+        }
+
+        // Hand the message over once (audit W-06): the Cloud API has no idempotency key for sends, so only the worker that
+        // wins this claim talks to Meta, and a send whose outcome we never learned is never repeated automatically.
+        $claimed = Message::query()->whereKey($message->id)->where('status', 'queued')->whereNull('send_started_at')->update(['send_started_at' => now()]);
+        if (! $claimed) {
             return;
         }
 
@@ -77,7 +85,15 @@ class SendWhatsAppMessage implements ShouldQueue
         } catch (WhatsAppException $e) {
             Log::warning('whatsapp send failed', ['message' => $message->id, 'to' => Phone::mask($message->to_phone), 'code' => $e->errorCode, 'retryable' => $e->retryable]);
 
+            // The outcome is unknown (timeout, 5xx): Meta may have delivered it. Never resend by itself.
+            if ($e->ambiguous) {
+                $status->fail($message, 'unknown_delivery', 'WhatsApp did not confirm whether the message was delivered. Check before retrying.');
+
+                return;
+            }
+            // Rejected for sure (throttled...): nothing was sent, so it can be handed over again.
             if ($e->retryable && $this->attempts() < $this->tries && config('queue.default') !== 'sync') {
+                Message::query()->whereKey($message->id)->update(['send_started_at' => null]);
                 $this->release($this->backoff[$this->attempts() - 1] ?? 900);
 
                 return;

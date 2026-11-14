@@ -27,7 +27,7 @@ class InviteRegisteredUserMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: __('mail.invite_registered.subject', ['event' => $this->invite->event->event_name]));
+        return new Envelope(subject: __('mail.invite_registered.subject', ['event' => MailLocale::eventName($this->invite->event->event_name)]));
     }
 
     public function content(): Content

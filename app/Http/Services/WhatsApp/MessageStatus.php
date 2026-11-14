@@ -18,6 +18,30 @@ class MessageStatus
         // Keep the id even if the status was already ahead of us.
         Message::query()->whereKey($message->id)->whereNull('wa_message_id')->update(['wa_message_id' => $waMessageId]);
         $message->refresh();
+        $this->applyPending($waMessageId);
+    }
+
+    /** Delivery updates that reached us before the id was stored (audit W-09) are applied now, oldest first. */
+    public function applyPending(string $waMessageId): void
+    {
+        $rows = DB::table('whatsapp_pending_statuses')->where('wa_message_id', $waMessageId)->orderBy('id')->get();
+        if ($rows->isEmpty()) {
+            return;
+        }
+        $message = Message::query()->where('wa_message_id', $waMessageId)->first();
+        if (! $message) {
+            return;
+        }
+        foreach ($rows as $row) {
+            $st = json_decode($row->payload, true) ?: [];
+            $at = isset($st['timestamp']) ? Carbon::createFromTimestampUTC((int) $st['timestamp']) : null;
+            match ($row->status) {
+                'sent', 'delivered', 'read' => $this->advance($message, $row->status, $at),
+                'failed' => $this->fail($message, (string) ($st['errors'][0]['code'] ?? 'failed'), (string) ($st['errors'][0]['message'] ?? $st['errors'][0]['title'] ?? 'Delivery failed'), $at),
+                default => null,
+            };
+        }
+        DB::table('whatsapp_pending_statuses')->where('wa_message_id', $waMessageId)->whereIn('id', $rows->pluck('id'))->delete();
     }
 
     /** @param 'sent'|'delivered'|'read' $status */

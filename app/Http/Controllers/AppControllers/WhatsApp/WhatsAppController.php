@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AppControllers\WhatsApp;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\WhatsApp\SendWhatsAppRequest;
+use App\Http\Services\WhatsApp\DailyLimit;
 use App\Http\Services\WhatsApp\Presenter;
 use App\Http\Services\WhatsApp\WhatsAppBroadcaster;
 use App\Jobs\SendWhatsAppMessage;
@@ -15,7 +16,9 @@ use Illuminate\Http\Request;
 /** The organizer's WhatsApp sending (docs/plans/communications-contract.md). Routes carry `event.access` and `module.access:whatsapp`. */
 class WhatsAppController extends Controller
 {
-    public function __construct(private readonly WhatsAppBroadcaster $broadcaster) {}
+    public function __construct(private readonly WhatsAppBroadcaster $broadcaster, private readonly DailyLimit $limits) {}
+
+    public const MAX_RETRIES = 3;
 
     public function send(SendWhatsAppRequest $request, Events $event): JsonResponse
     {
@@ -62,8 +65,15 @@ class WhatsAppController extends Controller
             return response()->json(['message' => 'Only failed messages can be retried.', 'code' => 'not_failed'], 409);
         }
 
+        if ($message->retry_count >= self::MAX_RETRIES) {
+            return response()->json(['message' => 'This message was already retried too many times.', 'code' => 'retry_limit'], 409);
+        }
+        if ($message->type === 'template' && $this->limits->remaining($event, $message->id) <= 0) {
+            return response()->json(['message' => 'The daily WhatsApp limit was reached.', 'code' => 'whatsapp_daily_limit'], 429);
+        }
+
         $message->forceFill([
-            'status' => 'queued', 'error_code' => null, 'error_message' => null, 'failed_at' => null, 'queued_at' => now(),
+            'retry_count' => $message->retry_count + 1, 'send_started_at' => null, 'status' => 'queued', 'error_code' => null, 'error_message' => null, 'failed_at' => null, 'queued_at' => now(),
             'sent_at' => null, 'delivered_at' => null, 'read_at' => null, 'wa_message_id' => null,
         ])->save();
         SendWhatsAppMessage::dispatch($message->id);
