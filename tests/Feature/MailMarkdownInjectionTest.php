@@ -20,7 +20,8 @@ it('does not turn an event name into a link inside the invitation mail', functio
     $html = (string) app(Markdown::class)->render('mail.invite-unregistered', ['invite' => $invite, 'role' => 'editor', 'acceptUrl' => 'https://app.example/accept']);
 
     expect($html)->not->toContain('href="https://evil.example/login"')
-        ->and($html)->toContain('evil.example');
+        // The link text is dropped altogether from an event name (W-03); the readable part stays.
+        ->and($html)->not->toContain('evil.example')->and($html)->toContain('Verifica tu cuenta');
 });
 
 it('does not turn a first name into a link in the welcome mail', function () {
