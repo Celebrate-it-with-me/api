@@ -39,7 +39,7 @@ function msgStaff(string $role = AdminPermissions::SUPERADMIN): User
 
 function msgPut($test, string $key, array $fields, array $over = [])
 {
-    return $test->actingAsReauthed(msgStaff())->putJson(MSG."/{$key}", array_merge(['locale' => 'es', 'fields' => $fields, 'reason' => 'Ajuste de tono'], $over));
+    return $test->actingAsReauthed(msgStaff())->putJson(MSG . "/{$key}", array_merge(['locale' => 'es', 'fields' => $fields, 'reason' => 'Ajuste de tono'], $over));
 }
 
 describe('permissions', function () {
@@ -49,14 +49,14 @@ describe('permissions', function () {
 
         $support = msgStaff(AdminPermissions::SUPPORT);
         $this->actingAs($support)->getJson(MSG)->assertOk();
-        $this->actingAs($support)->getJson(MSG.'/confirm-account?locale=es')->assertOk();
-        $this->actingAs($support)->postJson(MSG.'/confirm-account/preview', ['locale' => 'es'])->assertOk();
-        $this->actingAsReauthed($support)->putJson(MSG.'/confirm-account', ['locale' => 'es', 'fields' => ['subject' => 'Hola'], 'reason' => 'Ajuste de tono'])->assertForbidden();
-        $this->actingAsReauthed($support)->deleteJson(MSG.'/confirm-account', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertForbidden();
-        $this->actingAsReauthed($support)->postJson(MSG.'/confirm-account/test', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertForbidden();
+        $this->actingAs($support)->getJson(MSG . '/confirm-account?locale=es')->assertOk();
+        $this->actingAs($support)->postJson(MSG . '/confirm-account/preview', ['locale' => 'es'])->assertOk();
+        $this->actingAsReauthed($support)->putJson(MSG . '/confirm-account', ['locale' => 'es', 'fields' => ['subject' => 'Hola'], 'reason' => 'Ajuste de tono'])->assertForbidden();
+        $this->actingAsReauthed($support)->deleteJson(MSG . '/confirm-account', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertForbidden();
+        $this->actingAsReauthed($support)->postJson(MSG . '/confirm-account/test', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertForbidden();
 
         $super = msgStaff();
-        $this->actingAs($super)->putJson(MSG.'/confirm-account', ['locale' => 'es', 'fields' => ['subject' => 'Hola'], 'reason' => 'Ajuste de tono'])->assertStatus(403);
+        $this->actingAs($super)->putJson(MSG . '/confirm-account', ['locale' => 'es', 'fields' => ['subject' => 'Hola'], 'reason' => 'Ajuste de tono'])->assertStatus(403);
         expect(MessageOverride::count())->toBe(0);
     });
 
@@ -82,7 +82,7 @@ describe('reading', function () {
     });
 
     it('returns the detail with defaults, variables and limits', function () {
-        $data = $this->actingAs(msgStaff())->getJson(MSG.'/invoice?locale=en')->assertOk()->json('data');
+        $data = $this->actingAs(msgStaff())->getJson(MSG . '/invoice?locale=en')->assertOk()->json('data');
 
         expect($data['key'])->toBe('invoice')->and($data['locale'])->toBe('en')->and($data['updatedBy'])->toBeNull();
         expect($data['fields']['subject'])->toMatchArray(['overridden' => false, 'variables' => ['number'], 'maxLength' => 150]);
@@ -93,22 +93,22 @@ describe('reading', function () {
 
     it('answers 404 for unknown or non editable keys and 422 for a bad locale', function () {
         $staff = msgStaff();
-        $this->actingAs($staff)->getJson(MSG.'/nope?locale=es')->assertNotFound()->assertJson(['code' => 'message_not_found']);
-        $this->actingAs($staff)->getJson(MSG.'/support-request?locale=es')->assertNotFound();
-        $this->actingAs($staff)->getJson(MSG.'/db-rsvp?locale=es')->assertNotFound();
-        $this->actingAs($staff)->getJson(MSG.'/confirm-account?locale=fr')->assertStatus(422)->assertJsonPath('errors.locale.0', 'invalid');
-        $this->actingAs($staff)->getJson(MSG.'/confirm-account')->assertStatus(422)->assertJsonPath('errors.locale.0', 'invalid');
-        $this->actingAsReauthed($staff)->putJson(MSG.'/nope', ['locale' => 'es', 'fields' => ['subject' => 'x'], 'reason' => 'Ajuste de tono'])->assertNotFound();
-        $this->actingAsReauthed($staff)->deleteJson(MSG.'/nope', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertNotFound();
-        $this->actingAs($staff)->postJson(MSG.'/nope/preview', ['locale' => 'es'])->assertNotFound();
-        $this->actingAsReauthed($staff)->postJson(MSG.'/nope/test', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertNotFound();
+        $this->actingAs($staff)->getJson(MSG . '/nope?locale=es')->assertNotFound()->assertJson(['code' => 'message_not_found']);
+        $this->actingAs($staff)->getJson(MSG . '/support-request?locale=es')->assertNotFound();
+        $this->actingAs($staff)->getJson(MSG . '/db-rsvp?locale=es')->assertNotFound();
+        $this->actingAs($staff)->getJson(MSG . '/confirm-account?locale=fr')->assertStatus(422)->assertJsonPath('errors.locale.0', 'invalid');
+        $this->actingAs($staff)->getJson(MSG . '/confirm-account')->assertStatus(422)->assertJsonPath('errors.locale.0', 'invalid');
+        $this->actingAsReauthed($staff)->putJson(MSG . '/nope', ['locale' => 'es', 'fields' => ['subject' => 'x'], 'reason' => 'Ajuste de tono'])->assertNotFound();
+        $this->actingAsReauthed($staff)->deleteJson(MSG . '/nope', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertNotFound();
+        $this->actingAs($staff)->postJson(MSG . '/nope/preview', ['locale' => 'es'])->assertNotFound();
+        $this->actingAsReauthed($staff)->postJson(MSG . '/nope/test', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertNotFound();
     });
 });
 
 describe('validation', function () {
     it('answers one code per field', function (string $field, string $text, string $code, string $key = 'confirm-account') {
         expect(msgPut($this, $key, [$field => $text])->assertStatus(422)->json('errors')["fields.{$field}"][0])->toBe($code);
-        expect($this->actingAs(msgStaff())->postJson(MSG."/{$key}/preview", ['locale' => 'es', 'fields' => [$field => $text]])->assertStatus(422)->json('errors')["fields.{$field}"][0])->toBe($code);
+        expect($this->actingAs(msgStaff())->postJson(MSG . "/{$key}/preview", ['locale' => 'es', 'fields' => [$field => $text]])->assertStatus(422)->json('errors')["fields.{$field}"][0])->toBe($code);
         expect(MessageOverride::count())->toBe(0);
     })->with([
         'empty' => ['subject', '   ', 'required'],
@@ -129,10 +129,10 @@ describe('validation', function () {
 
     it('requires fields, a valid locale and a reason', function () {
         $s = msgStaff();
-        $this->actingAsReauthed($s)->putJson(MSG.'/welcome', ['locale' => 'es', 'fields' => ['subject' => 'Hola, :name'], 'reason' => 'no'])->assertStatus(422)->assertJsonPath('errors.reason.0', 'invalid');
-        $this->actingAsReauthed($s)->putJson(MSG.'/welcome', ['locale' => 'es', 'fields' => ['subject' => 'Hola, :name']])->assertStatus(422)->assertJsonPath('errors.reason.0', 'required');
-        $this->actingAsReauthed($s)->putJson(MSG.'/welcome', ['locale' => 'xx', 'fields' => ['subject' => 'Hola, :name'], 'reason' => 'Ajuste de tono'])->assertStatus(422)->assertJsonPath('errors.locale.0', 'invalid');
-        $this->actingAsReauthed($s)->putJson(MSG.'/welcome', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertStatus(422)->assertJsonPath('errors.fields.0', 'required');
+        $this->actingAsReauthed($s)->putJson(MSG . '/welcome', ['locale' => 'es', 'fields' => ['subject' => 'Hola, :name'], 'reason' => 'no'])->assertStatus(422)->assertJsonPath('errors.reason.0', 'invalid');
+        $this->actingAsReauthed($s)->putJson(MSG . '/welcome', ['locale' => 'es', 'fields' => ['subject' => 'Hola, :name']])->assertStatus(422)->assertJsonPath('errors.reason.0', 'required');
+        $this->actingAsReauthed($s)->putJson(MSG . '/welcome', ['locale' => 'xx', 'fields' => ['subject' => 'Hola, :name'], 'reason' => 'Ajuste de tono'])->assertStatus(422)->assertJsonPath('errors.locale.0', 'invalid');
+        $this->actingAsReauthed($s)->putJson(MSG . '/welcome', ['locale' => 'es', 'reason' => 'Ajuste de tono'])->assertStatus(422)->assertJsonPath('errors.fields.0', 'required');
     });
 
     it('accepts minimal markdown, keeps placeholders and collapses subject line breaks', function () {
@@ -146,7 +146,7 @@ describe('editing', function () {
     it('saves the override, returns the detail and writes an audit row without the full text', function () {
         $staff = msgStaff();
         $text = 'Confirma tu correo, un paso más y listo';
-        $res = $this->actingAsReauthed($staff)->putJson(MSG.'/confirm-account', ['locale' => 'es', 'fields' => ['subject' => $text], 'reason' => 'Ajuste de tono'])->assertOk();
+        $res = $this->actingAsReauthed($staff)->putJson(MSG . '/confirm-account', ['locale' => 'es', 'fields' => ['subject' => $text], 'reason' => 'Ajuste de tono'])->assertOk();
 
         $res->assertJsonPath('data.fields.subject.current', $text)->assertJsonPath('data.fields.subject.overridden', true)
             ->assertJsonPath('data.fields.intro.overridden', false)->assertJsonPath('data.updatedBy.id', $staff->id);
@@ -172,14 +172,14 @@ describe('editing', function () {
         msgPut($this, 'confirm-account', ['subject' => 'Uno en'], ['locale' => 'en'])->assertOk();
         $s = msgStaff();
 
-        $this->actingAsReauthed($s)->deleteJson(MSG.'/confirm-account', ['locale' => 'es', 'fields' => ['subject'], 'reason' => 'Volver al original'])
+        $this->actingAsReauthed($s)->deleteJson(MSG . '/confirm-account', ['locale' => 'es', 'fields' => ['subject'], 'reason' => 'Volver al original'])
             ->assertOk()->assertJsonPath('data.fields.subject.overridden', false)->assertJsonPath('data.fields.preheader.overridden', true);
         expect(MessageOverride::where('locale', 'es')->count())->toBe(2);
 
-        $this->actingAsReauthed($s)->deleteJson(MSG.'/confirm-account', ['locale' => 'es', 'reason' => 'Volver al original'])->assertOk()->assertJsonPath('data.fields.preheader.overridden', false);
+        $this->actingAsReauthed($s)->deleteJson(MSG . '/confirm-account', ['locale' => 'es', 'reason' => 'Volver al original'])->assertOk()->assertJsonPath('data.fields.preheader.overridden', false);
         expect(MessageOverride::pluck('locale')->all())->toBe(['en']);
         expect(AdminAuditLog::where('action', 'message.reset')->count())->toBe(2);
-        $this->actingAsReauthed($s)->deleteJson(MSG.'/confirm-account', ['locale' => 'es', 'fields' => ['footer'], 'reason' => 'Volver al original'])->assertStatus(422)->assertJsonValidationErrors(['fields.footer' => 'not_editable']);
+        $this->actingAsReauthed($s)->deleteJson(MSG . '/confirm-account', ['locale' => 'es', 'fields' => ['footer'], 'reason' => 'Volver al original'])->assertStatus(422)->assertJsonValidationErrors(['fields.footer' => 'not_editable']);
     });
 });
 
@@ -236,7 +236,9 @@ describe('applying the text', function () {
         expect(Cache::has(MessageOverrides::CACHE_KEY))->toBeTrue();
 
         $queries = 0;
-        DB::listen(function ($q) use (&$queries) { str_contains($q->sql, 'message_overrides') && $queries++; });
+        DB::listen(function ($q) use (&$queries) {
+            str_contains($q->sql, 'message_overrides') && $queries++;
+        });
         trans('mail.confirm.subject', [], 'es');
         trans('mail.confirm.title', ['name' => 'a'], 'es');
         expect($queries)->toBe(0);
@@ -245,14 +247,14 @@ describe('applying the text', function () {
         expect(Cache::has(MessageOverrides::CACHE_KEY))->toBeFalse();
         expect(trans('mail.confirm.subject', [], 'es'))->toBe('Dos');
 
-        $this->actingAsReauthed(msgStaff())->deleteJson(MSG.'/confirm-account', ['locale' => 'es', 'reason' => 'Volver al original'])->assertOk();
+        $this->actingAsReauthed(msgStaff())->deleteJson(MSG . '/confirm-account', ['locale' => 'es', 'reason' => 'Volver al original'])->assertOk();
         expect(trans('mail.confirm.subject', [], 'es'))->toBe(MessageCatalog::default('confirm-account', 'es', 'subject'));
     });
 });
 
 describe('preview', function () {
     it('renders with the sample data, the unsaved text and without saving', function () {
-        $res = $this->actingAs(msgStaff())->postJson(MSG.'/welcome/preview', ['locale' => 'es', 'fields' => ['subject' => 'Bienvenida, :name', 'intro' => 'Texto **nuevo** de prueba']])->assertOk();
+        $res = $this->actingAs(msgStaff())->postJson(MSG . '/welcome/preview', ['locale' => 'es', 'fields' => ['subject' => 'Bienvenida, :name', 'intro' => 'Texto **nuevo** de prueba']])->assertOk();
 
         expect($res->json('data.subject'))->toBe('Bienvenida, Valentina');
         expect($res->json('data.html'))->toMatch('/<strong[^>]*>nuevo<\/strong>/')->and($res->json('data.preheader'))->not->toBe('');
@@ -263,12 +265,12 @@ describe('preview', function () {
 
     it('uses the saved overrides for fields not sent and works with no fields', function () {
         msgPut($this, 'welcome', ['title' => 'Qué gusto, :name'])->assertOk();
-        $html = $this->actingAs(msgStaff())->postJson(MSG.'/welcome/preview', ['locale' => 'es'])->assertOk()->json('data.html');
+        $html = $this->actingAs(msgStaff())->postJson(MSG . '/welcome/preview', ['locale' => 'es'])->assertOk()->json('data.html');
         expect($html)->toContain('Qué gusto, Valentina');
     });
 
     it('escapes html that a placeholder value could bring, never renders typed html', function () {
-        $this->actingAs(msgStaff())->postJson(MSG.'/welcome/preview', ['locale' => 'es', 'fields' => ['intro' => '<img src=x onerror=alert(1)>']])->assertStatus(422);
+        $this->actingAs(msgStaff())->postJson(MSG . '/welcome/preview', ['locale' => 'es', 'fields' => ['intro' => '<img src=x onerror=alert(1)>']])->assertStatus(422);
     });
 });
 
@@ -277,15 +279,15 @@ describe('test send', function () {
         $staff = msgStaff();
         $other = msgStaff(AdminPermissions::SUPPORT);
 
-        $this->actingAsReauthed($staff)->postJson(MSG.'/welcome/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertOk()->assertJson(['data' => ['sent' => true]]);
+        $this->actingAsReauthed($staff)->postJson(MSG . '/welcome/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertOk()->assertJson(['data' => ['sent' => true]]);
         Mail::assertSent(WelcomeEmail::class, fn ($m) => $m->hasTo($staff->email));
 
-        $this->actingAsReauthed($staff)->postJson(MSG.'/welcome/test', ['locale' => 'en', 'to' => strtoupper($other->email), 'reason' => 'Revisar el texto'])->assertOk();
+        $this->actingAsReauthed($staff)->postJson(MSG . '/welcome/test', ['locale' => 'en', 'to' => strtoupper($other->email), 'reason' => 'Revisar el texto'])->assertOk();
         Mail::assertSent(WelcomeEmail::class, fn ($m) => $m->hasTo($other->email));
 
-        $this->actingAsReauthed($staff)->postJson(MSG.'/welcome/test', ['locale' => 'es', 'to' => User::factory()->create()->email, 'reason' => 'Revisar el texto'])
+        $this->actingAsReauthed($staff)->postJson(MSG . '/welcome/test', ['locale' => 'es', 'to' => User::factory()->create()->email, 'reason' => 'Revisar el texto'])
             ->assertStatus(422)->assertJsonPath('errors.to.0', 'not_staff');
-        $this->actingAsReauthed($staff)->postJson(MSG.'/welcome/test', ['locale' => 'es', 'to' => 'ajeno@example.com', 'reason' => 'Revisar el texto'])
+        $this->actingAsReauthed($staff)->postJson(MSG . '/welcome/test', ['locale' => 'es', 'to' => 'ajeno@example.com', 'reason' => 'Revisar el texto'])
             ->assertStatus(422)->assertJsonPath('errors.to.0', 'not_staff');
         Mail::assertSent(WelcomeEmail::class, 2);
 
@@ -295,11 +297,11 @@ describe('test send', function () {
 
     it('sends notifications as html and is limited to five per hour', function () {
         $staff = msgStaff();
-        $this->actingAsReauthed($staff)->postJson(MSG.'/budget-reminder/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertOk();
+        $this->actingAsReauthed($staff)->postJson(MSG . '/budget-reminder/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertOk();
         for ($i = 0; $i < 4; $i++) {
-            $this->actingAsReauthed($staff)->postJson(MSG.'/welcome/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertOk();
+            $this->actingAsReauthed($staff)->postJson(MSG . '/welcome/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertOk();
         }
-        $this->actingAsReauthed($staff)->postJson(MSG.'/welcome/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertStatus(429);
+        $this->actingAsReauthed($staff)->postJson(MSG . '/welcome/test', ['locale' => 'es', 'reason' => 'Revisar el texto'])->assertStatus(429);
     });
 });
 
@@ -312,12 +314,12 @@ describe('every registry mail', function () {
 
         // Override every editable field with its own default plus a marker, keeping the placeholders.
         foreach (MessageCatalog::fields($key) as $field) {
-            MessageOverride::create(['message_key' => $key, 'locale' => $lang, 'field' => $field, 'value' => MessageCatalog::default($key, $lang, $field).' ✱']);
+            MessageOverride::create(['message_key' => $key, 'locale' => $lang, 'field' => $field, 'value' => MessageCatalog::default($key, $lang, $field) . ' ✱']);
         }
         app(MessageOverrides::class)->forget();
 
         $edited = MailPreviewRenderer::render($definition, $lang);
-        expect($edited['problems'])->toBe([], "{$key}/{$lang} with override: ".implode('; ', $edited['problems']));
+        expect($edited['problems'])->toBe([], "{$key}/{$lang} with override: " . implode('; ', $edited['problems']));
         expect($edited['subject'])->toContain('✱');
         expect($path)->not->toBeNull();
     })->with(function () {
@@ -346,7 +348,7 @@ describe('every registry mail', function () {
 
     it('is not affected by the app locale after a preview', function () {
         $before = App::getLocale();
-        $this->actingAs(msgStaff())->postJson(MSG.'/welcome/preview', ['locale' => 'en'])->assertOk();
+        $this->actingAs(msgStaff())->postJson(MSG . '/welcome/preview', ['locale' => 'en'])->assertOk();
         expect(App::getLocale())->toBe($before);
     });
 });

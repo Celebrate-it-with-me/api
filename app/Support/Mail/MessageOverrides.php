@@ -29,7 +29,7 @@ class MessageOverrides
 
         $this->reading = true;
         try {
-            $slot = $locale.'|'.$item;
+            $slot = $locale . '|' . $item;
             if ($this->preview !== null && isset($this->preview[$slot])) {
                 return $this->preview[$slot];
             }
@@ -73,7 +73,7 @@ class MessageOverrides
         $previous = $this->preview;
         $this->preview = $previous ?? [];
         foreach ($fields as $field => $text) {
-            $this->preview[$locale.'|'.MessageCatalog::item($key, $field)] = $text;
+            $this->preview[$locale . '|' . MessageCatalog::item($key, $field)] = $text;
         }
 
         try {
@@ -89,7 +89,7 @@ class MessageOverrides
         $map = [];
         foreach (MessageOverride::query()->get(['message_key', 'locale', 'field', 'value']) as $row) {
             if (MessageCatalog::isEditable($row->message_key) && in_array($row->field, MessageCatalog::fields($row->message_key), true)) {
-                $map[$row->locale.'|'.MessageCatalog::item($row->message_key, $row->field)] = $row->value;
+                $map[$row->locale . '|' . MessageCatalog::item($row->message_key, $row->field)] = $row->value;
             }
         }
 
