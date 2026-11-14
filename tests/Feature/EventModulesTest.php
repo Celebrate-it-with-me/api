@@ -38,7 +38,8 @@ describe('the catalog', function () {
     it('is seeded in menu order, with the modules that are not built yet switched off', function () {
         $keys = Module::query()->enabled()->get()->sortBy(['section', 'sort_order'])->pluck('key');
 
-        expect(Module::count())->toBe(14)
+        expect(Module::count())->toBe(15)
+            ->and(Module::where('key', 'whatsapp')->value('is_enabled'))->toBeFalse()
             ->and(Module::where('key', 'invitation')->value('is_enabled'))->toBeFalse()
             ->and(Module::where('key', 'padrinos')->value('is_enabled'))->toBeTrue()
             ->and($keys)->not->toContain('invitation')->toContain('padrinos');
