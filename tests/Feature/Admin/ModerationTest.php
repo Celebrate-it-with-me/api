@@ -345,7 +345,7 @@ describe('bulk', function () {
 
         expect($res->json('data.succeeded'))->toBe(2)->and($res->json('data.failed'))->toBe(1)
             ->and($res->json('data.results'))->toHaveCount(3)
-            ->and($res->json('data.results.0'))->toBe(['type' => 'comment', 'id' => 9999, 'ok' => false, 'changed' => false, 'error' => ['code' => 'not_found', 'message' => 'El elemento ya no existe.']])
+            ->and($res->json('data.results.0'))->toBe(['type' => 'comment', 'id' => 9999, 'ok' => false, 'changed' => false, 'error' => ['code' => 'not_found', 'message' => 'The item no longer exists.']])
             ->and($ok->fresh()->hidden_at)->not->toBeNull()->and($img->fresh()->hidden_at)->not->toBeNull()
             ->and(AdminAuditLog::where('action', 'moderation.hide')->count())->toBe(2);
     });
