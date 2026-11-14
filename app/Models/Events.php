@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\EventsFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -47,6 +48,8 @@ class Events extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'published_at' => 'datetime',
+        'archived_at' => 'datetime',
+        'purge_after' => 'datetime',
         'template_config' => 'array',
     ];
 
@@ -102,6 +105,21 @@ class Events extends Model
     public function getOwnerUserIdAttribute(): int
     {
         return $this->owner?->user?->id ?? 0;
+    }
+
+    /**
+     * Archived because its owner deleted her account (docs/plans/account-deletion-contract.md): the public invitation
+     * stays readable until `purge_after`, but nothing can be answered or sent and nobody can bring it back.
+     */
+    public function isAccountArchived(): bool
+    {
+        return $this->status === 'archived' && $this->purge_after !== null;
+    }
+
+    /** Scope: events archived by an account deletion. */
+    public function scopeAccountArchived(Builder $query): Builder
+    {
+        return $query->where('status', 'archived')->whereNotNull('purge_after');
     }
 
     /**

@@ -170,6 +170,8 @@ class AuthenticationController extends Controller
                 $user->forceFill([
                     'password' => $password,
                     'remember_token' => Str::random(60),
+                    // A social-login account that resets its password now has one of its own.
+                    'has_password' => true,
                 ])->save();
 
                 $user->tokens()->delete();
