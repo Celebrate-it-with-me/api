@@ -67,8 +67,6 @@ class BackgroundMusicServices
         $backgroundMusic->auto_play = $this->request->input('autoplay') ? 1 : 0;
         $backgroundMusic->song_url = $songPath;
         
-        \Log::info('checking new background music', [$backgroundMusic, $this->request->all()]);
-        
         $backgroundMusic->save();
         
         return $backgroundMusic;
