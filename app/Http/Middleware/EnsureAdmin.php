@@ -26,15 +26,18 @@ class EnsureAdmin
             return response()->json(['message' => 'Your access to the admin panel is suspended.', 'code' => 'account_suspended'], 403);
         }
 
-        // Idle and absolute expiry of the panel's tokens. The panel's own tokens are revoked; a token of another client
-        // (the organizers' app) is only refused here and keeps working where it belongs. Real tokens only: a cookie
-        // session (TransientToken) has no timestamps.
+        // The panel only answers to the tokens issued by its own login (admin/login, with its two-factor step). A cookie
+        // session (TransientToken) comes from the organizers' app login, which asks for the password only, and a token of
+        // another client was not issued here: neither may bypass the panel's sign-in.
         $token = $request->user()->currentAccessToken();
-        if ($token instanceof PersonalAccessToken && ($reason = app(TokenLifetime::class)->expiredReason($request, $token))) {
-            if ($token->client === 'admin') {
-                app(AdminAudit::class)->record('account.session_expired', $request->user(), ['after' => ['reason' => $reason, 'sessionId' => $token->getKey()]]);
-                $token->delete();
-            }
+        if (! $token instanceof PersonalAccessToken || $token->client !== 'admin') {
+            return response()->json(['message' => 'Sign in to the admin panel.', 'code' => 'admin_session_required'], 401);
+        }
+
+        // Idle and absolute expiry of the panel's tokens, which are revoked when they expire.
+        if ($reason = app(TokenLifetime::class)->expiredReason($request, $token)) {
+            app(AdminAudit::class)->record('account.session_expired', $request->user(), ['after' => ['reason' => $reason, 'sessionId' => $token->getKey()]]);
+            $token->delete();
 
             return response()->json(['message' => 'Your session expired. Sign in again.', 'code' => 'session_expired', 'reason' => $reason], 401);
         }

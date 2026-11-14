@@ -44,11 +44,12 @@ class AccountSecurity
         RateLimiter::clear($key);
     }
 
-    /** Deletes every token of the user except the one in use (null: all of them). Returns how many were closed. */
-    public function revokeTokens(User $user, ?PersonalAccessToken $except = null): int
+    /** Deletes every token of the user except the one in use (null: all of them), optionally only those of one client. Returns how many were closed. */
+    public function revokeTokens(User $user, ?PersonalAccessToken $except = null, ?string $client = null): int
     {
         return $user->tokens()
             ->when($except, fn ($q) => $q->whereKeyNot($except->getKey()))
+            ->when($client, fn ($q) => $q->where('client', $client))
             ->delete();
     }
 
