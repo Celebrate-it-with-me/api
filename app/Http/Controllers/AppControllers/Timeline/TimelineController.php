@@ -45,7 +45,7 @@ class TimelineController extends Controller
         $created = $this->timelines->createTypical($event);
 
         if ($created === null) {
-            return response()->json(['message' => 'The program already has moments.'], 422);
+            return response()->json(['message' => __('errors.timeline.already_has_moments')], 422);
         }
 
         return $this->list($created, 201);

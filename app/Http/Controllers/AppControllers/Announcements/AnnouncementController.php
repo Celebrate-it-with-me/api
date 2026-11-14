@@ -40,10 +40,10 @@ class AnnouncementController extends Controller
         $user = $request->user();
         $a = $this->announcements->visibleTo($user, $announcement);
         if (! $a) {
-            return response()->json(['message' => 'Announcement not found.', 'code' => 'announcement_not_found'], 404);
+            return response()->json(['message' => __('errors.announcement.not_found'), 'code' => 'announcement_not_found'], 404);
         }
         if (! $a->dismissible) {
-            return response()->json(['message' => 'This announcement cannot be dismissed.', 'errors' => ['announcement' => ['not_dismissible']]], 422);
+            return response()->json(['message' => __('errors.announcement.not_dismissible'), 'errors' => ['announcement' => ['not_dismissible']]], 422);
         }
         $this->announcements->dismiss($a, $user);
 

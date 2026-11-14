@@ -142,7 +142,7 @@ class EventLocationController extends Controller
         $google = collect($request->input('googlePhotos', []))->unique()->values();
 
         if ($location->eventLocationImages()->count() + count($uploads) + $google->count() > EventLocation::MAX_IMAGES) {
-            throw ValidationException::withMessages(['images' => 'A place can have at most ' . EventLocation::MAX_IMAGES . ' pictures.']);
+            throw ValidationException::withMessages(['images' => __('errors.event_location.images_limit', ['max' => EventLocation::MAX_IMAGES])]);
         }
 
         foreach ($uploads as $file) {

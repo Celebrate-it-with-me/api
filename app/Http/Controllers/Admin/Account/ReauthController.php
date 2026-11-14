@@ -29,12 +29,12 @@ class ReauthController extends Controller
         $user = $request->user();
         $token = $this->security->currentToken($user);
         if (! $token) {
-            return response()->json(['message' => 'Sign in again to confirm your identity.', 'code' => 'token_required'], 409);
+            return response()->json(['message' => __('errors.auth.reauth_token_required'), 'code' => 'token_required'], 409);
         }
 
         // With two-factor on, the code is mandatory; without it the 422 does not reveal whether the password was right.
         if ($user->hasAdminTwoFactor() && empty($data['code'])) {
-            return response()->json(['message' => 'The code is required.', 'errors' => ['code' => ['Escribe el código de tu aplicación de autenticación.']]], 422);
+            return response()->json(['message' => __('errors.auth.reauth_code_required'), 'errors' => ['code' => [__('errors.auth.reauth_code_hint')]]], 422);
         }
 
         $this->reauth->confirm($user, $token, $data['password'], $data['code'] ?? null);

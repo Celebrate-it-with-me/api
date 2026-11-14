@@ -69,7 +69,7 @@ class UserSettingsServices
             // A stolen session cannot guess the current password without limit.
             $key = 'app-password:' . $user->id;
             if (RateLimiter::tooManyAttempts($key, 5)) {
-                throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($key)]);
+                throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($key)]);
             }
 
             if (!Hash::check($request->input('currentPassword'), $user->password)) {

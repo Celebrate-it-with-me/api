@@ -29,7 +29,7 @@ class GuestController extends Controller
             throw $limit; // renders as a 402 with the numbers (see the exception)
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 

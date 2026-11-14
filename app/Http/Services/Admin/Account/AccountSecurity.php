@@ -32,13 +32,13 @@ class AccountSecurity
         $key = "admin-account-password:{$user->id}";
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_PASSWORD_FAILURES)) {
-            throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($key)]);
+            throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($key)]);
         }
 
         if (! is_string($password) || $password === '' || ! Hash::check($password, $user->password)) {
             RateLimiter::hit($key, self::LOCK_SECONDS);
 
-            throw ValidationException::withMessages([$field => ['La contraseña actual no es correcta.']]);
+            throw ValidationException::withMessages([$field => [__('errors.auth.current_password_wrong')]]);
         }
 
         RateLimiter::clear($key);

@@ -57,7 +57,7 @@ class TwoFactorService
     public function startSetup(User $user): array
     {
         if ($user->hasAdminTwoFactor()) {
-            throw new RuntimeException('Two-factor authentication is already active.');
+            throw new RuntimeException(__('errors.two_factor.already_active'));
         }
 
         $secret = $this->google2fa->generateSecretKey(32);
@@ -132,7 +132,7 @@ class TwoFactorService
     {
         $record = $user->adminTwoFactor;
         if (! $record || ! $record->isActive()) {
-            throw new RuntimeException('Two-factor authentication is not active.');
+            throw new RuntimeException(__('errors.two_factor.not_active'));
         }
         $plain = $this->newRecoveryCodes($record);
         $record->save();

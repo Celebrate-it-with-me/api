@@ -62,14 +62,14 @@ class WhatsAppController extends Controller
         $message = Message::query()->where('event_id', $event->id)->findOrFail($message);
 
         if ($message->status !== 'failed') {
-            return response()->json(['message' => 'Only failed messages can be retried.', 'code' => 'not_failed'], 409);
+            return response()->json(['message' => __('errors.whatsapp.only_failed_retry'), 'code' => 'not_failed'], 409);
         }
 
         if ($message->retry_count >= self::MAX_RETRIES) {
-            return response()->json(['message' => 'This message was already retried too many times.', 'code' => 'retry_limit'], 409);
+            return response()->json(['message' => __('errors.whatsapp.retry_limit'), 'code' => 'retry_limit'], 409);
         }
         if ($message->type === 'template' && $this->limits->remaining($event, $message->id) <= 0) {
-            return response()->json(['message' => 'The daily WhatsApp limit was reached.', 'code' => 'whatsapp_daily_limit'], 429);
+            return response()->json(['message' => __('errors.whatsapp.daily_limit'), 'code' => 'whatsapp_daily_limit'], 429);
         }
 
         $message->forceFill([

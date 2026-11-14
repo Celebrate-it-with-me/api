@@ -38,7 +38,7 @@ class UserTwoFactorService
     public function startSetup(User $user): array
     {
         if ($this->isActive($user)) {
-            throw new RuntimeException('Two-factor authentication is already active.');
+            throw new RuntimeException(__('errors.two_factor.already_active'));
         }
 
         $secret = $this->google2fa->generateSecretKey(32);
@@ -106,7 +106,7 @@ class UserTwoFactorService
     public function regenerateRecoveryCodes(User $user): array
     {
         if (! $this->isActive($user)) {
-            throw new RuntimeException('Two-factor authentication is not active.');
+            throw new RuntimeException(__('errors.two_factor.not_active'));
         }
         $plain = $this->newRecoveryCodes($user);
         $user->save();

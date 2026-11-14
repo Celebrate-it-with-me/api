@@ -15,11 +15,11 @@ class ImpersonationEndController extends Controller
         $session = $request->attributes->get('impersonation_session');
 
         if (! $session) {
-            return response()->json(['message' => 'No hay una sesión de soporte activa.', 'code' => 'not_impersonating'], 409);
+            return response()->json(['message' => __('errors.impersonation.not_active'), 'code' => 'not_impersonating'], 409);
         }
 
         $service->finish($session, 'staff');
 
-        return response()->json(['message' => 'Sesión de soporte terminada.', 'sessionId' => $session->id]);
+        return response()->json(['message' => __('errors.impersonation.ended'), 'sessionId' => $session->id]);
     }
 }

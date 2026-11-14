@@ -30,7 +30,7 @@ class EventActionController extends Controller
             $updated = $this->actions->lifecycle($event, $action, $d['reason'], $request->user(), $d['stage'] ?? null);
         } catch (PlanLimitExceeded $e) {
             return response()->json([
-                'message' => "La lista tiene {$e->total} invitados y el plan del evento permite {$e->limit}. Hay que quitar " . ($e->total - $e->limit) . ' o desbloquear el evento antes de publicarlo.',
+                'message' => __('errors.event_actions.plan_limit', ['total' => $e->total, 'limit' => $e->limit, 'excess' => $e->total - $e->limit]),
                 'code' => $e->reason, 'limit' => $e->limit, 'total' => $e->total, 'excess' => $e->total - $e->limit,
             ], 402);
         }
@@ -76,7 +76,7 @@ class EventActionController extends Controller
             'reason' => AdminAudit::reasonRule(),
         ]);
         if ($d['slug'] === $event->custom_url_slug) {
-            throw ValidationException::withMessages(['slug' => 'Ese ya es el enlace actual.']);
+            throw ValidationException::withMessages(['slug' => __('errors.event_actions.same_slug')]);
         }
 
         $old = $event->custom_url_slug;
@@ -95,10 +95,10 @@ class EventActionController extends Controller
 
         $user = User::where('email', $d['newOwnerEmail'])->first();
         if (! $user) {
-            throw ValidationException::withMessages(['newOwnerEmail' => 'No existe ninguna usuaria con ese correo.']);
+            throw ValidationException::withMessages(['newOwnerEmail' => __('errors.event_actions.owner_not_found')]);
         }
         if ($user->suspended_at !== null) {
-            throw ValidationException::withMessages(['newOwnerEmail' => 'Esa cuenta está suspendida.']);
+            throw ValidationException::withMessages(['newOwnerEmail' => __('errors.event_actions.owner_suspended')]);
         }
 
         $r = $this->actions->transfer($event, $user, $d['reason'], $request->user());

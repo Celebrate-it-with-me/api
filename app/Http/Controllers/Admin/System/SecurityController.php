@@ -28,7 +28,7 @@ class SecurityController extends Controller
         // Lock-out protection: whoever turns it on must already be covered by it. Turning it off is always allowed.
         if ($f['enabled'] && ! $user->hasAdminTwoFactor()) {
             return response()->json([
-                'message' => 'Set up your own two-factor authentication before requiring it from everyone.',
+                'message' => __('errors.admin.two_factor_first'),
                 'code' => 'own_two_factor_required',
             ], 422);
         }

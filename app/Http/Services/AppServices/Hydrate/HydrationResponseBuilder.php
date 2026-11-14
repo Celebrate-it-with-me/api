@@ -125,7 +125,7 @@ class HydrationResponseBuilder
     public function buildUnauthorized(): JsonResponse
     {
         return response()->json([
-            'message' => 'You do not have permission to access this event. Please contact the event organizer.',
+            'message' => __('errors.permission.event_access_contact'),
         ], 403);
     }
 

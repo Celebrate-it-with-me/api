@@ -25,7 +25,7 @@ class EventPermissionsController extends Controller
         
         if (!$user->hasEventRole($event)) {
             return response()->json([
-                'message' => 'You do not have permission to access this event.',
+                'message' => __('errors.permission.event_access'),
                 'data' => [],
             ], 403);
         }

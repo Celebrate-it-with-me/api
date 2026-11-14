@@ -38,7 +38,7 @@ class EventsController extends Controller
             ]);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
     
@@ -69,7 +69,7 @@ class EventsController extends Controller
             ]);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
     
@@ -89,7 +89,7 @@ class EventsController extends Controller
             return EventResource::collection($events);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 
@@ -104,7 +104,7 @@ class EventsController extends Controller
             return EventResource::make($this->eventsServices->create());
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 
@@ -117,7 +117,7 @@ class EventsController extends Controller
             return EventResource::make($event);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 
@@ -130,7 +130,7 @@ class EventsController extends Controller
             return EventResource::make($this->eventsServices->update($event));
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 
@@ -146,7 +146,7 @@ class EventsController extends Controller
             ]);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
     
@@ -169,7 +169,7 @@ class EventsController extends Controller
             ]);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
     
@@ -186,7 +186,7 @@ class EventsController extends Controller
             return response()->json($suggestions);
         } catch (Throwable $th) {
             report($th);
-            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
     

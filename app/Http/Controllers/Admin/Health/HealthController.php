@@ -51,7 +51,7 @@ class HealthController extends Controller
     public function retryJob(Request $request, string $uuid, FailedJobActions $actions, AdminAudit $audit): JsonResponse
     {
         $reason = $request->validate(['reason' => AdminAudit::reasonRule()])['reason'];
-        $job = $actions->find($uuid) ?? abort(404, 'Failed job not found.');
+        $job = $actions->find($uuid) ?? abort(404, __('errors.health.failed_job_not_found'));
 
         abort_unless($actions->retry($uuid), 422, 'Este trabajo no se puede reintentar: su contenido está dañado.');
         $audit->record('health.failed_job_retry', ['failed_job', $job['id']], ['reason' => $reason, 'after' => ['job' => $job['job'], 'queue' => $job['queue']]]);
@@ -62,7 +62,7 @@ class HealthController extends Controller
     public function forgetJob(Request $request, string $uuid, FailedJobActions $actions, AdminAudit $audit): JsonResponse
     {
         $reason = $request->validate(['reason' => AdminAudit::reasonRule()])['reason'];
-        $job = $actions->find($uuid) ?? abort(404, 'Failed job not found.');
+        $job = $actions->find($uuid) ?? abort(404, __('errors.health.failed_job_not_found'));
 
         $actions->forget($uuid);
         $audit->record('health.failed_job_forget', ['failed_job', $job['id']], ['reason' => $reason, 'before' => ['job' => $job['job'], 'queue' => $job['queue']]]);
