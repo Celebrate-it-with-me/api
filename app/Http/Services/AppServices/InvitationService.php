@@ -47,12 +47,15 @@ class InvitationService
         'rsvp' => 'rsvp',
     ];
 
-    /** Only published events have a public invitation. */
+    /**
+     * Only published events have a public invitation, plus the ones archived because their owner deleted her
+     * account: the links already sent keep opening, read only, until the event is purged (see rsvpWindow).
+     */
     public function findEvent(string $slug): ?Events
     {
         return Events::query()
             ->where('custom_url_slug', $slug)
-            ->where('status', 'published')
+            ->where(fn ($q) => $q->where('status', 'published')->orWhere(fn ($q) => $q->accountArchived()))
             ->first();
     }
 
@@ -588,6 +591,11 @@ class InvitationService
     /** @return array{deadline: ?string, isOpen: bool} */
     private function rsvpWindow(Events $event): array
     {
+        // An invitation kept after its owner deleted her account is read only: nobody can answer it any more.
+        if ($event->isAccountArchived()) {
+            return ['deadline' => null, 'isOpen' => false];
+        }
+
         $raw = Rsvp::query()->where('event_id', $event->id)->value('confirmation_deadline');
 
         if (! $raw) {

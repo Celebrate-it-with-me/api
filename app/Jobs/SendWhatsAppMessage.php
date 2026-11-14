@@ -6,6 +6,7 @@ use App\Http\Services\WhatsApp\MessageComposer;
 use App\Http\Services\WhatsApp\MessageStatus;
 use App\Http\Services\WhatsApp\WhatsAppException;
 use App\Http\Services\WhatsApp\WhatsAppService;
+use App\Models\Events;
 use App\Models\WhatsApp\Message;
 use App\Support\WhatsApp\Phone;
 use Illuminate\Bus\Queueable;
@@ -51,6 +52,13 @@ class SendWhatsAppMessage implements ShouldQueue
 
         // Already sent or failed (a retry of the job, or a double dispatch): nothing to do.
         if (! $message || $message->status !== 'queued') {
+            return;
+        }
+
+        // Queued before the owner deleted her account: nothing leaves once the event is archived.
+        if ($message->event_id && Events::query()->whereKey($message->event_id)->accountArchived()->exists()) {
+            $status->fail($message, 'event_archived', 'The event was archived.');
+
             return;
         }
 
