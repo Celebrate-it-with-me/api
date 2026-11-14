@@ -80,7 +80,7 @@ describe('what an event shows', function () {
 
         expect(collect(app(EventModules::class)->forEvent($event))->pluck('key')->all())->toBe([
             'guests', 'rsvp', 'save_the_date',
-            'timeline', 'locations', 'dress_code', 'budget', 'padrinos',
+            'timeline', 'locations', 'dress_code', 'budget', 'padrinos', 'collaborators',
             'menus', 'seating', 'suggested_music', 'memories', 'comments',
         ]);
     });
