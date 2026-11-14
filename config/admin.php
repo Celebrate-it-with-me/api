@@ -22,4 +22,7 @@ return [
 
     // How long a successful re-authentication (`POST admin/account/reauth`) keeps the very sensitive actions open, in minutes.
     'reauth_minutes' => (int) env('ADMIN_REAUTH_MINUTES', 10),
+
+    // How long the link of an invitation to the admin team lives, in hours (a resend renews it).
+    'invitation_hours' => (int) env('ADMIN_INVITATION_HOURS', 72),
 ];

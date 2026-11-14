@@ -6,29 +6,48 @@ use App\Http\Controllers\Controller;
 use App\Http\Services\Admin\Account\AccountSecurity;
 use App\Http\Services\Admin\Account\TwoFactorService;
 use App\Http\Services\Admin\AdminAudit;
+use App\Http\Services\Admin\Impersonation\ImpersonationService;
+use App\Http\Services\Admin\Team\TeamInvitations;
+use App\Http\Services\Admin\Team\TeamMember;
+use App\Models\AdminInvitation;
 use App\Models\User;
 use App\Support\AdminPermissions;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/** The people who can open the admin panel. Only a superadmin gets here (`admin.team.manage`). */
+/**
+ * The people who can open the admin panel, and the invitations still waiting (docs/plans/admin-team-contract.md).
+ * Only a superadmin gets here (`admin.team.manage`). The `{id}` of a route is a user id, except in the two
+ * `invitation` routes, where it is the id of an invited member (AdminInvitation::MEMBER_ID_OFFSET + invitation id).
+ */
 class TeamController extends Controller
 {
-    public function __construct(private readonly AdminAudit $audit, private readonly AccountSecurity $security, private readonly TwoFactorService $twoFactor) {}
+    public function __construct(
+        private readonly AdminAudit $audit,
+        private readonly AccountSecurity $security,
+        private readonly TwoFactorService $twoFactor,
+        private readonly TeamInvitations $invitations,
+    ) {}
 
+    /** Active first, then invited, then suspended; each group by name. */
     public function index(): JsonResponse
     {
         $staff = User::query()->role(AdminPermissions::STAFF_ROLES)->with(['roles', 'adminTwoFactor'])->orderBy('name')->get();
+        $invited = AdminInvitation::query()->orderBy('name')->orderBy('email')->get();
 
-        return response()->json(['data' => $staff->map(fn (User $u) => $this->present($u))->values()]);
+        $members = collect()
+            ->concat($staff->reject(fn (User $u) => $u->admin_suspended_at)->map(fn (User $u) => TeamMember::fromUser($u)))
+            ->concat($invited->map(fn (AdminInvitation $i) => TeamMember::fromInvitation($i)))
+            ->concat($staff->filter(fn (User $u) => $u->admin_suspended_at)->map(fn (User $u) => TeamMember::fromUser($u)));
+
+        return response()->json(['data' => $members->values()]);
     }
 
-    /** Give an existing account a staff role, or create the account (with a temporary password, shown once). */
+    /** Invites a person by mail. She gets the staff role only when she accepts. */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -38,39 +57,39 @@ class TeamController extends Controller
             'reason' => AdminAudit::reasonRule(),
         ]);
 
-        $user = User::query()->where('email', $data['email'])->first();
-        $temporary = null;
+        [$invitation, $mailSent] = $this->invitations->invite($request->user(), $data['email'], $data['name'] ?? null, $data['role'], $data['reason']);
 
-        if ($user?->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
-            throw ValidationException::withMessages(['email' => ['already_staff']]);
-        }
-
-        if (! $user) {
-            if (empty($data['name'])) {
-                throw ValidationException::withMessages(['name' => ['name_required']]);
-            }
-            $temporary = Str::password(16, symbols: false);
-            $user = User::query()->create(['name' => $data['name'], 'email' => $data['email'], 'password' => Hash::make($temporary), 'email_verified_at' => now()]);
-        }
-
-        $user->assignRole($data['role']);
-        $this->audit->record($temporary ? 'team.create' : 'team.add', $user, ['reason' => $data['reason'], 'after' => ['role' => $data['role']]]);
-
-        return response()->json(['data' => $this->present($user->refresh()), 'temporaryPassword' => $temporary], 201);
+        return response()->json(['data' => TeamMember::fromInvitation($invitation), 'mailSent' => $mailSent], 201);
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function resendInvitation(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['nullable', 'string', 'min:5', 'max:500']]);
+        $invitation = TeamInvitations::findOrFail($id);
+
+        [$invitation, $mailSent] = $this->invitations->resend($request->user(), $invitation, $data['reason'] ?? null);
+
+        return response()->json(['data' => TeamMember::fromInvitation($invitation), 'mailSent' => $mailSent]);
+    }
+
+    public function revokeInvitation(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+        $this->invitations->revoke(TeamInvitations::findOrFail($id), $data['reason']);
+
+        return response()->json(['data' => null]);
+    }
+
+    public function update(Request $request, string $id): JsonResponse
     {
         $data = $request->validate(['role' => ['required', Rule::in(AdminPermissions::STAFF_ROLES)], 'reason' => AdminAudit::reasonRule()]);
-        $this->guard($request, $user);
+        $user = $this->member($request, $id);
 
-        $current = $this->roleOf($user);
+        $current = TeamMember::role($user);
         if ($current === $data['role']) {
-            return response()->json(['data' => $this->present($user)]);
+            return response()->json(['data' => TeamMember::fromUser($user)]);
         }
-        if ($current === AdminPermissions::SUPERADMIN) {
-            $this->assertNotLastSuperadmin();
-        }
+        $this->assertNotLastActiveSuperadmin($user);
 
         DB::transaction(function () use ($user, $data) {
             $user->removeRole(AdminPermissions::SUPERADMIN);
@@ -80,27 +99,61 @@ class TeamController extends Controller
 
         $this->audit->record('team.role_changed', $user, ['reason' => $data['reason'], 'before' => ['role' => $current], 'after' => ['role' => $data['role']]]);
 
-        return response()->json(['data' => $this->present($user->refresh())]);
+        return response()->json(['data' => TeamMember::fromUser($user->refresh())]);
     }
 
     /** Removes the staff access; the account itself stays. */
-    public function destroy(Request $request, User $user): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
-        $this->guard($request, $user);
+        $user = $this->member($request, $id);
 
-        $current = $this->roleOf($user);
-        if ($current === AdminPermissions::SUPERADMIN) {
-            $this->assertNotLastSuperadmin();
-        }
+        $current = TeamMember::role($user);
+        $this->assertNotLastActiveSuperadmin($user);
 
         $user->removeRole(AdminPermissions::SUPERADMIN);
         $user->removeRole(AdminPermissions::SUPPORT);
-        app(\App\Http\Services\Admin\Impersonation\ImpersonationService::class)->finishForStaff($user);
+        $user->forceFill(['admin_suspended_at' => null])->save(); // a later invitation starts clean
+        app(ImpersonationService::class)->finishForStaff($user);
 
         $this->audit->record('team.removed', $user, ['reason' => $data['reason'], 'before' => ['role' => $current]]);
 
-        return response()->json(['data' => ['id' => $user->id, 'removed' => true]]);
+        return response()->json(['data' => null]);
+    }
+
+    /** Takes the access away without deleting anything: every session of hers is closed and the panel refuses her. */
+    public function suspend(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+        $user = $this->member($request, $id);
+
+        if (! $user->admin_suspended_at) {
+            $this->assertNotLastActiveSuperadmin($user);
+
+            $closed = DB::transaction(function () use ($user) {
+                $user->forceFill(['admin_suspended_at' => now()])->save();
+
+                return $this->security->revokeTokens($user);
+            });
+            app(ImpersonationService::class)->finishForStaff($user);
+
+            $this->audit->record('team.suspend', $user, ['reason' => $data['reason'], 'after' => ['role' => TeamMember::role($user), 'sessionsClosed' => $closed]]);
+        }
+
+        return response()->json(['data' => TeamMember::fromUser($user->refresh())]);
+    }
+
+    public function reactivate(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+        $user = $this->member($request, $id);
+
+        if ($user->admin_suspended_at) {
+            $user->forceFill(['admin_suspended_at' => null])->save();
+            $this->audit->record('team.reactivate', $user, ['reason' => $data['reason'], 'after' => ['role' => TeamMember::role($user)]]);
+        }
+
+        return response()->json(['data' => TeamMember::fromUser($user->refresh())]);
     }
 
     /**
@@ -114,10 +167,10 @@ class TeamController extends Controller
      *    cannot strip the protection of the other superadmins.
      * A reset by hand, with no one else to do it, remains the `admin:two-factor-reset` console command.
      */
-    public function resetTwoFactor(Request $request, User $user): JsonResponse
+    public function resetTwoFactor(Request $request, string $id): JsonResponse
     {
         $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
-        $this->guard($request, $user);
+        $user = $this->member($request, $id);
 
         if ($user->hasRole(AdminPermissions::SUPERADMIN) && ! $request->user()->hasAdminTwoFactor()) {
             return response()->json(['message' => 'Turn on your own two-factor authentication to reset a superadmin\'s.', 'code' => 'two_factor_required_to_reset'], 403);
@@ -136,32 +189,29 @@ class TeamController extends Controller
         $this->audit->record('account.two_factor_reset_by_admin', $user, ['reason' => $data['reason'], 'after' => ['sessionsClosed' => $closed]]);
         $this->security->notify($user, $user, 'two_factor_reset_by_admin', ['actor' => $request->user()->name]);
 
-        return response()->json(['data' => $this->present($user->refresh()) + ['sessionsClosed' => $closed]]);
+        return response()->json(['data' => TeamMember::fromUser($user->refresh()) + ['sessionsClosed' => $closed]]);
     }
 
-    /** Not yourself, and only people who are on the team. */
-    private function guard(Request $request, User $user): void
+    /** A person on the team (404 `member_not_found` otherwise, also for an invited id), and never yourself. */
+    private function member(Request $request, string $id): User
     {
+        $user = ctype_digit($id) ? User::query()->find((int) $id) : null;
+        if (! $user || ! $user->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
+            throw new HttpResponseException(response()->json(['message' => 'This person is not on the team.', 'code' => 'member_not_found'], 404));
+        }
         if ($request->user()->is($user)) {
             throw ValidationException::withMessages(['user' => ['cannot_change_self']]);
         }
-        abort_unless($user->hasAnyRole(AdminPermissions::STAFF_ROLES), 404);
+
+        return $user;
     }
 
-    private function assertNotLastSuperadmin(): void
+    /** The team always keeps one superadmin whose access is on: not the last one to remove, demote or suspend. */
+    private function assertNotLastActiveSuperadmin(User $user): void
     {
-        if (User::query()->role(AdminPermissions::SUPERADMIN)->count() <= 1) {
+        if ($user->hasRole(AdminPermissions::SUPERADMIN) && ! $user->admin_suspended_at
+            && User::query()->role(AdminPermissions::SUPERADMIN)->whereNull('admin_suspended_at')->count() <= 1) {
             throw ValidationException::withMessages(['user' => ['last_superadmin']]);
         }
-    }
-
-    private function roleOf(User $user): ?string
-    {
-        return collect(AdminPermissions::STAFF_ROLES)->first(fn ($r) => $user->hasRole($r));
-    }
-
-    private function present(User $user): array
-    {
-        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $this->roleOf($user), 'twoFactorEnabled' => $user->hasAdminTwoFactor(), 'createdAt' => $user->created_at?->toIso8601String()];
     }
 }

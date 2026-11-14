@@ -9,6 +9,8 @@ return [
     ],
 
     'roles' => [
+        'staff_superadmin' => 'superadministración',
+        'staff_support' => 'soporte',
         'owner' => 'dueño',
         'editor' => 'editor',
         'viewer' => 'solo lectura',
@@ -180,6 +182,17 @@ return [
         'intro' => 'Pediste usar este correo para entrar al panel de administración de Quinvite. Confírmalo con el botón; el enlace vence en :minutes minutos.',
         'action' => 'Confirmar mi nuevo correo',
         'outro' => 'Si no lo pediste tú, ignora este mensaje y tu correo no cambiará.',
+        'signature' => 'Equipo Quinvite',
+    ],
+
+    'admin_invitation' => [
+        'subject' => 'Te invitaron al equipo de Quinvite',
+        'preheader' => 'Crea tu contraseña y entra al panel de administración.',
+        'title' => 'Hola, :name',
+        'intro' => ':inviter te invitó a formar parte del equipo de Quinvite como :role. Con el botón eliges tu contraseña y entras al panel de administración; si ya tienes una cuenta de Quinvite con este correo, solo confirmas con tu contraseña de siempre.',
+        'action' => 'Aceptar la invitación',
+        'expires' => 'El enlace sirve una sola vez y vence en :hours horas. Si caduca, pide que te envíen otro.',
+        'outro' => 'Si no esperabas esta invitación, ignora este mensaje: no pasará nada y nadie entrará con tu correo.',
         'signature' => 'Equipo Quinvite',
     ],
 ];

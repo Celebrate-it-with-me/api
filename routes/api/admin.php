@@ -4,12 +4,17 @@
     use App\Http\Controllers\UserController;
     use App\Http\Controllers\Admin\AuditController;
     use App\Http\Controllers\Admin\DashboardController;
+    use App\Http\Controllers\Admin\InvitationController;
     use App\Http\Controllers\Admin\TeamController;
     use App\Http\Controllers\Payments\AdminPaymentController;
     
     Route::post('/login', [AuthenticationController::class, 'adminLogin'])->middleware('throttle:10,1');
     // Second step when the account has two-factor on: challenge + code (or recovery code) for the token.
     Route::post('/login/two-factor', [AuthenticationController::class, 'adminTwoFactorLogin'])->middleware('throttle:10,1');
+
+    // Invitations to the team: no session, the token of the link is the credential (hashed in the database).
+    Route::get('/invitations/{token}', [InvitationController::class, 'show'])->middleware('throttle:10,1');
+    Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
 
 // Everything in the admin panel needs a logged-in administrator. The legacy RSVP and gallery endpoints used to be
 // open to anyone (and the rest to any logged-in user): they are closed with the rest.
@@ -34,9 +39,14 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         Route::get('', [TeamController::class, 'index']);
         // Changes to who has staff access (and with which role) or to their sign-in security need a recent re-authentication.
         Route::post('', [TeamController::class, 'store'])->middleware('admin.reauth');
-        Route::patch('{user}', [TeamController::class, 'update'])->middleware('admin.reauth');
-        Route::delete('{user}', [TeamController::class, 'destroy'])->middleware('admin.reauth');
-        Route::post('{user}/two-factor/reset', [TeamController::class, 'resetTwoFactor'])->middleware(['admin.reauth', 'throttle:10,1']);
+        Route::patch('{id}', [TeamController::class, 'update'])->middleware('admin.reauth');
+        Route::delete('{id}', [TeamController::class, 'destroy'])->middleware('admin.reauth');
+        Route::post('{id}/suspend', [TeamController::class, 'suspend'])->middleware('admin.reauth');
+        Route::post('{id}/reactivate', [TeamController::class, 'reactivate'])->middleware('admin.reauth');
+        Route::post('{id}/two-factor/reset', [TeamController::class, 'resetTwoFactor'])->middleware(['admin.reauth', 'throttle:10,1']);
+        // `{id}` of an invited member (see TeamController).
+        Route::post('{id}/invitation/resend', [TeamController::class, 'resendInvitation'])->middleware(['admin.reauth', 'throttle:6,1']);
+        Route::delete('{id}/invitation', [TeamController::class, 'revokeInvitation'])->middleware('admin.reauth');
     });
 
     // One file per Operation module, so the agents that build them never edit the same file.

@@ -82,6 +82,8 @@ class User extends Authenticatable implements HasLocalePreference
     protected $casts = [
         'email_verified_at' => 'datetime',
         'suspended_at' => 'datetime',
+        'admin_suspended_at' => 'datetime',
+        'admin_last_login_at' => 'datetime',
         'password_changed_at' => 'datetime',
         'anonymized_at' => 'datetime',
         'password' => 'hashed',
