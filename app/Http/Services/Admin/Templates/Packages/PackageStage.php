@@ -37,6 +37,7 @@ class PackageStage
             throw PackageError::conflict('install_busy', 'Otra instalación de paquete está en curso. Inténtalo de nuevo en unos segundos.');
         }
 
+        $previousLimit = (int) ini_get('max_execution_time');
         try {
             // Validation has its own ceiling, below the lock's life, so a slow zip cannot hold the lock after it expired.
             @set_time_limit(self::LOCK_SECONDS - 5);
@@ -46,6 +47,7 @@ class PackageStage
 
             return $this->store($result, $zipSha, (int) $zip->getSize());
         } finally {
+            @set_time_limit($previousLimit); // the ceiling is for this validation only, not for the worker's next job
             $lock->release();
         }
     }
