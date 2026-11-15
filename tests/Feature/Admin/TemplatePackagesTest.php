@@ -231,7 +231,7 @@ describe('install', function () {
             ->and($pkg['report']['errors'])->toBe([]);
 
         $row = TemplatePackage::findOrFail($pkg['id']);
-        expect($row->storage_path)->toMatch('#^botanical/1\.0\.0-[0-9a-f]{8}$#')
+        expect($row->storage_path)->toMatch('#^botanical/1\.0\.0-[0-9a-f]{16}$#')
             ->and($row->content_hash)->toHaveLength(64)
             ->and(str_starts_with($row->storage_path, 'botanical/1.0.0-' . substr($row->content_hash, 0, 8)))->toBeTrue();
         $disk = Storage::disk('template-packages');
@@ -927,5 +927,11 @@ describe('wave 6 security (W6-04)', function () {
         expect($draft->fresh()->status)->toBe('draft')
             ->and(InvitationTemplateVersion::where('template_id', $draft->template_id)->where('status', 'published')->value('id'))->toBe($liveBefore)
             ->and(TemplatePackage::find($second['id'])->status)->toBe('installed');
+    });
+
+    it('names the immutable folder with 16 hex of the content hash (W6-05)', function () {
+        pkgAdmin();
+        $pkg = TemplatePackage::findOrFail(pkgInstall()['id']);
+        expect($pkg->storage_path)->toMatch('#^botanical/1\.0\.0-[0-9a-f]{16}$#');
     });
 });

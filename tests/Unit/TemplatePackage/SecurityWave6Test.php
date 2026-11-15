@@ -182,3 +182,76 @@ it('W6-03 refuses z-index above 10, fixed and sticky positioning, so the 20 of t
     'fixed' => ['position:fixed;inset:0;z-index:10'],
     'sticky' => ['position:sticky;top:0'],
 ]);
+
+// W6-05 --------------------------------------------------------------------------------------------------------------
+
+function w6Image(string $type, int $side = 40): string
+{
+    $im = imagecreatetruecolor($side, $side);
+    imagefilledrectangle($im, 0, 0, $side, $side, imagecolorallocate($im, 200, 40, 90));
+    ob_start();
+    match ($type) {
+        'png' => imagepng($im),
+        'jpg' => imagejpeg($im, null, 80),
+        'webp' => imagewebp($im, null, 80),
+    };
+
+    return (string) ob_get_clean();
+}
+
+function w6PngWithChunk(string $png, string $type, string $data): string
+{
+    $iend = strlen($png) - 12;
+
+    return substr($png, 0, $iend) . pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data)) . substr($png, $iend);
+}
+
+it('W6-05 re-encodes rasters: polyglot tails, text chunks and EXIF never reach the stored bytes', function (string $ext, callable $evil) {
+    $b = PackageBuilder::good()->asset("assets/img/evil.{$ext}", $evil());
+    $r = $b->validate();
+    expect($r['valid'])->toBeTrue(json_encode($r['report']['errors']));
+    $stored = $r['artifacts']['blobs']["assets/img/evil.{$ext}"];
+    expect($stored)->not->toContain('<?php')->not->toContain('<script')->not->toContain('<html')->not->toContain('tEXt')
+        ->not->toContain('Exif')->not->toContain('GPS-secret')->not->toContain('iTXt');
+    $info = getimagesizefromstring($stored);
+    expect($info[0])->toBe(40)->and($info[1])->toBe(40);
+    // the hash the installer folds into the folder name is computed over the clean bytes
+    expect($r['artifacts']['files']["assets/img/evil.{$ext}"]['sha256'])->toBe(hash('sha256', $stored));
+})->with([
+    'png with php after IEND' => ['png', fn () => w6Image('png') . '<?php system($_GET[0]);?>'],
+    'png with a tEXt chunk' => ['png', fn () => w6PngWithChunk(w6Image('png'), 'tEXt', "Comment\0<script>alert(1)</script>")],
+    'png with an iTXt chunk' => ['png', fn () => w6PngWithChunk(w6Image('png'), 'iTXt', "XML:com.adobe.xmp\0\0\0\0\0GPS-secret 25.7617,-80.1918")],
+    'jpg with exif and a tail' => ['jpg', fn () => substr(w6Image('jpg'), 0, 2) . "\xFF\xE1" . pack('n', 40) . "Exif\0\0GPS-secret 25.7617 -80.1918   " . substr(w6Image('jpg'), 2)],
+    'webp with html after the data' => ['webp', fn () => w6Image('webp') . '<html><script>alert(1)</script></html>'],
+]);
+
+it('W6-05 refuses avif and anything that is not png, jpg or webp', function () {
+    $r = PackageBuilder::good()->asset('assets/img/a.avif', "\0\0\0\x1cftypavif" . str_repeat("\0", 64))->validate();
+    expect(PackageBuilder::errors($r))->toContain('ext_not_allowed');
+
+    $gif = "GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00;";
+    $r = PackageBuilder::good()->asset('assets/img/a.png', $gif)->validate();
+    expect(PackageBuilder::errors($r))->toContain('mime_mismatch');
+});
+
+function w6SetLength(string $woff): string
+{
+    return substr($woff, 0, 8) . pack('N', strlen($woff)) . substr($woff, 12);
+}
+
+it('W6-05 rejects a woff2 that only fakes the header', function (callable $make) {
+    $r = PackageBuilder::good()->asset('assets/fonts/evil.woff2', $make())->validate();
+    expect(PackageBuilder::errors($r))->toContain('woff2_invalid');
+})->with([
+    'html behind a correct length and an empty directory' => [fn () => w6SetLength('wOF2' . "\x00\x01\x00\x00" . "\0\0\0\0" . str_pad('<html><script>alert(1)</script>', 60))],
+    'valid structure with html appended' => [fn () => w6SetLength(PackageBuilder::woff2(random_bytes(40)) . '<html><script>alert(1)</script></html>')],
+    'metadata block declared' => [fn () => substr_replace(PackageBuilder::woff2(random_bytes(40)), pack('N', 20), 28, 4)],
+    'directory length with a leading 0x80' => [fn () => w6SetLength(substr_replace(PackageBuilder::woff2(random_bytes(40)), "\x80\x80\x68", 49, 2))],
+    'compressed size larger than the file' => [fn () => substr_replace(PackageBuilder::woff2(random_bytes(40)), pack('N', 99999), 20, 4)],
+    'unknown flavor' => [fn () => substr_replace(PackageBuilder::woff2(random_bytes(40)), 'ABCD', 4, 4)],
+]);
+
+it('W6-05 accepts a well-formed woff2', function () {
+    $r = PackageBuilder::good()->asset('assets/fonts/ok.woff2', PackageBuilder::woff2(random_bytes(200)))->validate();
+    expect(PackageBuilder::errors($r))->not->toContain('woff2_invalid');
+});

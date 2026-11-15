@@ -125,7 +125,7 @@ class PackagePayload
             'level' => (int) $p['level'],
             'hash' => $p['content_hash'],
             'engineMin' => (int) $p['engine_min'],
-            'folder' => $folder ?? "{$p['slug']}/{$p['semver']}-" . substr($p['content_hash'], 0, 8),
+            'folder' => $folder ?? "{$p['slug']}/{$p['semver']}-" . substr($p['content_hash'], 0, 16),
             'hasCss' => in_array('theme.css', array_column($p['files'], 'path'), true),
             'fontFiles' => array_values(array_unique(array_merge(...array_column($fonts, 'files') ?: [[]]))),
             'strings' => $p['strings'] ?? (object) [],

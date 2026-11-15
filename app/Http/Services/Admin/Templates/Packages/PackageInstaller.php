@@ -66,7 +66,7 @@ class PackageInstaller
             throw PackageError::invalid('stage_token', 'stale_stage', "Se instaló otra versión mientras tanto ({$highest}): vuelve a subir el paquete.");
         }
 
-        $folder = "{$slug}/{$semver}-" . substr($build['contentHash'], 0, 8);
+        $folder = "{$slug}/{$semver}-" . substr($build['contentHash'], 0, 16);
         $this->files->copyFolder(PackageFiles::STAGING . "/{$token}", $folder);
 
         try {

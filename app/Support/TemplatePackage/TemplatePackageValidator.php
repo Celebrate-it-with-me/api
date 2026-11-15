@@ -100,7 +100,7 @@ class TemplatePackageValidator
         }
 
         $assets = array_values(array_filter(array_keys($files), fn (string $p) => str_starts_with($p, 'assets/')));
-        $this->assets($files, $assets, $report, $artifacts);
+        $this->assets($files, $assets, $report, $artifacts);  // re-encodes the rasters into $files
 
         $families = [];
         if (is_array($json['tokens.json'] ?? null)) {
@@ -179,7 +179,7 @@ class TemplatePackageValidator
         }
         foreach ($files as $path => $bytes) {
             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-            if (str_starts_with($path, 'assets/') && in_array($ext, ['webp', 'png', 'jpg', 'jpeg', 'avif', 'woff2'], true)) {
+            if (str_starts_with($path, 'assets/') && in_array($ext, ['webp', 'png', 'jpg', 'jpeg', 'woff2'], true)) {
                 $artifacts['blobs'][$path] = $bytes;
             }
         }
@@ -340,15 +340,15 @@ class TemplatePackageValidator
      * @param  array<string, string>  $files
      * @param  list<string>  $assets
      */
-    private function assets(array $files, array $assets, Report $report, array &$artifacts): void
+    private function assets(array &$files, array $assets, Report $report, array &$artifacts): void
     {
         $svg = new SvgSanitizer;
         foreach ($assets as $path) {
             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
             $bytes = $files[$path];
 
-            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'avif', 'woff2'], true)) {
-                $report->error($path, 'ext_not_allowed', 'assets/ solo admite svg, webp, png, jpg, avif y woff2.');
+            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'woff2'], true)) {
+                $report->error($path, 'ext_not_allowed', 'assets/ solo admite svg, webp, png, jpg y woff2.');
 
                 continue;
             }
@@ -360,53 +360,71 @@ class TemplatePackageValidator
             } elseif ($ext === 'woff2') {
                 $this->woff2($bytes, $path, $report);
             } else {
-                $this->raster($bytes, $path, $ext, $report);
+                $clean = $this->raster($bytes, $path, $ext, $report);
+                if ($clean !== null) {
+                    $files[$path] = $clean;
+                }
             }
         }
     }
 
     private function woff2(string $bytes, string $path, Report $report): void
     {
-        if (strlen($bytes) < 48 || ! str_starts_with($bytes, 'wOF2') || strlen($bytes) > $this->limits->woff2Bytes) {
-            $code = strlen($bytes) > $this->limits->woff2Bytes ? 'file_too_large' : 'woff2_invalid';
-            $report->error($path, $code, $code === 'file_too_large' ? 'Fuente mayor de ' . intdiv($this->limits->woff2Bytes, 1024) . ' KB.' : 'No es un woff2 (firma wOF2 o tamaño).');
+        if (strlen($bytes) > $this->limits->woff2Bytes) {
+            $report->error($path, 'file_too_large', 'Fuente mayor de ' . intdiv($this->limits->woff2Bytes, 1024) . ' KB.');
 
             return;
         }
-        if (unpack('N', substr($bytes, 8, 4))[1] !== strlen($bytes)) {
-            $report->error($path, 'woff2_invalid', 'La longitud de la cabecera no coincide con el tamaño real.');
+        if (($problem = Woff2Validator::problem($bytes)) !== null) {
+            $report->error($path, 'woff2_invalid', $problem);
         }
     }
 
-    private function raster(string $bytes, string $path, string $ext, Report $report): void
+    /** @return string|null the re-encoded image (the only bytes that are ever stored), null on error */
+    private function raster(string $bytes, string $path, string $ext, Report $report): ?string
     {
         if (strlen($bytes) > $this->limits->rasterBytes) {
             $report->error($path, 'file_too_large', 'Imagen mayor de ' . intdiv($this->limits->rasterBytes, 1024) . ' KB.');
 
-            return;
+            return null;
         }
-        // Header only: nothing is ever decoded, so a pixel bomb (tiny file, huge canvas) costs nothing.
+        // The header is read first, so a pixel bomb (tiny file, huge canvas) is refused before anything is decoded.
         $info = @getimagesizefromstring($bytes);
         if ($info === false) {
             $report->error($path, 'image_decode', 'No se pudo leer la cabecera de la imagen.');
 
-            return;
+            return null;
         }
         $expected = match ($ext) {
             'webp' => IMAGETYPE_WEBP,
             'png' => IMAGETYPE_PNG,
-            'jpg', 'jpeg' => IMAGETYPE_JPEG,
-            default => IMAGETYPE_AVIF,
+            default => IMAGETYPE_JPEG,
         };
         if ($info[2] !== $expected) {
             $report->error($path, 'mime_mismatch', 'El contenido no corresponde a la extensión.', null, (string) image_type_to_mime_type($info[2]));
 
-            return;
+            return null;
         }
         [$w, $h] = $info;
         if ($w < 1 || $h < 1 || $w > $this->limits->imageSide || $h > $this->limits->imageSide || $w * $h > $this->limits->imagePixels) {
             $report->error($path, 'image_dimensions', 'Dimensiones fuera de límites.', null, "{$w}x{$h}");
+
+            return null;
         }
+        // Decode and encode again: what is stored carries no metadata, no trailing bytes and no foreign payload.
+        $clean = RasterCleaner::clean($bytes, $ext);
+        if ($clean === null) {
+            $report->error($path, 'image_decode', 'No se pudo decodificar la imagen.');
+
+            return null;
+        }
+        if (strlen($clean) > $this->limits->rasterBytes) {
+            $report->error($path, 'file_too_large', 'Imagen mayor de ' . intdiv($this->limits->rasterBytes, 1024) . ' KB tras normalizarla.');
+
+            return null;
+        }
+
+        return $clean;
     }
 
     /**
