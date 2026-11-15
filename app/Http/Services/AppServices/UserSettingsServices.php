@@ -5,6 +5,7 @@ namespace App\Http\Services\AppServices;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -89,7 +90,16 @@ class UserSettingsServices
             $user->tokens()
                 ->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->getKey()))
                 ->delete();
-            
+
+            // ...and so does every other browser (cookie) session; the one in use stays, the app does not sign in again.
+            if (config('session.driver') === 'database') {
+                $currentSession = $request->hasSession() ? $request->session()->getId() : null;
+                DB::table(config('session.table', 'sessions'))
+                    ->where('user_id', $user->getKey())
+                    ->when($currentSession, fn ($q) => $q->where('id', '!=', $currentSession))
+                    ->delete();
+            }
+
             return true;
         } catch (ValidationException|ThrottleRequestsException $ex) {
             throw $ex;
