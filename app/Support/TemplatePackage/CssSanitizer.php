@@ -253,6 +253,8 @@ class CssSanitizer
         }
         $this->restrictedKeyframes = [];
         $this->pendingKeyframes = [];
+        $this->customProps = [];
+        $this->collectCustomProps($document);
         $this->ruleKinds = ['free'];
         $this->collectKeyframes($document);
         $this->walk($document, 0);
@@ -748,8 +750,8 @@ class CssSanitizer
             $deny('La opacidad debe ser un número o porcentaje literal de 0.6 (60%) o más; sin calc() ni var().');
         }
         if (in_array($base, ['color', 'text-fill-color', 'text-stroke-color'], true)) {
-            if (in_array('var', $fns, true) && ! $this->onlyEngineVars($text) || in_array('color-mix', $fns, true) || $this->transparentColor($text)) {
-                $deny('El texto no puede ser transparente ni depender de una variable propia.');
+            if ($this->transparentColor($text) || ! $this->varsOpaque($text, 0)) {
+                $deny('El texto no puede ser transparente, ni depender de una variable --pkg-* que no esté declarada con un color opaco.');
             }
         }
         if (in_array($base, self::SHRINKABLE, true)) {
@@ -831,6 +833,51 @@ class CssSanitizer
         }
 
         return $out;
+    }
+
+    /**
+     * True when every `var(--pkg-*)` in the text is declared in this stylesheet and every declaration of it is itself
+     * opaque (engine `--inv-*` variables are trusted: their values come from validated tokens).
+     */
+    private function varsOpaque(string $text, int $depth): bool
+    {
+        if (! preg_match_all('/var\(\s*(--[a-z0-9-]+)/', $text, $m)) {
+            return true;
+        }
+        foreach ($m[1] as $name) {
+            if (str_starts_with($name, '--inv-')) {
+                continue;
+            }
+            if ($depth >= 3 || ! isset($this->customProps[$name])) {
+                return false;
+            }
+            foreach ($this->customProps[$name] as $declared) {
+                if ($this->transparentColor($declared) || ! $this->varsOpaque($declared, $depth + 1)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /** @var array<string, list<string>> every value given to each --pkg-* property anywhere in the stylesheet */
+    private array $customProps = [];
+
+    private function collectCustomProps(CSSList $list): void
+    {
+        foreach ($list->getContents() as $item) {
+            if ($item instanceof DeclarationBlock) {
+                foreach ($item->getDeclarations() as $d) {
+                    $name = strtolower($d->getPropertyName());
+                    if (str_starts_with($name, '--pkg-')) {
+                        $this->customProps[$name][] = $this->valueText($d);
+                    }
+                }
+            } elseif ($item instanceof CSSList) {
+                $this->collectCustomProps($item);
+            }
+        }
     }
 
     private function onlyEngineVars(string $text): bool

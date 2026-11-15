@@ -141,6 +141,9 @@ it('W6-02 refuses the ways of hiding or moving what the page root, generic selec
     'hex alpha' => ['.inv-q--cta{color:#00000000}'],
     'color-mix' => ['.pkg-wrapper{color:color-mix(in srgb,red,transparent)}'],
     'pkg var text color' => ['.pkg-wrapper{color:var(--pkg-ink)}'],
+    'pkg var declared transparent' => ['.pkg-wrapper{--pkg-ink:rgba(0,0,0,0)}.pkg-wrapper{color:var(--pkg-ink)}'],
+    'pkg var made transparent in a media query' => ['.pkg-x{--pkg-ink:#333}@media (min-width:400px){.pkg-x{--pkg-ink:transparent}}.pkg-wrapper{color:var(--pkg-ink)}'],
+    'pkg var chained to an undeclared one' => ['.pkg-x{--pkg-ink:var(--pkg-ghost)}.pkg-wrapper{color:var(--pkg-ink)}'],
     'text same as background' => ['.pkg-wrapper{color:#fff;background-color:#fff}'],
     'giant spread shadow' => ['.inv-q--cta{box-shadow:0 0 0 99999px #fff}'],
     'giant outline' => ['.inv-q--cta{outline:99999px solid #fff}'],
@@ -158,6 +161,7 @@ it('W6-02 keeps what a real design needs', function (string $css) {
     'wrapper decoration' => ['.pkg-wrapper::after{content:"";position:absolute;right:-20px;top:-20px;width:80px;height:80px;opacity:.2;transform:rotate(12deg)}'],
     'free element animation' => ['@keyframes drift{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}} .pkg-deco{animation:drift 2s ease-out both}'],
     'wrapper color animation' => ['@keyframes glow{from{box-shadow:0 0 0 0 #fff}to{box-shadow:0 0 8px 2px #eee}} .pkg-wrapper{animation:glow 2s}'],
+    'pkg var declared opaque' => ['.pkg-x{--pkg-ink:color-mix(in oklab,var(--inv-accent) 60%,#3d2a08)}.inv-q--cta{color:var(--pkg-ink)}'],
     'system hook look' => ['.inv-q--cta{background:#b8860b;color:#fff;border-radius:999px;padding:.75rem 2rem;box-shadow:0 4px 12px rgba(0,0,0,.2);letter-spacing:.05em}'],
     'photo layout' => ['.pkg-photo{width:100%;aspect-ratio:4/5;mask-image:url(assets/img/a.webp);transform:rotate(-2deg)}'],
 ]);
