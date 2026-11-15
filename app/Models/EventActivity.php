@@ -85,7 +85,7 @@ class EventActivity extends Model
             return config('impersonation.staff_label');
         }
 
-        return $this->actor ? $this->actor->name : 'System';
+        return $this->actor ? $this->actor->name : __('System');
     }
 
     /**
@@ -97,11 +97,11 @@ class EventActivity extends Model
     public function getMessageAttribute(): object|array|string|null
     {
         return match ($this->type) {
-            'event_created' => __('Event :name, has been created by :user', [
+            'event_created' => __('Event :name has been created by :user', [
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actorName(),
             ]),
-            'event_updated' => __('Event :name, has been updated by :user', [
+            'event_updated' => __('Event :name has been updated by :user', [
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actorName(),
             ]),
@@ -121,39 +121,39 @@ class EventActivity extends Model
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actorName(),
             ]),
-            'guest_created' => __('Guest :name, has been created by :user', [
+            'guest_created' => __('Guest :name has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'guest_updated' => __('Guest :name, has been updated by :user', [
+            'guest_updated' => __('Guest :name has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'guest_deleted' => __('Guest :name, has been deleted by :user', [
+            'guest_deleted' => __('Guest :name has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_created' => __('Menu :name, has been created by :user', [
+            'menu_created' => __('Menu :name has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_updated' => __('Menu :name, has been updated by :user', [
+            'menu_updated' => __('Menu :name has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_deleted' => __('Menu :name, has been deleted by :user', [
+            'menu_deleted' => __('Menu :name has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_item_created' => __('Menu item :name, has been created by :user', [
+            'menu_item_created' => __('Menu item :name has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_item_updated' => __('Menu item :name, has been updated by :user', [
+            'menu_item_updated' => __('Menu item :name has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_item_deleted' => __('Menu item :name, has been deleted by :user', [
+            'menu_item_deleted' => __('Menu item :name has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
@@ -162,7 +162,7 @@ class EventActivity extends Model
                 'count' => $this->payload['count'] ?? 0,
                 'user' => $this->actorName(),
             ]),
-            'guest_confirmed' => __('Guest :name, has confirmed their attendance.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
+            'guest_confirmed' => __('Guest :name has confirmed their attendance.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'photo_uploaded' => __('Photo uploaded by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'music_added' => __('Music added by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             default => __('Activity logged.'),

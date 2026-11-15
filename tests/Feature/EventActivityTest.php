@@ -34,3 +34,15 @@ it('stores the actor with its morph alias, not the class name', function () {
 
     expect($activity->actor_type)->toBe('user')->and($activity->actor->is($owner))->toBeTrue();
 });
+
+it('writes the activity message in the language of the request, not in the language it was logged in', function () {
+    $owner = User::factory()->create(['name' => 'Marisol']);
+    $event = Events::factory()->create(['event_type_id' => EventType::where('slug', 'quinceanera')->value('id')]);
+    EventActivity::logActivity($event->id, 'event_created', $owner, $event, ['event_name' => 'Los XV de Yaquelin']);
+    $activity = EventActivity::query()->where('event_id', $event->id)->latest('id')->first();
+
+    app()->setLocale('es');
+    expect($activity->message)->toBe('El evento Los XV de Yaquelin fue creado por Marisol');
+    app()->setLocale('en');
+    expect($activity->message)->toBe('Event Los XV de Yaquelin has been created by Marisol');
+});
