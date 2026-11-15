@@ -142,7 +142,7 @@ describe('acting on a step', function () {
     it('lets owner and editor write, and not the viewer', function () {
         [, $u, $url] = assistantEvent();
 
-        $this->actingAs($u['viewer'])->postJson("$url/tasks/budget_cap/done")->assertForbidden();
+        $this->actingAs($u['viewer'])->postJson("$url/tasks/budget_cap/done")->assertForbidden()->assertJsonPath('code', 'forbidden');
         $this->actingAs($u['viewer'])->postJson("$url/custom-tasks", ['title' => 'x'])->assertForbidden();
         $this->actingAs($u['stranger'])->postJson("$url/tasks/budget_cap/done")->assertNotFound();
         expect(AssistantTaskState::count())->toBe(0);
