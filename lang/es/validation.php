@@ -160,6 +160,14 @@ return [
     'custom' => [],
 
     'attributes' => [
+        'checklist' => 'lista de comprobación',
+        'ack_third_party_marks' => 'confirmación de marcas de terceros',
+        'package' => 'paquete',
+        'visibility' => 'visibilidad',
+        'preset' => 'preajuste',
+        'package_id' => 'paquete',
+        'stage_token' => 'código de la subida',
+        'data' => 'datos',
         'accessCode' => 'código de acceso',
         'access_code' => 'código de acceso',
         'action' => 'acción',

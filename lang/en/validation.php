@@ -194,6 +194,14 @@ return [
     */
 
     'attributes' => [
+        'checklist' => 'checklist',
+        'ack_third_party_marks' => 'third-party marks acknowledgement',
+        'package' => 'package',
+        'visibility' => 'visibility',
+        'preset' => 'preset',
+        'package_id' => 'package',
+        'stage_token' => 'upload token',
+        'data' => 'data',
         'accessCode' => 'access code',
         'access_code' => 'access code',
         'action' => 'action',
