@@ -1,7 +1,7 @@
 <?php
 
-use App\Mail\ResetPasswordEmail;
 use App\Http\Services\AppServices\UserSettingsServices;
+use App\Mail\ResetPasswordEmail;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
