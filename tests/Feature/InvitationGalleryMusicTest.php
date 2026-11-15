@@ -261,6 +261,33 @@ describe('the catalog and the Classic templates', function () {
             ->and($event->fresh()->template_version_id)->toBe($new->id)
             ->and(DB::table('invitation_template_versions')->where('template_id', $row->id)->count())->toBe(2);
     });
+
+    it('does not switch gallery/music on for events that already had photos or a song when migrating', function () {
+        $row = DB::table('invitation_templates')->where('slug', 'classic-quinceanera')->first();
+        $old = DB::table('invitation_template_versions')->find($row->current_version_id);
+        $legacy = collect(json_decode($old->sections, true))->reject(fn ($s) => in_array($s['type'], ['gallery', 'music']))->values()->all();
+        DB::table('invitation_template_versions')->where('id', $old->id)->update(['sections' => json_encode($legacy)]);
+        DB::table('invitation_templates')->where('id', $row->id)->update(['default_sections' => json_encode($legacy)]);
+
+        $quince = EventType::where('slug', 'quinceanera')->value('id');
+        $plan = EventPlan::where('slug', 'premium')->value('id');
+        $make = fn () => Events::factory()->create(['template_version_id' => $old->id, 'event_type_id' => $quince, 'event_plan_id' => $plan]);
+        $withPhotos = $make();
+        addPhotos($withPhotos, 1);
+        $withSong = $make();
+        addSong($withSong);
+        $hiddenOnly = $make();
+        addPhotos($hiddenOnly, 1, ['visible' => false]);
+        $empty = $make();
+
+        (include database_path('migrations/2027_04_11_000004_add_gallery_and_music_to_classic_templates.php'))->up();
+
+        $enabled = fn (Events $e, string $type) => collect($e->fresh()->template_config['sections'] ?? [])->firstWhere('type', $type)['enabled'] ?? null;
+        expect($enabled($withPhotos, 'gallery'))->toBeFalse()->and($enabled($withPhotos, 'music'))->toBeNull()
+            ->and($enabled($withSong, 'music'))->toBeFalse()->and($enabled($withSong, 'gallery'))->toBeNull()
+            ->and($enabled($hiddenOnly, 'gallery'))->toBeNull()
+            ->and($empty->fresh()->template_config)->toBeNull();
+    });
 });
 
 /** @return array{0: Events, 1: User, 2: string} */
@@ -346,6 +373,20 @@ describe('background music routes', function () {
         'mp3' => ['android.mp3', false],
         'ogg' => ['android.ogg', false],
         'mp4' => ['clip.mp4', false],
+    ]);
+
+    it('stores an Android m4a/aac under its own extension and reports its mime type', function (string $name, string $mime) {
+        [$event, $owner, $url] = musicEvent();
+        $bytes = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom" . str_repeat("\x00", 200);
+
+        $response = $this->actingAs($owner)->post($url, ['songFile' => songFile($name, $bytes)], ['Accept' => 'application/json'])->assertSuccessful();
+
+        $ext = pathinfo($name, PATHINFO_EXTENSION);
+        expect(BackgroundMusic::where('event_id', $event->id)->value('song_url'))->toEndWith('.' . $ext)
+            ->and($response->json('data.mimeType'))->toBe($mime);
+    })->with([
+        'm4a' => ['android.m4a', 'audio/mp4'],
+        'aac' => ['android.aac', 'audio/aac'],
     ]);
 
     it('refuses wav, a wrong extension and fake audio with invalid_type', function (string $name, string $bytes) {
@@ -462,6 +503,25 @@ describe('RSVP note and companion names', function () {
         '121 letters' => [str_repeat('a', 121), 'too_long'],
         'control character' => ["Ana\x07 López", 'invalid_characters'],
         'newline' => ["Ana\nLópez", 'invalid_characters'],
+        'right-to-left override' => ["Ana\u{202E}López", 'invalid_characters'],
+        'isolate' => ["Ana\u{2066}López", 'invalid_characters'],
+        'direction mark' => ["Ana\u{200F}López", 'invalid_characters'],
+    ]);
+
+    it('refuses direction and control characters in the note but keeps line breaks and accents', function (string $note, bool $valid) {
+        galleryEvent();
+
+        $response = rsvpPost($this, ['note' => $note]);
+        $valid ? $response->assertOk() : $response->assertStatus(422)->assertJsonPath('errors.note.0', 'invalid_characters');
+    })->with([
+        'line breaks' => ["Hola\r\nllegamos tarde ñ 🎉", true],
+        'bell' => ["Hola\x07", false],
+        'escape' => ["Hola\x1B[31m", false],
+        'tab' => ["Hola\tmundo", false],
+        'rlo' => ["Hola \u{202E}evol", false],
+        'lri' => ["Hola \u{2066}x", false],
+        'rlm' => ["Hola\u{200F}mundo", false],
+        'nul' => ["Hola\0mundo", false],
     ]);
 
     it('accepts names of 2 and 120 characters', function () {

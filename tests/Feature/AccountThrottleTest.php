@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Services\AppServices\UserSettingsServices;
 use App\Mail\ResetPasswordEmail;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,6 +64,27 @@ it('limits wrong current-password guesses and closes the other tokens on change 
 
     expect(Hash::check('BrandNew12345', $user->fresh()->password))->toBeTrue()
         ->and($user->tokens()->count())->toBe(1);
+});
+
+it('closes the other cookie sessions on a password change but keeps the current one (V5-06)', function () {
+    config(['session.driver' => 'database']);
+    $user = User::factory()->create(['password' => 'OriginalPass1']);
+    $other = User::factory()->create();
+    $payload = ['currentPassword' => 'OriginalPass1', 'newPassword' => 'BrandNew12345', 'newPasswordConfirmation' => 'BrandNew12345'];
+
+    $request = Request::create('/api/v1/app/user/update-password', 'POST', $payload);
+    $request->setLaravelSession($store = app('session.store'));
+    $request->setUserResolver(fn () => $user);
+    $currentId = $store->getId();
+    foreach ([$currentId => $user->id, 'stolen-session' => $user->id, 'someone-else' => $other->id] as $id => $owner) {
+        DB::table('sessions')->insert(['id' => $id, 'user_id' => $owner, 'payload' => '', 'last_activity' => time()]);
+    }
+
+    expect(app(UserSettingsServices::class)->updatePassword($request))->toBeTrue();
+
+    expect(DB::table('sessions')->where('id', 'stolen-session')->exists())->toBeFalse()
+        ->and(DB::table('sessions')->where('id', 'someone-else')->exists())->toBeTrue()
+        ->and(DB::table('sessions')->where('id', $currentId)->exists())->toBeTrue();
 });
 
 it('stops guessing the current password after 5 tries', function () {

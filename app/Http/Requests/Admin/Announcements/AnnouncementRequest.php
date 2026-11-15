@@ -106,20 +106,72 @@ class AnnouncementRequest extends FormRequest
         });
     }
 
-    /** `https://…` or an internal path starting with a single `/`. Never `javascript:`, `data:`, `//host` or control characters. */
+    /** First path segments an announcement may never point to, even as an internal path (they act on the session). */
+    private const BLOCKED_PATHS = ['impersonate', 'admin', 'api', 'logout', 'sanctum', 'reset-password', 'verify-email', 'email', 'auth', 'oauth', 'storage'];
+
+    /**
+     * `https://host/…` with a host from the allow-list (config `app.announcement_allowed_hosts`), or an internal path
+     * starting with a single `/` that is not a sensitive one. Never `javascript:`, `data:`, `//host`, user-info or
+     * control characters.
+     */
     public static function validUrl(?string $url): bool
     {
         if ($url === null || $url === '' || preg_match('/[\x00-\x20\x7F\\\\]/', $url)) {
             return false;
         }
         if (str_starts_with($url, '/')) {
-            return ! str_starts_with($url, '//');
+            return ! str_starts_with($url, '//') && ! self::isSensitivePath($url);
         }
-        if (! str_starts_with(strtolower($url), 'https://')) {
+        if (! str_starts_with(strtolower($url), 'https://') || filter_var($url, FILTER_VALIDATE_URL) === false) {
             return false;
         }
-        $host = parse_url($url, PHP_URL_HOST);
+        $parts = parse_url($url);
+        $host = is_array($parts) ? strtolower((string) ($parts['host'] ?? '')) : '';
+        if ($host === '' || isset($parts['user']) || isset($parts['pass'])) {
+            return false;
+        }
 
-        return is_string($host) && $host !== '' && filter_var($url, FILTER_VALIDATE_URL) !== false;
+        return self::hostAllowed($host) && ! self::isSensitivePath($parts['path'] ?? '/');
+    }
+
+    private static function isSensitivePath(string $path): bool
+    {
+        $path = rawurldecode(rawurldecode(explode('#', explode('?', $path)[0])[0]));
+        if (str_contains($path, '..') || str_contains($path, '\\')) {
+            return true;
+        }
+        $first = strtolower(explode('/', ltrim($path, '/'))[0]);
+
+        return in_array($first, self::BLOCKED_PATHS, true);
+    }
+
+    private static function hostAllowed(string $host): bool
+    {
+        foreach (self::allowedHosts() as $allowed) {
+            if ($allowed === $host || (str_starts_with($allowed, '*.') && str_ends_with($host, substr($allowed, 1)))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return list<string> */
+    public static function allowedHosts(): array
+    {
+        $configured = (string) config('app.announcement_allowed_hosts', '');
+        if (trim($configured) !== '') {
+            return array_values(array_filter(array_map(fn (string $h) => strtolower(trim($h)), explode(',', $configured))));
+        }
+
+        $hosts = ['quinvite.com', '*.quinvite.com'];
+        foreach ([config('app.url'), config('app.frontend_app.url'), config('app.spa_url'), config('services.admin_url')] as $url) {
+            $host = is_string($url) && $url !== '' ? parse_url($url, PHP_URL_HOST) : null;
+            if (is_string($host) && $host !== '') {
+                $hosts[] = strtolower($host);
+            }
+        }
+
+        return array_values(array_unique($hosts));
     }
 }

@@ -89,7 +89,9 @@ return new class extends Migration
             ]);
 
             if ($current && $current->status === 'published') {
+                $moved = DB::table('events')->where('template_version_id', $current->id)->pluck('id')->all();
                 DB::table('events')->where('template_version_id', $current->id)->update(['template_version_id' => $versionId]);
+                $this->keepExistingContentPrivate($moved);
             }
 
             DB::table('invitation_templates')->where('id', $template->id)->update([
@@ -97,6 +99,44 @@ return new class extends Migration
                 'current_version_id' => $versionId,
                 'updated_at' => $now,
             ]);
+        }
+    }
+
+    /**
+     * Photos uploaded and a song saved before the invitation could show them were never published by the
+     * organizer. For the events that already have them, the new sections start switched off in their own
+     * template_config (the organizer turns them on); events with nothing keep the template default.
+     *
+     * @param  array<int, int>  $eventIds
+     */
+    private function keepExistingContentPrivate(array $eventIds): void
+    {
+        foreach (array_chunk($eventIds, 500) as $chunk) {
+            $withPhotos = DB::table('sweet_memories_images')->whereIn('event_id', $chunk)->where('visible', true)->whereNull('hidden_at')
+                ->distinct()->pluck('event_id')->all();
+            $withSong = DB::table('background_music')->whereIn('event_id', $chunk)->distinct()->pluck('event_id')->all();
+
+            foreach (['gallery' => $withPhotos, 'music' => $withSong] as $type => $ids) {
+                foreach ($ids as $eventId) {
+                    $event = DB::table('events')->find($eventId);
+                    $config = json_decode($event->template_config ?? 'null', true) ?: [];
+                    $sections = $config['sections'] ?? [];
+                    $found = false;
+                    foreach ($sections as &$section) {
+                        if (($section['type'] ?? null) === $type) {
+                            $section['enabled'] = false;
+                            $found = true;
+                        }
+                    }
+                    unset($section);
+                    if (! $found) {
+                        $sections[] = ['type' => $type, 'enabled' => false];
+                    }
+                    $config['sections'] = array_values($sections);
+
+                    DB::table('events')->where('id', $eventId)->update(['template_config' => json_encode($config, JSON_UNESCAPED_UNICODE)]);
+                }
+            }
         }
     }
 

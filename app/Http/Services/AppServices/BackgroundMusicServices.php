@@ -6,6 +6,7 @@ use App\Models\BackgroundMusic;
 use App\Models\Events;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * The background song of the invitation: one per event. Uploading again replaces it (the old file leaves the disk),
@@ -19,6 +20,7 @@ class BackgroundMusicServices
     private const MIME_BY_EXTENSION = [
         'mp3' => 'audio/mpeg',
         'm4a' => 'audio/mp4',
+        'mp4' => 'audio/mp4', // files stored before the extension was kept from the (validated) name
         'aac' => 'audio/aac',
         'ogg' => 'audio/ogg',
     ];
@@ -39,7 +41,11 @@ class BackgroundMusicServices
      */
     public function save(Events $event, UploadedFile $file, array $data = []): array
     {
-        $path = $file->store("sound/background-music/{$event->id}", self::DISK);
+        // The extension is the one the request validated against the allowed list, never the one guessed from
+        // the content (an Android m4a sniffs as video/mp4 and would be stored as .mp4).
+        $extension = strtolower($file->getClientOriginalExtension());
+        $extension = in_array($extension, self::ALLOWED_EXTENSIONS, true) ? $extension : 'mp3';
+        $path = $file->storeAs("sound/background-music/{$event->id}", Str::random(40) . '.' . $extension, self::DISK);
 
         $existing = BackgroundMusic::query()->where('event_id', $event->id)->orderByDesc('id')->get();
         $music = $existing->first();
@@ -83,7 +89,7 @@ class BackgroundMusicServices
 
     public static function mimeTypeOf(?string $path): ?string
     {
-        return $path ? (self::MIME_BY_EXTENSION[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null) : null;
+        return $path ? (self::MIME_BY_EXTENSION[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? 'audio/mpeg') : null;
     }
 
     public static function sizeOf(?string $path): ?int

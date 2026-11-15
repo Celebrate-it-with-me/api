@@ -27,8 +27,11 @@ class AdminLoginService
 
     private const CHALLENGE_MAX_ATTEMPTS = 5;
 
-    /** Wrong second-step codes allowed per person in 15 minutes, whatever the challenge. */
+    /** Wrong second-step codes allowed per person AND address in 15 minutes, whatever the challenge. */
     private const USER_MAX_FAILURES = 10;
+
+    /** Ceiling per person across all addresses: one address cannot lock her out, a spread-out guess still stops. */
+    private const USER_CEILING_FAILURES = 40;
 
     /** Wrong passwords allowed per email and address in 15 minutes. */
     private const PASSWORD_MAX_FAILURES = 5;
@@ -104,9 +107,12 @@ class AdminLoginService
 
         $this->assertNotSuspended($user);
 
-        $limiter = "admin-2fa-failures:{$user->id}";
-        if (RateLimiter::tooManyAttempts($limiter, self::USER_MAX_FAILURES)) {
-            throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($limiter)]);
+        $limiter = "admin-2fa-failures:{$user->id}|{$this->request->ip()}";
+        $ceiling = "admin-2fa-failures-total:{$user->id}";
+        foreach ([[$limiter, self::USER_MAX_FAILURES], [$ceiling, self::USER_CEILING_FAILURES]] as [$key2, $max]) {
+            if (RateLimiter::tooManyAttempts($key2, $max)) {
+                throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($key2)]);
+            }
         }
 
         $usingRecovery = $recoveryCode !== null && $recoveryCode !== '';
@@ -116,6 +122,7 @@ class AdminLoginService
 
         if (! $ok) {
             RateLimiter::hit($limiter, 900);
+            RateLimiter::hit($ceiling, 900);
             $data['attempts']++;
             // The secret of the attempt is never logged: only that it failed and which kind of code was tried.
             $this->audit->record('account.two_factor_failed', $user, ['actor' => $user, 'after' => ['method' => $usingRecovery ? 'recovery_code' : 'totp']]);
@@ -130,6 +137,7 @@ class AdminLoginService
         }
 
         RateLimiter::clear($limiter);
+        RateLimiter::clear($ceiling);
         Cache::forget($key); // a challenge works once
 
         if ($usingRecovery) {

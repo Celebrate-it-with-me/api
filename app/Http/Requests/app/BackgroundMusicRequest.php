@@ -12,6 +12,11 @@ use Illuminate\Http\UploadedFile;
  * Upload (or replace) the background song. Errors are codes, not sentences: the app writes the text.
  * The type is checked by the content of the file, never by what the client says it is; the extension of the
  * name must agree (mp3, m4a, aac, ogg). WAV is not accepted.
+ *
+ * Deployment requirement (V5-03): a valid audio header does not prove the rest of the file is audio (an ID3 tag
+ * can carry PHP). The web server MUST serve `storage/` (public disk) as static files only: no PHP/CGI handler
+ * for it, `X-Content-Type-Options: nosniff` and a fixed audio Content-Type. The API stores files under a random
+ * name with the validated extension, never one chosen by the client beyond that list.
  */
 class BackgroundMusicRequest extends FormRequest
 {
