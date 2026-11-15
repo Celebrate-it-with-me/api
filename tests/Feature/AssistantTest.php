@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Services\AppServices\EventModules;
 use App\Http\Services\Assistant\AssistantService;
 use App\Models\AssistantCustomTask;
 use App\Models\AssistantTask;
@@ -12,11 +13,14 @@ use App\Models\EventUserRole;
 use App\Models\Guest;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
+use App\Support\AdminPermissions;
+use Carbon\CarbonImmutable;
 use Database\Seeders\AssistantTaskSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -123,7 +127,7 @@ describe('reading', function () {
     it('stays inside the budget of queries: no N+1 whatever the size of the event', function () {
         [$event, $u] = assistantEvent();
         Guest::factory()->count(30)->create(['event_id' => $event->id, 'parent_id' => null]);
-        app(\App\Http\Services\AppServices\EventModules::class)->forget();
+        app(EventModules::class)->forget();
 
         DB::enableQueryLog();
         app(AssistantService::class)->run($event->fresh());
@@ -161,7 +165,7 @@ describe('acting on a step', function () {
 
         expect(AssistantTaskState::where('event_id', $event->id)->count())->toBe(4)
             ->and(AssistantTaskState::where('task_key', 'budget_cap')->value('set_by_user_id'))->toBe($owner->id)
-            ->and(\Carbon\CarbonImmutable::parse($snoozed)->diffInDays(now(), true))->toBeGreaterThan(12.9)->toBeLessThan(14.1)
+            ->and(CarbonImmutable::parse($snoozed)->diffInDays(now(), true))->toBeGreaterThan(12.9)->toBeLessThan(14.1)
             ->and($snoozed)->toEndWith('Z');
 
         $this->actingAs($owner)->postJson("$url/tasks/book_venue/snooze", ['days' => 30])->assertOk();
@@ -382,7 +386,7 @@ describe('custom tasks', function () {
 describe('impersonation', function () {
     it('lets support read the assistant but blocks every write', function () {
         $staff = User::factory()->create();
-        $staff->assignRole(\App\Support\AdminPermissions::SUPPORT);
+        $staff->assignRole(AdminPermissions::SUPPORT);
         [, $u, $url] = assistantEvent();
         app('auth')->forgetGuards();
         $token = $this->postJson("/api/v1/admin/users/{$u['owner']->id}/impersonate", ['reason' => 'Revisar el plan'], ['Authorization' => 'Bearer ' . $this->adminBearer($staff)])->assertCreated()->json('token');
@@ -457,7 +461,7 @@ describe('catalog and limits', function () {
         expect(RouteServiceProvider::ROUTE_LIMITS['assistant-read'])->toBe([120, 1])
             ->and(RouteServiceProvider::ROUTE_LIMITS['assistant-write'])->toBe([60, 1]);
 
-        $limiters = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes())->filter(fn ($r) => str_contains($r->uri(), '/assistant/'))
+        $limiters = collect(Route::getRoutes()->getRoutes())->filter(fn ($r) => str_contains($r->uri(), '/assistant/'))
             ->mapWithKeys(fn ($r) => [$r->methods()[0] . ' ' . $r->uri() => collect($r->gatherMiddleware())->first(fn ($m) => str_starts_with((string) $m, 'throttle:'))]);
         expect($limiters->filter(fn ($m, $k) => str_starts_with($k, 'GET'))->unique()->values()->all())->toBe(['throttle:assistant-read'])
             ->and($limiters->reject(fn ($m, $k) => str_starts_with($k, 'GET'))->unique()->values()->all())->toBe(['throttle:assistant-write']);
