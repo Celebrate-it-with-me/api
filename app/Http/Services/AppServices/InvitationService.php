@@ -85,6 +85,8 @@ class InvitationService
     {
         $locale = $this->resolveLocale($lang, $guest, $event);
         $version = $this->versionContent($event);
+        // The package pinned by the version, when it can be drawn; otherwise the invitation falls back to Classic.
+        $package = app(PackagePayload::class)->forPackageId($version['package_id'] ?? null, $event->template_config['package']['options'] ?? []);
 
         return [
             'event' => [
@@ -98,8 +100,8 @@ class InvitationService
             // Which version of the link this is: the Save the date or the full invitation.
             'stage' => $event->invitation_stage,
             'locale' => $locale,
-            'theme' => $this->themePayload($version['theme'], $event->template_config['theme'] ?? []),
-            'sections' => $this->resolveSections($event, $guest, $version['sections'], $locale),
+            'theme' => $this->themePayload($version['theme'], $event->template_config['theme'] ?? [], $package['package'] ?? null),
+            'sections' => $this->attachPackage($this->resolveSections($event, $guest, $version['sections'], $locale), $package['sections'] ?? []),
             // Basic-plan watermark; the full event (paid, or on the premium plan) removes it. A refund puts the event back on basic.
             'branding' => ['watermark' => ! app(PurchaseService::class)->isUnlocked($event)],
         ];
@@ -212,7 +214,7 @@ class InvitationService
 
     private function templateFor(Events $event): InvitationTemplate
     {
-        if ($event->template && $event->template->is_active) {
+        if ($event->template && $event->template->is_active && app(TemplateCatalog::class)->allows($event->template, $event)) {
             return $event->template;
         }
 
@@ -230,7 +232,7 @@ class InvitationService
      * none) the published version of its template. The JSON of a version never changes once it is out of draft,
      * so it is cached by version id.
      *
-     * @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>}
+     * @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>, package_id?: ?int}
      */
     private function versionContent(Events $event): array
     {
@@ -283,7 +285,7 @@ class InvitationService
             return null;
         }
 
-        $content = ['sections' => $version->sections ?? [], 'theme' => $version->theme ?? []];
+        $content = ['sections' => $version->sections ?? [], 'theme' => $version->theme ?? [], 'package_id' => $version->package_id];
 
         // A draft can still change: only published and archived versions are immutable.
         if (! $version->isDraft()) {
@@ -296,20 +298,43 @@ class InvitationService
     /**
      * @param  array<string, mixed>  $defaults  the theme of the version
      * @param  array<string, mixed>  $override  what the organizer changed on the event
+     * @param  array<string, mixed>|null  $package  `theme.package` of the installed package this version belongs to, when it can be drawn
      * @return array<string, mixed>
      */
-    public function themePayload(array $defaults, array $override = []): array
+    public function themePayload(array $defaults, array $override = [], ?array $package = null): array
     {
         $presets = $defaults['presets'] ?? [];
         $key = $override['preset'] ?? $defaults['preset'] ?? array_key_first($presets);
         $colors = $presets[$key]['colors'] ?? ($presets[array_key_first($presets)]['colors'] ?? []);
+        $name = $defaults['theme'] ?? 'classic';
 
-        return [
-            'name' => $defaults['theme'] ?? 'classic',
+        $theme = [
+            // A package theme that cannot be drawn (withdrawn, missing, engine too old) is Classic with its own colors.
+            'name' => $package === null && $name !== 'classic' ? 'classic' : $name,
             'preset' => $key,
             'colors' => array_merge($colors, $override['colors'] ?? []),
             'fonts' => array_merge($defaults['fonts'] ?? [], $override['fonts'] ?? []),
         ];
+
+        return $package === null ? $theme : $theme + ['package' => $package];
+    }
+
+    /**
+     * Sections the package draws itself carry `render: 'package'` and their AST; the rest keep the engine's components.
+     *
+     * @param  list<array<string, mixed>>  $sections
+     * @param  array<string, array>  $asts  AST per section type
+     * @return list<array<string, mixed>>
+     */
+    public function attachPackage(array $sections, array $asts): array
+    {
+        if ($asts === []) {
+            return $sections;
+        }
+
+        return array_map(fn (array $section) => isset($asts[$section['type']])
+            ? $section + ['render' => 'package', 'ast' => $asts[$section['type']]]
+            : $section, $sections);
     }
 
     /** @return array<int, array<string, mixed>> */
