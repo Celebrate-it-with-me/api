@@ -781,7 +781,7 @@ class HtmlAstBuilder
         if (preg_match('/^#(pkg-[a-z0-9-]{1,40}|cover|itinerary|locations|dress_code|padrinos|gallery|rsvp|music|closing|countdown|save_the_date)$/', $value)) {
             return $value;
         }
-        if (preg_match('/^https:\/\/[a-z0-9]([a-z0-9.-]{0,120}[a-z0-9])?(:\d{1,5})?(\/[A-Za-z0-9._~!$&()*+,;=:@%\/?#\[\]-]{0,400})?$/i', $value)) {
+        if (UrlGuard::isHttps($value) && preg_match('/^https:\/\/[a-z0-9]([a-z0-9.-]{0,120}[a-z0-9])?(:\d{1,5})?(\/[A-Za-z0-9._~!$&()*+,;=:@%\/?#\[\]-]{0,400})?$/i', $value)) {
             return $value;
         }
         if (preg_match('/^(mailto:[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,120}|tel:\+?[0-9]{5,15})$/', $value)) {

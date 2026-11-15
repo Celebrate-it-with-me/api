@@ -280,7 +280,7 @@ class TemplatePackageValidator
         }
         $author = $m['author'] ?? null;
         if (! is_array($author) || ! is_string($author['name'] ?? null) || $author['name'] === '' || mb_strlen($author['name']) > 80
-            || (isset($author['url']) && ! preg_match('/^https:\/\/[a-z0-9.-]+(\/\S*)?$/i', (string) $author['url']))) {
+            || (array_key_exists('url', $author) && ! UrlGuard::isOptionalHttps($author['url']))) {
             $bad('author');
         }
         $license = $m['license'] ?? null;
@@ -296,6 +296,10 @@ class TemplatePackageValidator
             foreach ($marks as $mark) {
                 if (! is_array($mark) || ! is_string($mark['name'] ?? null) || ! is_string($mark['owner'] ?? null) || ! is_string($mark['usage'] ?? null)) {
                     $bad('thirdPartyMarks', 'manifest_invalid', 'cada marca necesita name, owner y usage');
+                    break;
+                }
+                if (array_key_exists('url', $mark) && ! UrlGuard::isOptionalHttps($mark['url'])) {
+                    $bad('thirdPartyMarks', 'manifest_invalid', 'la url de una marca solo admite https:// público');
                     break;
                 }
             }
@@ -729,6 +733,9 @@ class TemplatePackageValidator
                 if (! is_string($credit[$k] ?? null) || $credit[$k] === '') {
                     $report->error('manifest.json', 'license_asset_missing', "assetsCredits.{$k} vacío.", null, $path);
                 }
+            }
+            if (array_key_exists('url', $credit) && ! UrlGuard::isOptionalHttps($credit['url'])) {
+                $report->error('manifest.json', 'manifest_invalid', 'assetsCredits.url solo admite https:// público (sin credenciales, localhost ni IP).', null, $path);
             }
             $credited[$path] = true;
             if (! in_array($path, $assets, true)) {
