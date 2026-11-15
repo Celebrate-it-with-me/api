@@ -195,6 +195,8 @@ class CssSanitizer
 
     private int $rules = 0;
 
+    private int $blendRules = 0;
+
     private int $errorsBefore = 0;
 
     private SelectorScoper $scoper;
@@ -225,6 +227,7 @@ class CssSanitizer
         $this->keyframes = [];
         $this->usedAssets = [];
         $this->rules = 0;
+        $this->blendRules = 0;
         $this->warnedKeys = [];
         $this->errorsBefore = $report->errorCount();
         $this->scoper = new SelectorScoper($slug, $classKinds);
@@ -684,6 +687,12 @@ class CssSanitizer
         if ($this->restricted($kinds) !== []) {
             $this->restrictedCheck($d, $base, $kinds, $line);
         }
+        if (str_starts_with($base, 'animation') || str_starts_with($base, 'transition')) {
+            // A computed or variable duration makes the 4 s cap meaningless (W6-07), and a variable could name a keyframe.
+            if (array_intersect($this->functionNames($d->getValue()), ['calc', 'var', 'env', 'attr', 'min', 'max', 'clamp']) !== []) {
+                $this->report->error($this->file, 'css_forbidden_property', 'animation y transition solo admiten valores literales (sin calc(), var(), min(), max() ni clamp()).', $line, $base);
+            }
+        }
 
         if (is_string($d->getValue()) && in_array($base, ['animation', 'animation-name'], true) && isset($this->keyframes[$d->getValue()])) {
             $this->noteKeyframeUse($d->getValue());
@@ -982,6 +991,9 @@ class CssSanitizer
             case 'filter':
             case 'backdrop-filter':
             case 'mix-blend-mode':
+                if ($base === 'mix-blend-mode' && ++$this->blendRules > 1) {
+                    $this->report->error($this->file, 'css_forbidden_property', 'mix-blend-mode solo se admite en una regla del paquete.', $line, $text);
+                }
                 if (! in_array($base, $this->warnedKeys, true)) {
                     $this->warnedKeys[] = $base;
                     $this->report->warning($this->file, 'css_costly_property', "{$base} es costoso de pintar en móviles modestos.", $line);
@@ -1035,6 +1047,21 @@ class CssSanitizer
             $this->report->error($this->file, 'css_forbidden_property', 'Función CSS no permitida.', $line, $name . '()');
 
             return false;
+        }
+        if (in_array($name, ['blur', 'drop-shadow'], true)) {
+            foreach ($this->sizes($fn) as $size) {
+                $unit = strtolower((string) $size->getUnit());
+                $px = match ($unit) {
+                    'px', '' => $size->getSize(),
+                    'em', 'rem' => $size->getSize() * 16,
+                    default => 1_000_000.0, // %, vw, vh...: unbounded for a filter
+                };
+                if (abs($px) > ($name === 'blur' ? 40 : 100)) {
+                    $this->report->error($this->file, 'css_forbidden_property', $name === 'blur' ? 'blur() admite como máximo 40px.' : 'drop-shadow() admite como máximo 100px.', $line, $name . '(' . $size->getSize() . $unit . ')');
+
+                    return false;
+                }
+            }
         }
         if ($name === 'var') {
             $args = $fn->getArguments();
@@ -1096,11 +1123,28 @@ class CssSanitizer
 
     private function size(Size $size, string $property, ?int $line): void
     {
-        if (in_array($property, self::DURATION_PROPERTIES, true) && in_array(strtolower((string) $size->getUnit()), ['s', 'ms'], true)) {
-            $ms = $size->getSize() * (strtolower((string) $size->getUnit()) === 's' ? 1000 : 1);
+        $unit = strtolower((string) $size->getUnit());
+        $value = abs($size->getSize());
+        if (in_array($property, self::DURATION_PROPERTIES, true) && in_array($unit, ['s', 'ms'], true)) {
+            $ms = $value * ($unit === 's' ? 1000 : 1);
             if ($ms > 4000) {
-                $this->report->error($this->file, 'css_forbidden_property', 'Las duraciones y retardos no pueden pasar de 4 s.', $line, $size->getSize() . $size->getUnit());
+                $this->report->error($this->file, 'css_forbidden_property', 'Las duraciones y retardos no pueden pasar de 4 s (en positivo ni en negativo).', $line, $size->getSize() . $size->getUnit());
             }
+
+            return;
+        }
+        // Absolute sizes are bounded (W6-07): a 99999px box or blur costs a phone its graphics memory. Pill radii are exempt.
+        if (str_contains($property, 'radius')) {
+            return;
+        }
+        $limit = match ($unit) {
+            'px' => 4000,
+            'em', 'rem' => 250,
+            'vw', 'vh', 'vmin', 'vmax', 'svh', 'dvh', 'lvh', 'svw', 'dvw', 'lvw', 'cqw', 'cqh', '%' => 1000,
+            default => null,
+        };
+        if ($limit !== null && $value > $limit) {
+            $this->report->error($this->file, 'css_forbidden_property', "Tamaño fuera de límites (máximo {$limit}{$unit}).", $line, $size->getSize() . $size->getUnit());
         }
     }
 

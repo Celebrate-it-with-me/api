@@ -278,3 +278,57 @@ it('W6-06 refuses deeply nested blocks and still accepts a normal nesting', func
     [$out, $codes] = w6css('.pkg-a{width:calc(100% - calc(2rem + calc(1px + 1px)))}@media (min-width:400px){.pkg-a{color:red}}');
     expect($codes)->toBe([])->and($out)->not->toBeNull();
 });
+
+// W6-07 --------------------------------------------------------------------------------------------------------------
+
+it('W6-07 refuses computed durations, huge blurs and sizes, and a second blend mode', function (string $css) {
+    [$out, $codes] = w6css($css);
+    expect($out)->toBeNull()->and($codes)->not->toBe([]);
+})->with([
+    'calc duration' => ['.pkg-a{animation-duration:calc(1s*9999)}'],
+    'calc in the shorthand' => ['@keyframes k{to{color:red}} .pkg-a{animation:k calc(1s*9999)}'],
+    'var duration' => ['.pkg-a{--pkg-d:99999s;animation-duration:var(--pkg-d)}'],
+    'var delay in transition' => ['.pkg-a{transition:color 1s var(--pkg-d)}'],
+    'negative delay' => ['.pkg-a{animation-delay:-99999s}'],
+    'calc transition' => ['.pkg-a{transition-duration:calc(2s + 3s)}'],
+    'blur 99999px' => ['.pkg-a{filter:blur(99999px)}'],
+    'backdrop blur' => ['.pkg-a{backdrop-filter:blur(999px)}'],
+    'blur in percent' => ['.pkg-a{filter:blur(50%)}'],
+    'drop-shadow blur' => ['.pkg-a{filter:drop-shadow(0 0 99999px red)}'],
+    'huge width' => ['.pkg-a{position:absolute;width:9999999px;height:9999999px}'],
+    'huge em' => ['.pkg-a{width:9999em}'],
+    'huge percent' => ['.pkg-a{width:99999%}'],
+    'huge vw' => ['.pkg-a{height:99999vw}'],
+    'two blend modes' => ['.pkg-a{mix-blend-mode:multiply}.pkg-b{mix-blend-mode:screen}'],
+]);
+
+it('W6-07 still allows an infinite animation (with a warning), a pill radius and a moderate blur', function () {
+    $css = '@keyframes pulse{50%{opacity:.5}} .pkg-a{animation:pulse 2s ease-in-out infinite;border-radius:9999px;filter:blur(12px);width:min(100%,640px);transition:color .3s ease-out}';
+    $report = new Report;
+    $out = (new CssSanitizer)->sanitize($css, 'botanical', 'theme.css', $report, [], [], []);
+    expect($report->errorCodes())->toBe([])->and($out)->not->toBeNull()->and(array_column($report->toArray()['warnings'], 'code'))->toContain('css_costly_property');
+});
+
+function w6Svg(string $inner): string
+{
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' . $inner . '</svg>';
+}
+
+it('W6-07 bounds the numbers, blur and regions of an SVG', function (string $inner) {
+    $r = PackageBuilder::good()->asset('assets/img/bomb.svg', w6Svg($inner))->validate();
+    expect($r['valid'])->toBeFalse()->and(PackageBuilder::errors($r))->not->toBe([]);
+})->with([
+    'stdDeviation 99999' => ['<defs><filter id="f"><feGaussianBlur stdDeviation="99999"/></filter></defs><rect width="10" height="10" filter="url(#f)"/>'],
+    'region in the millions of percent' => ['<defs><filter id="f" x="-1000000%" y="-1000000%" width="2000000%" height="2000000%"><feGaussianBlur stdDeviation="2"/></filter></defs><rect width="10" height="10" filter="url(#f)"/>'],
+    'userspace region' => ['<defs><filter id="f" filterUnits="userSpaceOnUse" x="-99999" y="-99999" width="999999" height="999999"><feGaussianBlur stdDeviation="2"/></filter></defs><rect width="10" height="10" filter="url(#f)"/>'],
+    'rect of 99999999999' => ['<rect width="99999999999" height="99999999999"/>'],
+    'not finite' => ['<rect width="1e999" height="10"/>'],
+    'turbulence displacing a huge rect' => ['<defs><filter id="f"><feTurbulence baseFrequency=".01" numOctaves="3"/><feDisplacementMap in2="x" scale="99"/></filter></defs><rect width="1000000" height="1000000" filter="url(#f)"/>'],
+    'mask referring to itself' => ['<defs><mask id="m"><rect width="10" height="10" mask="url(#m)"/></mask></defs><rect width="10" height="10" mask="url(#m)"/>'],
+    'duplicated ids' => ['<defs><linearGradient id="g"/><linearGradient id="g"/></defs><rect width="10" height="10"/>'],
+]);
+
+it('W6-07 keeps a reasonable filter', function () {
+    $r = PackageBuilder::good()->asset('assets/img/ok.svg', w6Svg('<defs><filter id="f" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4"/></filter></defs><rect width="60" height="60" filter="url(#f)"/>'))->validate();
+    expect($r['valid'])->toBeTrue(json_encode($r['report']['errors']));
+});

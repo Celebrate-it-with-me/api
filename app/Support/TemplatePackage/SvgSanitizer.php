@@ -153,6 +153,9 @@ class SvgSanitizer
         if ($node instanceof DOMElement) {
             $id = $node->getAttribute('id');
             if ($id !== '') {
+                if (isset($this->ids[$id])) {
+                    $this->report->error($this->file, 'svg_invalid', 'id repetido en el SVG.', $node->getLineNo(), $id);
+                }
                 $this->ids[$id] = true;
             }
             foreach ($node->childNodes as $child) {
@@ -344,9 +347,9 @@ class SvgSanitizer
 
         return match ($rule) {
             'id' => (bool) preg_match('/^' . self::ID . '$/', $value),
-            'num' => (bool) preg_match("/^{$num}$/", $value),
+            'num' => (bool) preg_match("/^{$num}$/", $value) && $this->finiteWithin($value, self::MAX_NUMBER),
             'num01' => (bool) preg_match("/^{$num}$/", $value) && (float) $value >= 0 && (float) $value <= 1,
-            'len' => (bool) preg_match("/^{$len}$/", $value),
+            'len' => (bool) preg_match("/^{$len}$/", $value) && $this->lenWithin($value, $local, $name),
             'ident' => (bool) preg_match('/^[A-Za-z][\w-]{0,40}$/', $value),
             'paint' => $this->paintOk($value),
             'urlref' => $value === 'none' || (bool) preg_match('/^url\(#(' . self::ID . ')\)$/', $value, $m) && isset($this->ids[$m[1]]),
@@ -359,13 +362,55 @@ class SvgSanitizer
             'viewbox' => (bool) preg_match("/^\s*{$num}[\s,]+{$num}[\s,]+{$num}[\s,]+{$num}\s*$/", $value),
             'par' => (bool) preg_match('/^(none|x(Min|Mid|Max)Y(Min|Mid|Max))(\s+(meet|slice))?$/', $value),
             'ver' => $value === '1.1' || $value === '1.0',
-            'pathdata' => strlen($value) <= 20000 && (bool) preg_match('/^[MmLlHhVvCcSsQqTtAaZz0-9eE+\-.,\s]*$/', $value),
-            'numlist' => strlen($value) <= 8000 && (bool) preg_match('/^[0-9eE+\-.,\s%]*$/', $value),
+            'pathdata' => strlen($value) <= 20000 && (bool) preg_match('/^[MmLlHhVvCcSsQqTtAaZz0-9eE+\-.,\s]*$/', $value) && $this->numbersWithin($value, self::MAX_NUMBER),
+            'numlist' => strlen($value) <= 8000 && (bool) preg_match('/^[0-9eE+\-.,\s%]*$/', $value) && $this->numbersWithin($value, $name === 'stdDeviation' ? self::MAX_BLUR : self::MAX_NUMBER),
             'transform' => (bool) preg_match('/^\s*(?:(?:matrix|translate|scale|rotate|skewX|skewY)\s*\([-0-9eE+.,\s]*\)[\s,]*)*$/', $value),
             'octaves' => ctype_digit($value) && (int) $value >= 1 && (int) $value <= 5,
             'displace' => (bool) preg_match("/^{$num}$/", $value) && abs((float) $value) <= 100,
             default => false,
         };
+    }
+
+    /** Largest absolute number any attribute may carry (user units): beyond it the file is a rendering bomb or not finite. */
+    private const MAX_NUMBER = 1_000_000.0;
+
+    /** `stdDeviation` of a Gaussian blur: the same ceiling as `blur()` in CSS. */
+    private const MAX_BLUR = 40.0;
+
+    /** Filter and mask regions, and the sizes of shapes, stay in a sane box. */
+    private const MAX_REGION = 4000.0;
+
+    private const MAX_SHAPE = 100_000.0;
+
+    private function finiteWithin(string $number, float $max): bool
+    {
+        $f = (float) $number;
+
+        return is_finite($f) && abs($f) <= $max;
+    }
+
+    private function numbersWithin(string $list, float $max): bool
+    {
+        if (! preg_match_all('/' . self::NUM . '/', $list, $m)) {
+            return true;
+        }
+        foreach ($m[0] as $n) {
+            if (! $this->finiteWithin($n, $max)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** `len` values: finite, bounded, and tighter in filter/mask regions (percentages included). */
+    private function lenWithin(string $value, string $local, string $name): bool
+    {
+        $region = in_array($local, ['filter', 'mask'], true) && in_array($name, ['x', 'y', 'width', 'height'], true);
+        $percent = str_ends_with($value, '%');
+        $max = $percent ? ($region ? 300.0 : 1000.0) : ($region ? self::MAX_REGION : self::MAX_SHAPE);
+
+        return $this->finiteWithin((string) preg_replace('/[a-z%]+$/i', '', $value), $max);
     }
 
     private function paintOk(string $value): bool
@@ -421,6 +466,28 @@ class SvgSanitizer
             }
         };
         $walk($root);
+
+        // An element that refers to itself or to one of its ancestors through clip-path, mask or filter is a cycle.
+        $selfRef = function (DOMElement $e, array $ancestors) use (&$selfRef): bool {
+            $chain = [...$ancestors, $e->getAttribute('id')];
+            foreach (['clip-path', 'mask', 'filter'] as $attr) {
+                if ($e->hasAttribute($attr) && preg_match('/url\(#([^)]+)\)/', $e->getAttribute($attr), $m) && in_array($m[1], $chain, true)) {
+                    return true;
+                }
+            }
+            foreach ($e->childNodes as $c) {
+                if ($c instanceof DOMElement && $selfRef($c, $chain)) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+        if ($selfRef($root, [])) {
+            $this->report->error($this->file, 'svg_invalid', 'Un elemento se referencia a sí mismo o a un ancestro (clip-path, mask o filter).');
+
+            return;
+        }
 
         if ($uses > 100) {
             $this->report->error($this->file, 'svg_invalid', 'Demasiados <use>.', null, (string) $uses);
