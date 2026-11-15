@@ -325,7 +325,7 @@ describe('background music routes', function () {
         $second = BackgroundMusic::where('event_id', $event->id)->value('song_url');
         expect(BackgroundMusic::where('event_id', $event->id)->count())->toBe(1)
             ->and($second)->not->toBe($first)
-            ->and($replaced->json('data.title'))->toBeNull();
+            ->and($replaced->json('data.title'))->toBe('Vals');
         Storage::disk('public')->assertMissing($first);
         Storage::disk('public')->assertExists($second);
         expect(Storage::disk('public')->allFiles())->toHaveCount(1);
