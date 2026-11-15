@@ -24,7 +24,10 @@ class BackgroundMusicServices
     ];
 
     /** Content types accepted by content sniffing, and the extensions a client may name the file with. */
-    public const ALLOWED_MIMETYPES = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'application/ogg'];
+    public const ALLOWED_MIMETYPES = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'application/ogg', 'video/mp4'];
+
+    /** Android records m4a with an mp4 box (ftypmp42/isom) that sniffs as video/mp4: valid only under these extensions. */
+    public const VIDEO_MP4_EXTENSIONS = ['m4a', 'aac'];
 
     public const ALLOWED_EXTENSIONS = ['mp3', 'm4a', 'aac', 'ogg'];
 

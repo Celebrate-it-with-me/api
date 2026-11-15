@@ -331,6 +331,23 @@ describe('background music routes', function () {
         ['song.ogg', "OggS\x00\x02" . str_repeat("\x00", 20) . "\x01\x1e\x01vorbis" . str_repeat("\x00", 40)],
     ]);
 
+    it('accepts the mp4 box of an Android m4a/aac only under those extensions, and refuses it elsewhere', function (string $name, bool $accepted) {
+        [, $owner, $url] = musicEvent();
+        $bytes = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom" . str_repeat("\x00", 200);
+
+        $response = $this->actingAs($owner)->post($url, ['songFile' => songFile($name, $bytes)], ['Accept' => 'application/json']);
+
+        $accepted
+            ? $response->assertSuccessful()
+            : $response->assertStatus(422)->assertJsonPath('errors.songFile.0', 'invalid_type');
+    })->with([
+        'm4a' => ['android.m4a', true],
+        'aac' => ['android.aac', true],
+        'mp3' => ['android.mp3', false],
+        'ogg' => ['android.ogg', false],
+        'mp4' => ['clip.mp4', false],
+    ]);
+
     it('refuses wav, a wrong extension and fake audio with invalid_type', function (string $name, string $bytes) {
         [, $owner, $url] = musicEvent();
 
