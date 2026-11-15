@@ -464,7 +464,7 @@ describe('validation', function () {
         $draft = tplDraft();
         $sections = tplContent($draft)['sections'];
 
-        $sections[1]['type'] = 'gallery';
+        $sections[1]['type'] = 'carousel';
         $sections[2]['title']['es'] = '<script>alert(1)</script>';
         $sections[3]['text']['en'] = str_repeat('a', 1001);
         $sections[4]['type'] = 'cover';
@@ -472,6 +472,27 @@ describe('validation', function () {
 
         tplPatch(['sections' => $sections], $draft)->assertUnprocessable()->assertJsonValidationErrors([
             'sections.1.type', 'sections.2.title.es', 'sections.3.text.en', 'sections.4.type', 'sections.5.title.fr',
+        ]);
+    });
+
+    it('validates the settings of the gallery and music sections', function () {
+        $draft = tplDraft();
+        $sections = tplContent($draft)['sections'];
+        $at = fn (string $type) => array_search($type, array_column($sections, 'type'));
+
+        $good = $sections;
+        $good[$at('gallery')]['settings'] = ['layout' => 'carousel', 'maxPhotos' => 40, 'showCaptions' => false];
+        $good[$at('music')]['settings'] = ['title' => ['es' => 'Nuestra canción', 'en' => 'Our song']];
+        tplPatch(['sections' => $good], $draft)->assertOk();
+
+        $bad = $sections;
+        $bad[$at('gallery')]['settings'] = ['layout' => 'masonry', 'maxPhotos' => 41, 'showCaptions' => 'yes', 'autoplay' => true];
+        $bad[$at('music')]['settings'] = ['title' => ['es' => str_repeat('a', 61)], 'autoplay' => true];
+
+        tplPatch(['sections' => $bad], $draft)->assertUnprocessable()->assertJsonValidationErrors([
+            'sections.' . $at('gallery') . '.settings.layout', 'sections.' . $at('gallery') . '.settings.maxPhotos',
+            'sections.' . $at('gallery') . '.settings.showCaptions', 'sections.' . $at('gallery') . '.settings.autoplay',
+            'sections.' . $at('music') . '.settings.title.es', 'sections.' . $at('music') . '.settings.autoplay',
         ]);
     });
 

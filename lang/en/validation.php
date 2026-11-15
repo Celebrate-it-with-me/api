@@ -245,6 +245,7 @@ return [
         'commitments.*.budgetItemId' => 'budget item',
         'companions' => 'companions',
         'companions.*.id' => 'companion',
+        'companions.*.name' => 'companion name',
         'companions.*.notes' => 'companion notes',
         'companions.*.rsvpStatus' => 'companion response',
         'companions.*.rsvp_status' => 'companion response',

@@ -616,7 +616,7 @@ class InvitationService
      *
      * @return array{settings?: array<string, mixed>}
      */
-    private function settingsEntry(array $section, string $locale): array
+    public function settingsEntry(array $section, string $locale): array
     {
         return match ($section['type']) {
             'gallery' => ['settings' => $this->gallerySettings($section)],
