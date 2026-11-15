@@ -53,7 +53,12 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute((int) config('app.api_rate_limit_per_minute', 120))
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(fn (Request $request, array $headers) => response()->json([
+                    'message' => __('errors.too_many_attempts'),
+                    'code' => 'too_many_attempts',
+                ], 429, $headers));
         });
 
         // Unnamed `throttle:N,M` shares one counter per IP/user across ALL such routes (the signature has no route),
