@@ -49,7 +49,7 @@ class PackageLifecycle
         DB::transaction(function () use ($package, $versions, $reason, &$previousEvents) {
             foreach ($versions as $version) {
                 if ($version->isDraft()) {
-                    $previousEvents += $this->templates->publish($version->id, $reason)['eventsOnPreviousVersion'];
+                    $previousEvents += $this->templates->publish($version->id, $reason, viaPackage: true)['eventsOnPreviousVersion'];
                 }
             }
             InvitationTemplate::query()->whereIn('id', $versions->pluck('template_id'))->update(['is_active' => true]);

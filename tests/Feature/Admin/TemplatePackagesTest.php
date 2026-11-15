@@ -908,3 +908,24 @@ describe('templates:lint', function () {
         $this->artisan('templates:lint', ['path' => $pinyon()->zip(), '--allow-engine-fonts' => true])->assertExitCode(0);
     });
 });
+
+describe('wave 6 security (W6-04)', function () {
+    it('refuses to publish or archive a version a package owns, so activation cannot be skipped', function () {
+        pkgAdmin();
+        $first = pkgInstall();
+        pkgActivate($first['id']);
+        // The attack of the report: a newer version of an already active template, published by hand.
+        $second = pkgInstall(pkgVersion('1.1.0'));
+        $draft = InvitationTemplateVersion::where('package_id', $second['id'])->where('status', 'draft')->firstOrFail();
+        $liveBefore = InvitationTemplateVersion::where('template_id', $draft->template_id)->where('status', 'published')->value('id');
+
+        $this->postJson("/api/v1/admin/templates/versions/{$draft->id}/publish", ['reason' => 'Publicar sin activar'])->assertStatus(409)->assertJson(['code' => 'package_managed']);
+        $this->postJson("/api/v1/admin/templates/versions/{$draft->id}/archive", ['reason' => 'Archivar a mano'])->assertStatus(409)->assertJson(['code' => 'package_managed']);
+        $live = InvitationTemplateVersion::where('package_id', $first['id'])->where('status', 'published')->firstOrFail();
+        $this->postJson("/api/v1/admin/templates/versions/{$live->id}/archive", ['reason' => 'Archivar a mano'])->assertStatus(409)->assertJson(['code' => 'package_managed']);
+
+        expect($draft->fresh()->status)->toBe('draft')
+            ->and(InvitationTemplateVersion::where('template_id', $draft->template_id)->where('status', 'published')->value('id'))->toBe($liveBefore)
+            ->and(TemplatePackage::find($second['id'])->status)->toBe('installed');
+    });
+});
