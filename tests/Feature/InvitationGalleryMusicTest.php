@@ -261,6 +261,33 @@ describe('the catalog and the Classic templates', function () {
             ->and($event->fresh()->template_version_id)->toBe($new->id)
             ->and(DB::table('invitation_template_versions')->where('template_id', $row->id)->count())->toBe(2);
     });
+
+    it('does not switch gallery/music on for events that already had photos or a song when migrating', function () {
+        $row = DB::table('invitation_templates')->where('slug', 'classic-quinceanera')->first();
+        $old = DB::table('invitation_template_versions')->find($row->current_version_id);
+        $legacy = collect(json_decode($old->sections, true))->reject(fn ($s) => in_array($s['type'], ['gallery', 'music']))->values()->all();
+        DB::table('invitation_template_versions')->where('id', $old->id)->update(['sections' => json_encode($legacy)]);
+        DB::table('invitation_templates')->where('id', $row->id)->update(['default_sections' => json_encode($legacy)]);
+
+        $quince = EventType::where('slug', 'quinceanera')->value('id');
+        $plan = EventPlan::where('slug', 'premium')->value('id');
+        $make = fn () => Events::factory()->create(['template_version_id' => $old->id, 'event_type_id' => $quince, 'event_plan_id' => $plan]);
+        $withPhotos = $make();
+        addPhotos($withPhotos, 1);
+        $withSong = $make();
+        addSong($withSong);
+        $hiddenOnly = $make();
+        addPhotos($hiddenOnly, 1, ['visible' => false]);
+        $empty = $make();
+
+        (include database_path('migrations/2027_04_11_000004_add_gallery_and_music_to_classic_templates.php'))->up();
+
+        $enabled = fn (Events $e, string $type) => collect($e->fresh()->template_config['sections'] ?? [])->firstWhere('type', $type)['enabled'] ?? null;
+        expect($enabled($withPhotos, 'gallery'))->toBeFalse()->and($enabled($withPhotos, 'music'))->toBeNull()
+            ->and($enabled($withSong, 'music'))->toBeFalse()->and($enabled($withSong, 'gallery'))->toBeNull()
+            ->and($enabled($hiddenOnly, 'gallery'))->toBeNull()
+            ->and($empty->fresh()->template_config)->toBeNull();
+    });
 });
 
 /** @return array{0: Events, 1: User, 2: string} */
