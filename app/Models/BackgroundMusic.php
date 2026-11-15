@@ -16,6 +16,7 @@ class BackgroundMusic extends Model
         'icon_color',
         'auto_play',
         'song_url',
+        'title',
     ];
     
     /**

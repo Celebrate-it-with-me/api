@@ -124,6 +124,7 @@ describe('route classification', function () {
             'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
             'GET api/v1/app/event/{event}/suggest-music/export',
+            'POST api/v1/app/event/{event}/background-music', 'DELETE api/v1/app/event/{event}/background-music',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
             'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
             'POST api/v1/app/announcements/{announcement}/dismiss',

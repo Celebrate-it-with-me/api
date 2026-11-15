@@ -4,74 +4,98 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\BackgroundMusic;
 use App\Models\Events;
-use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * The background song of the invitation: one per event. Uploading again replaces it (the old file leaves the disk),
+ * deleting removes the row and the file.
+ */
 class BackgroundMusicServices
 {
-    protected Request $request;
+    private const DISK = 'public';
 
-    public function __construct(Request $request)
-    {
-        $this->request = $request;
-    }
-    
+    /** Extension of the stored file => the type the player is told. */
+    private const MIME_BY_EXTENSION = [
+        'mp3' => 'audio/mpeg',
+        'm4a' => 'audio/mp4',
+        'aac' => 'audio/aac',
+        'ogg' => 'audio/ogg',
+    ];
+
+    /** Content types accepted by content sniffing, and the extensions a client may name the file with. */
+    public const ALLOWED_MIMETYPES = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'application/ogg'];
+
+    public const ALLOWED_EXTENSIONS = ['mp3', 'm4a', 'aac', 'ogg'];
+
     /**
-     * Create a new background music configuration for the given event.
+     * Save the song of the event, replacing the one it had.
      *
-     * @param Events $event
-     * @return BackgroundMusic
+     * @param  array{title?: ?string, iconSize?: ?string, iconPosition?: ?string, iconColor?: ?string, autoplay?: mixed}  $data
+     * @return array{0: BackgroundMusic, 1: bool} the song and whether it was created (false = replaced)
      */
-    public function create(Events $event): BackgroundMusic
+    public function save(Events $event, UploadedFile $file, array $data = []): array
     {
-        $songPath = null;
-        if ($this->request->hasFile('songFile') && $this->request->file('songFile')->isValid()) {
-            $songPath = $this->request->file('songFile')
-                ->store("sound/background-music/$event->id", 'public');
-        }
-        
-        // Create the Background music entry in the database
-        return BackgroundMusic::query()->create([
-            'event_id' => $event->id,
-            'icon_size' => $this->request->input('iconSize'),
-            'icon_position' => $this->request->input('iconPosition'),
-            'icon_color' => $this->request->input('iconColor'),
-            'auto_play' => $this->request->input('autoplay') ? 1 : 0,
-            'song_url' => $songPath,
-        ]);
-    }
-    
-    /**
-     * Update an existing background music configuration.
-     *
-     * @param BackgroundMusic $backgroundMusic
-     * @return BackgroundMusic
-     */
-    public function update(BackgroundMusic $backgroundMusic): BackgroundMusic
-    {
-        $songPath = $backgroundMusic->song_url;
-        if ($this->request->hasFile('songFile') && $this->request->file('songFile')->isValid()) {
-            
-            // Delete existing image file if it exists
-            if ($songPath && Storage::disk('public')->exists($songPath)) {
-                Storage::disk('public')->delete($songPath);
+        $path = $file->store("sound/background-music/{$event->id}", self::DISK);
+
+        $existing = BackgroundMusic::query()->where('event_id', $event->id)->orderByDesc('id')->get();
+        $music = $existing->first();
+        $stale = $existing->skip(1)->concat($music ? [$music] : []);
+        $oldFiles = $existing->pluck('song_url')->filter()->all();
+
+        $attributes = ['song_url' => $path, 'title' => $this->cleanTitle($data['title'] ?? null)];
+        foreach (['iconSize' => 'icon_size', 'iconPosition' => 'icon_position', 'iconColor' => 'icon_color'] as $input => $column) {
+            if (array_key_exists($input, $data)) {
+                $attributes[$column] = $data[$input];
             }
-            
-            $songPath = $this->request->file('songFile')
-                ->store("sound/background-music/$backgroundMusic->event_id", 'public');
         }
-        
-        $backgroundMusic->icon_size = $this->request->input('iconSize');
-        $backgroundMusic->icon_position = $this->request->input('iconPosition');
-        $backgroundMusic->icon_color = $this->request->input('iconColor');
-        $backgroundMusic->auto_play = $this->request->input('autoplay') ? 1 : 0;
-        $backgroundMusic->song_url = $songPath;
-        
-        $backgroundMusic->save();
-        
-        return $backgroundMusic;
-        
-        
-        
+
+        if ($music) {
+            $music->forceFill($attributes)->save();
+            BackgroundMusic::query()->whereIn('id', $existing->skip(1)->pluck('id'))->delete();
+        } else {
+            $music = BackgroundMusic::query()->create($attributes + ['event_id' => $event->id]);
+        }
+
+        // The row points at the new file before the old ones go: a failure in between leaves a stray file, never a dead link.
+        Storage::disk(self::DISK)->delete($oldFiles);
+
+        return [$music->refresh(), $existing->isEmpty()];
+    }
+
+    /** Remove the song (row and file). Returns false when the event has none. */
+    public function delete(Events $event): bool
+    {
+        $rows = BackgroundMusic::query()->where('event_id', $event->id)->get();
+
+        if ($rows->isEmpty()) {
+            return false;
+        }
+
+        BackgroundMusic::query()->whereIn('id', $rows->pluck('id'))->delete();
+        Storage::disk(self::DISK)->delete($rows->pluck('song_url')->filter()->all());
+
+        return true;
+    }
+
+    public static function mimeTypeOf(?string $path): ?string
+    {
+        return $path ? (self::MIME_BY_EXTENSION[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null) : null;
+    }
+
+    public static function sizeOf(?string $path): ?int
+    {
+        try {
+            return $path && Storage::disk(self::DISK)->exists($path) ? Storage::disk(self::DISK)->size($path) : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function cleanTitle(?string $title): ?string
+    {
+        $title = $title === null ? '' : trim($title);
+
+        return $title === '' ? null : $title;
     }
 }

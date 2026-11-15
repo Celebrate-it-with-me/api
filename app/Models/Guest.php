@@ -38,6 +38,7 @@ class Guest extends Model
 
     protected $casts = [
         'rsvp_status_date' => 'datetime',
+        'rsvp_note_at' => 'datetime',
         'whatsapp_opted_out_at' => 'datetime',
         'tags' => 'array'
     ];
