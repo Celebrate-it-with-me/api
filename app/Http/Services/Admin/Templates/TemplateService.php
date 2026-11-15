@@ -39,12 +39,13 @@ class TemplateService
 
         $usage = $this->usage(InvitationTemplate::query()->get(['id', 'event_type_id', 'tier', 'is_active']));
         $versions = $template->versions()->orderByDesc('version')
-            ->get(['id', 'template_id', 'version', 'status', 'notes', 'created_at', 'published_at']);
+            ->get(['id', 'template_id', 'package_id', 'version', 'status', 'notes', 'created_at', 'published_at']);
 
         return $this->templateRow($template, $usage) + [
             'versions' => $versions->map(fn (Version $v) => [
                 'id' => $v->id,
                 'version' => $v->version,
+                'packageId' => $v->package_id,
                 'status' => $v->status,
                 'notes' => $v->notes,
                 'createdAt' => $v->created_at?->toIso8601String(),

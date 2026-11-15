@@ -30,8 +30,14 @@ class SelectorScoper
 
     private const ATTRS = ['lang', 'dir', 'role', 'alt', 'loading'];
 
-    /** Every `inv-*` class belongs to the system; a package may style it (visual properties only) but not own it. */
-    private const SYSTEM_CLASS = '/^inv-/';
+    /**
+     * The closed list of system hooks a package stylesheet may target (visual properties only): the root, one class per
+     * block (`inv-q--<block>`) and the parts of the cover photo (`inv-q-photo__*`). Any other `inv-*` class stays forbidden.
+     */
+    private const SYSTEM_CLASS = '/^inv-(root|q--(rsvp|gallery|music|countdown|locations|itinerary|dress-code|padrinos|date|names|cover-photo|language-switch|cta|seats|address|guest|closing|save-the-date|sections)|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
+
+    /** The cover photo and its parts: decoration, so their size, layout and mask can be designed. */
+    private const PHOTO_CLASS = '/^inv-(q--cover-photo|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
 
     /** The only classes a package owns. */
     private const PACKAGE_CLASS = '/^pkg-[a-z0-9_-]{1,59}$/';
@@ -44,7 +50,7 @@ class SelectorScoper
      */
     public function __construct(private readonly string $slug, private readonly array $classKinds = []) {}
 
-    /** @return array{css: string, kind: string}|array{error: string} */
+    /** @return array{css: string, kind: string, pseudo: bool}|array{error: string} */
     public function scope(string $selector): array
     {
         $selector = trim($selector);
@@ -102,7 +108,7 @@ class SelectorScoper
             $out = '[data-inv-theme="' . $this->slug . '"] ' . $out;
         }
 
-        return ['css' => $out, 'kind' => $last['kind']];
+        return ['css' => $out, 'kind' => $last['kind'], 'pseudo' => $last['pseudo']];
     }
 
     /**
@@ -120,6 +126,7 @@ class SelectorScoper
         $hasInvRoot = false;
         $hasScopeAttr = false;
         $hasSystemHook = false;
+        $pseudoEl = false;
         $consumed = false;
 
         if (preg_match('/\G(\*|[a-zA-Z][a-zA-Z0-9-]*)/', $s, $m, 0, $pos)) {
@@ -150,8 +157,8 @@ class SelectorScoper
                 if (! preg_match('/\G\.([a-zA-Z_][a-zA-Z0-9_-]{0,63})/', $s, $m, 0, $pos)) {
                     return ['error' => 'clase mal formada'];
                 }
-                if ($m[1] !== 'inv-root' && ! preg_match(self::PACKAGE_CLASS, $m[1]) && ! preg_match(self::SYSTEM_CLASS, $m[1])) {
-                    return ['error' => "la clase «{$m[1]}» no es del paquete (pkg-*) ni del sistema (inv-*)"];
+                if (! preg_match(self::PACKAGE_CLASS, $m[1]) && ! preg_match(self::SYSTEM_CLASS, $m[1])) {
+                    return ['error' => "la clase «{$m[1]}» no es del paquete (pkg-*) ni un gancho permitido del sistema"];
                 }
                 $pos += strlen($m[0]);
                 $classes[] = $m[1];
@@ -200,6 +207,7 @@ class SelectorScoper
                     $css .= '[data-inv-theme="' . $this->slug . '"]';
                 } else {
                     $css .= $pseudo['css'];
+                    $pseudoEl = $pseudoEl || str_starts_with($pseudo['css'], '::');
                 }
                 $consumed = true;
             } else {
@@ -219,14 +227,16 @@ class SelectorScoper
         }
 
         $kind = 'free';
-        $rank = ['free' => 0, 'bare' => 1, 'wrapper' => 2, 'system' => 3];
+        $rank = ['free' => 0, 'bare' => 1, 'wrapper' => 2, 'photo' => 3, 'system' => 4];
         $consider = function (string $k) use (&$kind, $rank): void {
             if ($rank[$k] > $rank[$kind]) {
                 $kind = $k;
             }
         };
         foreach ($classes as $c) {
-            if ($c !== 'inv-root' && preg_match(self::SYSTEM_CLASS, $c)) {
+            if ($c !== 'inv-root' && preg_match(self::PHOTO_CLASS, $c)) {
+                $consider('photo');
+            } elseif ($c !== 'inv-root' && preg_match(self::SYSTEM_CLASS, $c)) {
                 $consider('system');
             } elseif (isset($this->classKinds[$c])) {
                 $consider($this->classKinds[$c]);
@@ -244,7 +254,7 @@ class SelectorScoper
             $consider('bare');
         }
 
-        return ['css' => $css, 'kind' => $kind, 'rootish' => $rootish];
+        return ['css' => $css, 'kind' => $kind, 'rootish' => $rootish, 'pseudo' => $pseudoEl];
     }
 
     /** @return string|array{error: string} */

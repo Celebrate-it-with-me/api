@@ -510,15 +510,44 @@ class HtmlAstBuilder
         if (! $hasQ) {
             return;
         }
-        $kind = $self ? 'system' : 'wrapper';
+        // The cover photo is decoration (its size and mask can be designed); every other block is a system control.
+        $names = $self ? [substr($el->localName, 2)] : $this->blockNames($el);
+        $photoOnly = $names === ['cover-photo'];
+        $kind = $self ? ($photoOnly ? 'photo' : 'system') : ($photoOnly ? 'photo' : 'wrapper');
         foreach (explode(' ', (string) ($attrs['class'] ?? '')) as $c) {
-            if ($c !== '' && ($this->classKinds[$c] ?? '') !== 'system') {
-                $this->classKinds[$c] = $kind;
+            if ($c !== '') {
+                $this->classKinds[$c] = $this->stricter($this->classKinds[$c] ?? null, $kind);
             }
         }
         if (isset($attrs['id']) && is_string($attrs['id'])) {
-            $this->classKinds['#' . $attrs['id']] = $kind;
+            $this->classKinds['#' . $attrs['id']] = $this->stricter($this->classKinds['#' . $attrs['id']] ?? null, $kind);
         }
+    }
+
+    /** The more restrictive of two kinds (system > photo > wrapper). */
+    private function stricter(?string $a, string $b): string
+    {
+        $rank = ['wrapper' => 0, 'photo' => 1, 'system' => 2];
+
+        return $a !== null && $rank[$a] > $rank[$b] ? $a : $b;
+    }
+
+    /** @return list<string> distinct names of the `<q-*>` blocks below an element */
+    private function blockNames(Element $el): array
+    {
+        $names = [];
+        foreach ($el->childNodes as $c) {
+            if ($c instanceof Element) {
+                if (str_starts_with($c->localName, 'q-')) {
+                    $names[substr($c->localName, 2)] = true;
+                }
+                foreach ($this->blockNames($c) as $n) {
+                    $names[$n] = true;
+                }
+            }
+        }
+
+        return array_keys($names);
     }
 
     private function containsBlock(Element $el): bool

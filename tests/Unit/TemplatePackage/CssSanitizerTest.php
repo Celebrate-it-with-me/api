@@ -234,17 +234,17 @@ it('does not let a rule hide or disable a system block', function (string $selec
     [$out, $codes] = css("{$selector}{{$decl}}", ['pkg-rsvp' => 'system', 'pkg-card' => 'wrapper', '#pkg-form' => 'system']);
     expect($out)->toBeNull()->and($codes)->toContain('css_forbidden_property');
 })->with([
-    'inv-rsvp display none' => ['.inv-rsvp', 'display:none'],
-    'inv-rsvp opacity' => ['.inv-rsvp', 'opacity:0'],
-    'inv-rsvp pointer events' => ['.inv-rsvp', 'pointer-events:none'],
-    'inv-rsvp position' => ['.inv-rsvp', 'position:absolute'],
-    'inv-rsvp transform' => ['.inv-rsvp', 'transform:scale(0)'],
-    'descendant of inv-rsvp' => ['.inv-rsvp .inv-rsvp__option', 'visibility:hidden'],
-    'watermark display' => ['.inv-watermark', 'display:none'],
-    'watermark size' => ['.inv-watermark', 'font-size:0'],
-    'language switch' => ['.inv-lang', 'display:none'],
-    'music' => ['.inv-music', 'display:none'],
-    'button' => ['.inv-button', 'width:0'],
+    'inv-rsvp display none' => ['.inv-q--rsvp', 'display:none'],
+    'inv-rsvp opacity' => ['.inv-q--rsvp', 'opacity:0'],
+    'inv-rsvp pointer events' => ['.inv-q--rsvp', 'pointer-events:none'],
+    'inv-rsvp position' => ['.inv-q--rsvp', 'position:absolute'],
+    'inv-rsvp transform' => ['.inv-q--rsvp', 'transform:scale(0)'],
+    'descendant of inv-rsvp' => ['.inv-q--rsvp .inv-q--cta', 'visibility:hidden'],
+    'watermark display' => ['.inv-q--sections', 'display:none'],
+    'watermark size' => ['.inv-q--sections', 'font-size:0'],
+    'language switch' => ['.inv-q--language-switch', 'display:none'],
+    'music' => ['.inv-q--music', 'display:none'],
+    'button' => ['.inv-q--cta', 'width:0'],
     'package class on a <q-rsvp>' => ['.pkg-rsvp', 'display:none'],
     'section hook hides the section' => ['[data-inv-section="rsvp"]', 'display:none'],
     'descendant of a wrapper by bare tag' => ['.pkg-card div', 'display:none'],
@@ -265,9 +265,9 @@ it('lets a system block and its wrapper be styled visually', function (string $s
     [$out, $codes] = css("{$selector}{{$decl}}", ['pkg-rsvp' => 'system', 'pkg-card' => 'wrapper']);
     expect($codes)->toBe([])->and($out)->not->toBeNull();
 })->with([
-    ['.inv-rsvp', 'background:var(--inv-surface-alt)'],
-    ['.inv-rsvp', 'border-radius:1rem'],
-    ['.inv-button:hover', 'background:red'],
+    ['.inv-q--rsvp', 'background:var(--inv-surface-alt)'],
+    ['.inv-q--rsvp', 'border-radius:1rem'],
+    ['.inv-q--cta:hover', 'background:red'],
     ['.pkg-rsvp', 'padding:2rem'],
     ['.pkg-card', 'display:grid'],
     ['.pkg-card', 'background:url(assets/img/a.webp)'],

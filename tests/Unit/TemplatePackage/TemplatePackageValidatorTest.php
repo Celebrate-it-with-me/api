@@ -162,7 +162,7 @@ it('cross checks HTML and CSS: a stylesheet cannot hide the RSVP block or the ca
     'wrapper clip' => ['.pkg-rsvp-wrap{clip-path:inset(100%)}'],
     'the language switch wrapper' => ['.pkg-top{pointer-events:none}'],
     'section hook' => ['[data-inv-section="rsvp"]{display:none}'],
-    'system hook' => ['.inv-rsvp{visibility:hidden}'],
+    'system hook' => ['.inv-q--rsvp{visibility:hidden}'],
     'generic div descendant' => ['.pkg-frame div{display:none}'],
 ]);
 

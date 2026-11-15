@@ -320,7 +320,8 @@ class InvitationService
     }
 
     /**
-     * Sections the package draws itself carry `render: 'package'` and their AST; the rest keep the engine's components.
+     * Sections the package draws itself carry `render: 'package'` (their AST travels once, in `theme.package.templates`);
+     * the rest keep the engine's components.
      *
      * @param  list<array<string, mixed>>  $sections
      * @param  array<string, array>  $asts  AST per section type
@@ -333,7 +334,7 @@ class InvitationService
         }
 
         return array_map(fn (array $section) => isset($asts[$section['type']])
-            ? $section + ['render' => 'package', 'ast' => $asts[$section['type']]]
+            ? $section + ['render' => 'package']
             : $section, $sections);
     }
 

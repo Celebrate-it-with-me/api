@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Templates;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Templates\Packages\ActivateRequest;
 use App\Http\Requests\Admin\Templates\Packages\InstallRequest;
 use App\Http\Requests\Admin\Templates\Packages\ListRequest;
 use App\Http\Requests\Admin\Templates\Packages\ReasonRequest;
@@ -61,11 +62,11 @@ class TemplatePackageController extends Controller
         return response()->json(['data' => ['action' => $action] + $this->query->impact($id)]);
     }
 
-    public function activate(ReasonRequest $request, int $id): JsonResponse
+    public function activate(ActivateRequest $request, int $id): JsonResponse
     {
         $data = $request->validated();
 
-        return response()->json(['data' => $this->lifecycle->activate($id, $data['reason'], (bool) ($data['ack_third_party_marks'] ?? false))]);
+        return response()->json(['data' => $this->lifecycle->activate($id, $data['reason'], (bool) ($data['ack_third_party_marks'] ?? false), $data['checklist'])]);
     }
 
     public function deactivate(ReasonRequest $request, int $id): JsonResponse

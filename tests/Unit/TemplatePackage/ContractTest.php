@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\TemplatePackage\BlockCatalog;
+use App\Support\TemplatePackage\CssSanitizer;
 use App\Support\TemplatePackage\HtmlAstBuilder;
 use App\Support\TemplatePackage\Report;
 use App\Support\TemplatePackage\ReportCodes;
@@ -270,3 +271,51 @@ it('lists every report code the sources can emit', function () {
     expect(array_values(array_diff(array_unique($used), $known, ['zip_bomb_x'])))->toBe([])
         ->and(array_intersect(ReportCodes::ERRORS, ReportCodes::WARNINGS))->toBe([]);
 });
+
+// --- the system hooks a stylesheet may target -------------------------------------------------------------------------------
+
+it('lets the CSS target the closed list of system hooks, with visual properties only', function (string $selector, bool $ok) {
+    $report = new Report;
+    $out = (new CssSanitizer)->sanitize("{$selector}{color:red}", 'botanical', 'theme.css', $report, [], [], []);
+    expect($out !== null)->toBe($ok);
+})->with([
+    ['.inv-q--cover-photo', true], ['.inv-q--rsvp', true], ['.inv-q--save-the-date', true], ['.inv-q-photo__emblem', true],
+    ['.pkg-a .inv-q--date', true], ['[data-inv-parity="even"]', true], ['.inv-root', true],
+    ['.inv-q--nope', false], ['.inv-rsvp', false], ['.inv-section', false], ['.inv-q-photo__', false], ['.inv-button', false], ['.inv-watermark', false],
+]);
+
+it('keeps the hooks of the system visual-only (no hiding of a system block)', function () {
+    $report = new Report;
+    $out = (new CssSanitizer)->sanitize('.inv-q--rsvp{display:none}', 'botanical', 'theme.css', $report, [], [], []);
+    expect($out)->toBeNull()->and($report->errorCodes())->toContain('css_forbidden_property');
+});
+
+// --- what the real packages of the app needed (Clásica and botánica of dev-packages) ----------------------------------------
+
+it('accepts logical properties, text in --pkg-* variables and decoration with pseudo-elements around a system block', function (string $css) {
+    $report = new Report;
+    $out = (new CssSanitizer)->sanitize($css, 'classic', 'theme.css', $report, ['assets/m.svg'], [], ['pkg-card' => 'wrapper', 'pkg-photo' => 'system']);
+    expect($report->errorCodes())->toBe([])->and($out)->not->toBeNull();
+})->with([
+    ['.pkg-a{margin-inline:auto;padding-block:1rem;border-block:1px solid red}'],
+    ['.pkg-a{--pkg-script:var(--inv-font-script,"Pinyon Script","Snell Roundhand",cursive)}'],
+    ['.pkg-card::before{content:"";position:absolute;inset:-1px;pointer-events:none}'],
+    ['.pkg-x .inv-q--cover-photo{width:12rem;height:16rem;display:flex;align-items:center;mask-image:url(assets/m.svg);border-radius:9999px 9999px 0 0}'],
+    ['.pkg-body>*{position:relative;z-index:1}'],
+]);
+
+it('still refuses to hide or move what the same relaxations touch', function (string $css) {
+    $report = new Report;
+    $out = (new CssSanitizer)->sanitize($css, 'classic', 'theme.css', $report, ['assets/m.svg'], [], ['pkg-card' => 'wrapper']);
+    expect($out)->toBeNull()->and($report->errorCodes())->toContain('css_forbidden_property');
+})->with([
+    ['.pkg-card{pointer-events:none}'],
+    ['.pkg-card:hover{pointer-events:none}'],
+    ['.pkg-body>*{position:absolute}'],
+    ['.inv-q--cover-photo{display:none}'],
+    ['.inv-q--cover-photo{width:0}'],
+    ['.inv-q--cover-photo{pointer-events:none}'],
+    ['.inv-q--cta{width:12rem}'],
+    ['.inv-q--rsvp{mask-image:url(assets/m.svg)}'],
+    ['.pkg-a::before{content:var(--pkg-x)}'],
+]);

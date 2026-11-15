@@ -63,15 +63,19 @@ class PackageQuery
         $package = $this->find($id);
         $templates = $this->templates($package);
         $templateIds = array_column($templates, 'id');
+        $unpublished = $templateIds === [] ? collect() : Events::query()
+            ->whereIn('template_id', $templateIds)
+            ->whereNull('template_version_id')
+            ->where('status', '!=', 'published')
+            ->groupBy('template_id')
+            ->selectRaw('template_id, count(*) as total')
+            ->pluck('total', 'template_id');
+        $templates = array_map(fn (array $t) => $t + ['eventsUnpublished' => (int) ($unpublished[$t['id']] ?? 0)], $templates);
 
         return [
             'eventsPinned' => $this->pinnedCounts([$id])[$id] ?? 0,
             // Not published yet and following the template: they fall back to the free template when it goes off.
-            'eventsUnpublished' => $templateIds === [] ? 0 : Events::query()
-                ->whereIn('template_id', $templateIds)
-                ->whereNull('template_version_id')
-                ->where('status', '!=', 'published')
-                ->count(),
+            'eventsUnpublished' => (int) $unpublished->sum(),
             'templates' => $templates,
         ];
     }

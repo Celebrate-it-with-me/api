@@ -66,6 +66,14 @@ class CssSanitizer
         'mask-clip', 'clip-path', 'filter', 'backdrop-filter', 'mix-blend-mode', 'isolation', 'content', 'cursor',
         'pointer-events', 'user-select', 'container-type', 'container-name', 'visibility', 'font-smoothing',
         'line-clamp', 'box-orient', 'text-stroke', 'text-fill-color', 'text-size-adjust',
+        // Logical properties (right-to-left safe spacing and borders).
+        'margin-inline', 'margin-inline-start', 'margin-inline-end', 'margin-block', 'margin-block-start', 'margin-block-end',
+        'padding-inline', 'padding-inline-start', 'padding-inline-end', 'padding-block', 'padding-block-start',
+        'padding-block-end', 'border-inline', 'border-inline-start', 'border-inline-end', 'border-block',
+        'border-block-start', 'border-block-end', 'border-inline-color', 'border-inline-style', 'border-inline-width',
+        'border-block-color', 'border-block-style', 'border-block-width',
+        'inline-size', 'block-size', 'min-inline-size', 'min-block-size', 'max-inline-size', 'max-block-size',
+        'inset-inline', 'inset-block',
     ];
 
     /** Properties a rule may carry when its subject is a system hook or wraps a `<q-*>` block (spec 4.3). */
@@ -80,6 +88,23 @@ class CssSanitizer
         'padding-left', 'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'transition',
         'transition-property', 'transition-duration', 'transition-timing-function', 'transition-delay',
         'text-wrap', 'white-space', 'overflow-wrap', 'font-smoothing',
+        'margin-inline', 'margin-inline-start', 'margin-inline-end', 'margin-block', 'margin-block-start', 'margin-block-end',
+        'padding-inline', 'padding-inline-start', 'padding-inline-end', 'padding-block', 'padding-block-start',
+        'padding-block-end', 'border-inline', 'border-inline-start', 'border-inline-end', 'border-block',
+        'border-block-start', 'border-block-end', 'border-inline-color', 'border-inline-style', 'border-inline-width',
+        'border-block-color', 'border-block-style', 'border-block-width',
+    ];
+
+    /**
+     * What the photo hooks (`inv-q--cover-photo`, `inv-q-photo__*`) may also carry: the photo is decoration, not a control,
+     * so its size, layout and mask can be designed (arch, torn edge); it still cannot be hidden or disabled.
+     */
+    private const PHOTO_EXTRA = [
+        'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'box-sizing', 'display', 'flex',
+        'flex-direction', 'flex-wrap', 'gap', 'align-items', 'align-content', 'justify-content', 'justify-items',
+        'place-items', 'aspect-ratio', 'object-fit', 'object-position', 'overflow', 'mask', 'mask-image', 'mask-size',
+        'mask-position', 'mask-repeat', 'mask-mode', 'mask-composite', 'mask-origin', 'mask-clip', 'clip-path', 'filter',
+        'opacity', 'inline-size', 'block-size', 'transform', 'translate', 'rotate', 'scale', 'position', 'top', 'right', 'bottom', 'left', 'inset', 'z-index',
     ];
 
     /** Extra properties for tag-only / universal subjects (they may match any element, so no hiding or layout escape). */
@@ -87,6 +112,9 @@ class CssSanitizer
         'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'box-sizing', 'object-fit', 'object-position',
         'aspect-ratio', 'display', 'flex', 'flex-direction', 'flex-wrap', 'gap', 'align-items', 'justify-content',
         'list-style', 'list-style-type', 'list-style-position', 'opacity', 'vertical-align', 'hyphens',
+        // The renderer stacks system blocks above (z-index 20, isolated), so a small z-index and relative positioning
+        // on "every child of my class" cannot cover them.
+        'position', 'z-index',
     ];
 
     private const FUNCTIONS = [
@@ -436,10 +464,14 @@ class CssSanitizer
         }
     }
 
+    /** True while the rule being checked only targets ::before / ::after pseudo-elements. */
+    private bool $pseudoRule = false;
+
     private function rule(DeclarationBlock $block, ?int $line): void
     {
         $this->rules++;
         $kind = 'free';
+        $this->pseudoRule = $block->getSelectors() !== [];
         foreach ($block->getSelectors() as $selector) {
             $scoped = $this->scoper->scope($selector->getSelector());
             if (isset($scoped['error'])) {
@@ -448,10 +480,16 @@ class CssSanitizer
                 continue;
             }
             $selector->setSelector($scoped['css']);
-            $rank = ['free' => 0, 'bare' => 1, 'wrapper' => 2, 'system' => 3];
+            $this->pseudoRule = $this->pseudoRule && $scoped['pseudo'];
+            $rank = ['free' => 0, 'bare' => 1, 'wrapper' => 2, 'photo' => 3, 'system' => 4];
             if ($rank[$scoped['kind']] > $rank[$kind]) {
                 $kind = $scoped['kind'];
             }
+        }
+
+        // What a wrapper (or the photo) draws with ::before / ::after is decoration: the renderer stacks the blocks above it.
+        if ($this->pseudoRule && in_array($kind, ['wrapper', 'photo'], true)) {
+            $kind = 'free';
         }
 
         foreach ($block->getDeclarations() as $declaration) {
@@ -486,12 +524,13 @@ class CssSanitizer
             return;
         }
 
-        if ($kind === 'system' && ! in_array($base, self::SYSTEM_SAFE, true)) {
+        if (($kind === 'system' && ! in_array($base, self::SYSTEM_SAFE, true))
+            || ($kind === 'photo' && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::PHOTO_EXTRA, true))) {
             $this->report->error($this->file, 'css_forbidden_property', 'Un bloque del sistema solo admite propiedades visuales.', $line, $name);
 
             return;
         }
-        if ($kind === 'wrapper' || $kind === 'system') {
+        if ($kind === 'wrapper' || $kind === 'system' || $kind === 'photo') {
             $this->wrapperCheck($d, $base, $line, $kind);
         }
         if ($kind === 'bare' && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::BARE_EXTRA, true)) {
@@ -514,7 +553,14 @@ class CssSanitizer
             ? $d->getValue()->render(OutputFormat::createCompact())
             : (string) $d->getValue()));
 
-        if (in_array($base, ['clip-path', 'mask', 'mask-image', 'mask-size', 'mask-position', 'mask-repeat', 'mask-mode', 'mask-composite', 'mask-origin', 'mask-clip', 'filter', 'backdrop-filter', 'pointer-events'], true)
+        $hiding = ['clip-path', 'mask', 'mask-image', 'mask-size', 'mask-position', 'mask-repeat', 'mask-mode', 'mask-composite', 'mask-origin', 'mask-clip', 'filter', 'backdrop-filter', 'pointer-events'];
+        if ($kind === 'photo') {
+            $hiding = ['backdrop-filter', 'pointer-events'];
+        } elseif ($kind === 'wrapper' && $this->pseudoRule) {
+            // The decoration a wrapper draws with ::before / ::after never takes the clicks of what it surrounds.
+            $hiding = array_diff($hiding, ['pointer-events']);
+        }
+        if (in_array($base, $hiding, true)
             || (in_array($base, ['width', 'height', 'max-width', 'max-height', 'font-size'], true) && preg_match('/^0(px|em|rem|%|vh|vw)?$/', $text))
             || ($base === 'display' && $text === 'none')
             || ($base === 'opacity' && is_numeric($text) && (float) $text < 0.6)
@@ -535,6 +581,8 @@ class CssSanitizer
             case 'position':
                 if (! in_array($text, ['relative', 'absolute', 'static'], true)) {
                     $this->report->error($this->file, 'css_forbidden_property', 'position solo admite relative, absolute o static.', $line, $text);
+                } elseif ($kind === 'bare' && $text === 'absolute') {
+                    $this->report->error($this->file, 'css_forbidden_property', 'Un selector genérico solo admite position relative o static.', $line, $text);
                 }
                 break;
             case 'display':
@@ -568,7 +616,7 @@ class CssSanitizer
                 }
                 break;
             case 'pointer-events':
-                if ($kind !== 'free') {
+                if ($kind !== 'free' && ! ($kind === 'wrapper' && $this->pseudoRule && $text === 'none')) {
                     $this->report->error($this->file, 'css_forbidden_property', 'pointer-events no se puede tocar en bloques del sistema.', $line, $text);
                 }
                 break;
@@ -678,6 +726,10 @@ class CssSanitizer
     private function string(CSSString $string, string $property, ?int $line): void
     {
         $value = $string->getString();
+        // Text kept in a --pkg-* variable is inert (content only accepts none/""), so it only gets the character check.
+        if (str_starts_with($property, '--pkg-') && ! preg_match('/[<>{}]|url\(/i', $value)) {
+            return;
+        }
         if (! in_array($property, self::STRING_PROPERTIES, true)) {
             $this->report->error($this->file, 'css_forbidden_property', 'Cadena no permitida en esta propiedad.', $line, "{$property}: {$value}");
 

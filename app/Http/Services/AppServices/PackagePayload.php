@@ -56,14 +56,16 @@ class PackagePayload
                 'hash' => $fragment['hash'],
                 'engineMin' => $fragment['engineMin'],
                 'cssUrl' => $fragment['hasCss'] ? $this->files->url($fragment['folder'] . '/theme.css') : null,
-                'fonts' => array_map(fn (array $font) => [
-                    'role' => $font['role'],
-                    'family' => $font['family'],
-                    'files' => array_map(fn (array $f) => ['url' => $this->files->url($fragment['folder'] . '/' . $f['file']), 'weight' => $f['weight'], 'style' => $f['style']], $font['files']),
-                ], $fragment['fonts']),
+                // Files to preload (fonts of the package, at most 6): the @font-face rules themselves are in the css.
+                'preload' => array_slice(array_map(
+                    fn (string $file) => ['url' => $this->files->url($fragment['folder'] . '/' . $file), 'as' => 'font', 'type' => 'font/woff2'],
+                    $fragment['fontFiles']
+                ), 0, 6),
                 'strings' => $fragment['strings'],
                 'options' => ($options = array_merge($fragment['options']['defaults'], $allowed)) === [] ? (object) [] : $options,
                 'layout' => $fragment['layout'],
+                // AST of every section the package draws, by type: the sections of the payload only say render:'package'.
+                'templates' => $fragment['sections'] === [] ? (object) [] : $fragment['sections'],
             ],
             'sections' => $fragment['sections'],
         ];
@@ -113,7 +115,7 @@ class PackagePayload
         foreach (['heading', 'body', 'script'] as $role) {
             $font = $p['tokens']['fonts'][$role] ?? null;
             if ($font && ($font['files'] ?? []) !== []) {
-                $fonts[] = ['role' => $role, 'family' => $font['family'], 'files' => array_map(fn (array $f) => ['file' => $f['file'], 'weight' => $f['weight'], 'style' => $f['style']], $font['files'])];
+                $fonts[] = ['files' => array_column($font['files'], 'file')];
             }
         }
 
@@ -125,7 +127,7 @@ class PackagePayload
             'engineMin' => (int) $p['engine_min'],
             'folder' => $folder ?? "{$p['slug']}/{$p['semver']}-" . substr($p['content_hash'], 0, 8),
             'hasCss' => in_array('theme.css', array_column($p['files'], 'path'), true),
-            'fonts' => $fonts,
+            'fontFiles' => array_values(array_unique(array_merge(...array_column($fonts, 'files') ?: [[]]))),
             'strings' => $p['strings'] ?? (object) [],
             'layout' => $p['ast']['layout'] ?? null,
             'sections' => $p['ast']['sections'] ?? [],

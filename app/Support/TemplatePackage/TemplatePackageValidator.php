@@ -86,7 +86,10 @@ class TemplatePackageValidator
 
         if ($manifest !== null) {
             $this->manifest($manifest, $report);
-            $report->manifest = array_intersect_key($manifest, array_flip(['slug', 'version', 'level', 'visibility', 'tier']));
+            // The summary the admin shows before anything is installed: identity, licenses, credits, marks and presets.
+            $report->manifest = array_intersect_key($manifest, array_flip(['slug', 'version', 'level', 'visibility', 'tier', 'eventTypes', 'license', 'assetsCredits', 'thirdPartyMarks']));
+            $presets = is_array($json['tokens.json'] ?? null) ? ($json['tokens.json']['presets'] ?? null) : null;
+            $report->manifest['presets'] = is_array($presets) ? $presets : (object) [];
         }
 
         foreach (array_keys($files) as $path) {
@@ -861,8 +864,9 @@ class TemplatePackageValidator
     /** @param array<string, string> $a @param array<string, string> $b */
     private function mergeKinds(array $a, array $b): array
     {
+        $rank = ['wrapper' => 0, 'photo' => 1, 'system' => 2];
         foreach ($b as $k => $kind) {
-            if (($a[$k] ?? '') !== 'system') {
+            if (! isset($a[$k]) || $rank[$kind] > $rank[$a[$k]]) {
                 $a[$k] = $kind;
             }
         }

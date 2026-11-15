@@ -24,7 +24,8 @@ class PackageLifecycle
     ) {}
 
     /** @return array{package: array<string, mixed>, eventsOnPreviousVersion: int} */
-    public function activate(int $id, string $reason, bool $ackThirdPartyMarks): array
+    /** @param array<string, bool> $checklist the six confirmed items of the review (audited with who and when) */
+    public function activate(int $id, string $reason, bool $ackThirdPartyMarks, array $checklist): array
     {
         $package = $this->query->find($id);
 
@@ -68,6 +69,8 @@ class PackageLifecycle
                 'version' => $package->semver,
                 'eventsOnPreviousVersion' => $previousEvents,
                 'ackThirdPartyMarks' => $ackThirdPartyMarks,
+                'checklist' => $checklist,
+                'confirmedAt' => now()->toIso8601String(),
             ],
         ]);
 

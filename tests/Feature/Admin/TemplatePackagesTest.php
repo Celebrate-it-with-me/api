@@ -28,6 +28,9 @@ uses(RefreshDatabase::class);
 
 const PKG = '/api/v1/admin/templates/packages';
 
+/** The six items of the quality checklist that activating a package confirms. */
+const PKG_CHECKLIST = ['accessibility' => true, 'contrast' => true, 'long_names' => true, 'no_photo' => true, 'sections_reordered' => true, 'performance' => true];
+
 beforeEach(function () {
     $this->seed(DatabaseSeeder::class);
     User::role(AdminPermissions::STAFF_ROLES)->get()->each(fn (User $u) => $u->syncRoles([]));
@@ -71,7 +74,7 @@ function pkgInstall(?PackageBuilder $builder = null): array
 
 function pkgActivate(int $id): array
 {
-    return test()->postJson(PKG . "/{$id}/activate", ['reason' => 'Activar tras revisar'])->assertOk()->json('data');
+    return test()->postJson(PKG . "/{$id}/activate", ['reason' => 'Activar tras revisar', 'checklist' => PKG_CHECKLIST])->assertOk()->json('data');
 }
 
 /** A good package with another version (and the content hash changed by a CSS tweak). */
@@ -151,7 +154,10 @@ describe('validate (upload)', function () {
             ->and($res['expiresAt'])->not->toBeNull()
             ->and($res['report']['errors'])->toBe([])
             ->and($res['report']['manifest'])->toMatchArray(['slug' => 'botanical', 'version' => '1.0.0'])
-            ->and($res['report']['stats'])->toHaveKeys(['files', 'runtimeBytes', 'firstFoldBytes']);
+            ->and($res['report']['stats'])->toHaveKeys(['files', 'runtimeBytes', 'firstFoldBytes'])
+            ->and($res['report']['manifest'])->toHaveKeys(['thirdPartyMarks', 'assetsCredits', 'license', 'presets', 'eventTypes'])
+            ->and($res['report']['manifest']['assetsCredits'])->toHaveCount(3)
+            ->and(array_keys($res['report']['manifest']['presets']))->toBe(['salvia']);
         // The sanitized files wait next to the staging token; the original zip is never kept.
         Storage::disk('template-packages')->assertExists("_staging/{$res['stageToken']}/theme.css");
         Storage::disk('local')->assertExists("template-staging/{$res['stageToken']}.json");
@@ -391,15 +397,31 @@ describe('activate, deactivate, withdraw', function () {
                 ->and($template->currentVersion->package_id)->toBe($pkg['id']);
         }
         expect(AdminAuditLog::where('action', 'template.package_activated')->sole()->reason)->toBe('Activar tras revisar');
-        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Activar otra vez'])->assertStatus(409)->assertJson(['code' => 'package_not_installable']);
+        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Activar otra vez', 'checklist' => PKG_CHECKLIST])->assertStatus(409)->assertJson(['code' => 'package_not_installable']);
+    });
+
+    it('needs the whole quality checklist to activate, and audits who confirmed it and when (422 errors.checklist[0]=incomplete)', function () {
+        $admin = pkgAdmin();
+        $pkg = pkgInstall();
+        $url = PKG . "/{$pkg['id']}/activate";
+
+        $this->postJson($url, ['reason' => 'Sin revisión completa'])->assertUnprocessable()->assertJsonPath('errors.checklist.0', 'incomplete');
+        $this->postJson($url, ['reason' => 'Sin revisión completa', 'checklist' => ['accessibility' => true]])->assertUnprocessable()->assertJsonPath('errors.checklist.0', 'incomplete');
+        $this->postJson($url, ['reason' => 'Sin revisión completa', 'checklist' => [...PKG_CHECKLIST, 'performance' => false]])->assertUnprocessable()->assertJsonPath('errors.checklist.0', 'incomplete');
+        $this->postJson($url, ['reason' => 'Sin revisión completa', 'checklist' => [...PKG_CHECKLIST, 'performance' => 'yes']])->assertUnprocessable()->assertJsonPath('errors.checklist.0', 'incomplete');
+        expect(TemplatePackage::find($pkg['id'])->status)->toBe('installed');
+
+        $this->postJson($url, ['reason' => 'Revisión completa', 'checklist' => PKG_CHECKLIST])->assertOk();
+        $log = AdminAuditLog::where('action', 'template.package_activated')->sole();
+        expect($log->actor_id)->toBe($admin->id)->and($log->after['checklist'])->toBe(PKG_CHECKLIST)->and($log->after['confirmedAt'])->not->toBeNull();
     });
 
     it('needs the acknowledgement of third party marks to activate a private package that declares them', function () {
         pkgAdmin();
         $pkg = pkgInstall(PackageBuilder::good()->json('manifest.json', fn ($m) => [...$m, 'visibility' => 'private', 'thirdPartyMarks' => [['name' => 'ACME', 'owner' => 'ACME Inc', 'usage' => 'logo en la portada']]]));
 
-        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Revisado con el cliente'])->assertUnprocessable()->assertJsonPath('errors.ack_third_party_marks.0', 'required');
-        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Revisado con el cliente', 'ack_third_party_marks' => true])->assertOk();
+        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Revisado con el cliente', 'checklist' => PKG_CHECKLIST])->assertUnprocessable()->assertJsonPath('errors.ack_third_party_marks.0', 'required');
+        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Revisado con el cliente', 'checklist' => PKG_CHECKLIST, 'ack_third_party_marks' => true])->assertOk();
         expect(AdminAuditLog::where('action', 'template.package_activated')->sole()->after['ackThirdPartyMarks'])->toBeTrue();
     });
 
@@ -408,7 +430,7 @@ describe('activate, deactivate, withdraw', function () {
         $pkg = pkgInstall();
         config(['invitation.engine' => 0]);
 
-        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Probar con otro motor'])->assertUnprocessable()->assertJsonPath('errors.package.0', 'engine_too_new');
+        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Probar con otro motor', 'checklist' => PKG_CHECKLIST])->assertUnprocessable()->assertJsonPath('errors.package.0', 'engine_too_new');
     });
 
     it('keeps the events published before on their version when a newer one is activated', function () {
@@ -440,7 +462,8 @@ describe('activate, deactivate, withdraw', function () {
         $draft = pkgEvent('boda-dos');
 
         $impact = $this->getJson(PKG . "/{$pkg['id']}/impact?action=deactivate")->assertOk()->json('data');
-        expect($impact)->toMatchArray(['eventsPinned' => 1, 'eventsUnpublished' => 1])->and($impact['templates'])->toHaveCount(2);
+        expect($impact)->toMatchArray(['eventsPinned' => 1, 'eventsUnpublished' => 1])->and($impact['templates'])->toHaveCount(2)
+            ->and(collect($impact['templates'])->pluck('eventsUnpublished', 'slug')->all())->toBe(['botanical-wedding' => 1, 'botanical-quinceanera' => 0]);
         $this->getJson(PKG . "/{$pkg['id']}/impact")->assertUnprocessable()->assertJsonPath('errors.action.0', 'required');
         $this->getJson(PKG . "/{$pkg['id']}/impact?action=x")->assertUnprocessable()->assertJsonPath('errors.action.0', 'invalid');
 
@@ -462,7 +485,7 @@ describe('activate, deactivate, withdraw', function () {
         pkgActivate($pkg['id']);
         $this->postJson(PKG . "/{$pkg['id']}/deactivate", ['reason' => 'Pausar el paquete'])->assertOk();
 
-        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Volver a encender'])->assertOk()->assertJsonPath('data.package.status', 'active');
+        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Volver a encender', 'checklist' => PKG_CHECKLIST])->assertOk()->assertJsonPath('data.package.status', 'active');
         expect(InvitationTemplate::where('slug', 'botanical-wedding')->value('is_active'))->toBeTrue();
     });
 
@@ -482,7 +505,7 @@ describe('activate, deactivate, withdraw', function () {
             ->and(AdminAuditLog::where('action', 'template.package_withdrawn')->count())->toBe(1);
         $this->deleteJson(PKG . "/{$pkg['id']}", ['reason' => 'Se retira otra vez'])->assertStatus(409)->assertJson(['code' => 'package_withdrawn']);
         // The row stays as a record and its version cannot come back.
-        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Intentar volver'])->assertStatus(409)->assertJson(['code' => 'package_not_installable']);
+        $this->postJson(PKG . "/{$pkg['id']}/activate", ['reason' => 'Intentar volver', 'checklist' => PKG_CHECKLIST])->assertStatus(409)->assertJson(['code' => 'package_not_installable']);
     });
 
     it('limits activate, deactivate and withdraw to 10 a minute together', function () {
@@ -527,6 +550,7 @@ describe('immutability of versions owned by a package (D-4)', function () {
 
         $row = collect($this->getJson('/api/v1/admin/templates')->json('data'))->firstWhere('slug', 'botanical-wedding');
         expect($row['currentVersion']['packageId'])->toBe($pkg['id']);
+        expect($this->getJson('/api/v1/admin/templates/' . $row['id'])->json('data.versions.0.packageId'))->toBe($pkg['id']);
         expect($this->getJson('/api/v1/admin/templates/versions/' . $row['currentVersion']['id'])->json('data.packageId'))->toBe($pkg['id']);
     });
 });
@@ -546,15 +570,17 @@ describe('publicly visible payload', function () {
             ->and($package)->toMatchArray(['slug' => 'botanical', 'version' => '1.0.0', 'level' => 1, 'engineMin' => 1])
             ->and($package['hash'])->toBe(TemplatePackage::find($pkg['id'])->content_hash)
             ->and($package['cssUrl'])->toEndWith("{$folder}/theme.css")
-            ->and($package['fonts'][0])->toMatchArray(['role' => 'script', 'family' => 'Great Vibes'])
-            ->and($package['fonts'][0]['files'][0])->toMatchArray(['weight' => 400, 'style' => 'normal'])
-            ->and($package['fonts'][0]['files'][0]['url'])->toEndWith("{$folder}/assets/fonts/script-400.woff2")
+            ->and($package['preload'])->toHaveCount(1)
+            ->and($package['preload'][0])->toMatchArray(['as' => 'font', 'type' => 'font/woff2'])
+            ->and($package['preload'][0]['url'])->toEndWith("{$folder}/assets/fonts/script-400.woff2")
+            ->and(array_keys($package['templates']))->toEqualCanonicalizing(['cover', 'rsvp', 'closing'])
+            ->and($package['templates']['cover']['kind'])->toBe('section')
             ->and($package['strings']['es']['invitedFor'])->toBe('Invitación para')
             ->and($package['layout']['kind'])->toBe('layout')
             ->and($package['options'])->toBe([]);
 
         $byType = collect($data['sections'])->keyBy('type');
-        expect($byType['cover'])->toMatchArray(['render' => 'package'])->and($byType['cover']['ast']['kind'])->toBe('section')
+        expect($byType['cover'])->toMatchArray(['render' => 'package'])->and($byType['cover'])->not->toHaveKey('ast')
             ->and($byType['rsvp']['render'])->toBe('package')
             ->and($byType['closing']['render'])->toBe('package');
         // The data of the sections is untouched: the package only decides how it is drawn.
@@ -569,6 +595,7 @@ describe('publicly visible payload', function () {
 
         $closing = collect($this->getJson('/api/v1/app/invitation/boda-camila/PKG123')->json('data.sections'))->firstWhere('type', 'closing');
         expect($closing)->not->toHaveKeys(['render', 'ast']);
+        expect($this->getJson('/api/v1/app/invitation/boda-camila/PKG123')->json('data.theme.package.templates'))->not->toHaveKey('closing');
     });
 
     it('serves the package through the options of the event only for options the package defines', function () {
