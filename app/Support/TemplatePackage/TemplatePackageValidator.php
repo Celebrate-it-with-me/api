@@ -460,6 +460,9 @@ class TemplatePackageValidator
         if ($fontFiles > 8) {
             $report->error($f, 'tokens_invalid', 'Más de 8 archivos de fuente.');
         }
+        foreach (array_diff(['heading', 'body', 'script'], array_keys($fonts)) as $role) {
+            $report->error($f, 'tokens_invalid', "Falta la fuente «{$role}» (heading, body y script son obligatorias).");
+        }
 
         $presets = $t['presets'] ?? null;
         if (! is_array($presets) || $presets === [] || array_is_list($presets) || count($presets) > 8) {

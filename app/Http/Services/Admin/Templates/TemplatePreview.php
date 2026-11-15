@@ -17,10 +17,18 @@ class TemplatePreview
      * @param  array<string, mixed>  $theme
      * @return array<string, mixed>
      */
-    public function build(array $sections, array $theme, string $locale, string $eventType): array
+    public function build(array $sections, array $theme, string $locale, string $eventType, ?array $package = null, string $state = 'invitation'): array
     {
         $wedding = $eventType === 'wedding';
         $sample = $this->sample($wedding);
+        $saveTheDate = $state === 'save_the_date';
+
+        if ($saveTheDate) {
+            $sections = $this->saveTheDateSections();
+        }
+        if ($state === 'no_photo') {
+            $sections = array_map(fn (array $s) => $s['type'] === 'cover' ? array_replace_recursive($s, ['settings' => ['image' => null]]) : $s, $sections);
+        }
 
         $resolved = collect($sections)
             ->filter(fn (array $s) => $s['enabled'] ?? false)
@@ -34,6 +42,8 @@ class TemplatePreview
             ->values()
             ->all();
 
+        $resolved = $this->invitation->attachPackage($resolved, $package['sections'] ?? []);
+
         return [
             'event' => [
                 'name' => $sample['name'],
@@ -42,11 +52,26 @@ class TemplatePreview
                 'timezone' => 'America/New_York',
             ],
             'guest' => ['name' => 'Rosa Fernández'],
-            'stage' => 'invitation',
+            'stage' => $saveTheDate ? 'save_the_date' : 'invitation',
             'locale' => $locale,
-            'theme' => $this->invitation->themePayload($theme),
+            'theme' => $this->invitation->themePayload($theme, [], $package['package'] ?? null),
             'sections' => $resolved,
             'branding' => ['watermark' => true],
+        ];
+    }
+
+    /** The sections of the Save the date, as the real invitation draws them (no photo, no program). @return list<array<string, mixed>> */
+    private function saveTheDateSections(): array
+    {
+        $plain = fn (int $order, string $type, array $title, array $text = ['es' => null, 'en' => null]) => [
+            'type' => $type, 'enabled' => true, 'order' => $order, 'title' => $title, 'text' => $text, 'settings' => [],
+        ];
+
+        return [
+            $plain(1, 'cover', ['es' => 'Guarda la fecha', 'en' => 'Save the date']),
+            $plain(2, 'countdown', ['es' => 'Faltan', 'en' => 'Counting the days']),
+            $plain(3, 'save_the_date', ['es' => null, 'en' => null]),
+            $plain(4, 'closing', ['es' => 'Pronto más detalles', 'en' => 'More details soon'], ['es' => 'La invitación completa te llegará por este mismo enlace.', 'en' => 'The full invitation will reach you on this same link.']),
         ];
     }
 
@@ -54,6 +79,8 @@ class TemplatePreview
     private function data(array $section, array $sample): array
     {
         return match ($section['type']) {
+            'countdown' => ['startsAt' => '2027-06-12T18:00:00', 'timezone' => 'America/New_York'],
+            'save_the_date' => ['message' => 'Reserva esta fecha, ¡queremos celebrar contigo!', 'calendar' => ['google' => 'https://calendar.google.com/calendar/render?action=TEMPLATE', 'icsPath' => 'calendar.ics']],
             'cover' => ['eventName' => $sample['name'], 'description' => $sample['description'], 'image' => $section['settings']['image'] ?? null],
             'itinerary' => ['items' => $sample['itinerary']],
             'locations' => ['items' => $sample['locations']],

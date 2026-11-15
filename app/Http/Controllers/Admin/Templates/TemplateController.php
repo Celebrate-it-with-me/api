@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Templates\PreviewRequest;
 use App\Http\Requests\Admin\Templates\ReasonRequest;
 use App\Http\Requests\Admin\Templates\UpdateVersionRequest;
+use App\Http\Services\Admin\Templates\Packages\PackagePreview;
 use App\Http\Services\Admin\Templates\TemplatePreview;
 use App\Http\Services\Admin\Templates\TemplateSchema;
 use App\Http\Services\Admin\Templates\TemplateService;
@@ -50,9 +51,14 @@ class TemplateController extends Controller
         return response()->json(['data' => $this->templates->archive($version, $request->validated('reason'))]);
     }
 
-    public function preview(PreviewRequest $request, TemplatePreview $preview): JsonResponse
+    public function preview(PreviewRequest $request, TemplatePreview $preview, PackagePreview $packages): JsonResponse
     {
         $data = $request->validated();
+
+        if (! empty($data['stage_token']) || ! empty($data['package_id'])) {
+            return response()->json(['data' => $packages->build($data, $preview)]);
+        }
+
         TemplateSchema::assertValid($data['sections'], $data['theme']);
 
         return response()->json(['data' => $preview->build($data['sections'], $data['theme'], $data['locale'], $data['eventType'])]);
