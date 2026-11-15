@@ -9,6 +9,7 @@ use App\Models\UserPreference;
 use App\Support\AdminPermissions;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use PragmaRX\Google2FA\Google2FA;
@@ -430,10 +431,10 @@ describe('two-factor', function () {
         $user = acctStaff();
         [$here, $model] = acctToken($user);
         acctToken($user, 'Other');
-        acctEnrol($user, $here);
+        [, $codes] = acctEnrol($user, $here);
 
         acctAs($here)->postJson(ACCT . '/two-factor/disable', [])->assertJsonValidationErrors('password');
-        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW])->assertOk()->assertJsonPath('data.enabled', false);
+        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW, 'code' => $codes[0]])->assertOk()->assertJsonPath('data.enabled', false);
 
         expect($user->tokens()->pluck('id')->all())->toBe([$model->id])
             ->and($user->fresh()->adminTwoFactor)->toBeNull();
@@ -441,6 +442,59 @@ describe('two-factor', function () {
         expect(AdminAuditLog::where('action', 'account.two_factor_disabled')->count())->toBe(1);
         $login = $this->postJson('/api/v1/admin/login', ['email' => $user->email, 'password' => ACCT_PW, 'device' => 'x'])->assertOk();
         expect(json_decode($login->getContent(), true))->toBeNull(); // a plain token, no challenge
+    });
+
+    it('asks for a valid code besides the password to disable (S-21)', function () {
+        $user = acctStaff();
+        [$here] = acctToken($user);
+        [$secret, $codes] = acctEnrol($user, $here);
+
+        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW])
+            ->assertStatus(422)->assertJsonPath('errors.code.0', 'required');
+        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW, 'code' => '000000'])
+            ->assertStatus(422)->assertJsonPath('errors.code.0', 'invalid_code');
+        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => 'wrong-password', 'code' => $codes[0]])
+            ->assertStatus(422)->assertJsonValidationErrors('password');
+        expect($user->fresh()->hasAdminTwoFactor())->toBeTrue();
+
+        // A TOTP code works too (the step used to confirm cannot be replayed, so move it back first).
+        $user->adminTwoFactor()->update(['last_used_step' => 0]);
+        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW, 'code' => acctTotp($secret)])
+            ->assertOk()->assertJsonPath('data.enabled', false);
+    });
+
+    it('stops guessing the code to disable after 5 tries per person and address', function () {
+        $user = acctStaff();
+        [$here] = acctToken($user);
+        acctEnrol($user, $here);
+
+        foreach (range(1, 5) as $_) {
+            acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW, 'code' => '111111'])->assertStatus(422);
+        }
+        acctAs($here)->postJson(ACCT . '/two-factor/disable', ['password' => ACCT_PW, 'code' => '111111'])->assertStatus(429);
+        expect($user->fresh()->hasAdminTwoFactor())->toBeTrue();
+    });
+
+    it('locks wrong sign-in codes per person and address, so one address cannot lock her out (S-21)', function () {
+        $user = acctStaff();
+        [$here] = acctToken($user);
+        acctEnrol($user, $here);
+
+        $attempt = function (string $ip) use ($user) {
+            app('auth')->forgetGuards();
+            $challenge = $this->withServerVariables(['REMOTE_ADDR' => $ip])
+                ->postJson('/api/v1/admin/login', ['email' => $user->email, 'password' => ACCT_PW, 'device' => 'x'])->json('challenge');
+
+            return $this->withServerVariables(['REMOTE_ADDR' => $ip])
+                ->postJson('/api/v1/admin/login/two-factor', ['challenge' => $challenge, 'code' => '123456', 'device' => 'x']);
+        };
+        $this->withoutMiddleware(ThrottleRequests::class); // the route limit is tested elsewhere
+
+        foreach (range(1, 10) as $_) {
+            $attempt('203.0.113.50');
+        }
+        expect($attempt('203.0.113.50')->status())->toBe(429)
+            ->and($attempt('198.51.100.20')->status())->toBe(422);
     });
 
     it('does not let one person touch the enrolment of another', function () {
