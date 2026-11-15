@@ -506,6 +506,11 @@ describe('RSVP note and companion names', function () {
         'right-to-left override' => ["Ana\u{202E}López", 'invalid_characters'],
         'isolate' => ["Ana\u{2066}López", 'invalid_characters'],
         'direction mark' => ["Ana\u{200F}López", 'invalid_characters'],
+        'zero-width space' => ["Ana\u{200B}López", 'invalid_characters'],
+        'zero-width non-joiner' => ["Ana\u{200C}López", 'invalid_characters'],
+        'zero-width joiner' => ["Ana\u{200D}López", 'invalid_characters'],
+        'word joiner' => ["Ana\u{2060}López", 'invalid_characters'],
+        'byte order mark' => ["Ana\u{FEFF}López", 'invalid_characters'],
     ]);
 
     it('refuses direction and control characters in the note but keeps line breaks and accents', function (string $note, bool $valid) {
@@ -522,6 +527,10 @@ describe('RSVP note and companion names', function () {
         'lri' => ["Hola \u{2066}x", false],
         'rlm' => ["Hola\u{200F}mundo", false],
         'nul' => ["Hola\0mundo", false],
+        'zero-width space' => ["Hola\u{200B}mundo", false],
+        'zero-width joiner' => ["Hola\u{200D}mundo", false],
+        'word joiner' => ["Hola\u{2060}mundo", false],
+        'byte order mark' => ["Hola\u{FEFF}mundo", false],
     ]);
 
     it('accepts names of 2 and 120 characters', function () {
