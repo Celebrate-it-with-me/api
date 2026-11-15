@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -24,7 +23,6 @@ function programEvent(string $type = 'quinceanera'): array
         'event_plan_id' => EventPlan::orderBy('id')->value('id'),
         'start_date' => '2027-03-20 16:00:00',
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

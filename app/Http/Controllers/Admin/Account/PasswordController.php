@@ -40,10 +40,10 @@ class PasswordController extends Controller
         $this->security->confirmPassword($user, $data['currentPassword']);
 
         if (Hash::check($data['newPassword'], $user->password)) {
-            throw ValidationException::withMessages(['newPassword' => ['La contraseña nueva debe ser distinta de la actual.']]);
+            throw ValidationException::withMessages(['newPassword' => [__('errors.auth.password_same_as_current')]]);
         }
         if (Str::lower($data['newPassword']) === Str::lower($user->email)) {
-            throw ValidationException::withMessages(['newPassword' => ['La contraseña no puede ser tu correo.']]);
+            throw ValidationException::withMessages(['newPassword' => [__('errors.auth.password_is_email')]]);
         }
 
         $user->forceFill(['password' => $data['newPassword'], 'password_changed_at' => now()])->save();

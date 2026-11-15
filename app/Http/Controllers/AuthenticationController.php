@@ -22,6 +22,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
@@ -64,7 +70,7 @@ class AuthenticationController extends Controller
             $token = $request->input('hcaptcha_token');
 
             if (!$token || !$this->verifyHCaptcha($token) ) {
-                return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
+                return response()->json(['message' => __('errors.auth.captcha_invalid')], 422);
             }
         }
 
@@ -94,7 +100,7 @@ class AuthenticationController extends Controller
     public function confirmEmail(Request $request, User $user): JsonResponse
     {
         if (!$request->hasValidSignature() || !$request->user) {
-            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+            return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
         }
 
         $user = User::query()->find($request->user);
@@ -116,9 +122,12 @@ class AuthenticationController extends Controller
     {
         $user = User::query()->where('email', $request->input('email'))->first();
 
-        if (!$user) {
+        // At most 3 emails per hour to one address: the answer stays the same so it does not reveal anything.
+        $limitKey = 'app-forgot:' . Str::lower((string) $request->input('email'));
+        if (!$user || RateLimiter::tooManyAttempts($limitKey, 3)) {
             return response()->json(['message' => 'Password reset link sent successfully!']);
         }
+        RateLimiter::hit($limitKey, 3600);
 
         ResetPasswordEvent::dispatch($user);
 
@@ -133,27 +142,54 @@ class AuthenticationController extends Controller
     public function checkPasswordLink(Request $request): JsonResponse
     {
         if (!$request->hasValidSignature() || !$request->user) {
-            return response()->json(['message' => 'Invalid or expired signature.'], 401);
+            return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
         }
 
         return response()->json([
             'message' => 'Password Link is Valid!',
-            'data' => User::find($request->user),
+            'data' => User::query()->find($request->user)?->only(['id', 'name', 'email']),
+            // One-time broker token the SPA must send back to reset-password.
+            'token' => $request->query('token'),
         ]);
     }
 
+    /**
+     * Sets a new password with the one-time token of the Laravel password broker (the `token` the reset email carries).
+     * The token is single use and expires (config auth.passwords.users.expire); a wrong email or token answers the same
+     * 422 so the response does not reveal whether the account exists. Every API token of the account is revoked.
+     */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $user = User::query()
-            ->where('email', $request->input('email'))
-            ->first();
-
-        if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+        // Failures are counted per e-mail AND address, so a stranger cannot lock the real owner out (audit W-04).
+        $limitKey = 'app-reset:' . Str::lower((string) $request->input('email')) . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($limitKey, 5)) {
+            return response()->json(['message' => __('errors.too_many_attempts'), 'code' => 'too_many_attempts'], 429);
         }
 
-        $user->password = Hash::make($request->input('password'));
-        $user->save();
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => $password,
+                    'remember_token' => Str::random(60),
+                    // A social-login account that resets its password now has one of its own.
+                    'has_password' => true,
+                ])->save();
+
+                $user->tokens()->delete();
+                // Browser sessions (cookie auth) die with the password too.
+                if (config('session.driver') === 'database') {
+                    DB::table(config('session.table', 'sessions'))->where('user_id', $user->getKey())->delete();
+                }
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            RateLimiter::hit($limitKey, 15 * 60);
+
+            return response()->json(['message' => __('errors.auth.invalid_reset_token'), 'code' => 'invalid_reset_token'], 422);
+        }
 
         return response()->json(['message' => 'Password reset successfully!']);
     }
@@ -174,7 +210,7 @@ class AuthenticationController extends Controller
             $token = $request->input('hcaptcha_token');
 
             if (!$token || !$this->verifyHCaptcha($token) ) {
-                return response()->json(['message' => 'Invalid hCaptcha token.'], 422);
+                return response()->json(['message' => __('errors.auth.captcha_invalid')], 422);
             }
         }
 
@@ -184,9 +220,20 @@ class AuthenticationController extends Controller
             ->whereNotNull('email_verified_at')
             ->first();
 
-        if (!$user || !Hash::check($request->input('password'), $user->password)) {
-            return response()->json(['message' => 'Invalid Credentials'], 401);
+        // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.
+        $limitKey = 'app-login:' . Str::lower((string) $request->input('email')) . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($limitKey, 5)) {
+            return response()->json(['message' => __('errors.too_many_attempts'), 'code' => 'too_many_attempts'], 429)
+                ->header('Retry-After', RateLimiter::availableIn($limitKey));
         }
+
+        if (!$user || !Hash::check($request->input('password'), $user->password)) {
+            RateLimiter::hit($limitKey, 15 * 60);
+
+            return response()->json(['message' => __('errors.auth.invalid_credentials')], 401);
+        }
+
+        RateLimiter::clear($limitKey);
 
         if ($user->suspended_at) {
             return EnsureNotSuspended::response();
@@ -194,6 +241,11 @@ class AuthenticationController extends Controller
 
         $remember = $request->input('remember', false);
         Auth::login($user, $remember);
+
+        // A new session id after signing in: a session id planted before the login must not survive it.
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
         
         if ($user->is_first_login) {
             $user->is_first_login = false;
@@ -254,9 +306,22 @@ class AuthenticationController extends Controller
      */
     public function appLogout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $token = $user->currentAccessToken();
 
-        UserLoggedOutEvent::dispatch($request->user());
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        } else {
+            // A cookie session (the SPA login) has no token to delete: close the session itself.
+            Auth::guard('web')->logout();
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+        }
+
+        UserLoggedOutEvent::dispatch($user);
 
         return response()->json(['message' => 'Logged out successfully!']);
     }

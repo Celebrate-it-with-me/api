@@ -55,19 +55,19 @@ class TwoFactorController extends Controller
             return $this->alreadyEnabled();
         }
         if (! $user->adminTwoFactor) {
-            throw ValidationException::withMessages(['code' => ['Primero genera el código QR.']]);
+            throw ValidationException::withMessages(['code' => [__('errors.two_factor.generate_qr_first')]]);
         }
 
         $limiter = "admin-2fa-confirm:{$user->id}";
         if (RateLimiter::tooManyAttempts($limiter, 8)) {
-            abort(429, 'Too many attempts.');
+            abort(429, __('errors.too_many_attempts'));
         }
 
         $codes = $this->twoFactor->confirmSetup($user, $request->input('code'));
         if ($codes === null) {
             RateLimiter::hit($limiter, 900);
 
-            throw ValidationException::withMessages(['code' => ['El código no es correcto. Revisa la hora de tu teléfono e inténtalo de nuevo.']]);
+            throw ValidationException::withMessages(['code' => [__('errors.two_factor.code_mismatch')]]);
         }
         RateLimiter::clear($limiter);
 
@@ -131,11 +131,11 @@ class TwoFactorController extends Controller
 
     private function alreadyEnabled(): JsonResponse
     {
-        return response()->json(['message' => 'Two-factor authentication is already active.', 'code' => 'two_factor_already_enabled'], 409);
+        return response()->json(['message' => __('errors.two_factor.already_active'), 'code' => 'two_factor_already_enabled'], 409);
     }
 
     private function notEnabled(): JsonResponse
     {
-        return response()->json(['message' => 'Two-factor authentication is not active.', 'code' => 'two_factor_not_enabled'], 409);
+        return response()->json(['message' => __('errors.two_factor.not_active'), 'code' => 'two_factor_not_enabled'], 409);
     }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Http\Services\AppServices\EventModules;
 use Database\Factories\EventsFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -47,6 +49,8 @@ class Events extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'published_at' => 'datetime',
+        'archived_at' => 'datetime',
+        'purge_after' => 'datetime',
         'template_config' => 'array',
     ];
 
@@ -105,6 +109,21 @@ class Events extends Model
     }
 
     /**
+     * Archived because its owner deleted her account (docs/plans/account-deletion-contract.md): the public invitation
+     * stays readable until `purge_after`, but nothing can be answered or sent and nobody can bring it back.
+     */
+    public function isAccountArchived(): bool
+    {
+        return $this->status === 'archived' && $this->purge_after !== null;
+    }
+
+    /** Scope: events archived by an account deletion. */
+    public function scopeAccountArchived(Builder $query): Builder
+    {
+        return $query->where('status', 'archived')->whereNotNull('purge_after');
+    }
+
+    /**
      * The public address (`custom_url_slug`) is fixed once the event has been published, even if it goes
      * back to draft: the links `/i/{slug}/{code}` may already have been sent to guests.
      */
@@ -138,16 +157,6 @@ class Events extends Model
     {
         return $this->hasMany(Guest::class, 'event_id', 'id');
     }
-
-    /**
-     * Relation with event feature.
-     * @return HasOne
-     */
-    public function eventFeature(): HasOne
-    {
-        return $this->hasOne(EventFeature::class, 'event_id', 'id');
-    }
-
 
     /**
      * Define a one-to-one relationship with the SaveTheDate model.
@@ -365,27 +374,20 @@ class Events extends Model
      */
     public function calculateSetupProgress(): float
     {
-        $eventFeatures = $this->eventFeature;
+        $activeWeights = $this->getActiveFeatures();
 
-        if (!$eventFeatures) {
-            return 0.0;
-        }
-
-        $activesFeatures = $this->getActiveFeatures($eventFeatures);
-
-        if (empty($activesFeatures)) {
+        if (empty($activeWeights)) {
             return 0.0;
         }
 
         $totalWeight = 0;
         $completedWeight = 0;
 
-        foreach ($activesFeatures as $feature => $weight) {
+        foreach ($activeWeights as $module => $weight) {
             $totalWeight += $weight;
 
-            if ($this->isFeatureCompleted($feature)) {
+            if ($this->isFeatureCompleted($module)) {
                 $completedWeight += $weight;
-                $checkFeaturesCompleted[$feature] = $weight;
             }
         }
 
@@ -393,29 +395,28 @@ class Events extends Model
     }
 
     /**
-     * Retrieves the active features from the provided event features based on predefined weights.
+     * The weight of each module in the setup progress, by module key (see the `modules` catalog).
+     * Only the modules that are active for this event count: the plan decides them (EventModules).
      *
-     * @param EventFeature $eventFeatures An object containing the event features and their activation statuses.
-     * @return array An associative array of active features with their corresponding weights.
+     * @return array<string, float>
      */
-    private function getActiveFeatures(EventFeature $eventFeatures): array
+    private function getActiveFeatures(): array
     {
         $featureWeights = [
             'save_the_date' => 0.10,
             'rsvp' => 0.20,
-            'menu' => 0.15,
-            'sweet_memories' => 0.10,
-            'music' => 0.08,
-            'background_music' => 0.07,
-            'event_comments' => 0.05,
-            'seats_accommodation' => 0.10,
+            'menus' => 0.15,
+            'memories' => 0.10,
+            'suggested_music' => 0.08,
+            'comments' => 0.05,
+            'seating' => 0.10,
             'budget' => 0.10,
-            'location' => 0.05
+            'locations' => 0.05,
         ];
 
-        return array_filter($featureWeights, function ($feature) use ($eventFeatures) {
-            return $eventFeatures->$feature;
-        }, ARRAY_FILTER_USE_KEY);
+        $modules = app(EventModules::class);
+
+        return array_filter($featureWeights, fn ($weight, $key) => $modules->isActive($this, $key), ARRAY_FILTER_USE_BOTH);
     }
 
     /**
@@ -430,20 +431,18 @@ class Events extends Model
             'save_the_date' => $this->saveTheDate !== null &&
                 !empty($this->saveTheDate->message),
             'rsvp' => $this->isRsvpCompleted(),
-            'menu' => $this->menus()->count() > 0 &&
+            'menus' => $this->menus()->count() > 0 &&
                 $this->menus()->first()?->menuItems()->count() > 0,
-            'sweet_memories' => $this->sweetMemoriesConfig !== null &&
+            'memories' => $this->sweetMemoriesConfig !== null &&
                 $this->sweetMemoriesImages()->count() > 0,
-            'music' => $this->suggestedMusicConfig !== null &&
+            'suggested_music' => $this->suggestedMusicConfig !== null &&
                 $this->musicSuggestions()->count() > 0,
-            'background_music' => $this->backgroundMusic !== null &&
-                !empty($this->backgroundMusic->playlist_url),
-            'event_comments' => $this->eventConfigComment !== null,
-            'seats_accommodation' => $this->locations !== null &&
+            'comments' => $this->eventConfigComment !== null,
+            'seating' => $this->locations !== null &&
                 !empty($this->locations->capacity),
             'budget' => $this->budget !== null &&
                 $this->budget->items()->count() > 0,
-            'location' => $this->locations !== null &&
+            'locations' => $this->locations !== null &&
                 !empty($this->locations->address),
             default => false,
         };

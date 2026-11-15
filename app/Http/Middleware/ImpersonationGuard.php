@@ -29,7 +29,7 @@ class ImpersonationGuard
         $session = ImpersonationSession::query()->where('token_id', $token->getKey())->first();
 
         if (! $session || ! $session->isActive() || $session->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthenticated.', 'code' => 'impersonation_ended'], 401);
+            return response()->json(['message' => __('errors.auth.unauthenticated'), 'code' => 'impersonation_ended'], 401);
         }
 
         // The staff member and the account are checked on every request, not only when the session starts.
@@ -37,12 +37,12 @@ class ImpersonationGuard
         if (! $staff || $staff->suspended_at || ! $staff->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
             app(ImpersonationService::class)->finish($session, 'staff');
 
-            return response()->json(['message' => 'Unauthenticated.', 'code' => 'impersonation_ended'], 401);
+            return response()->json(['message' => __('errors.auth.unauthenticated'), 'code' => 'impersonation_ended'], 401);
         }
         if ($request->user()->anonymized_at || $request->user()->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
             app(ImpersonationService::class)->finish($session, 'staff', mail: false);
 
-            return response()->json(['message' => 'Unauthenticated.', 'code' => 'impersonation_ended'], 401);
+            return response()->json(['message' => __('errors.auth.unauthenticated'), 'code' => 'impersonation_ended'], 401);
         }
 
         $request->attributes->set('impersonated_by', $session->staff_id);
@@ -52,7 +52,7 @@ class ImpersonationGuard
 
         if (! $route || ! ImpersonationRules::isAllowed($route)) {
             return response()->json([
-                'message' => 'Esta acción no está permitida durante una sesión de soporte.',
+                'message' => __('errors.permission.impersonation_blocked'),
                 'code' => 'impersonation_blocked',
             ], 403);
         }

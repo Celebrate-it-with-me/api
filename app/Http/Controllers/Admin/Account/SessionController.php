@@ -47,7 +47,7 @@ class SessionController extends Controller
 
         $current = $this->security->currentToken($request->user());
         if ($current && $token->is($current)) {
-            return response()->json(['message' => 'To close this session use sign out.', 'code' => 'current_session'], 422);
+            return response()->json(['message' => __('errors.session.use_sign_out'), 'code' => 'current_session'], 422);
         }
 
         $device = ClientInfo::device($token->user_agent);

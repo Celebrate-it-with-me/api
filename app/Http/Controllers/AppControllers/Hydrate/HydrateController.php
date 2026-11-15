@@ -39,7 +39,7 @@ class HydrateController
         } catch (Throwable $th) {
             report($th);
 
-            return response()->json(['message' => 'The data could not be loaded.', 'data' => []], 500);
+            return response()->json(['message' => __('errors.generic.load_failed'), 'data' => []], 500);
         }
     }
 }

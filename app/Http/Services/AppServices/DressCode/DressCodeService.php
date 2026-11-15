@@ -109,7 +109,8 @@ class DressCodeService
 
     private function storeUpload(UploadedFile $file, int $dressCodeId): void
     {
-        $path = $file->storeAs('dress-code-images', Str::uuid() . '.' . $file->getClientOriginalExtension(), 'public');
+        // The extension comes from the detected content, never from the client's file name (x.html would be served as HTML).
+        $path = $file->storeAs('dress-code-images', Str::uuid() . '.' . $file->extension(), 'public');
 
         DressCodeImage::query()->create([
             'dress_code_id' => $dressCodeId,

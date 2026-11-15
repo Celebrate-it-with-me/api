@@ -88,7 +88,7 @@ class InvitationAcceptance
         } else {
             $password = $data['password'];
             if (Str::lower($password) === Str::lower($invitation->email)) {
-                throw ValidationException::withMessages(['password' => ['La contraseña no puede ser tu correo.']]);
+                throw ValidationException::withMessages(['password' => [__('errors.auth.password_is_email')]]);
             }
         }
 
@@ -141,7 +141,7 @@ class InvitationAcceptance
         $key = "admin-invitation-password:{$account->id}";
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_PASSWORD_FAILURES)) {
-            throw new ThrottleRequestsException('Too many attempts.', null, ['Retry-After' => RateLimiter::availableIn($key)]);
+            throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($key)]);
         }
         if (! is_string($password) || $password === '' || ! Hash::check($password, $account->password)) {
             RateLimiter::hit($key, 900);

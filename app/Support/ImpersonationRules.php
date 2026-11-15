@@ -16,6 +16,7 @@ final class ImpersonationRules
     /** Passwords, 2FA, sessions, purchases and payments, exports of personal data, deleting, access to the event. */
     public const BLOCKED = [
         'DELETE api/v1/app/event/{event}',
+        'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
         'DELETE api/v1/app/event/{event}/collaborators/{user}',
         'GET api/v1/app/event/{event}/budget/export',
         'GET api/v1/app/event/{event}/menus/guests/download',
@@ -27,6 +28,9 @@ final class ImpersonationRules
         'GET api/v1/app/exports/download',
         // Billing documents of the owner: support sees them from the admin, not by impersonating.
         'GET api/v1/app/account/billing-profile',
+        // Support never deletes an account on behalf of its owner.
+        'DELETE api/v1/app/account',
+        'GET api/v1/app/account/deletion-preview',
         'GET api/v1/app/account/purchases',
         'GET api/v1/app/account/invoices/{invoice}/pdf',
         'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
@@ -35,9 +39,16 @@ final class ImpersonationRules
         'GET api/v1/app/user/2fa/status',
         'POST api/v1/app/account/credit-notes/{creditNote}/resend',
         'POST api/v1/app/account/invoices/{invoice}/resend',
+        // Nothing is dismissed on behalf of the user.
+        'POST api/v1/app/announcements/{announcement}/dismiss',
         'POST api/v1/app/event/{event}/collaborators',
+        'PATCH api/v1/app/event/{event}/collaborators/{user}',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
+        'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
         'POST api/v1/app/event/{event}/purchase/checkout',
+        // Messaging real guests is the organizer's act, never support's.
+        'POST api/v1/app/event/{event}/whatsapp/send',
+        'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
         'POST api/v1/app/logout',
         'POST api/v1/app/support',
         'POST api/v1/app/user/2fa/disable',
@@ -50,6 +61,8 @@ final class ImpersonationRules
 
     /** Everything else the organizer does in her own account, so support can reproduce and fix what she sees. */
     public const ALLOWED = [
+        'GET api/v1/app/event/{event}/whatsapp/messages',
+        'GET api/v1/app/event/{event}/whatsapp/summary',
         'DELETE api/v1/app/event/{event}/budget/categories/{category}',
         'DELETE api/v1/app/event/{event}/budget/items/{item}',
         'DELETE api/v1/app/event/{event}/budget/items/{item}/payments/{payment}',
@@ -68,6 +81,8 @@ final class ImpersonationRules
         'DELETE api/v1/app/event/{event}/tables/{table}',
         'DELETE api/v1/app/event/{event}/tables/{table}/guest/{guest}',
         'DELETE api/v1/app/event/{event}/timeline/{timeline}',
+        'GET api/v1/app/event/{event}/collaborators',
+        'GET api/v1/app/announcements',
         'GET api/v1/app/auth/ready',
         'GET api/v1/app/event/filters',
         'GET api/v1/app/event/{event}',
@@ -96,6 +111,7 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/seating/unassigned',
         'GET api/v1/app/event/{event}/suggest-music',
         'GET api/v1/app/event/{event}/suggest-music-config',
+        'GET api/v1/app/event/{event}/suggest-music/spotify-search',
         'GET api/v1/app/event/{event}/suggestions',
         'GET api/v1/app/event/{event}/sweet-memories-config',
         'GET api/v1/app/event/{event}/sweet-memories-images',

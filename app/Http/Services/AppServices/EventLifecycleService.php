@@ -75,6 +75,10 @@ class EventLifecycleService
     public function restore(Events $event, ?User $actor): Events
     {
         $this->requireStatus($event, [EventStatus::ARCHIVED], 'Only an archived event can be restored.');
+        // Kept only to be read until it is purged, after its owner deleted her account.
+        if ($event->isAccountArchived()) {
+            throw ValidationException::withMessages(['status' => __('errors.account_deletion.event_archived')]);
+        }
         $event->status = EventStatus::DRAFT->value;
 
         return $this->save($event, $actor, 'event_restored');

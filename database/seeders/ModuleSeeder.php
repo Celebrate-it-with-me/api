@@ -23,12 +23,16 @@ class ModuleSeeder extends Seeder
         'guests' => ['guests', 10, true, false],
         'rsvp' => ['guests', 20, true, false],
         'save_the_date' => ['guests', 30, true, false],
+        // WhatsApp sending: off until the Meta account is connected; then on, for paid plans only.
+        'whatsapp' => ['guests', 40, false, true],
 
         'timeline' => ['organization', 10, true, false],
         'locations' => ['organization', 20, true, false],
         'dress_code' => ['organization', 30, true, false],
         'budget' => ['organization', 40, true, false],
         'padrinos' => ['organization', 50, true, false],
+        // Control key only (no screen of its own): inviting, changing roles and resending invitations are premium.
+        'collaborators' => ['organization', 60, true, true],
 
         'menus' => ['extras', 10, true, true],
         'seating' => ['extras', 20, true, true],

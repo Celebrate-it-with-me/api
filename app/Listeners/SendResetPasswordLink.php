@@ -8,6 +8,7 @@ use App\Mail\ResetPasswordEmail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 
 class SendResetPasswordLink
@@ -30,8 +31,8 @@ class SendResetPasswordLink
         // Send the reset password link to the user
         $confirmUrl = URL::temporarySignedRoute(
             'auth.check.password',
-            now()->addDay(),
-            ['user' => $user->id]
+            now()->addMinutes((int) config('auth.passwords.users.expire', 60)),
+            ['user' => $user->id, 'token' => Password::broker()->createToken($user)]
         );
         
         $completedUrl = config('app.frontend_app.url'). '/confirm-reset?confirm=' . urlencode($confirmUrl);

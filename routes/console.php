@@ -17,3 +17,9 @@ use Illuminate\Support\Facades\Artisan;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Safety net for the template review status (Meta also pushes it through the webhook).
+Illuminate\Support\Facades\Schedule::command('whatsapp:sync-templates')->hourly()->withoutOverlapping();
+
+// Events kept 30 days after their owner deleted her account are removed for good (docs/plans/account-deletion-contract.md).
+Illuminate\Support\Facades\Schedule::command('account:purge-archived')->dailyAt('03:30')->withoutOverlapping();

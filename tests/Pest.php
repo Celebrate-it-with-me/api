@@ -26,6 +26,7 @@ pest()->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
 
 // Cargar helpers de Hydration
 require_once __DIR__ . '/Helpers/HydrationHelpers.php';
+require_once __DIR__ . '/Feature/WhatsApp/WhatsAppHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

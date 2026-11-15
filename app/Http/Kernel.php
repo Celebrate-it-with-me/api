@@ -5,10 +5,12 @@ namespace App\Http;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\ImpersonationGuard;
 use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RefreshTokenExpirationIfActive;
+use App\Http\Middleware\SetRequestLocale;
 use App\Http\Middleware\StatelessForImpersonation;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
@@ -44,6 +46,8 @@ class Kernel extends HttpKernel
         $this->addToMiddlewarePriorityBefore(SubstituteBindings::class, [
             EnsureAdmin::class,
             EnsureAdminPermission::class,
+            // An impersonated session is refused on a blocked route before a missing record could answer 404 instead.
+            ImpersonationGuard::class,
         ]);
     }
 
@@ -71,6 +75,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            SetRequestLocale::class,
             StatelessForImpersonation::class,
             ThrottleRequests::class . ':api',
             SubstituteBindings::class,

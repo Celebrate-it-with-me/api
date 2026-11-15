@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\AdminPermissions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * "Require two-factor for all staff": a switch stored in `system_flags` (key `admin.require_two_factor`), read through a
@@ -28,7 +29,10 @@ class TwoFactorEnforcement
         // Fail open: if the cache or the database cannot be read, nobody is locked out by the switch.
         try {
             return (bool) Cache::remember(self::CACHE_KEY, 5, fn () => $this->load());
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            // Not silent: the switch being off because the cache is down must reach whoever watches the logs (S-25).
+            Log::critical('Staff two-factor enforcement could not be read; failing open', ['error' => $e->getMessage()]);
+
             return false;
         }
     }

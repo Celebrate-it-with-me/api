@@ -2,6 +2,7 @@
 
 use App\Http\Services\AppServices\GuestLimit;
 use App\Http\Services\Payments\FakeGateway;
+use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
@@ -11,6 +12,7 @@ use App\Models\EventUserRole;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\EventPlanSeeder;
+use Database\Seeders\LaunchCouponSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 
@@ -171,4 +173,102 @@ it('does not overwrite an edited price when seeded again', function () {
     $this->seed(EventPlanSeeder::class);
 
     expect(EventPlan::where('slug', 'premium')->value('price_cents'))->toBe(7900);
+});
+
+it('refuses every webhook when no secret is configured and ignores the old public default (S-03)', function () {
+    [$event, $owner] = ownedEvent();
+    $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertCreated();
+    $purchase = EventPurchase::find($res->json('data.purchaseId'));
+    $raw = json_encode(['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id]);
+
+    // Signed with the secret that used to be the default in the repository.
+    sendWebhook($this, json_decode($raw, true), hash_hmac('sha256', $raw, 'local-webhook-secret'))->assertStatus(400);
+
+    config(['services.payments.webhook_secret' => null]);
+    $forged = hash_hmac('sha256', $raw, '');
+    $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $forged], $raw)
+        ->assertStatus(503);
+
+    expect($event->fresh()->eventPlan->slug)->toBe('basic');
+});
+
+it('rejects a webhook whose amount does not match the purchase', function () {
+    [$event, $owner] = ownedEvent();
+    $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertCreated();
+    $purchase = EventPurchase::find($res->json('data.purchaseId'));
+
+    sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => 1])->assertStatus(400);
+    expect($purchase->fresh()->status)->toBe('pending');
+
+    sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => $purchase->amount_cents, 'currency' => $purchase->currency])->assertOk();
+    expect($purchase->fresh()->status)->toBe('paid');
+});
+
+it('never resolves the fake gateway in production', function () {
+    $this->app['env'] = 'production';
+
+    expect(fn () => app(PurchaseService::class)->gateway('fake'))->toThrow(RuntimeException::class);
+});
+
+it('does not let simultaneous checkouts exceed a coupon cap (S-19)', function () {
+    Coupon::create(['code' => 'ONE', 'kind' => 'fixed_price', 'value' => 5000, 'max_uses' => 1]);
+    [$eventA, $ownerA] = ownedEvent();
+    [$eventB, $ownerB] = ownedEvent();
+
+    $this->actingAs($ownerA)->postJson("/api/v1/app/event/{$eventA->id}/purchase/checkout", ['code' => 'ONE'])->assertCreated();
+    // The first purchase is still pending (not paid): it already holds the only use.
+    $this->actingAs($ownerB)->postJson("/api/v1/app/event/{$eventB->id}/purchase/checkout", ['code' => 'ONE'])->assertStatus(422);
+
+    expect(EventPurchase::where('event_id', $eventB->id)->exists())->toBeFalse();
+});
+
+it('releases the held use after an hour without payment', function () {
+    Coupon::create(['code' => 'ONE', 'kind' => 'fixed_price', 'value' => 5000, 'max_uses' => 1]);
+    [$eventA, $ownerA] = ownedEvent();
+    [$eventB, $ownerB] = ownedEvent();
+
+    $this->actingAs($ownerA)->postJson("/api/v1/app/event/{$eventA->id}/purchase/checkout", ['code' => 'ONE'])->assertCreated();
+    $this->travel(61)->minutes();
+
+    $this->actingAs($ownerB)->postJson("/api/v1/app/event/{$eventB->id}/purchase/checkout", ['code' => 'ONE'])->assertCreated();
+});
+
+describe('launch offer', function () {
+    it('totals 99 without a code and 79 with the launch code, the same for quince and wedding', function () {
+        $this->seed(LaunchCouponSeeder::class);
+
+        foreach (['quinceanera', 'wedding'] as $type) {
+            [$event, $owner] = ownedEvent();
+            $event->update(['event_type_id' => EventType::where('slug', $type)->value('id')]);
+
+            $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/quote")
+                ->assertOk()->assertJsonPath('data.amountCents', 9900)->assertJsonPath('data.listPriceCents', 9900);
+            $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/quote?code=lanzamiento79")
+                ->assertOk()->assertJsonPath('data.amountCents', 7900)->assertJsonPath('data.listPriceCents', 9900)
+                ->assertJsonPath('data.code', LaunchCouponSeeder::CODE);
+
+            $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => LaunchCouponSeeder::CODE])->assertCreated();
+            expect(EventPurchase::find($res->json('data.purchaseId')))->amount_cents->toBe(7900)->list_price_cents->toBe(9900)->is_founder->toBeTrue();
+        }
+    });
+
+    it('is rejected once the 100 uses are spent', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        Coupon::where('code', LaunchCouponSeeder::CODE)->update(['times_used' => 100]);
+        [$event, $owner] = ownedEvent();
+
+        expect(Coupon::where('code', LaunchCouponSeeder::CODE)->value('max_uses'))->toBe(100);
+        $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/quote?code=" . LaunchCouponSeeder::CODE)->assertStatus(422);
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => LaunchCouponSeeder::CODE])->assertStatus(422);
+    });
+
+    it('seeding again never overwrites what the admin changed', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        Coupon::where('code', LaunchCouponSeeder::CODE)->update(['max_uses' => 250, 'is_active' => false]);
+
+        $this->seed(LaunchCouponSeeder::class);
+
+        expect(Coupon::where('code', LaunchCouponSeeder::CODE)->count())->toBe(1)
+            ->and(Coupon::where('code', LaunchCouponSeeder::CODE)->first())->max_uses->toBe(250)->is_active->toBeFalse();
+    });
 });

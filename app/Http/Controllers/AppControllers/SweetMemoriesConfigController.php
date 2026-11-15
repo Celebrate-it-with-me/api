@@ -39,7 +39,8 @@ class SweetMemoriesConfigController extends Controller
                 'data' => []
             ], 404);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(). ' '.$th->getFile(). ' ' . $th->getLine() , 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -51,7 +52,8 @@ class SweetMemoriesConfigController extends Controller
         try {
             return SweetMemoriesConfigResource::make($this->sweetMemoriesConfigServices->create($event));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -63,7 +65,8 @@ class SweetMemoriesConfigController extends Controller
         try {
             return SweetMemoriesConfigResource::make($sweetMemoriesConfig);
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -81,7 +84,8 @@ class SweetMemoriesConfigController extends Controller
                 $this->sweetMemoriesConfigServices->update($sweetMemoriesConfig)
             );
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 
@@ -93,7 +97,8 @@ class SweetMemoriesConfigController extends Controller
         try {
             return SweetMemoriesConfigResource::make($this->sweetMemoriesConfigServices->destroy($sweetMemoriesConfig));
         } catch (Throwable $th) {
-            return response()->json(['message' => $th->getMessage(), 'data' => []], 500);
+            report($th);
+            return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
 }

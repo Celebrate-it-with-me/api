@@ -24,6 +24,26 @@ class MailLocale
         return trim(explode(' ', trim((string) $name))[0]);
     }
 
+    /** Escapes Markdown so user-provided text (event and person names) cannot add links or formatting to a mail. */
+    public static function md(?string $text): string
+    {
+        return preg_replace('/([\\\\`*_{}\[\]()<>#+!|~])/', '\\\\$1', (string) $text);
+    }
+
+    /**
+     * An event name typed by someone else, used in the subject and text of a mail sent from our domain (audit W-03):
+     * no links, control characters or line breaks, at most 60 characters.
+     */
+    public static function eventName(?string $name): string
+    {
+        $name = preg_replace('/[\x00-\x1F\x7F\p{Cc}\p{Cf}]+/u', ' ', (string) $name) ?? '';
+        $name = preg_replace('~(?:[a-z][a-z0-9+.-]*://|www\.)\S*~iu', ' ', $name) ?? '';
+        $name = preg_replace('~\S+@\S+~u', ' ', $name) ?? '';
+        $name = trim(preg_replace('/\s+/u', ' ', $name));
+
+        return mb_strlen($name) > 60 ? rtrim(mb_substr($name, 0, 60)) : $name;
+    }
+
     /** Role of an event collaborator as a word in the mail language. */
     public static function role(?string $role, string $lang): string
     {

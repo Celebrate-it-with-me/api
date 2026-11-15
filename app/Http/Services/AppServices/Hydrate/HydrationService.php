@@ -39,7 +39,6 @@ readonly class HydrationService
         $events = $this->eventRepository->getAccessibleEvents($user);
         $event = $this->eventRepository->findWithRelations($eventId, [
             'menus',
-            'eventFeature',
             'guests',
             'rsvp',
             'saveTheDate',

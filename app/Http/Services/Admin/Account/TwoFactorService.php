@@ -57,7 +57,7 @@ class TwoFactorService
     public function startSetup(User $user): array
     {
         if ($user->hasAdminTwoFactor()) {
-            throw new RuntimeException('Two-factor authentication is already active.');
+            throw new RuntimeException(__('errors.two_factor.already_active'));
         }
 
         $secret = $this->google2fa->generateSecretKey(32);
@@ -132,7 +132,7 @@ class TwoFactorService
     {
         $record = $user->adminTwoFactor;
         if (! $record || ! $record->isActive()) {
-            throw new RuntimeException('Two-factor authentication is not active.');
+            throw new RuntimeException(__('errors.two_factor.not_active'));
         }
         $plain = $this->newRecoveryCodes($record);
         $record->save();
@@ -158,7 +158,18 @@ class TwoFactorService
         if ($step === false) {
             return false;
         }
+
+        // Compare-and-set in the database: of two simultaneous requests with the same code only one moves the step
+        // forward; the other finds it already used (a read-then-write would let both through).
+        $advanced = AdminTwoFactor::query()->whereKey($record->getKey())
+            ->where(fn ($q) => $q->whereNull('last_used_step')->orWhere('last_used_step', '<', (int) $step))
+            ->update(['last_used_step' => (int) $step]);
+        if ($advanced !== 1) {
+            return false;
+        }
+
         $record->last_used_step = (int) $step;
+        $record->syncOriginalAttribute('last_used_step');
 
         return true;
     }

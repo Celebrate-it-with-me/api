@@ -30,7 +30,7 @@ class GuestImportController extends Controller
         try {
             return response()->json(['data' => $this->import->preview($event, $request->file('file'))]);
         } catch (ImportProblem $problem) {
-            return response()->json(['message' => 'The file cannot be imported.', 'errors' => ['file' => [$problem->getMessage()]]], 422);
+            return response()->json(['message' => __('errors.guest_import.cannot_import'), 'errors' => ['file' => [$problem->getMessage()]]], 422);
         }
     }
 

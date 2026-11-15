@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\EventActivity;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -25,7 +24,6 @@ function lifecycleEvent(array $attributes = []): array
         'event_name' => 'Los XV de Valentina',
         'custom_url_slug' => 'los-xv-de-valentina',
     ]);
-    EventFeature::create(['event_id' => $event->id, 'rsvp' => true, 'budget' => true, 'menu' => false]);
 
     $members = [];
     foreach (['owner', 'editor', 'viewer'] as $role) {
@@ -98,16 +96,16 @@ describe('creating an event', function () {
 });
 
 describe('editing the details', function () {
-    it('changes only what is sent and never switches features off', function () {
+    it('changes only what is sent and never changes the plan', function () {
         [$event, $m] = lifecycleEvent();
+        $before = $event->event_plan_id;
 
         $this->actingAs($m['editor'])->patchJson("/api/v1/app/event/{$event->id}", ['eventName' => 'Los XV de Vale'])->assertOk();
 
         $event->refresh();
         expect($event->event_name)->toBe('Los XV de Vale')
             ->and($event->custom_url_slug)->toBe('los-xv-de-valentina')
-            ->and($event->eventFeature->rsvp)->toBeTrue()
-            ->and($event->eventFeature->budget)->toBeTrue();
+            ->and($event->event_plan_id)->toBe($before);
     });
 
     it('can clear the description and the end date', function () {
@@ -159,12 +157,12 @@ describe('editing the details', function () {
         expect($event->fresh()->currency)->toBe('USD');
     });
 
-    it('still accepts PUT for older clients, and keeps the budget feature on', function () {
+    it('still accepts PUT for older clients, and keeps the plan', function () {
         [$event, $m] = lifecycleEvent();
 
         $this->actingAs($m['owner'])->putJson("/api/v1/app/event/{$event->id}", ['eventName' => 'Via PUT'])->assertOk();
 
-        expect($event->fresh()->event_name)->toBe('Via PUT')->and($event->fresh()->eventFeature->budget)->toBeTrue();
+        expect($event->fresh()->event_name)->toBe('Via PUT')->and($event->fresh()->event_plan_id)->toBe($event->event_plan_id);
     });
 
     it('cannot change the status or the plan', function () {

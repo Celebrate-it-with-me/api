@@ -27,6 +27,7 @@
     use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
     use App\Http\Controllers\AppControllers\Seating\TableController;
     use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
+    use App\Http\Controllers\AppControllers\SpotifySearchController;
     use App\Http\Controllers\AppControllers\SuggestedMusicController;
     use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
     use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
@@ -45,15 +46,15 @@
 
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
-    Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:60,1')->name('show');
-    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:20,1', 'module.access:rsvp'])->name('rsvp');
-    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:30,1')->name('calendar');
+    Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:invitation-show')->name('show');
+    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'module.access:rsvp'])->name('rsvp');
+    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
 });
 
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {
     // Guest-facing: a valid access code of this event is required, even to read (see EnsureGuestEventAccess).
-    Route::prefix('event/{event}')->middleware(['event.guest', 'throttle:60,1'])->name('event.')->group(function () {
+    Route::prefix('event/{event}')->middleware(['event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
         Route::get('comments', [PublicEventCommentController::class, 'index'])
             ->middleware('module.access:comments')->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
@@ -74,11 +75,14 @@ Route::prefix('template')->name('template.')->group(function () {
 });
 
 // Authentication Routes
-Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseController::class, 'webhook'])->middleware('throttle:120,1')->name('payments.webhook');
+Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseController::class, 'webhook'])->middleware('throttle:payments-webhook')->name('payments.webhook');
 
 // "Mis compras" (invoices): its own file, own auth middleware. Keep it above the group that ends the impersonation
 // session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
 require __DIR__ . '/app/invoices.php';
+require __DIR__ . '/app/whatsapp.php';
+require __DIR__ . '/app/announcements.php';
+require __DIR__ . '/app/account-deletion.php';
 
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -92,6 +96,7 @@ Route::prefix('')->name('auth.')->group(function () {
         ->name('check.password')
         ->middleware('signed');
     Route::post('reset-password', [AuthenticationController::class, 'resetPassword'])
+        ->middleware('throttle:reset-password')
         ->name('reset.password');
 });
 
@@ -99,11 +104,11 @@ Route::prefix('')->name('auth.')->group(function () {
 
 // Public Collaborator Invitation Routes
 Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])
-    ->name('collaborators.checkToken');
+    ->middleware('throttle:collaborator-token')->name('collaborators.checkToken');
 Route::post('event/{event}/collaborators/invite/{token}/decline', [InviteCollaboratorController::class, 'declineInvite'])
-    ->name('collaborators.declineInvite');
+    ->middleware('throttle:collaborator-token')->name('collaborators.declineInvite');
 Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, 'eventTokens'])
-    ->name('collaborators.eventTokens');
+    ->middleware('throttle:collaborator-token')->name('collaborators.eventTokens');
 
 // ========================================
 // PROTECTED ROUTES (Require Authentication)
@@ -119,7 +124,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
 
     // "Necesito ayuda": the organizer's own support requests.
     Route::get('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'index'])->name('support.index');
-    Route::post('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'store'])->middleware('throttle:5,1')->name('support.store');
+    Route::post('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'store'])->middleware('throttle:support-request')->name('support.store');
     
     // ========================================
     // USER MANAGEMENT ROUTES
@@ -173,6 +178,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
         Route::prefix('{event}')->middleware('event.access')->group(function () {
             Route::prefix('suggest-music')->name('suggest-music.')->middleware('module.access:suggested_music')->group(function () {
                 Route::get('export', [SuggestedMusicController::class, 'export'])->name('export');
+                Route::get('spotify-search', SpotifySearchController::class)->middleware(['event.access:edit_event', 'throttle:spotify-search'])->name('spotify-search');
                 Route::get('', [SuggestedMusicController::class, 'index'])->name('index');
                 Route::post('', [SuggestedMusicController::class, 'store'])->name('store');
                 Route::delete('{suggestedMusic}', [SuggestedMusicController::class, 'destroy'])->name('destroy');
@@ -201,13 +207,21 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // COLLABORATORS
             // ========================================
             Route::prefix('collaborators')->name('collaborators.')->group(function () {
+                Route::get('', [InviteCollaboratorController::class, 'index'])
+                    ->middleware('event.access:manage_collaborators')->name('index');
                 Route::post('', [InviteCollaboratorController::class, 'invite'])
-                    ->middleware('event.access:manage_collaborators')->name('store');
+                    ->middleware(['event.access:manage_collaborators', 'module.access:collaborators', 'throttle:collaborator-invites'])->name('store');
                 // The invitee is not a member yet; the controller checks the invite belongs to their email.
                 Route::post('invite/{id}/accept', [InviteCollaboratorController::class, 'accept'])
                     ->withoutMiddleware('event.access')->name('accept');
+                Route::post('invite/{id}/resend', [InviteCollaboratorController::class, 'resend'])
+                    ->whereNumber('id')->middleware(['event.access:manage_collaborators', 'module.access:collaborators', 'throttle:collaborator-resend'])->name('resend');
+                Route::delete('invite/{id}', [InviteCollaboratorController::class, 'cancel'])
+                    ->whereNumber('id')->middleware('event.access:manage_collaborators')->name('cancel');
+                Route::patch('{user}', [InviteCollaboratorController::class, 'changeRole'])
+                    ->whereNumber('user')->middleware(['event.access:manage_collaborators', 'module.access:collaborators'])->name('role');
                 Route::delete('{user}', [InviteCollaboratorController::class, 'destroy'])
-                    ->middleware('event.access:manage_collaborators')->name('destroy');
+                    ->whereNumber('user')->middleware('event.access:manage_collaborators')->name('destroy');
             });
 
             // ========================================
@@ -221,8 +235,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('import/template', [GuestImportController::class, 'template'])->name('import.template');
                 Route::post('import/preview', [GuestImportController::class, 'preview'])->name('import.preview');
                 Route::post('import', [GuestImportController::class, 'store'])->name('import.store');
-                Route::get('export', [GuestExportController::class, 'roster'])->middleware('throttle:10,1')->name('export');
-                Route::get('export/venue', [GuestExportController::class, 'venue'])->middleware('throttle:10,1')->name('export.venue');
+                Route::get('export', [GuestExportController::class, 'roster'])->middleware('throttle:guest-export')->name('export');
+                Route::get('export/venue', [GuestExportController::class, 'venue'])->middleware('throttle:guest-export')->name('export.venue');
                 Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
                 Route::patch('{guest}/locale', [GuestRosterController::class, 'updateLocale'])->name('locale');
                 Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');

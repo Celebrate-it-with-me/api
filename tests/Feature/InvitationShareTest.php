@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventLocation;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -27,7 +26,6 @@ function shareEvent(array $extra = [], array $guest = []): array
         'start_date' => '2026-12-25 19:00:00',
         'locale' => 'es',
     ], $extra));
-    EventFeature::create(['event_id' => $event->id]);
     $guest = Guest::factory()->create(array_merge(['event_id' => $event->id, 'code' => 'AB1234', 'parent_id' => null], $guest));
 
     return [$event, $guest];

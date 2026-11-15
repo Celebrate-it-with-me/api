@@ -62,6 +62,8 @@ class SocialAuthService
                 'email' => $email,
                 'password' => bcrypt(Str::random(32)),
             ]);
+            // Nobody knows this password: deleting the account will not ask for one.
+            $user->forceFill(['has_password' => false])->save();
         }
 
         if ($user->suspended_at) {

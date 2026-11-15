@@ -55,7 +55,7 @@ class EnsureEventAccess
         $needed = $permission ?? (in_array($request->method(), self::READ_METHODS, true) ? 'view_event' : 'edit_event');
 
         if (! in_array($needed, $user->getEventPermissions($event), true)) {
-            abort(403, 'You do not have permission to do this in this event.');
+            abort(403, __('errors.permission.event_action'));
         }
 
         return $next($request);

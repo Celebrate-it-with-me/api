@@ -79,10 +79,10 @@ class ProfileController extends Controller
 
         $email = Str::lower(trim($data['email']));
         if ($email === Str::lower($user->email)) {
-            throw ValidationException::withMessages(['email' => ['Ese ya es tu correo.']]);
+            throw ValidationException::withMessages(['email' => [__('errors.profile.same_email')]]);
         }
         if (User::query()->whereRaw('LOWER(email) = ?', [$email])->exists()) {
-            throw ValidationException::withMessages(['email' => ['Ese correo ya está en uso.']]);
+            throw ValidationException::withMessages(['email' => [__('errors.profile.email_in_use')]]);
         }
 
         $token = Str::random(64);
@@ -110,11 +110,11 @@ class ProfileController extends Controller
         $pending = $user->adminEmailChange()->first();
         $valid = $pending && $pending->expires_at->isFuture() && hash_equals($pending->token_hash, hash('sha256', $data['token']));
         if (! $valid) {
-            throw ValidationException::withMessages(['token' => ['El enlace no es válido o venció. Pide el cambio de nuevo.']]);
+            throw ValidationException::withMessages(['token' => [__('errors.profile.change_link_invalid')]]);
         }
         if (User::query()->whereRaw('LOWER(email) = ?', [Str::lower($pending->new_email)])->whereKeyNot($user->id)->exists()) {
             $pending->delete();
-            throw ValidationException::withMessages(['token' => ['Ese correo ya está en uso.']]);
+            throw ValidationException::withMessages(['token' => [__('errors.profile.email_in_use')]]);
         }
 
         $old = $user->email;

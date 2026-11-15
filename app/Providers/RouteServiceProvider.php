@@ -19,13 +19,63 @@ class RouteServiceProvider extends ServiceProvider
      */
     public const HOME = '/home';
 
+    /** Named rate limiters, one per route (or deliberate group of routes): name => [attempts, window in minutes]. */
+    public const ROUTE_LIMITS = [
+        'system-status' => [60, 1],
+        'og-share' => [60, 1],
+        'invitation-show' => [60, 1],
+        'invitation-rsvp' => [20, 1],
+        'invitation-calendar' => [30, 1],
+        'guest-event' => [60, 1],
+        'payments-webhook' => [120, 1],
+        'reset-password' => [5, 1],
+        'collaborator-token' => [30, 1],
+        'collaborator-resend' => [10, 1],
+        'support-request' => [5, 1],
+        'spotify-search' => [30, 1],
+        'guest-export' => [10, 1],
+        'whatsapp-send' => [20, 1],
+        'whatsapp-retry' => [30, 1],
+        'whatsapp-webhook-verify' => [60, 1],
+        'whatsapp-webhook-receive' => [1200, 1],
+        'invoice-resend' => [5, 10],
+        'admin-login' => [10, 1],
+        'admin-login-2fa' => [10, 1],
+        'admin-invitation' => [10, 1],
+        'admin-2fa-reset' => [10, 1],
+        'admin-invitation-resend' => [6, 1],
+        'admin-whatsapp-test' => [10, 1],
+    ];
+
     /**
      * Define your route model bindings, pattern filters, and other route configuration.
      */
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute((int) config('app.api_rate_limit_per_minute', 120))
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(fn (Request $request, array $headers) => response()->json([
+                    'message' => __('errors.too_many_attempts'),
+                    'code' => 'too_many_attempts',
+                ], 429, $headers));
+        });
+
+        // Unnamed `throttle:N,M` shares one counter per IP/user across ALL such routes (the signature has no route),
+        // so every limit gets its own name: [attempts, minutes].
+        foreach (self::ROUTE_LIMITS as $name => [$attempts, $minutes]) {
+            RateLimiter::for($name, fn (Request $request) => Limit::perMinutes($minutes, $attempts)
+                ->by($name . '|' . ($request->user()?->id ? 'user:' . $request->user()->id : 'ip:' . $request->ip())));
+        }
+
+        // Inviting collaborators sends mail from our domain and tells whether an account exists (audit W-03).
+        RateLimiter::for('collaborator-invites', function (Request $request) {
+            $event = $request->route('event');
+
+            return [
+                Limit::perMinute(10)->by('collab-user:' . ($request->user()?->id ?: $request->ip())),
+                Limit::perDay(30)->by('collab-event:' . (is_object($event) ? $event->getKey() : $event)),
+            ];
         });
 
         $this->routes(function () {

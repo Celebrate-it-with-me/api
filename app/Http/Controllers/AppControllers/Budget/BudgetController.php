@@ -65,7 +65,7 @@ class BudgetController extends Controller
         $this->own($budget->id === $category->event_budget_id);
 
         if ($category->items()->exists()) {
-            return response()->json(['message' => 'The category still has items.', 'errors' => ['category' => ['not_empty']]], 422);
+            return response()->json(['message' => __('errors.budget.category_not_empty'), 'errors' => ['category' => ['not_empty']]], 422);
         }
 
         $category->delete();

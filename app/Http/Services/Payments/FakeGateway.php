@@ -25,6 +25,8 @@ class FakeGateway implements PaymentGateway
     /** Signature the "gateway" puts on its webhook calls. */
     public static function sign(string $payload): string
     {
+        abort_if(blank(config('services.payments.webhook_secret')), 503, 'Payments webhook secret is not configured.');
+
         return hash_hmac('sha256', $payload, (string) config('services.payments.webhook_secret'));
     }
 }

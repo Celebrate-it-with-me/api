@@ -1,5 +1,5 @@
 <x-mail::message :preheader="__('mail.impersonation_ended.preheader')">
-# {{ __('mail.impersonation_ended.title', ['name' => \App\Support\Mail\MailLocale::firstName($name)]) }}
+# {{ __('mail.impersonation_ended.title', ['name' => \App\Support\Mail\MailLocale::md(\App\Support\Mail\MailLocale::firstName($name))]) }}
 
 {{ __('mail.impersonation_ended.intro', ['date' => $date, 'minutes' => $minutes, 'unit' => $unit, 'why' => $why]) }}
 

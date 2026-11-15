@@ -1,0 +1,22 @@
+<?php
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
+
+it('no longer ships Twilio or the SMS reminder command', function () {
+    expect(file_exists(base_path('app/Http/Services/TwilioServices.php')))->toBeFalse()
+        ->and(file_exists(base_path('app/Console/Commands/SentSmsReminder.php')))->toBeFalse()
+        ->and(file_exists(base_path('app/Models/SmsReminder.php')))->toBeFalse()
+        ->and(file_get_contents(base_path('composer.json')))->not->toContain('twilio')
+        ->and(config('services.twilio'))->toBeNull()
+        ->and(array_key_exists('cwm:sent-sms-reminder', Artisan::all()))->toBeFalse()
+        ->and(Schema::hasTable('sms_reminders'))->toBeFalse();
+});
+
+it('does not schedule any SMS task', function () {
+    $commands = collect(app(Schedule::class)->events())
+        ->map(fn ($e) => $e->command . ' ' . $e->description)->implode(' ');
+
+    expect(strtolower($commands))->not->toContain('sms')->not->toContain('twilio');
+});

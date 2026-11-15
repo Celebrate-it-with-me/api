@@ -55,11 +55,6 @@ class DemoEventSeeder extends Seeder
             'plan' => 'premium',
             'start' => $start,
             'end' => $start->copy()->addHours(6),
-            'features' => [
-                'save_the_date' => true, 'rsvp' => true, 'sweet_memories' => true, 'music' => true,
-                'seats_accommodation' => true, 'preview' => true, 'budget' => true, 'analytics' => true,
-                'background_music' => 0, 'event_comments' => 1, 'menu' => true, 'location' => true,
-            ],
             'roles' => ['marisol@cwm.test' => 'owner', 'carlos@cwm.test' => 'editor', 'lucia@cwm.test' => 'viewer'],
             'active_for' => ['marisol@cwm.test', 'carlos@cwm.test', 'lucia@cwm.test'],
         ]);
@@ -223,7 +218,6 @@ class DemoEventSeeder extends Seeder
             'plan' => 'basic',
             'start' => $start,
             'end' => $start->copy()->addHours(7),
-            'features' => ['save_the_date' => true, 'rsvp' => true, 'menu' => true, 'location' => true, 'budget' => false],
             'roles' => ['daniel@cwm.test' => 'owner'],
             'active_for' => [],
         ]);
@@ -288,7 +282,6 @@ class DemoEventSeeder extends Seeder
             'plan' => 'basic',
             'start' => $start,
             'end' => $start->copy()->addHours(4),
-            'features' => [],
             'roles' => ['daniel@cwm.test' => 'owner'],
             'active_for' => ['daniel@cwm.test'],
         ]);
@@ -319,8 +312,6 @@ class DemoEventSeeder extends Seeder
             'event_type_id' => EventType::query()->where('slug', $data['type'])->value('id'),
             'template_config' => isset($data['template_config']) ? json_encode($data['template_config']) : null,
         ]));
-
-        DB::table('event_features')->insert($this->row(['event_id' => $id] + $data['features']));
 
         foreach ($data['roles'] as $email => $roleName) {
             DB::table('event_user_roles')->insert($this->row([

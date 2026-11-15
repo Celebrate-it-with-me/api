@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\ImpersonationGuard;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -54,9 +53,8 @@ function blkSetup($test): array
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
         'event_plan_id' => EventPlan::orderBy('id')->value('id'),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     app('auth')->forgetGuards();
-    $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $staff->createToken('t')->plainTextToken])
+    $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $test->adminBearer($staff)])
         ->assertCreated()->json('token');
 
     return [$owner, $event, $imp, $owner->createToken('normal')->plainTextToken];
@@ -123,8 +121,14 @@ describe('route classification', function () {
             'POST api/v1/app/support',
             'POST api/v1/app/event/{event}/collaborators',
             'DELETE api/v1/app/event/{event}/collaborators/{user}',
+            'PATCH api/v1/app/event/{event}/collaborators/{user}',
+            'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
+            'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
             'GET api/v1/app/event/{event}/suggest-music/export',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
+            'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
+            'POST api/v1/app/announcements/{announcement}/dismiss',
+            'DELETE api/v1/app/account', 'GET api/v1/app/account/deletion-preview',
         ];
 
         // Exactly the blocked list: moving any blocked route to ALLOWED (or adding one) has to be a decision made here too.
@@ -175,7 +179,7 @@ describe('with an impersonation token', function () {
         [, $event, $imp] = blkSetup($this);
 
         blkCall($this, 'POST', '/api/v1/app/user/update-password', $imp)
-            ->assertForbidden()->assertExactJson(['message' => 'Esta acción no está permitida durante una sesión de soporte.', 'code' => 'impersonation_blocked']);
+            ->assertForbidden()->assertExactJson(['message' => 'This action is not allowed during a support session.', 'code' => 'impersonation_blocked']);
         // A different 403 (hydrating somebody else's data) does not carry the code.
         blkCall($this, 'GET', '/api/v1/app/user/hydrate/' . User::factory()->create()->id, $imp)->assertForbidden()->assertJsonMissingPath('code');
     });

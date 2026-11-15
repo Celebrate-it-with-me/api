@@ -26,7 +26,9 @@ class AdminUserSeeder extends Seeder
         $password = config('app.admin_user.password');
 
         if (! $email || ! $password) {
-            if (app()->isProduction()) {
+            // The well-known local credentials only ever exist on a development machine or in the test suite, never on
+            // staging or production (any environment that is not explicitly local/testing).
+            if (! app()->environment(['local', 'testing'])) {
                 $this->command?->warn('DEFAULT_ADMIN_EMAIL / DEFAULT_ADMIN_PASSWORD not set: admin user skipped.');
 
                 return;

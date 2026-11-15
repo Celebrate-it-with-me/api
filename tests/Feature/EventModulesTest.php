@@ -38,7 +38,8 @@ describe('the catalog', function () {
     it('is seeded in menu order, with the modules that are not built yet switched off', function () {
         $keys = Module::query()->enabled()->get()->sortBy(['section', 'sort_order'])->pluck('key');
 
-        expect(Module::count())->toBe(14)
+        expect(Module::count())->toBe(16)
+            ->and(Module::where('key', 'whatsapp')->value('is_enabled'))->toBeFalse()
             ->and(Module::where('key', 'invitation')->value('is_enabled'))->toBeFalse()
             ->and(Module::where('key', 'padrinos')->value('is_enabled'))->toBeTrue()
             ->and($keys)->not->toContain('invitation')->toContain('padrinos');
@@ -79,7 +80,7 @@ describe('what an event shows', function () {
 
         expect(collect(app(EventModules::class)->forEvent($event))->pluck('key')->all())->toBe([
             'guests', 'rsvp', 'save_the_date',
-            'timeline', 'locations', 'dress_code', 'budget', 'padrinos',
+            'timeline', 'locations', 'dress_code', 'budget', 'padrinos', 'collaborators',
             'menus', 'seating', 'suggested_music', 'memories', 'comments',
         ]);
     });
@@ -120,7 +121,7 @@ describe('the API', function () {
         $one = $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}")->assertOk();
 
         expect($list->json('data.events.0.modules.0'))->toHaveKeys(['key', 'section', 'order', 'state'])
-            ->and($one->json('data.modules'))->toHaveCount(13);
+            ->and($one->json('data.modules'))->toHaveCount(14);
     });
 
     it('does not run more queries for ten events than for one', function () {
@@ -152,11 +153,6 @@ describe('a new event', function () {
             'eventName' => 'Mis XV', 'eventType' => EventType::where('slug', 'quinceanera')->value('id'), 'startDate' => '12/01/2027 18:00',
         ])->assertSuccessful();
 
-        $features = Events::find($response->json('data.id'))->eventFeature;
-        // The flags come back as 0/1 from the database: compare them as booleans.
-        $on = array_map('boolval', $features->only(['rsvp', 'save_the_date', 'location', 'budget']));
-        $off = array_map('boolval', $features->only(['menu', 'sweet_memories', 'music', 'background_music', 'event_comments', 'seats_accommodation']));
-        expect($on)->each->toBeTrue()->and($off)->each->toBeFalse();
         expect(moduleStates($response->json('data.modules')))->toMatchArray(['rsvp' => 'active', 'menus' => 'locked']);
     });
 
@@ -169,7 +165,7 @@ describe('a new event', function () {
 
         $this->actingAs($owner)->patchJson("/api/v1/app/event/{$id}", ['menu' => true, 'music' => true, 'sweetMemories' => true, 'eventName' => 'Otro'])->assertOk();
 
-        $features = Events::find($id)->eventFeature;
-        expect((bool) $features->menu)->toBeFalse()->and((bool) $features->music)->toBeFalse()->and((bool) $features->sweet_memories)->toBeFalse();
+        expect(moduleStates($this->actingAs($owner)->getJson("/api/v1/app/event/{$id}")->json('data.modules')))
+            ->toMatchArray(['menus' => 'locked', 'suggested_music' => 'locked', 'memories' => 'locked']);
     });
 });

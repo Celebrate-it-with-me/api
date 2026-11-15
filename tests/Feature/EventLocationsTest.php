@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventFeature;
 use App\Models\EventLocation;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -29,7 +28,6 @@ function placeEvent(): array
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
         'event_plan_id' => EventPlan::orderBy('id')->value('id'),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

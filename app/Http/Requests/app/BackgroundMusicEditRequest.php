@@ -27,7 +27,7 @@ class BackgroundMusicEditRequest extends FormRequest
             'iconPosition' => 'required|string',
             'iconColor' => 'required|string',
             'autoplay' => 'required|boolean',
-            'songFile' => 'required',
+            'songFile' => ['required', 'file', 'mimetypes:audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,application/ogg,audio/mp4,audio/x-m4a,audio/aac', 'max:10240'],
         ];
     }
 }

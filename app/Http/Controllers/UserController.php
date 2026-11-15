@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\User\CreateUserRequest;
-use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\UsersServices;
@@ -31,7 +30,8 @@ class UserController extends Controller
 
             return UserResource::make($user);
         } catch(Exception $e) {
-            return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
+            report($e);
+            return response()->json(['message' => __('errors.generic.error')],409);
         }
     }
 
@@ -59,26 +59,8 @@ class UserController extends Controller
                 ],
             ]]);
         } catch(Exception $e) {
-            return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
-        }
-    }
-
-    /**
-     * Update user info.
-     * @param UpdateUserRequest $request
-     * @param User $user
-     * @return UserResource|JsonResponse
-     */
-    public function update(UpdateUserRequest $request, User $user): UserResource|JsonResponse
-    {
-        try {
-            $before = $user->only(['name', 'email']);
-            $updated = $this->userService->update($user);
-            $this->audit->record('user.update', $updated, ['before' => $before, 'after' => $updated->only(['name', 'email'])]);
-
-            return UserResource::make($updated);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
+            report($e);
+            return response()->json(['message' => __('errors.generic.error')],409);
         }
     }
 
@@ -99,7 +81,8 @@ class UserController extends Controller
 
             return UserResource::make($deleted);
         } catch (Exception $e) {
-            return response()->json(['message' => 'Ops something fail '.$e->getMessage()],409);
+            report($e);
+            return response()->json(['message' => __('errors.generic.error')],409);
         }
     }
 }

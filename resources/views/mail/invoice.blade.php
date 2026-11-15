@@ -1,5 +1,5 @@
 <x-mail::message :preheader="__('mail.invoice.preheader')">
-# {{ __('mail.invoice.title', ['name' => $name]) }}
+# {{ __('mail.invoice.title', ['name' => \App\Support\Mail\MailLocale::md($name)]) }}
 
 {{ __('mail.invoice.intro', ['number' => $number, 'total' => $total, 'event' => $event]) }}
 

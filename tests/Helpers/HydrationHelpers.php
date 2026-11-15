@@ -43,7 +43,6 @@ expect()->extend('toBeValidHydrationResponse', function () {
         'events',
         'activeEvent',
         'menus',
-        'eventFeatures',
         'guests',
         'rsvp',
         'saveTheDate',
@@ -168,7 +167,6 @@ function mockDataLoader(array $customData = []): EventDataLoader
 {
     $defaultData = [
         'menus' => null,
-        'eventFeatures' => null,
         'guests' => [],
         'rsvp' => [],
         'saveTheDate' => null,
@@ -200,7 +198,6 @@ function assertValidHydrationStructure($response): void
         'events',
         'activeEvent',
         'menus',
-        'eventFeatures',
         'guests',
         'rsvp',
         'saveTheDate',

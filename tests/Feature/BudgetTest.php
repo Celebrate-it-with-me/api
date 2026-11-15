@@ -4,7 +4,6 @@ use App\Console\Commands\SendBudgetItemReminders;
 use App\Models\BudgetCategory;
 use App\Models\BudgetItem;
 use App\Models\EventBudget;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -26,7 +25,6 @@ function budgetEvent(string $type = 'quinceanera', array $extra = []): array
         'locale' => 'es',
         'currency' => 'USD',
     ], $extra));
-    EventFeature::create(['event_id' => $event->id]);
     $users = [];
     foreach (['owner', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();

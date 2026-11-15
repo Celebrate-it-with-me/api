@@ -113,7 +113,7 @@ class CatalogService
 
         if ($fullPlan && in_array($fullPlan->id, $currentIds, true) && ! $plans->contains('id', $fullPlan->id)) {
             throw new HttpResponseException(response()->json([
-                'message' => 'Un módulo del plan completo no se puede quitar: el plan promete todo desbloqueado.',
+                'message' => __('errors.catalog.full_plan_module_locked'),
                 'code' => 'module_in_sold_plan',
                 'errors' => ['planSlugs' => ['El módulo no puede salir del plan completo.']],
             ], 422));

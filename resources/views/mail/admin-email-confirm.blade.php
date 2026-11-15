@@ -1,5 +1,5 @@
 <x-mail::message :preheader="__('mail.admin_email_confirm.preheader')">
-# {{ __('mail.admin_email_confirm.title', ['name' => \App\Support\Mail\MailLocale::firstName($name)]) }}
+# {{ __('mail.admin_email_confirm.title', ['name' => \App\Support\Mail\MailLocale::md(\App\Support\Mail\MailLocale::firstName($name))]) }}
 
 {{ __('mail.admin_email_confirm.intro', ['minutes' => $minutes]) }}
 

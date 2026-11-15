@@ -119,12 +119,12 @@ class TeamInvitations
 
     public static function invalid(): HttpResponseException
     {
-        return new HttpResponseException(response()->json(['message' => 'This invitation is not valid.', 'code' => 'invitation_invalid'], 404));
+        return new HttpResponseException(response()->json(['message' => __('errors.team.invitation_invalid'), 'code' => 'invitation_invalid'], 404));
     }
 
     public static function expired(): HttpResponseException
     {
-        return new HttpResponseException(response()->json(['message' => 'This invitation has expired.', 'code' => 'invitation_expired'], 410));
+        return new HttpResponseException(response()->json(['message' => __('errors.team.invitation_expired'), 'code' => 'invitation_expired'], 410));
     }
 
     /** A mail server that is down never undoes the invitation: she can be re-sent from the list. */

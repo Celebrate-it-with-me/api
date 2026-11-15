@@ -2,7 +2,6 @@
 
 use App\Models\BudgetItem;
 use App\Models\EventBudget;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -22,11 +21,10 @@ function eventWithMembers(): array
 {
     $event = Events::factory()->create([
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
-        'event_plan_id' => EventPlan::orderBy('id')->value('id'),
+        'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
         'status' => 'draft',
         'event_name' => 'Los XV de Valentina',
     ]);
-    EventFeature::create(['event_id' => $event->id]);
 
     $members = [];
     foreach (['owner', 'editor', 'viewer'] as $role) {
@@ -142,6 +140,7 @@ describe('an owner', function () {
     it('does not change the plan when editing', function () {
         [$event, $m] = eventWithMembers();
         $premium = EventPlan::orderByDesc('id')->value('id');
+        $event->update(['event_plan_id' => EventPlan::orderBy('id')->value('id')]);
 
         $this->actingAs($m['owner'])->putJson("/api/v1/app/event/{$event->id}", updatePayload($event) + ['eventPlan' => $premium])->assertOk();
         expect($event->fresh()->event_plan_id)->toBe(EventPlan::orderBy('id')->value('id'));
@@ -180,7 +179,7 @@ describe('collaboration invites', function () {
 
         $this->actingAs($m['stranger'])->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/999999/accept")
             ->assertNotFound()
-            ->assertJsonPath('message', 'Invalid or expired invitation.');
+            ->assertJsonPath('message', 'The invitation is not valid or has expired.');
     });
 });
 

@@ -86,7 +86,6 @@ class HydrationResponseBuilder
             events: $this->formatEvents(),
             activeEvent: $this->formatActiveEvent(),
             menus: $this->eventData['menus'] ?? null,
-            eventFeatures: $this->eventData['eventFeatures'] ?? null,
             guests: $this->eventData['guests'] ?? null,
             rsvp: $this->eventData['rsvp'] ?? null,
             saveTheDate: $this->eventData['saveTheDate'] ?? null,
@@ -125,7 +124,7 @@ class HydrationResponseBuilder
     public function buildUnauthorized(): JsonResponse
     {
         return response()->json([
-            'message' => 'You do not have permission to access this event. Please contact the event organizer.',
+            'message' => __('errors.permission.event_access_contact'),
         ], 403);
     }
 

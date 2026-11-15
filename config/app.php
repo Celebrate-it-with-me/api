@@ -1,7 +1,14 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\AuthServiceProvider;
+use App\Providers\EventServiceProvider;
+use App\Providers\HydrationServiceProvider;
+use App\Providers\ObserversServiceProvider;
+use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
+use Intervention\Image\Facades\Image;
 
 return [
 
@@ -165,13 +172,13 @@ return [
         /*
          * Application Service Providers...
          */
-        App\Providers\ObserversServiceProvider::class,
-        App\Providers\HydrationServiceProvider::class,
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
+        ObserversServiceProvider::class,
+        HydrationServiceProvider::class,
+        AppServiceProvider::class,
+        AuthServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\RouteServiceProvider::class,
+        EventServiceProvider::class,
+        RouteServiceProvider::class,
     ])->toArray(),
 
     /*
@@ -186,7 +193,7 @@ return [
     */
 
     'aliases' => Facade::defaultAliases()->merge([
-        'Image' => Intervention\Image\Facades\Image::class,
+        'Image' => Image::class,
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
 
@@ -200,5 +207,8 @@ return [
     ],
 
     'spa_url' => env('SPA_URL', 'https://celebrateitwithme.com'),
+
+    // Global `api` limiter (per user, or per IP when anonymous). Route-specific limits live in RouteServiceProvider::ROUTE_LIMITS.
+    'api_rate_limit_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 120),
 
 ];
