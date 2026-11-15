@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\SmsReminder;
 use App\Models\User;
 use Hash;
 use Illuminate\Console\Command;
@@ -21,7 +20,7 @@ class ForceResetPassword extends Command
      *
      * @var string
      */
-    protected $description = 'Check and send sms reminder notification';
+    protected $description = 'Force reset the password of a user by email';
 
     /**
      * Execute the console command.

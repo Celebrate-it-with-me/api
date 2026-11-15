@@ -31,11 +31,6 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_AUTH_TOKEN')
-    ],
-
     'hcaptcha' => [
         'enabled' => (bool) env('HCAPTCHA_ENABLED', false),
         'site_key' => env('HCAPTCHA_SITE_KEY'),
