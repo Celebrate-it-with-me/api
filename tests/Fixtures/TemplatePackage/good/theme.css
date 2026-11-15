@@ -1,0 +1,9 @@
+:root { --pkg-gap: 1.5rem; }
+body { background: var(--inv-surface); }
+.pkg-hero { position: relative; padding: var(--pkg-gap) 1.25rem; text-align: center; background: url(assets/img/paper.webp) center / 256px; }
+.pkg-hero__title { font-family: "Great Vibes", cursive; font-size: clamp(3rem, 12vw, 4.75rem); color: var(--inv-ink); }
+.pkg-wash { position: absolute; inset: 0; z-index: 1; mask-image: url(assets/img/wash.svg); background: var(--inv-wash); pointer-events: none; animation: pkg-drift 3s ease-in-out both; }
+.pkg-rsvp-wrap { padding: 2rem 1rem; border-top: 1px solid var(--inv-accent); }
+.inv-button:hover { background: var(--inv-primary); }
+@keyframes pkg-drift { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) { .pkg-hero { max-width: 760px; margin: 0 auto; } }

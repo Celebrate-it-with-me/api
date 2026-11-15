@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "groups": [ { "id": "cover", "label": { "es": "Portada", "en": "Cover" } } ],
+  "fields": [
+    { "id": "cover_photo", "type": "image", "group": "cover", "label": { "es": "Foto de portada", "en": "Cover photo" }, "bind": { "section": "cover", "setting": "image", "focus": "focus" }, "plan": "free" },
+    { "id": "color_primary", "type": "color", "group": "cover", "label": { "es": "Color principal", "en": "Primary color" }, "bind": { "theme": "colors.primary" }, "plan": "full" }
+  ]
+}
