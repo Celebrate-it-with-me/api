@@ -153,7 +153,8 @@ class PackageStage
                 'after' => ['zipSha256' => $zipSha, 'codes' => $result['report']['errors'] === [] ? [] : array_values(array_unique(array_column($result['report']['errors'], 'code')))],
             ]);
         }
-        $this->local()->put($this->metaPath($token), (string) json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        // Throws instead of writing an empty file the install could never read (W6-11).
+        $this->local()->put($this->metaPath($token), json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
         return ['valid' => $result['valid'], 'stageToken' => $token, 'expiresAt' => $meta['expiresAt'], 'report' => $result['report']];
     }

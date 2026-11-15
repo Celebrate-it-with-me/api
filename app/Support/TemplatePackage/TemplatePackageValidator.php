@@ -207,8 +207,14 @@ class TemplatePackageValidator
 
             return null;
         }
+        if (JsonPruner::hasNonFinite($value)) {
+            $report->error($name, $this->jsonCode($name), 'El JSON contiene un número que no es finito (p. ej. 1e999).');
 
-        return $value;
+            return null;
+        }
+
+        // Only the keys the contract declares survive (W6-12): the rest is never validated, stored or shown.
+        return JsonPruner::forFile($name, $value);
     }
 
     private function jsonCode(string $name): string
@@ -279,14 +285,14 @@ class TemplatePackageValidator
             $bad('engineMin', 'engine_too_new', "el motor actual es {$this->context->engine}");
         }
         $author = $m['author'] ?? null;
-        if (! is_array($author) || ! is_string($author['name'] ?? null) || $author['name'] === '' || mb_strlen($author['name']) > 80
+        if (! is_array($author) || ! $this->plain($author['name'] ?? null, 80)
             || (array_key_exists('url', $author) && ! UrlGuard::isOptionalHttps($author['url']))) {
             $bad('author');
         }
         $license = $m['license'] ?? null;
-        if (! is_array($license) || ! is_string($license['id'] ?? null) || $license['id'] === '' || mb_strlen($license['id']) > 60
+        if (! is_array($license) || ! $this->plain($license['id'] ?? null, 60)
             || ($license['document'] ?? null) !== 'LICENSES.md'
-            || ! is_string($license['summary'] ?? null) || $license['summary'] === '' || mb_strlen($license['summary']) > 300) {
+            || ! $this->plain($license['summary'] ?? null, 300)) {
             $report->error($f, 'license_missing', 'license.id, license.summary y license.document="LICENSES.md" son obligatorios.');
         }
         $marks = $m['thirdPartyMarks'] ?? null;
@@ -294,7 +300,7 @@ class TemplatePackageValidator
             $bad('thirdPartyMarks');
         } elseif ($marks !== []) {
             foreach ($marks as $mark) {
-                if (! is_array($mark) || ! is_string($mark['name'] ?? null) || ! is_string($mark['owner'] ?? null) || ! is_string($mark['usage'] ?? null)) {
+                if (! is_array($mark) || ! $this->plain($mark['name'] ?? null, 120) || ! $this->plain($mark['owner'] ?? null, 120) || ! $this->plain($mark['usage'] ?? null, 300)) {
                     $bad('thirdPartyMarks', 'manifest_invalid', 'cada marca necesita name, owner y usage');
                     break;
                 }
@@ -312,6 +318,18 @@ class TemplatePackageValidator
             $bad('assetsCredits');
         }
         $this->variants($m['variants'] ?? [], $report);
+    }
+
+    /** A free text of the documents: plain, one line, no markup and no control characters (W6-12). */
+    private function plain(mixed $text, int $max, bool $required = true): bool
+    {
+        return is_string($text) && ($text !== '' || ! $required) && mb_strlen($text) <= $max && ! preg_match('/[<>\x00-\x1F\x7F]/', $text);
+    }
+
+    /** `{es, en}` of plain texts up to `$max` characters each. */
+    private function plainPair(mixed $pair, int $max): bool
+    {
+        return is_array($pair) && $this->plain($pair['es'] ?? null, $max) && $this->plain($pair['en'] ?? null, $max);
     }
 
     /**
@@ -644,6 +662,38 @@ class TemplatePackageValidator
             if (! $this->labelOk($field['label'] ?? null)) {
                 $report->error($f, 'editable_invalid', "fields.{$i}.label necesita es y en.");
             }
+            if (isset($field['help']) && ! $this->plainPair($field['help'], 300)) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.help necesita es y en, texto plano de hasta 300 caracteres.");
+            }
+            foreach (['aspect' => '/^\d{1,2}:\d{1,2}$/', 'fallbackSlot' => '/^[a-z][a-z0-9-]{0,40}$/'] as $key => $re) {
+                if (isset($field[$key]) && (! is_string($field[$key]) || ! preg_match($re, $field[$key]))) {
+                    $report->error($f, 'editable_invalid', "fields.{$i}.{$key} inválido.");
+                }
+            }
+            if (isset($field['minWidth']) && (! is_int($field['minWidth']) || $field['minWidth'] < 1 || $field['minWidth'] > 8000)) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.minWidth debe ser un entero entre 1 y 8000.");
+            }
+            foreach (['required', 'multiline'] as $key) {
+                if (isset($field[$key]) && ! is_bool($field[$key])) {
+                    $report->error($f, 'editable_invalid', "fields.{$i}.{$key} debe ser booleano.");
+                }
+            }
+            if (isset($field['default']) && ! is_bool($field['default']) && ! $this->plain($field['default'], 100)) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.default inválido.");
+            }
+            if ($type === 'choice') {
+                $choices = $field['choices'] ?? null;
+                if (! is_array($choices) || ! array_is_list($choices) || count($choices) < 1 || count($choices) > 12) {
+                    $report->error($f, 'editable_invalid', "fields.{$i}.choices debe ser una lista de 1 a 12 opciones.");
+                } else {
+                    foreach ($choices as $choice) {
+                        if (! is_array($choice) || ! is_string($choice['value'] ?? null) || ! preg_match('/^[a-z0-9][a-z0-9_-]{0,23}$/', $choice['value']) || ! $this->labelOk($choice['label'] ?? null)) {
+                            $report->error($f, 'editable_invalid', "fields.{$i}.choices: cada opción necesita value (a-z0-9_-) y label es/en sin etiquetas.");
+                            break;
+                        }
+                    }
+                }
+            }
             if (isset($field['group']) && ! isset($groupIds[$field['group']])) {
                 $report->error($f, 'editable_invalid', "fields.{$i}.group no existe.");
             }
@@ -747,10 +797,16 @@ class TemplatePackageValidator
 
                 continue;
             }
-            foreach (['title', 'author', 'source', 'license'] as $k) {
+            foreach (['title' => 120, 'author' => 120, 'source' => 300, 'license' => 80] as $k => $max) {
                 if (! is_string($credit[$k] ?? null) || $credit[$k] === '') {
                     $report->error('manifest.json', 'license_asset_missing', "assetsCredits.{$k} vacío.", null, $path);
+                } elseif (! $this->plain($credit[$k], $max)) {
+                    $report->error('manifest.json', 'manifest_invalid', "assetsCredits.{$k}: texto plano de hasta {$max} caracteres, sin etiquetas ni caracteres de control.", null, $path);
                 }
+            }
+            // A credit that names a URL as its source must name a public https one; `original` and plain names are fine.
+            if (is_string($credit['source'] ?? null) && preg_match('/^[a-z][a-z0-9+.-]*:/i', $credit['source']) && ! UrlGuard::isHttps($credit['source'])) {
+                $report->error('manifest.json', 'manifest_invalid', 'assetsCredits.source: si es un enlace debe ser https:// público.', null, $path);
             }
             if (array_key_exists('url', $credit) && ! UrlGuard::isOptionalHttps($credit['url'])) {
                 $report->error('manifest.json', 'manifest_invalid', 'assetsCredits.url solo admite https:// público (sin credenciales, localhost ni IP).', null, $path);

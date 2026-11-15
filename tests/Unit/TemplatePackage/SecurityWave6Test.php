@@ -332,3 +332,85 @@ it('W6-07 keeps a reasonable filter', function () {
     $r = PackageBuilder::good()->asset('assets/img/ok.svg', w6Svg('<defs><filter id="f" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4"/></filter></defs><rect width="60" height="60" filter="url(#f)"/>'))->validate();
     expect($r['valid'])->toBeTrue(json_encode($r['report']['errors']));
 });
+
+// W6-11 / W6-12 ------------------------------------------------------------------------------------------------------
+
+it('W6-11 rejects numbers that are not finite in any JSON of the package', function (string $file, string $json) {
+    $r = PackageBuilder::good()->with($file, $json)->validate();
+    expect($r['valid'])->toBeFalse();
+})->with([
+    'editable' => ['editable.json', '{"schema":1,"groups":[],"fields":[],"x":1e999}'],
+    'manifest max' => ['manifest.json', '{"schema":1,"engineMin":1e999}'],
+    'negative' => ['tokens.json', '{"x":-1e999}'],
+]);
+
+it('W6-12 drops undeclared keys, __proto__ and constructor from every document before anything is stored', function () {
+    $b = PackageBuilder::good()
+        ->json('manifest.json', function (array $m) {
+            $m['evil'] = str_repeat('<script>', 1000);
+            $m['author']['bio'] = '<b>x</b>';
+            $m['assetsCredits'][0]['note'] = 'z';
+
+            return $m;
+        })
+        ->json('editable.json', function (array $e) {
+            $e['fields'][0]['onclick'] = 'alert(1)';
+            $e['extra'] = ['a' => 1];
+
+            return $e;
+        });
+    $b->files['manifest.json'] = str_replace('"schema": 1,', '"schema": 1, "__proto__": {"polluted": true}, "constructor": {"x": 1},', $b->files['manifest.json']);
+    $b->files['sections.json'] = str_replace('"settings": { "image": null }', '"settings": { "image": null, "__proto__": {"a": 1} }', $b->files['sections.json']);
+    $r = $b->validate();
+
+    expect($r['valid'])->toBeTrue(json_encode($r['report']['errors']));
+    $stored = json_encode($r['artifacts']['json']);
+    expect($stored)->not->toContain('__proto__')->not->toContain('constructor')->not->toContain('evil')->not->toContain('<script>')
+        ->not->toContain('onclick')->not->toContain('"bio"')->not->toContain('"note"')->not->toContain('"extra"');
+    expect(json_encode($r['report']['manifest']))->not->toContain('evil');
+});
+
+it('W6-12 validates the free texts of the manifest and of the editor', function (callable $edit, string $file, string $code) {
+    $b = PackageBuilder::good();
+    $edit($b);
+    $r = $b->validate();
+    expect(PackageBuilder::errors($r))->toContain($code);
+})->with([
+    'author with html' => [fn ($b) => $b->json('manifest.json', fn ($m) => [...$m, 'author' => ['name' => '<img src=x onerror=alert(1)>']]), 'manifest.json', 'manifest_invalid'],
+    'license summary too long' => [fn ($b) => $b->json('manifest.json', function ($m) {
+        $m['license']['summary'] = str_repeat('a', 301);
+
+        return $m;
+    }), 'manifest.json', 'license_missing'],
+    'credit title with html' => [fn ($b) => $b->json('manifest.json', function ($m) {
+        $m['assetsCredits'][0]['title'] = '<script>alert(1)</script>';
+
+        return $m;
+    }), 'manifest.json', 'manifest_invalid'],
+    'credit source with a javascript scheme' => [fn ($b) => $b->json('manifest.json', function ($m) {
+        $m['assetsCredits'][0]['source'] = 'javascript:alert(1)';
+
+        return $m;
+    }), 'manifest.json', 'manifest_invalid'],
+    'credit with control characters' => [fn ($b) => $b->json('manifest.json', function ($m) {
+        $m['assetsCredits'][0]['author'] = "a\x07b";
+
+        return $m;
+    }), 'manifest.json', 'manifest_invalid'],
+    'mark with html' => [fn ($b) => $b->json('manifest.json', fn ($m) => [...$m, 'visibility' => 'private', 'thirdPartyMarks' => [['name' => '<b>A</b>', 'owner' => 'B', 'usage' => 'c']]]), 'manifest.json', 'manifest_invalid'],
+    'help with html' => [fn ($b) => $b->json('editable.json', function ($e) {
+        $e['fields'][0]['help'] = ['es' => '<script>x</script>', 'en' => 'ok'];
+
+        return $e;
+    }), 'editable.json', 'editable_invalid'],
+    'help too long' => [fn ($b) => $b->json('editable.json', function ($e) {
+        $e['fields'][0]['help'] = ['es' => str_repeat('a', 301), 'en' => 'ok'];
+
+        return $e;
+    }), 'editable.json', 'editable_invalid'],
+    'choice label with html' => [fn ($b) => $b->json('editable.json', function ($e) {
+        $e['fields'][] = ['id' => 'pick', 'type' => 'choice', 'label' => ['es' => 'a', 'en' => 'b'], 'bind' => ['theme' => 'preset'], 'choices' => [['value' => 'salvia', 'label' => ['es' => '<i>x</i>', 'en' => 'x']]]];
+
+        return $e;
+    }), 'editable.json', 'editable_invalid'],
+]);
