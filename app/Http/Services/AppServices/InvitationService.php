@@ -3,6 +3,7 @@
 namespace App\Http\Services\AppServices;
 
 use App\Http\Services\Payments\PurchaseService;
+use App\Models\BackgroundMusic;
 use App\Models\DressCode;
 use App\Models\EventLocation;
 use App\Models\Events;
@@ -13,6 +14,7 @@ use App\Models\InvitationTemplateVersion;
 use App\Models\Padrino;
 use App\Models\Rsvp;
 use App\Models\SaveTheDate;
+use App\Models\SweetMemoriesImage;
 use App\Models\Timeline;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -37,7 +39,14 @@ class InvitationService
     public const STATUS_PENDING = 'pending';
 
     /** Section types the renderer understands in this release. */
-    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'rsvp', 'closing'];
+    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing'];
+
+    /** Hard cap of photos in the gallery, whatever the section says. */
+    public const GALLERY_MAX_PHOTOS = 40;
+
+    private const GALLERY_DEFAULT_PHOTOS = 12;
+
+    private const MUSIC_TITLE_MAX = 60;
 
     /** The catalog module that owns each public section; a section whose module is not active for the event is left out. */
     private const SECTION_MODULES = [
@@ -45,6 +54,8 @@ class InvitationService
         'locations' => 'locations',
         'dress_code' => 'dress_code',
         'padrinos' => 'padrinos',
+        'gallery' => 'memories',
+        'music' => 'background_music',
         'rsvp' => 'rsvp',
     ];
 
@@ -97,7 +108,7 @@ class InvitationService
     /**
      * Save the guest's answer for themselves and their companions.
      *
-     * @param  array{guest: array{rsvpStatus: string}, companions?: array<int, array{id: int, rsvpStatus: string}>}  $payload
+     * @param  array{guest: array{rsvpStatus: string}, companions?: array<int, array{id: int, rsvpStatus: string, name?: string}>, note?: ?string}  $payload
      * @return array<string, mixed> The refreshed rsvp section data
      *
      * @throws ValidationException
@@ -125,8 +136,21 @@ class InvitationService
 
         $mainStatus = $payload['guest']['rsvpStatus'];
 
-        DB::transaction(function () use ($guest, $companions, $requested, $mainStatus) {
+        DB::transaction(function () use ($guest, $companions, $requested, $mainStatus, $payload) {
             $this->setStatus($guest, $mainStatus);
+
+            // Naming the places the organizer assigned never adds or removes people and leaves no status record.
+            foreach ($companions as $id => $companion) {
+                $name = isset($requested[$id]['name']) ? trim($requested[$id]['name']) : null;
+
+                if ($name !== null && $name !== $companion->name) {
+                    $companion->forceFill(['name' => $name])->save();
+                }
+            }
+
+            if (array_key_exists('note', $payload)) {
+                $this->setNote($guest, $payload['note']);
+            }
 
             foreach ($companions as $id => $companion) {
                 // Nobody attends under an invitation the main guest declined.
@@ -143,6 +167,19 @@ class InvitationService
         Cache::forget("event.{$event->id}.rsvp.stats");
 
         return $this->rsvpData($event, $guest->fresh());
+    }
+
+    /** A missing note is not this method's business; an empty one clears the note. */
+    private function setNote(Guest $guest, ?string $note): void
+    {
+        $note = $note === null ? null : trim($note);
+        $note = $note === '' ? null : $note;
+
+        if ($guest->rsvp_note === $note) {
+            return;
+        }
+
+        $guest->forceFill(['rsvp_note' => $note, 'rsvp_note_at' => $note === null ? null : now()])->save();
     }
 
     private function setStatus(Guest $guest, string $status): void
@@ -298,7 +335,7 @@ class InvitationService
                 || $modules->isActive($event, self::SECTION_MODULES[$section['type']]))
             ->sortBy(fn (array $section) => $section['order'] ?? 99)
             ->map(function (array $section) use ($event, $guest, $locale) {
-                $data = $this->sectionData($section['type'], $event, $guest, $section);
+                $data = $this->sectionData($section['type'], $event, $guest, $section, $locale);
 
                 // A section with nothing to show (no venue yet, no dress code) is left out.
                 if ($data === null) {
@@ -311,7 +348,7 @@ class InvitationService
                     'text' => $this->localized($section['text'] ?? null, $locale),
                     // Always a JSON object, even for sections without data.
                     'data' => $data ?: (object) [],
-                ];
+                ] + $this->settingsEntry($section, $locale);
             })
             ->filter()
             ->values()
@@ -420,7 +457,7 @@ class InvitationService
     }
 
     /** @return array<string, mixed>|null */
-    private function sectionData(string $type, Events $event, Guest $guest, array $section): ?array
+    private function sectionData(string $type, Events $event, Guest $guest, array $section, string $locale): ?array
     {
         return match ($type) {
             'cover' => [
@@ -432,6 +469,8 @@ class InvitationService
             'locations' => $this->locationsData($event),
             'dress_code' => $this->dressCodeData($event),
             'padrinos' => $this->padrinosData($event),
+            'gallery' => $this->galleryData($event, $this->gallerySettings($section)),
+            'music' => $this->musicData($event, $section, $locale),
             'rsvp' => $this->rsvpData($event, $guest),
             'closing' => [],
             default => null,
@@ -571,6 +610,100 @@ class InvitationService
         ];
     }
 
+    /**
+     * The `settings` key of a section, limited to a whitelist per type (never the raw JSON of the event); only the
+     * sections that have settings in the contract (gallery, music) carry it.
+     *
+     * @return array{settings?: array<string, mixed>}
+     */
+    private function settingsEntry(array $section, string $locale): array
+    {
+        return match ($section['type']) {
+            'gallery' => ['settings' => $this->gallerySettings($section)],
+            'music' => ['settings' => ['title' => $this->musicTitle($section['settings']['title'] ?? null, $locale)]],
+            default => [],
+        };
+    }
+
+    /** @return array{layout: string, maxPhotos: int, showCaptions: bool} */
+    private function gallerySettings(array $section): array
+    {
+        $raw = is_array($section['settings'] ?? null) ? $section['settings'] : [];
+        $max = $raw['maxPhotos'] ?? self::GALLERY_DEFAULT_PHOTOS;
+
+        return [
+            'layout' => in_array($raw['layout'] ?? null, ['grid', 'carousel'], true) ? $raw['layout'] : 'grid',
+            'maxPhotos' => is_int($max) ? min(max($max, 1), self::GALLERY_MAX_PHOTOS) : self::GALLERY_DEFAULT_PHOTOS,
+            'showCaptions' => is_bool($raw['showCaptions'] ?? null) ? $raw['showCaptions'] : true,
+        ];
+    }
+
+    /** Plain text of up to 60 characters in the requested language, or null. @param string|array<string, ?string>|null $value */
+    private function musicTitle(string|array|null $value, string $locale): ?string
+    {
+        $text = $this->localized($value, $locale);
+        $text = is_string($text) ? trim($text) : '';
+
+        return $text === '' ? null : mb_substr($text, 0, self::MUSIC_TITLE_MAX);
+    }
+
+    /**
+     * The photos of Recuerdos: visible and not hidden by moderation, in the organizer's order. Left out without photos.
+     * Premium through the `memories` module (checked by resolveSections).
+     *
+     * @param  array{layout: string, maxPhotos: int, showCaptions: bool}  $settings
+     * @return array<string, mixed>|null
+     */
+    private function galleryData(Events $event, array $settings): ?array
+    {
+        $photos = SweetMemoriesImage::query()
+            ->where('event_id', $event->id)
+            ->where('visible', true)
+            ->notHidden()
+            ->orderBy('order')
+            ->orderBy('id')
+            ->limit($settings['maxPhotos'])
+            ->get();
+
+        if ($photos->isEmpty()) {
+            return null;
+        }
+
+        $disk = Storage::disk('sweet-memories');
+
+        return ['photos' => $photos->map(fn (SweetMemoriesImage $photo) => [
+            'id' => $photo->id,
+            'url' => $disk->url($photo->image_path),
+            'thumbUrl' => $photo->thumbnail_path ? $disk->url($photo->thumbnail_path) : $disk->url($photo->image_path),
+            'title' => $photo->title,
+            'description' => $photo->description,
+            'year' => $photo->year !== null && $photo->year !== '' ? (int) $photo->year : null,
+        ])->all()];
+    }
+
+    /**
+     * The background song of the invitation. Never played by the server's choice: no autoplay and no icon settings
+     * travel. Left out without a song or when its file is gone.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function musicData(Events $event, array $section, string $locale): ?array
+    {
+        $music = BackgroundMusic::query()->where('event_id', $event->id)->orderByDesc('id')->first();
+        $disk = Storage::disk('public');
+
+        if (! $music || ! $music->song_url || ! $disk->exists($music->song_url)) {
+            return null;
+        }
+
+        return [
+            'url' => url(Storage::url($music->song_url)),
+            'title' => $this->musicTitle($section['settings']['title'] ?? null, $locale) ?? $music->title,
+            'mimeType' => BackgroundMusicServices::mimeTypeOf($music->song_url),
+            'loop' => true,
+        ];
+    }
+
     /** @return array<string, mixed> */
     private function rsvpData(Events $event, Guest $guest): array
     {
@@ -584,6 +717,9 @@ class InvitationService
                     'name' => $companion->name,
                     'status' => $companion->rsvp_status,
                 ])->all(),
+            // Only this guest's own message, never another family's nor the organizer's note.
+            'note' => $guest->rsvp_note,
+            'canEditNames' => $window['isOpen'],
             'deadline' => $window['deadline'],
             'isOpen' => $window['isOpen'],
         ];
