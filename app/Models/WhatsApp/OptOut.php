@@ -2,7 +2,7 @@
 
 namespace App\Models\WhatsApp;
 
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Model;
 
 /** A phone number (E.164) that asked to stop receiving WhatsApp messages. Survives guests being deleted or recreated. */
@@ -18,7 +18,7 @@ class OptOut extends Model
 
     public static function has(?string $phone): bool
     {
-        $e164 = Phone::normalize($phone);
+        $e164 = PhoneNumber::e164($phone);
 
         return $e164 !== null && static::query()->where('phone_e164', $e164)->exists();
     }

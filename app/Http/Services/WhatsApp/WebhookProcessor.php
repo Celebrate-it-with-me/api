@@ -9,7 +9,7 @@ use App\Models\Guest;
 use App\Models\WhatsApp\Message;
 use App\Models\WhatsApp\OptOut;
 use App\Models\WhatsApp\Template;
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -154,7 +154,7 @@ class WebhookProcessor
             if ($guest && Message::query()->where('guest_id', $guest->id)->where('to_phone', $from)->exists()) {
                 $this->rsvp($guest, $m[2] === 'yes');
             } else {
-                Log::info('whatsapp reply ignored: sender does not match the guest', ['from' => Phone::mask($from)]);
+                Log::info('whatsapp reply ignored: sender does not match the guest', ['from' => PhoneNumber::mask($from)]);
             }
 
             return;
@@ -191,7 +191,7 @@ class WebhookProcessor
     /** Session text (we are inside the 24 h window: the guest just wrote to us). */
     private function confirm(Events $event, Guest $guest, string $status): void
     {
-        $to = Phone::normalize($guest->phone) ?? Message::query()->where('guest_id', $guest->id)->latest('id')->value('to_phone');
+        $to = PhoneNumber::e164($guest->phone) ?? Message::query()->where('guest_id', $guest->id)->latest('id')->value('to_phone');
         if (! $to) {
             return;
         }
@@ -210,13 +210,13 @@ class WebhookProcessor
     private function optOut(string $from): void
     {
         // The opt-out belongs to the number (audit W-02): stored even when we never messaged it, and for every guest with it.
-        $e164 = Phone::normalize($from);
+        $e164 = PhoneNumber::e164($from);
         if ($e164 === null) {
             return;
         }
         OptOut::add($e164);
         $tail = substr($e164, -7); // PostgreSQL only, like the rest of the app
-        $byPhone = Guest::query()->whereRaw("regexp_replace(phone, '[^0-9]', '', 'g') like ?", ['%' . $tail])->get()->filter(fn (Guest $g) => Phone::normalize($g->phone) === $e164)->pluck('id');
+        $byPhone = Guest::query()->whereRaw("regexp_replace(phone, '[^0-9]', '', 'g') like ?", ['%' . $tail])->get()->filter(fn (Guest $g) => PhoneNumber::e164($g->phone) === $e164)->pluck('id');
         $ids = Message::query()->where('to_phone', $e164)->whereNotNull('guest_id')->distinct()->pluck('guest_id')->merge($byPhone)->unique();
         Guest::query()->whereIn('id', $ids)->whereNull('whatsapp_opted_out_at')->update(['whatsapp_opted_out_at' => now()]);
     }

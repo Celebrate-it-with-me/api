@@ -7,7 +7,7 @@ use App\Models\Events;
 use App\Models\Guest;
 use App\Models\WhatsApp\Message;
 use App\Models\WhatsApp\OptOut;
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -67,7 +67,7 @@ class WhatsAppBroadcaster
         if ($budget <= 0 && ! $dryRun) {
             throw new HttpResponseException(response()->json(['message' => __('errors.whatsapp.daily_limit'), 'code' => 'whatsapp_daily_limit'], 429));
         }
-        $optedOut = OptOut::among($guests->map(fn (Guest $g) => Phone::normalize($g->phone))->filter()->all());
+        $optedOut = OptOut::among($guests->map(fn (Guest $g) => PhoneNumber::e164($g->phone))->filter()->all());
 
         $batch = (string) Str::uuid();
         $skipped = [];
@@ -75,7 +75,7 @@ class WhatsAppBroadcaster
 
         DB::transaction(function () use ($event, $template, $guests, $recent, $batch, $dryRun, $optedOut, &$budget, &$skipped, &$created) {
             foreach ($guests as $guest) {
-                $phone = Phone::normalize($guest->phone);
+                $phone = PhoneNumber::e164($guest->phone);
                 $reason = match (true) {
                     $guest->whatsapp_opted_out_at !== null || ($phone !== null && isset($optedOut[$phone])) => 'opted_out',
                     trim((string) $guest->phone) === '' => 'no_phone',
