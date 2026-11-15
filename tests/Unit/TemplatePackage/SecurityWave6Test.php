@@ -161,3 +161,24 @@ it('W6-02 keeps what a real design needs', function (string $css) {
     'system hook look' => ['.inv-q--cta{background:#b8860b;color:#fff;border-radius:999px;padding:.75rem 2rem;box-shadow:0 4px 12px rgba(0,0,0,.2);letter-spacing:.05em}'],
     'photo layout' => ['.pkg-photo{width:100%;aspect-ratio:4/5;mask-image:url(assets/img/a.webp);transform:rotate(-2deg)}'],
 ]);
+
+// W6-03 (server side) ------------------------------------------------------------------------------------------------
+
+it('W6-03 refuses a link that wraps a system block', function (string $html) {
+    $r = PackageBuilder::good()->with('sections/rsvp.html', $html)->validate();
+    expect($r['valid'])->toBeFalse()->and(PackageBuilder::errors($r))->toContain('block_scope');
+})->with([
+    'external link around the cta' => ['<a href="https://evil.example/pay"><q-rsvp></q-rsvp></a>'],
+    'anchor link around a wrapper of a block' => ['<a href="#rsvp"><div class="pkg-x"><q-rsvp></q-rsvp></div></a>'],
+]);
+
+it('W6-03 refuses z-index above 10, fixed and sticky positioning, so the 20 of the system blocks always wins', function (string $css) {
+    $r = PackageBuilder::good()->with('theme.css', ".pkg-cover{{$css}}")->validate();
+    expect($r['valid'])->toBeFalse();
+})->with([
+    'z-index 11' => ['position:absolute;z-index:11'],
+    'z-index calc' => ['position:absolute;z-index:calc(10 + 10)'],
+    'z-index var' => ['position:absolute;z-index:var(--pkg-z)'],
+    'fixed' => ['position:fixed;inset:0;z-index:10'],
+    'sticky' => ['position:sticky;top:0'],
+]);

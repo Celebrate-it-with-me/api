@@ -425,6 +425,9 @@ class HtmlAstBuilder
         if ($tag === 'img' && (! $el->hasAttribute('width') || ! $el->hasAttribute('height'))) {
             $this->report->warning($this->file, 'img_size_missing', 'Sin width y height la imagen provoca saltos de maquetación.', $el->getLineNo());
         }
+        if ($tag === 'a' && $this->containsBlock($el)) {
+            $this->report->error($this->file, 'block_scope', 'Un <a> no puede contener bloques <q-*>: un enlace externo no puede envolver los controles del sistema.', $el->getLineNo());
+        }
         $kids = $this->children($el, $depth, false);
 
         $this->trackAncestry($el, $attrs);
