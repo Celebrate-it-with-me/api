@@ -375,6 +375,20 @@ describe('background music routes', function () {
         'mp4' => ['clip.mp4', false],
     ]);
 
+    it('stores an Android m4a/aac under its own extension and reports its mime type', function (string $name, string $mime) {
+        [$event, $owner, $url] = musicEvent();
+        $bytes = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom" . str_repeat("\x00", 200);
+
+        $response = $this->actingAs($owner)->post($url, ['songFile' => songFile($name, $bytes)], ['Accept' => 'application/json'])->assertSuccessful();
+
+        $ext = pathinfo($name, PATHINFO_EXTENSION);
+        expect(BackgroundMusic::where('event_id', $event->id)->value('song_url'))->toEndWith('.' . $ext)
+            ->and($response->json('data.mimeType'))->toBe($mime);
+    })->with([
+        'm4a' => ['android.m4a', 'audio/mp4'],
+        'aac' => ['android.aac', 'audio/aac'],
+    ]);
+
     it('refuses wav, a wrong extension and fake audio with invalid_type', function (string $name, string $bytes) {
         [, $owner, $url] = musicEvent();
 
