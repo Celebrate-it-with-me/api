@@ -129,7 +129,6 @@ describe('HydrationService', function () {
 
         $eventData = [
             'menus' => null,
-            'eventFeatures' => null,
             'guests' => [],
             'rsvp' => [],
             'saveTheDate' => null,
@@ -188,7 +187,6 @@ describe('HydrationService', function () {
             ->once()
             ->andReturn([
                 'menus' => null,
-                'eventFeatures' => null,
                 'guests' => [],
                 'rsvp' => [],
                 'saveTheDate' => null,
@@ -344,7 +342,6 @@ describe('HydrationResponseBuilder', function () {
             ->withActiveEvent($event)
             ->withEventData([
                 'menus' => null,
-                'eventFeatures' => null,
                 'guests' => [],
                 'rsvp' => [],
                 'saveTheDate' => null,
@@ -399,7 +396,6 @@ describe('Performance', function () {
         $dataLoader = Mockery::mock(EventDataLoader::class);
         $dataLoader->shouldReceive('loadEventData')->andReturn([
             'menus' => null,
-            'eventFeatures' => null,
             'guests' => [],
             'rsvp' => [],
             'saveTheDate' => null,

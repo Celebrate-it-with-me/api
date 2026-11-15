@@ -23,7 +23,6 @@ class EventRepository
         return Events::query()
             ->with([
                 'menus',
-                'eventFeature',
                 'guests',
                 'rsvp',
                 'saveTheDate',

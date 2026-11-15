@@ -2,7 +2,6 @@
 
 use App\Models\BudgetItem;
 use App\Models\EventBudget;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -26,7 +25,6 @@ function eventWithMembers(): array
         'status' => 'draft',
         'event_name' => 'Los XV de Valentina',
     ]);
-    EventFeature::create(['event_id' => $event->id]);
 
     $members = [];
     foreach (['owner', 'editor', 'viewer'] as $role) {

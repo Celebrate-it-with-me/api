@@ -6,7 +6,6 @@ use App\Jobs\SendWhatsAppMessage;
 use App\Mail\AccountDeletedMail;
 use App\Models\AdminAuditLog;
 use App\Models\EventCollaborationInvite;
-use App\Models\EventFeature;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
@@ -59,7 +58,6 @@ function accEvent(User $owner, string $status = 'draft', array $attrs = []): Eve
         'status' => $status, 'published_at' => $status === 'published' ? now() : null,
         'event_name' => "Los XV de {$owner->id}", 'custom_url_slug' => 'xv-' . uniqid(),
     ]);
-    EventFeature::create(['event_id' => $event->id]);
     EventUserRole::create(['event_id' => $event->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
     Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'name' => 'Rosa', 'email' => 'rosa@example.com', 'code' => 'C' . random_int(10000, 99999)]);
 
