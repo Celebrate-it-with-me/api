@@ -35,6 +35,7 @@ describe('validation messages', function () {
         'max' => ['max', ['name' => str_repeat('a', 300)], ['name' => 'max:255'], 'El campo nombre no puede tener más de 255 caracteres.', 'The name field must not be greater than 255 characters.'],
         'confirmed' => ['confirmed', ['password' => 'abcdefgh', 'password_confirmation' => 'zzzzzzzz'], ['password' => 'confirmed'], 'La confirmación de contraseña no coincide.', 'The password field confirmation does not match.'],
         'in' => ['in', ['role' => 'x'], ['role' => 'in:owner,editor'], 'El valor elegido en rol no es válido.', 'The selected role is invalid.'],
+        'nested required' => ['required', [], ['guest' => 'required|array'], 'El campo invitado es obligatorio.', 'The guest field is required.'],
         'url' => ['url', ['url' => 'x'], ['url' => 'url'], 'El campo enlace debe ser un enlace válido.', 'The link field must be a valid URL.'],
     ]);
 
@@ -183,6 +184,82 @@ describe('language files', function () {
                 expect(array_values(array_diff($y, $x)))->toBe([], "$file $key");
             }
         }
+    });
+
+    it('has a Spanish and an English attribute for every field validated in the app (including nested * keys)', function () {
+        $es = require base_path('lang/es/validation.php');
+        $en = require base_path('lang/en/validation.php');
+
+        // Top-level keys of the array literal that starts at the first "[" of $code.
+        $keysOf = function (string $code): array {
+            $out = [];
+            $depth = 0;
+            for ($i = 0, $n = strlen($code); $i < $n; $i++) {
+                if ($code[$i] === '[') {
+                    $depth++;
+                } elseif ($code[$i] === ']') {
+                    $depth--;
+                }
+                if ($depth === 1 && preg_match('/\G[\'"]([A-Za-z_][\w.*]*)[\'"]\s*=>/', $code, $m, 0, $i) && ! preg_match('/[\w\'"]/', $code[$i - 1] ?? ' ')) {
+                    $out[] = $m[1];
+                }
+            }
+
+            return $out;
+        };
+        $literalAt = function (string $s, int $start): string {
+            $i = strpos($s, '[', $start);
+            if ($i === false) {
+                return '';
+            }
+            for ($j = $i, $d = 0, $n = strlen($s); $j < $n; $j++) {
+                if ($s[$j] === '[') {
+                    $d++;
+                } elseif ($s[$j] === ']' && --$d === 0) {
+                    return substr($s, $i, $j - $i + 1);
+                }
+            }
+
+            return '';
+        };
+
+        $fields = [];
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(base_path('app'), FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+            $src = file_get_contents($file->getPathname());
+            $literals = [];
+            if (str_contains($src, 'extends FormRequest') && preg_match('/function rules\(/', $src, $m, PREG_OFFSET_CAPTURE)) {
+                $body = substr($src, $m[0][1], (strpos($src, "\n    }", $m[0][1]) ?: strlen($src)) - $m[0][1]);
+                preg_match_all('/(?:return|\$\w+\s*=|array_merge\()\s*\[/', $body, $found, PREG_OFFSET_CAPTURE);
+                foreach ($found[0] as $hit) {
+                    $literals[] = $literalAt($body, $hit[1]);
+                }
+            }
+            preg_match_all('/(?:->validate\(|Validator::make\([^;]*?,\s*|validateWithBag\([^,]*,)/s', $src, $found, PREG_OFFSET_CAPTURE);
+            foreach ($found[0] as $hit) {
+                $literals[] = $literalAt($src, $hit[1]);
+            }
+            foreach ($literals as $literal) {
+                foreach ($keysOf($literal) as $key) {
+                    $fields[$key] = str_replace(base_path() . '/', '', $file->getPathname());
+                }
+            }
+        }
+
+        expect(count($fields))->toBeGreaterThan(200); // the scan really found the rules
+
+        $missing = [];
+        foreach ($fields as $key => $where) {
+            foreach (['es' => $es, 'en' => $en] as $lang => $file) {
+                if (! isset($file['attributes'][$key])) {
+                    $missing[] = "$lang: $key ($where)";
+                }
+            }
+        }
+        expect($missing)->toBe([], 'validated fields without an entry in attributes');
     });
 
     it('has a Spanish text for every rule used in the app', function () {

@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
@@ -65,7 +66,7 @@ it('isolates the counters per route for an authenticated user', function () {
 });
 
 it('keeps the collaborator invite limits exact (10 per minute per user)', function () {
-    $limiter = app(Illuminate\Cache\RateLimiter::class)->limiter('collaborator-invites');
+    $limiter = app(RateLimiter::class)->limiter('collaborator-invites');
     $limits = $limiter(request());
 
     expect($limits[0]->maxAttempts)->toBe(10)->and($limits[1]->maxAttempts)->toBe(30)->and($limits[1]->decaySeconds)->toBe(86400);
@@ -102,4 +103,29 @@ it('translates the invalid signed link message', function () {
     $es = $this->withHeader('X-Locale', 'es')->postJson($expired)->json('message');
 
     expect($en)->toBe('The link is not valid or has expired.')->and($es)->not->toBe($en);
+});
+
+it('defaults the global api limiter to 120 per minute and reads it from config', function () {
+    expect(config('app.api_rate_limit_per_minute'))->toBe(120);
+    Route::middleware(['api'])->get('/api/v1/__api-limited', fn () => response()->json(['ok' => true]));
+
+    config(['app.api_rate_limit_per_minute' => 3]);
+    foreach (range(1, 3) as $i) {
+        $this->getJson('/api/v1/__api-limited')->assertOk();
+    }
+    $this->getJson('/api/v1/__api-limited')->assertStatus(429);
+});
+
+it('keeps the 429 of the global limiter readable, coded and with Retry-After', function () {
+    Route::middleware(['api'])->get('/api/v1/__api-limited2', fn () => response()->json(['ok' => true]));
+    config(['app.api_rate_limit_per_minute' => 1]);
+
+    $this->withHeader('Accept-Language', 'en')->getJson('/api/v1/__api-limited2')->assertOk();
+    $r = $this->withHeader('Accept-Language', 'en')->getJson('/api/v1/__api-limited2')->assertStatus(429)
+        ->assertJsonPath('code', 'too_many_attempts')
+        ->assertJsonPath('message', 'Too many attempts. Try again later.');
+    expect((int) $r->headers->get('Retry-After'))->toBeGreaterThan(0);
+
+    $this->withHeader('Accept-Language', 'es')->getJson('/api/v1/__api-limited2')->assertStatus(429)
+        ->assertJsonPath('message', 'Demasiados intentos. Inténtalo de nuevo más tarde.');
 });
