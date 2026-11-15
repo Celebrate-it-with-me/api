@@ -38,7 +38,7 @@ describe('the catalog', function () {
     it('is seeded in menu order, with the modules that are not built yet switched off', function () {
         $keys = Module::query()->enabled()->get()->sortBy(['section', 'sort_order'])->pluck('key');
 
-        expect(Module::count())->toBe(16)
+        expect(Module::count())->toBe(17)
             ->and(Module::where('key', 'whatsapp')->value('is_enabled'))->toBeFalse()
             ->and(Module::where('key', 'invitation')->value('is_enabled'))->toBeFalse()
             ->and(Module::where('key', 'padrinos')->value('is_enabled'))->toBeTrue()
@@ -81,7 +81,7 @@ describe('what an event shows', function () {
         expect(collect(app(EventModules::class)->forEvent($event))->pluck('key')->all())->toBe([
             'guests', 'rsvp', 'save_the_date',
             'timeline', 'locations', 'dress_code', 'budget', 'padrinos', 'collaborators',
-            'menus', 'seating', 'suggested_music', 'memories', 'comments',
+            'menus', 'seating', 'suggested_music', 'memories', 'comments', 'background_music',
         ]);
     });
 
@@ -121,7 +121,7 @@ describe('the API', function () {
         $one = $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}")->assertOk();
 
         expect($list->json('data.events.0.modules.0'))->toHaveKeys(['key', 'section', 'order', 'state'])
-            ->and($one->json('data.modules'))->toHaveCount(14);
+            ->and($one->json('data.modules'))->toHaveCount(15);
     });
 
     it('does not run more queries for ten events than for one', function () {

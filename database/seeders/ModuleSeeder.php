@@ -39,6 +39,8 @@ class ModuleSeeder extends Seeder
         'suggested_music' => ['extras', 30, true, true],
         'memories' => ['extras', 40, true, true],
         'comments' => ['extras', 50, true, true],
+        // Control key only (no screen of its own): the invitation's background song and its upload, replace and delete routes.
+        'background_music' => ['extras', 60, true, true],
     ];
 
     public function run(): void

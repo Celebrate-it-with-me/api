@@ -3,28 +3,18 @@
 namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\app\BackgroundMusicEditRequest;
 use App\Http\Requests\app\BackgroundMusicRequest;
 use App\Http\Resources\AppResources\BackgroundMusicResource;
-use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Services\AppServices\BackgroundMusicServices;
-use App\Models\BackgroundMusic;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class BackgroundMusicController extends Controller
 {
-    
-    public function __construct(private readonly BackgroundMusicServices  $suggestedMusicServices) {}
-    
-    /**
-     * @param Request $request
-     * @param Events $events
-     * @return JsonResponse|BackgroundMusicResource
-     */
+    public function __construct(private readonly BackgroundMusicServices $music) {}
+
     public function index(Request $request, Events $event): JsonResponse|BackgroundMusicResource
     {
         try {
@@ -34,40 +24,31 @@ class BackgroundMusicController extends Controller
                 : response()->json(['data' => null]);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
-    
-    /**
-     * Store a newly created resource in storage.
-     * @param BackgroundMusicRequest $request
-     * @param Events $event
-     * @return SaveTheDateResource|JsonResponse
-     */
-    public function store(BackgroundMusicRequest $request, Events $event): JsonResponse|BackgroundMusicResource
+
+    /** One song per event: 201 when it is the first, 200 when it replaced the previous one. */
+    public function store(BackgroundMusicRequest $request, Events $event): JsonResponse
     {
         try {
-            return BackgroundMusicResource::make($this->suggestedMusicServices->create($event));
+            [$music, $created] = $this->music->save($event, $request->file('songFile'), $request->safe()->except('songFile'));
+
+            return BackgroundMusicResource::make($music)->response()->setStatusCode($created ? 201 : 200);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
-    
-    /**
-     * Update the specified resource in storage.
-     * @param BackgroundMusicEditRequest $request
-     * @param BackgroundMusic $backgroundMusic
-     * @return JsonResponse|BackgroundMusicResource
-     */
-    public function update(Request $request, BackgroundMusic $backgroundMusic): JsonResponse|BackgroundMusicResource
+
+    public function destroy(Request $request, Events $event): JsonResponse
     {
-        
-        try {
-            return BackgroundMusicResource::make($this->suggestedMusicServices->update($backgroundMusic));
-        } catch (Throwable $th) {
-            report($th);
-            return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
+        if (! $this->music->delete($event)) {
+            return response()->json(['message' => 'This event has no background music.', 'code' => 'background_music_not_found'], 404);
         }
+
+        return response()->json(['data' => null]);
     }
 }

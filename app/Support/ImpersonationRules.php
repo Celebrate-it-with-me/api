@@ -16,6 +16,8 @@ final class ImpersonationRules
     /** Passwords, 2FA, sessions, purchases and payments, exports of personal data, deleting, access to the event. */
     public const BLOCKED = [
         'DELETE api/v1/app/event/{event}',
+        'DELETE api/v1/app/event/{event}/background-music',
+        'POST api/v1/app/event/{event}/background-music',
         'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
         'DELETE api/v1/app/event/{event}/collaborators/{user}',
         'GET api/v1/app/event/{event}/budget/export',
@@ -132,7 +134,6 @@ final class ImpersonationRules
         'PATCH api/v1/app/sweet-memories-images/{sweetMemoriesImage}',
         'POST api/v1/app/event',
         'POST api/v1/app/event/{event}/archive',
-        'POST api/v1/app/event/{event}/background-music',
         'POST api/v1/app/event/{event}/budget/categories',
         'POST api/v1/app/event/{event}/budget/items',
         'POST api/v1/app/event/{event}/budget/items/{item}/payments',

@@ -47,7 +47,7 @@
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
     Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:invitation-show')->name('show');
-    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'module.access:rsvp'])->name('rsvp');
+    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'throttle:invitation-rsvp-code', 'module.access:rsvp'])->name('rsvp');
     Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
 });
 
@@ -398,7 +398,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             Route::prefix('background-music')->name('background-music.')->group(function () {
                 Route::get('', [BackgroundMusicController::class, 'index'])->name('index');
-                Route::post('', [BackgroundMusicController::class, 'store'])->name('store');
+                Route::post('', [BackgroundMusicController::class, 'store'])->middleware(['module.access:background_music', 'throttle:background-music-upload'])->name('store');
+                Route::delete('', [BackgroundMusicController::class, 'destroy'])->middleware('module.access:background_music')->name('destroy');
             });
 
             Route::prefix('suggest-music-config')->name('suggest-music-config.')->middleware('module.access:suggested_music')->group(function () {

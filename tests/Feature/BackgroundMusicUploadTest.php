@@ -22,7 +22,7 @@ function musicUpload(string $name, string $bytes, string $mime = 'audio/mpeg'): 
 {
     $event = Events::factory()->draft()->create([
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
-        'event_plan_id' => EventPlan::orderBy('id')->value('id'),
+        'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
     ]);
     $owner = User::factory()->create();
     EventUserRole::create(['event_id' => $event->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
