@@ -127,6 +127,9 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
             'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
             'POST api/v1/app/announcements/{announcement}/dismiss',
+            'POST api/v1/app/event/{event}/assistant/tasks/{key}/done', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/snooze', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/hide', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/not-applicable', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/reset',
+            'POST api/v1/app/event/{event}/assistant/custom-tasks',
+            'PATCH api/v1/app/event/{event}/assistant/custom-tasks/{id}', 'DELETE api/v1/app/event/{event}/assistant/custom-tasks/{id}',
             'DELETE api/v1/app/account', 'GET api/v1/app/account/deletion-preview',
         ];
 

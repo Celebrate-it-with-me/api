@@ -45,6 +45,8 @@ class RouteServiceProvider extends ServiceProvider
         'admin-2fa-reset' => [10, 1],
         'admin-invitation-resend' => [6, 1],
         'admin-whatsapp-test' => [10, 1],
+        'assistant-read' => [120, 1],
+        'assistant-write' => [60, 1],
     ];
 
     /**
