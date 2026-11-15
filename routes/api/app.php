@@ -453,13 +453,6 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     });
 
     // ========================================
-    // EXPORTS
-    // ========================================
-    Route::prefix('exports')->name('exports.')->group(function () {
-        Route::get('download', [ExportController::class, 'exportsDownload'])->name('download');
-    });
-
-    // ========================================
     // LOGOUT
     // ========================================
     Route::post('logout', [AuthenticationController::class, 'appLogout'])->name('logout');
