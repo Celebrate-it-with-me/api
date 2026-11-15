@@ -30,7 +30,11 @@ class SelectorScoper
 
     private const ATTRS = ['lang', 'dir', 'role', 'alt', 'loading'];
 
-    private const SYSTEM_CLASS = '/^inv-(rsvp|watermark|lang|music|button|q|cta|gallery|countdown)/';
+    /** Every `inv-*` class belongs to the system; a package may style it (visual properties only) but not own it. */
+    private const SYSTEM_CLASS = '/^inv-/';
+
+    /** The only classes a package owns. */
+    private const PACKAGE_CLASS = '/^pkg-[a-z0-9_-]{1,59}$/';
 
     private const MAX_COMPOUNDS = 6;
 
@@ -146,6 +150,9 @@ class SelectorScoper
                 if (! preg_match('/\G\.([a-zA-Z_][a-zA-Z0-9_-]{0,63})/', $s, $m, 0, $pos)) {
                     return ['error' => 'clase mal formada'];
                 }
+                if ($m[1] !== 'inv-root' && ! preg_match(self::PACKAGE_CLASS, $m[1]) && ! preg_match(self::SYSTEM_CLASS, $m[1])) {
+                    return ['error' => "la clase «{$m[1]}» no es del paquete (pkg-*) ni del sistema (inv-*)"];
+                }
                 $pos += strlen($m[0]);
                 $classes[] = $m[1];
                 $hasQualifier = true;
@@ -219,7 +226,7 @@ class SelectorScoper
             }
         };
         foreach ($classes as $c) {
-            if (preg_match(self::SYSTEM_CLASS, $c)) {
+            if ($c !== 'inv-root' && preg_match(self::SYSTEM_CLASS, $c)) {
                 $consider('system');
             } elseif (isset($this->classKinds[$c])) {
                 $consider($this->classKinds[$c]);

@@ -32,6 +32,10 @@ function assertInert(array $nodes): void
                 assertInert($n['children']);
             })(),
             'q' => expect($n['children'])->toBe([]),
+            'if' => (function () use ($n) {
+                expect(array_keys($n))->toBe(['t', 'path', 'children']);
+                assertInert($n['children']);
+            })(),
         };
     }
 }
@@ -192,12 +196,12 @@ it('rejects HTML that two readers interpret differently', function (string $html
 ]);
 
 it('accepts well-formed documents of the closed dialect', function () {
-    $html = '<section class="hero" id="pkg-hero" data-reveal="rise" data-reveal-delay="200" aria-label="Hola {{ guest.first_name }}">'
+    $html = '<section class="pkg-hero" id="pkg-hero" data-reveal="rise" data-reveal-delay="200" aria-label="Hola {{ guest.first_name }}">'
         . '<h1>{{ event.name|upper }}</h1><p>{{ section.text }} &amp; {{ event.date|weekday_short }}</p>'
         . '<img src="assets/img/a.webp" alt="{{ event.name }}" width="400" height="300" loading="lazy" srcset="assets/img/a.webp 400w">'
         . '<a href="https://example.com/x?y=1&amp;z=2" target="_blank">link</a> <a href="#rsvp">rsvp</a> <a href="mailto:hola@example.com">m</a> <a href="tel:+13055550123">t</a>'
         . '<ul data-carousel="snap" data-carousel-controls="dots"><li>1</li><li>2</li></ul><div data-parallax="soft"><img src="assets/img/b.svg" alt=""></div>'
-        . '<q-names tag="h1" script></q-names><q-date format="ring" weekday="short" month="long" time></q-date><q-cta action="confirm" variant="outline" class="my-cta"></q-cta>'
+        . '<q-names tag="h1" script></q-names><q-date format="ring" weekday="short" month="long" time></q-date><q-cta action="confirm" variant="outline" class="pkg-cta"></q-cta>'
         . '<q-gallery layout="carousel" columns="3" max="12" captions="false"></q-gallery><q-cover-photo aspect="4:5" focus="50% 30%" priority></q-cover-photo>'
         . '<br><hr></section>';
     [$out, $codes, $report] = ast($html);

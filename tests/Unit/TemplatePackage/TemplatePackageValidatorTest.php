@@ -33,7 +33,9 @@ it('rejects invalid manifests', function (callable $edit, string $code) {
     'slug too long' => [fn ($m) => [...$m, 'slug' => str_repeat('a', 40)], 'slug_invalid'],
     'version prerelease' => [fn ($m) => [...$m, 'version' => '1.0.0-beta'], 'version_invalid'],
     'version not semver' => [fn ($m) => [...$m, 'version' => 'latest'], 'version_invalid'],
-    'level 2 in a zip' => [fn ($m) => [...$m, 'level' => 2], 'level_not_allowed'],
+    'level 2 with an unregistered slug' => [fn ($m) => [...$m, 'level' => 2], 'level2_slug_not_registered'],
+    'level 3' => [fn ($m) => [...$m, 'level' => 3], 'level_not_allowed'],
+    'engine too new' => [fn ($m) => [...$m, 'engineMin' => 99], 'engine_too_new'],
     'tier unknown' => [fn ($m) => [...$m, 'tier' => 'gold'], 'manifest_invalid'],
     'event type hidden' => [fn ($m) => [...$m, 'eventTypes' => ['birthday']], 'manifest_invalid'],
     'name with html' => [fn ($m) => [...$m, 'name' => ['es' => '<b>x</b>', 'en' => 'x']], 'manifest_invalid'],
@@ -100,7 +102,8 @@ it('validates sections.json and editable.json', function () {
     expect(PackageBuilder::errors($r))->toContain('sections_invalid');
 
     $r = PackageBuilder::good()->json('sections.json', function ($s) {
-        $s['wedding'] = array_reverse($s['wedding']);
+        // The cover must always be first: its order has to be lower than every other section's.
+        $s['wedding'][0]['order'] = 9;
 
         return $s;
     })->validate();

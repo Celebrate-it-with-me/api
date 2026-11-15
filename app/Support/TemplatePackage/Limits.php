@@ -45,6 +45,8 @@ class Limits
 
     public int $runtimeMax = 1_048_576;
 
+    public int $firstFoldWarn = 184_320;
+
     public function capFor(string $ext): int
     {
         return match ($ext) {

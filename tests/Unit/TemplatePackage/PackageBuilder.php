@@ -3,6 +3,7 @@
 namespace Tests\Unit\TemplatePackage;
 
 use App\Support\TemplatePackage\TemplatePackageValidator;
+use App\Support\TemplatePackage\ValidationContext;
 
 /**
  * Test helper: loads the good fixture package, lets a test change / remove / add files, and writes a .zip. The raw
@@ -129,9 +130,9 @@ class PackageBuilder
         return $path;
     }
 
-    public function validate(array $installed = []): array
+    public function validate(ValidationContext|array $context = []): array
     {
-        return (new TemplatePackageValidator)->validate($this->zip(), $installed);
+        return (new TemplatePackageValidator)->validate($this->zip(), $context);
     }
 
     /** @return list<string> error codes of a validation result */

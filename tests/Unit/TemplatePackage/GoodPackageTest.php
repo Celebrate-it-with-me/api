@@ -23,11 +23,15 @@ it('accepts the good fixture package and returns sanitized artifacts', function 
 
 it('produces an AST whose nodes only use the closed schema', function () {
     $result = PackageBuilder::good()->validate();
-    $allowed = ['el', 'text', 'var', 'q'];
+    $allowed = ['el', 'text', 'var', 'q', 'if'];
     $walk = function ($node) use (&$walk, $allowed) {
         expect($allowed)->toContain($node['t']);
         if ($node['t'] === 'el') {
             expect(array_keys((array) $node))->toBe(['t', 'tag', 'attrs', 'children']);
+            array_map($walk, $node['children']);
+        }
+        if ($node['t'] === 'if') {
+            expect(array_keys((array) $node))->toBe(['t', 'path', 'children']);
             array_map($walk, $node['children']);
         }
         if ($node['t'] === 'q') {

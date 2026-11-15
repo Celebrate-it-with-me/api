@@ -18,6 +18,22 @@ return [
     'color_keys' => ['surface', 'surfaceAlt', 'ink', 'inkSoft', 'accent', 'primary'],
     'themes' => ['classic'],
 
+    // Engine level of the SPA the API talks to. A package declares `engineMin` and is only installed or activated
+    // when it is <= this number. Raise it AFTER the SPA that implements the level is in production (deploy order:
+    // app, then API); keep it lower in an environment whose SPA is older. The SPA falls back to Classic on its own
+    // when its ENGINE is below a package's engineMin.
+    'engine' => (int) env('INVITATION_ENGINE', 1),
+
+    // Slugs of level 2 packages (their Vue components ship with the app); a level 2 zip is rejected otherwise.
+    'level2_slugs' => [],
+
+    // Template packages (docs/plans/template-package-spec.md): where the sanitized files live and how long a
+    // validated upload waits to be installed.
+    'packages' => [
+        'disk' => 'template-packages',
+        'stage_hours' => 24,
+    ],
+
     'limits' => [
         'sections' => 20,
         'text' => 1000,

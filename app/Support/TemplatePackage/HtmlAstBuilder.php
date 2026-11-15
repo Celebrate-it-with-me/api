@@ -18,6 +18,7 @@ use Dom\Text;
  *   {"t":"text","v":"..."}
  *   {"t":"var","path":"event.name","filter":"upper"|null}
  *   {"t":"q","name":"rsvp","props":{...},"attrs":{...},"children":[]}
+ *   {"t":"if","path":"event.description","children":[<el>]}   from `data-if="event.description"` on an element
  * Attribute values: string | {"tpl":[text|var...]} | {"asset":"assets/..."} | {"assets":[{"path","w"}]}
  */
 class HtmlAstBuilder
@@ -77,6 +78,19 @@ class HtmlAstBuilder
 
     private ?string $sectionType = null;
 
+    private int $lastHeading = 0;
+
+    /** @var array<string, true> keys of `strings.json` (the `t.*` variables the package may use) */
+    private array $stringKeys = [];
+
+    /** The interface string keys the package declares in strings.json. @param list<string> $keys */
+    public function withStrings(array $keys): self
+    {
+        $this->stringKeys = array_fill_keys($keys, true);
+
+        return $this;
+    }
+
     /**
      * @param  list<string>  $assets  asset paths present in the package
      * @return array{ast: array, blocks: array<string, int>, assets: list<string>, vars: list<string>, behaviors: list<string>, classKinds: array<string, string>, ids: list<string>}|null
@@ -95,6 +109,7 @@ class HtmlAstBuilder
         $this->usedBehaviors = [];
         $this->classKinds = [];
         $this->ids = [];
+        $this->lastHeading = 0;
         $before = $report->errorCount();
 
         if (strlen($html) > 65_536) {
@@ -391,7 +406,19 @@ class HtmlAstBuilder
             return $this->block($el, $depth);
         }
 
+        if (preg_match('/^h([1-6])$/', $tag, $h)) {
+            $level = (int) $h[1];
+            if ($this->lastHeading > 0 && $level > $this->lastHeading + 1) {
+                $this->report->warning($this->file, 'heading_order', "Salto de encabezado de h{$this->lastHeading} a h{$level}.", $el->getLineNo());
+            }
+            $this->lastHeading = $level;
+        }
         $attrs = $this->attributes($el, $tag, null);
+        $ifPath = null;
+        if (isset($attrs['data-if'])) {
+            $ifPath = $attrs['data-if'];
+            unset($attrs['data-if']);
+        }
         if ($tag === 'img' && ! $el->hasAttribute('alt')) {
             $this->report->error($this->file, 'img_alt_missing', 'Toda <img> necesita alt (vacío si es decorativa).', $el->getLineNo());
         }
@@ -402,7 +429,9 @@ class HtmlAstBuilder
 
         $this->trackAncestry($el, $attrs);
 
-        return ['t' => 'el', 'tag' => $tag, 'attrs' => $attrs ?: new \stdClass, 'children' => $kids];
+        $node = ['t' => 'el', 'tag' => $tag, 'attrs' => $attrs ?: new \stdClass, 'children' => $kids];
+
+        return $ifPath === null ? $node : ['t' => 'if', 'path' => $ifPath, 'children' => [$node]];
     }
 
     /** @return array<string, mixed>|null */
@@ -563,8 +592,8 @@ class HtmlAstBuilder
                     return null;
                 }
                 foreach ($tokens as $t) {
-                    if (! preg_match('/^[a-z_][a-z0-9_-]{0,63}$/', $t) || str_starts_with($t, 'inv-')) {
-                        $this->report->error($this->file, 'html_attr_invalid', 'Clase inválida (minúsculas; el prefijo inv- está reservado al sistema).', $line, $t);
+                    if (! preg_match('/^pkg-[a-z0-9_-]{1,59}$/', $t)) {
+                        $this->report->error($this->file, 'html_attr_invalid', 'Las clases deben empezar por pkg- (minúsculas, números, guion y guion bajo); inv-* es del sistema.', $line, $t);
 
                         return null;
                     }
@@ -609,6 +638,9 @@ class HtmlAstBuilder
                 return preg_match('/^pkg-[a-z0-9-]{1,40}$/', $value) ? $value : $this->bad($name, $value, $line);
         }
 
+        if ($name === 'data-if') {
+            return $this->conditional($value, $isQ, $el, $line);
+        }
         if (isset(BlockCatalog::BEHAVIORS[$name])) {
             return $this->behavior($name, $value, $tag, $el, $line);
         }
@@ -691,6 +723,28 @@ class HtmlAstBuilder
         $this->usedBehaviors[$name . '=' . $value] = true;
 
         return $value;
+    }
+
+    /** `data-if="path"`: draws the element only when the variable is not empty. Never on or around a system block. */
+    private function conditional(string $value, bool $isQ, Element $el, ?int $line): mixed
+    {
+        if ($isQ || $this->containsBlock($el)) {
+            $this->report->error($this->file, 'behavior_scope', 'data-if no puede ocultar un bloque <q-*> ni un elemento que lo contenga.', $line);
+
+            return null;
+        }
+        $path = trim($value);
+        if (! preg_match('/^[a-z][a-z0-9_]*\.[a-zA-Z][a-zA-Z0-9_]*$/', $path)) {
+            $this->report->error($this->file, 'var_invalid', 'data-if espera una variable (p. ej. event.description), sin filtros ni expresiones.', $line, $path);
+
+            return null;
+        }
+        if ($this->variableType($path, $line) === null) {
+            return null;
+        }
+        $this->usedVars[$path] = true;
+
+        return $path;
     }
 
     private function href(string $value, ?int $line): mixed
@@ -803,13 +857,40 @@ class HtmlAstBuilder
     /** @return array<string, mixed>|null */
     private function variable(string $expr, ?int $line): ?array
     {
-        if (! preg_match('/^\s*([a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)\s*(?:\|\s*([a-z][a-z0-9_]*)\s*)?$/', $expr, $m)) {
+        if (! preg_match('/^\s*([a-z][a-z0-9_]*\.[a-zA-Z][a-zA-Z0-9_]*)\s*(?:\|\s*([a-z][a-z0-9_]*)\s*)?$/', $expr, $m)) {
             $this->report->error($this->file, 'var_invalid', 'Variable inválida: solo {{ruta}} o {{ruta|filtro}}, sin expresiones.', $line, trim($expr));
 
             return null;
         }
         $path = $m[1];
         $filter = $m[2] ?? null;
+        $type = $this->variableType($path, $line);
+        if ($type === null) {
+            return null;
+        }
+        if ($filter !== null && ! in_array($filter, BlockCatalog::filtersFor($type), true)) {
+            $this->report->error($this->file, 'var_filter_unknown', 'Filtro no permitido para esta variable.', $line, "{$path}|{$filter}");
+
+            return null;
+        }
+        $this->usedVars[$path] = true;
+
+        return ['t' => 'var', 'path' => $path, 'filter' => $filter];
+    }
+
+    /** Type of a closed-context variable (`string`, `date`, `int`), or null after reporting the error. */
+    private function variableType(string $path, ?int $line): ?string
+    {
+        if (str_starts_with($path, 't.')) {
+            $key = substr($path, 2);
+            if (! preg_match(BlockCatalog::STRING_KEY, $key) || ! isset($this->stringKeys[$key])) {
+                $this->report->error($this->file, 'var_unknown', 't.* solo admite las claves declaradas en strings.json.', $line, $path);
+
+                return null;
+            }
+
+            return 'string';
+        }
         if (! isset(BlockCatalog::VARS[$path])) {
             $this->report->error($this->file, 'var_unknown', 'Variable fuera del contexto permitido.', $line, $path);
 
@@ -821,13 +902,7 @@ class HtmlAstBuilder
 
             return null;
         }
-        if ($filter !== null && ! in_array($filter, BlockCatalog::filtersFor($type), true)) {
-            $this->report->error($this->file, 'var_filter_unknown', 'Filtro no permitido para esta variable.', $line, "{$path}|{$filter}");
 
-            return null;
-        }
-        $this->usedVars[$path] = true;
-
-        return ['t' => 'var', 'path' => $path, 'filter' => $filter];
+        return $type;
     }
 }

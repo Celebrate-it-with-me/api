@@ -2,12 +2,15 @@
 
 namespace App\Http\Services\Admin\Templates;
 
+use App\Models\TemplatePackage;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Strict validator for the content of a template version (docs/plans/admin-templates.md, point 7). Nothing the
  * public renderer cannot draw gets in: no HTML, no free CSS, hex colors, fonts from config/invitation.php, relative
- * images, the section catalog, cover and rsvp always on. Errors come per field (`sections.2.title.es`).
+ * images, the section catalog, cover and rsvp always on, the cover always first (D-15). Errors come per field
+ * (`sections.2.title.es`). A version of an installed package may also name that package as its theme, use its font
+ * families and carry the optional `wash` color.
  */
 class TemplateSchema
 {
@@ -17,6 +20,9 @@ class TemplateSchema
 
     /** @var array<string, string> */
     private array $errors = [];
+
+    /** @var list<string> font families declared by the package this version belongs to */
+    private array $packageFamilies = [];
 
     /**
      * @throws ValidationException
@@ -29,6 +35,19 @@ class TemplateSchema
         if ($schema->errors) {
             throw ValidationException::withMessages(array_map(fn (string $m) => [$m], $schema->errors));
         }
+    }
+
+    /**
+     * Errors of a list of sections on its own (the `sections.json` of a package), keyed by field path.
+     *
+     * @return array<string, string>
+     */
+    public static function sectionErrors(mixed $sections): array
+    {
+        $schema = new self;
+        $schema->sections($sections);
+
+        return $schema->errors;
     }
 
     private function check(mixed $sections, mixed $theme): void
@@ -108,6 +127,29 @@ class TemplateSchema
                 $this->errors['sections'] ??= "Falta la sección obligatoria «{$required}».";
             }
         }
+
+        $this->coverFirst($sections);
+    }
+
+    /** The cover always comes first: its order is strictly lower than every other section's. */
+    private function coverFirst(array $sections): void
+    {
+        $cover = null;
+        foreach ($sections as $i => $section) {
+            if (is_array($section) && ($section['type'] ?? null) === 'cover' && is_int($section['order'] ?? null)) {
+                $cover = [$i, $section['order']];
+            }
+        }
+        if ($cover === null) {
+            return;
+        }
+        foreach ($sections as $section) {
+            if (is_array($section) && ($section['type'] ?? null) !== 'cover' && is_int($section['order'] ?? null) && $section['order'] <= $cover[1]) {
+                $this->errors["sections.{$cover[0]}.order"] = 'La portada debe ir siempre primera: su orden tiene que ser menor que el de las demás secciones.';
+
+                return;
+            }
+        }
     }
 
     private function localized(mixed $value, string $at, int $max, bool $requireEs): void
@@ -152,7 +194,7 @@ class TemplateSchema
         }
 
         $allowed = match ($type) {
-            'cover' => ['image'],
+            'cover' => ['image', 'focus'],
             'gallery' => ['layout', 'maxPhotos', 'showCaptions'],
             'music' => ['title'],
             default => [],
@@ -163,6 +205,14 @@ class TemplateSchema
         }
 
         $this->mediaSettings($settings, $at, $type);
+
+        if (array_key_exists('focus', $settings) && in_array('focus', $allowed, true)) {
+            $focus = $settings['focus'];
+
+            if ($focus !== null && (! is_string($focus) || preg_match('/^\d{1,3}% \d{1,3}%$/', $focus) !== 1)) {
+                $this->errors["{$at}.focus"] = 'El foco debe tener la forma «50% 30%».';
+            }
+        }
 
         if (array_key_exists('image', $settings) && in_array('image', $allowed, true)) {
             $image = $settings['image'];
@@ -214,8 +264,16 @@ class TemplateSchema
             $this->errors["theme.{$key}"] = 'Campo no permitido en el tema.';
         }
 
-        if (! is_string($theme['theme'] ?? null) || ! in_array($theme['theme'], config('invitation.themes'), true)) {
+        $name = $theme['theme'] ?? null;
+        if (! is_string($name)) {
             $this->errors['theme.theme'] = 'Tema no permitido.';
+        } elseif (! in_array($name, config('invitation.themes'), true)) {
+            $families = TemplatePackage::declaredFamilies($name);
+            if ($families === null) {
+                $this->errors['theme.theme'] = 'Tema no permitido.';
+            } else {
+                $this->packageFamilies = $families;
+            }
         }
 
         $this->fonts($theme['fonts'] ?? null);
@@ -238,7 +296,7 @@ class TemplateSchema
 
         foreach ($lists as $slot => $group) {
             $font = $fonts[$slot] ?? null;
-            $allowed = config("invitation.fonts.{$group}");
+            $allowed = array_values(array_unique([...config("invitation.fonts.{$group}"), ...$this->packageFamilies]));
 
             if (! is_string($font) || ! in_array($font, $allowed, true)) {
                 $this->errors["theme.fonts.{$slot}"] = 'Fuente fuera de la lista permitida: ' . implode(', ', $allowed) . '.';
@@ -298,8 +356,13 @@ class TemplateSchema
 
         $keys = config('invitation.color_keys');
 
-        foreach (array_diff(array_keys($colors), $keys) as $key) {
+        // `wash` is the optional seventh color of the packages (a soft tint for decorations).
+        foreach (array_diff(array_keys($colors), [...$keys, 'wash']) as $key) {
             $this->errors["{$at}.{$key}"] = 'Color no permitido.';
+        }
+
+        if (array_key_exists('wash', $colors) && (! is_string($colors['wash']) || preg_match(self::HEX, $colors['wash']) !== 1)) {
+            $this->errors["{$at}.wash"] = 'Color hexadecimal no válido (por ejemplo #b04a62).';
         }
 
         foreach ($keys as $key) {
