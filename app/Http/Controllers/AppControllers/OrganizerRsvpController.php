@@ -9,7 +9,6 @@ use App\Models\Events;
 use App\Models\Guest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class OrganizerRsvpController extends Controller
@@ -25,15 +24,14 @@ class OrganizerRsvpController extends Controller
      * Confirms the RSVP for a given main guest and companions based on the provided request.
      * This is the unified modal approach.
      *
-     * @param OrganizerConfirmRsvpRequest $request The request containing the validation data for confirming the RSVP.
-     * @param Guest $guest The main guest whose RSVP is to be confirmed.
-     * @return JsonResponse
+     * @param  OrganizerConfirmRsvpRequest  $request  The request containing the validation data for confirming the RSVP.
+     * @param  Guest  $guest  The main guest whose RSVP is to be confirmed.
      */
     public function confirmRsvp(OrganizerConfirmRsvpRequest $request, Events $event, Guest $guest): JsonResponse
     {
         try {
             // Verify authorization
-            //$this->authorize('manageRsvp', $guest->event);
+            // $this->authorize('manageRsvp', $guest->event);
 
             // Process confirmation via service
             $result = $this->organizerRsvpServices->processRsvpConfirmation(
@@ -47,7 +45,7 @@ class OrganizerRsvpController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update RSVP confirmations',
-                'error' => config('app.debug') ? $th->getMessage() : 'An error occurred'
+                'error' => config('app.debug') ? $th->getMessage() : 'An error occurred',
             ], 500);
         }
     }
@@ -55,14 +53,13 @@ class OrganizerRsvpController extends Controller
     /**
      * Get current RSVP status for a main guest and companions (for modal pre-population)
      *
-     * @param Guest $guest The main guest
-     * @return JsonResponse
+     * @param  Guest  $guest  The main guest
      */
     public function getRsvpStatus(Guest $guest): JsonResponse
     {
         try {
             // Verify authorization
-            //$this->authorize('manageRsvp', $guest->event);
+            // $this->authorize('manageRsvp', $guest->event);
 
             // Get status data via service
             $result = $this->organizerRsvpServices->getRsvpStatusData($guest);
@@ -73,7 +70,7 @@ class OrganizerRsvpController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get RSVP status',
-                'error' => config('app.debug') ? $th->getMessage() : 'An error occurred'
+                'error' => config('app.debug') ? $th->getMessage() : 'An error occurred',
             ], 500);
         }
     }
@@ -81,20 +78,18 @@ class OrganizerRsvpController extends Controller
     /**
      * Bulk apply status to all companions
      *
-     * @param Request $request
-     * @param Guest $guest The main guest
-     * @return JsonResponse
+     * @param  Guest  $guest  The main guest
      */
     public function bulkApplyToCompanions(Request $request, Events $event, Guest $guest): JsonResponse
     {
         $request->validate([
             'rsvp_status' => 'required|in:attending,not-attending,pending',
-            'notes' => 'sometimes|string|max:1000'
+            'notes' => 'sometimes|string|max:1000',
         ]);
 
         try {
             // Verify authorization
-            //$this->authorize('manageRsvp', $guest->event);
+            // $this->authorize('manageRsvp', $guest->event);
 
             // Process bulk update via service
             $result = $this->organizerRsvpServices->bulkApplyToCompanions(
@@ -109,7 +104,7 @@ class OrganizerRsvpController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to bulk update companions',
-                'error' => config('app.debug') ? $th->getMessage() : 'An error occurred'
+                'error' => config('app.debug') ? $th->getMessage() : 'An error occurred',
             ], 500);
         }
     }

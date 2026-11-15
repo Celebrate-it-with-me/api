@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class SuggestedMusic extends Model
@@ -22,7 +22,7 @@ class SuggestedMusic extends Model
         'thumbnailUrl',
         'previewUrl',
         'suggested_by_entity',
-        'suggested_by_id'
+        'suggested_by_id',
     ];
 
     /**
@@ -35,14 +35,13 @@ class SuggestedMusic extends Model
 
     /**
      * Suggested By
-     * @return MorphTo
      */
     public function suggestedBy(): MorphTo
     {
         return $this->morphTo(
-          name: 'suggestedBy',
-          type: 'suggested_by_entity',
-          id: 'suggested_by_id'
+            name: 'suggestedBy',
+            type: 'suggested_by_entity',
+            id: 'suggested_by_id'
         );
     }
 
@@ -115,8 +114,8 @@ class SuggestedMusic extends Model
     public function scopePopular(Builder $query): Builder
     {
         return $query->withCount([
-            'musicVotes as upvotes' => fn($q) => $q->where('vote_type', 'up'),
-            'musicVotes as downvotes' => fn($q) => $q->where('vote_type', 'down'),
+            'musicVotes as upvotes' => fn ($q) => $q->where('vote_type', 'up'),
+            'musicVotes as downvotes' => fn ($q) => $q->where('vote_type', 'down'),
         ])->orderByRaw('(upvotes - downvotes) DESC');
     }
 

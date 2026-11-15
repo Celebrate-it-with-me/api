@@ -5,19 +5,13 @@ namespace App\Listeners;
 use App\Events\SuggestedMusicCreated;
 use App\Models\User;
 use App\Notifications\SuggestedMusicNotification;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Log;
 
 class SendSuggestedMusicCreatedNotification
 {
     /**
      * Create the event listener.
      */
-    public function __construct()
-    {
-
-    }
+    public function __construct() {}
 
     /**
      * Handle the event.
@@ -26,11 +20,11 @@ class SendSuggestedMusicCreatedNotification
     {
         $owner = User::find($event->ownerUserId);
 
-        if (!$owner) {
+        if (! $owner) {
             return;
         }
 
-        if ($event->actor['type'] === 'user' && (int)$event->actor['id'] === $owner->id) {
+        if ($event->actor['type'] === 'user' && (int) $event->actor['id'] === $owner->id) {
             return;
         }
 

@@ -18,10 +18,6 @@ class PublicEventController extends Controller
 
     /**
      * Retrieve event data for a guest.
-     *
-     * @param int $eventId
-     * @param string $guestToken
-     * @return JsonResponse
      */
     public function getEventData(int $eventId, string $guestToken): JsonResponse
     {
@@ -30,29 +26,25 @@ class PublicEventController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $data
+                'data' => $data,
             ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Event or invitation not found'
+                'message' => 'Event or invitation not found',
             ], 404);
 
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to load event data'
+                'message' => 'Unable to load event data',
             ], 500);
         }
     }
 
     /**
      * Process RSVP submission for a guest.
-     *
-     * @param int $eventId
-     * @param string $guestToken
-     * @return JsonResponse
      */
     public function getEventTheme(int $eventId, string $guestToken): JsonResponse
     {
@@ -61,30 +53,25 @@ class PublicEventController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $data
+                'data' => $data,
             ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Event or invitation not found'
+                'message' => 'Event or invitation not found',
             ], 404);
 
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to load theme'
+                'message' => 'Unable to load theme',
             ], 500);
         }
     }
 
     /**
      * Process RSVP submission for a guest.
-     *
-     * @param int $eventId
-     * @param string $guestToken
-     * @param PublicRsvpRequest $request
-     * @return JsonResponse
      */
     public function submitRsvp(int $eventId, string $guestToken, PublicRsvpRequest $request): JsonResponse
     {
@@ -99,20 +86,20 @@ class PublicEventController extends Controller
                 'success' => true,
                 'message' => 'RSVP submitted successfully',
                 'data' => [
-                    'guest' => $guest
-                ]
+                    'guest' => $guest,
+                ],
             ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Event or invitation not found'
+                'message' => 'Event or invitation not found',
             ], 404);
 
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to submit RSVP'
+                'message' => 'Failed to submit RSVP',
             ], 500);
         }
     }
@@ -120,9 +107,9 @@ class PublicEventController extends Controller
     /**
      * Retrieve a specific section of the event for a guest.
      *
-     * @param int $eventId The ID of the event.
-     * @param string $guestToken The token identifying the guest.
-     * @param string $section The section of the event to retrieve.
+     * @param  int  $eventId  The ID of the event.
+     * @param  string  $guestToken  The token identifying the guest.
+     * @param  string  $section  The section of the event to retrieve.
      * @return JsonResponse A JSON response containing the section data or an error message.
      */
     public function getEventSection(int $eventId, string $guestToken, string $section): JsonResponse
@@ -132,25 +119,25 @@ class PublicEventController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $data
+                'data' => $data,
             ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Event or invitation not found'
+                'message' => 'Event or invitation not found',
             ], 404);
 
         } catch (InvalidArgumentException $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
 
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to load section data'
+                'message' => 'Unable to load section data',
             ], 500);
         }
     }

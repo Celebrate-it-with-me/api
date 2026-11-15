@@ -11,17 +11,17 @@ use Illuminate\Http\Request;
 class UsersServices
 {
     protected Request $request;
+
     protected Authenticatable $user;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->user = new User();
+        $this->user = new User;
     }
 
     /**
      * Create user function.
-     * @return Model|Builder
      */
     public function create(): Model|Builder
     {
@@ -34,8 +34,6 @@ class UsersServices
 
     /**
      * Delete user from db.
-     * @param User $user
-     * @return User
      */
     public function destroy(User $user): User
     {

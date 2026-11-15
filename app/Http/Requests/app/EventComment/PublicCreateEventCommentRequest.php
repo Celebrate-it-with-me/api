@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\app\EventComment;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PublicCreateEventCommentRequest extends FormRequest
@@ -17,13 +18,13 @@ class PublicCreateEventCommentRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'accessCode' => ['required', 'string', 'max:6'],
-            'comment' => ['required', 'string', 'min:1', 'max:2000']
+            'comment' => ['required', 'string', 'min:1', 'max:2000'],
         ];
     }
 }

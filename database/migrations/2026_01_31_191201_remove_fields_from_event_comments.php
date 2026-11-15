@@ -15,7 +15,7 @@ return new class extends Migration
             $table->dropColumn([
                 'created_by_class',
                 'created_by_id',
-                'is_approved'
+                'is_approved',
             ]);
         });
     }

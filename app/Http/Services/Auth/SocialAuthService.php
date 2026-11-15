@@ -45,6 +45,7 @@ class SocialAuthService
 
         if ($account?->user) {
             Auth::login($account->user);
+
             return $this->redirectToSpa('ok', $provider);
         }
 
@@ -52,8 +53,8 @@ class SocialAuthService
             ? User::query()->where('email', $email)->first()
             : null;
 
-        if (!$user) {
-            if (!$email) {
+        if (! $user) {
+            if (! $email) {
                 return $this->redirectToSpa('error', $provider, 'email_required');
             }
 
@@ -78,7 +79,7 @@ class SocialAuthService
             'avatar' => $avatar,
             'access_token' => $socialUser->token ?? null,
             'refresh_token' => $socialUser->refreshToken ?? null,
-            'expires_at' => !empty($socialUser->expiresIn)
+            'expires_at' => ! empty($socialUser->expiresIn)
                 ? CarbonImmutable::now()->addSeconds((int) $socialUser->expiresIn)
                 : null,
         ]);
@@ -90,7 +91,7 @@ class SocialAuthService
 
     private function assertProvider(string $provider): void
     {
-        if (!in_array($provider, ['google', 'facebook'], true)) {
+        if (! in_array($provider, ['google', 'facebook'], true)) {
             abort(404);
         }
     }

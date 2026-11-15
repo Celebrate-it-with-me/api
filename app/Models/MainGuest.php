@@ -3,16 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
- *
- *
  * @property int $id
  * @property string $first_name
  * @property string $last_name
@@ -24,14 +27,15 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $confirmed_date
  * @property string $access_code
  * @property int $code_used_times
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\PartyMember> $partyMembers
+ * @property-read Collection<int, PartyMember> $partyMembers
  * @property-read int|null $party_members_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read Collection<int, PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static Builder|MainGuest newModelQuery()
  * @method static Builder|MainGuest newQuery()
  * @method static Builder|MainGuest query()
@@ -48,6 +52,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static Builder|MainGuest wherePhoneConfirmed($value)
  * @method static Builder|MainGuest wherePhoneNumber($value)
  * @method static Builder|MainGuest whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class MainGuest extends Model
@@ -73,8 +78,6 @@ class MainGuest extends Model
         'companion_qty',
     ];
 
-
-
     /**
      * The attributes that should be cast.
      *
@@ -86,27 +89,26 @@ class MainGuest extends Model
 
     /**
      * Get the party members associated with this model.
-     *
-     * @return HasMany
      */
     public function partyMembers(): HasMany
     {
         return $this->hasMany(PartyMember::class, 'main_guest_id', 'id');
     }
-    
+
     /**
      * Companions relationship.
-     * @return HasMany
      */
     public function companions(): HasMany
     {
         return $this->hasMany(GuestCompanion::class, 'main_guest_id', 'id');
     }
-    
+
     /**
      * Relation with events model
+     *
      * @property int $event_id
      * @property-read Events $event
+     *
      * @method static Builder|Model whereEventId($value)
      */
     public function event(): BelongsTo

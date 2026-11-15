@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\ThemeAsset;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ThemeAsset>
+ * @extends Factory<ThemeAsset>
  */
 class ThemeAssetFactory extends Factory
 {

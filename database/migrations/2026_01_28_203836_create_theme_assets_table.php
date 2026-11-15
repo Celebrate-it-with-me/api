@@ -22,7 +22,7 @@ return new class extends Migration
                 'background_video',
                 'logo',
                 'favicon',
-                'custom'
+                'custom',
             ]);
             $table->string('file_path', 500);
             $table->string('file_name', 255);

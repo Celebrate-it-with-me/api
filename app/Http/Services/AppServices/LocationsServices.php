@@ -23,7 +23,7 @@ class LocationsServices
      * allowing optional filtering based on a search value. The results are paginated
      * with customizable page size and page number.
      *
-     * @param Events $event The event for which locations are being retrieved.
+     * @param  Events  $event  The event for which locations are being retrieved.
      * @return Collection A paginated collection of event locations.
      */
     public function getEventLocation(Events $event): ?EventLocation

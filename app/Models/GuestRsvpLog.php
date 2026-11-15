@@ -8,18 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class GuestRsvpLog extends Model
 {
     protected $table = 'guest_rsvp_logs';
-    
+
     protected $fillable = [
         'guest_id',
         'status',
         'changed_at',
         'changed_by',
-        'notes'
+        'notes',
     ];
-    
+
     /**
      * Get the guest that this log belongs to.
-     * @return BelongsTo
      */
     public function guest(): BelongsTo
     {

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->integer('max_guests')->default(100);
             $table->string('slug')->nullable();
-            
+
             // Plans Features available
             $table->boolean('has_gallery')->default(false);
             $table->boolean('has_music')->default(false);
@@ -28,7 +28,7 @@ return new class extends Migration
             $table->boolean('has_sms')->default(false);
             $table->boolean('has_gift_registry')->default(false);
             $table->string('support_level')->default('basic'); // o 'priority'
-            
+
             $table->timestamps();
         });
     }

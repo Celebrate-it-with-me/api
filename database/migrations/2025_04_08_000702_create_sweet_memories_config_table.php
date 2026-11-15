@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('background_color')->nullable();
             $table->integer('max_pictures')->default(5);
             $table->timestamps();
-            
+
             // Foreign key constraint
             $table->foreign('event_id')
                 ->references('id')

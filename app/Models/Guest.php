@@ -18,7 +18,6 @@ class Guest extends Model
 
     protected $table = 'guests';
 
-
     protected $fillable = [
         'event_id',
         'parent_id',
@@ -40,7 +39,7 @@ class Guest extends Model
         'rsvp_status_date' => 'datetime',
         'rsvp_note_at' => 'datetime',
         'whatsapp_opted_out_at' => 'datetime',
-        'tags' => 'array'
+        'tags' => 'array',
     ];
 
     /**
@@ -69,7 +68,6 @@ class Guest extends Model
 
     /**
      * Get the event that this guest belongs to.
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {
@@ -78,7 +76,6 @@ class Guest extends Model
 
     /**
      * Get the parent guest of this guest.
-     * @return BelongsTo
      */
     public function parent(): BelongsTo
     {
@@ -87,7 +84,6 @@ class Guest extends Model
 
     /**
      * Get the companions of this guest.
-     * @return HasMany
      */
     public function companions(): HasMany
     {
@@ -96,8 +92,6 @@ class Guest extends Model
 
     /**
      * Define a one-to-many relationship with the GuestRsvpLog model.
-     *
-     * @return HasMany
      */
     public function rsvpLogs(): HasMany
     {
@@ -106,8 +100,6 @@ class Guest extends Model
 
     /**
      * Define a one-to-many relationship with the GuestInvitation model.
-     *
-     * @return HasMany
      */
     public function invitations(): HasMany
     {
@@ -116,7 +108,6 @@ class Guest extends Model
 
     /**
      * Define a one-to-many relationship with the GuestMenu model.
-     * @return BelongsToMany
      */
     public function selectedMenuItems(): BelongsToMany
     {
@@ -132,7 +123,7 @@ class Guest extends Model
     {
         return $this->belongsTo(Menu::class, 'assigned_menu_id');
     }
-    
+
     public function tableAssignment(): HasOne|Guest
     {
         return $this->hasOne(TableAssignment::class, 'guest_id');

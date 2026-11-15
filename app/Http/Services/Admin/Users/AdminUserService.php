@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\Admin\Users;
 
+use App\Http\Services\Admin\Impersonation\ImpersonationService;
 use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\EventUserRole;
@@ -124,7 +125,7 @@ class AdminUserService
         DB::transaction(function () use ($user, $actor, $reason) {
             $user->forceFill(['suspended_at' => now(), 'suspended_by' => $actor->id, 'suspension_reason' => $reason])->save();
             $user->tokens()->delete();
-            app(\App\Http\Services\Admin\Impersonation\ImpersonationService::class)->finishForUser($user);
+            app(ImpersonationService::class)->finishForUser($user);
         });
     }
 
@@ -177,7 +178,7 @@ class AdminUserService
             Events::query()->whereIn('id', $soleOwned)->where('status', '!=', 'archived')->update(['status' => 'archived']);
 
             $user->tokens()->delete();
-            app(\App\Http\Services\Admin\Impersonation\ImpersonationService::class)->finishForUser($user);
+            app(ImpersonationService::class)->finishForUser($user);
             $user->socialAccounts()->delete();
             $user->forceFill([
                 'name' => 'Deleted user',

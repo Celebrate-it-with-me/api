@@ -15,7 +15,7 @@ class SuggestedMusicObserver
     {
         $event = $suggestedMusic->event;
 
-        if (!$event) {
+        if (! $event) {
             return;
         }
 

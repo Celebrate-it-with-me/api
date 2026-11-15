@@ -56,7 +56,7 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         GooglePlacePhotosQueued::class => [
-            DispatchProcessGooglePlacePhotos::class
+            DispatchProcessGooglePlacePhotos::class,
         ],
 
         LogActivityEvent::class => [
@@ -64,15 +64,15 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         SuggestedMusicCreated::class => [
-            SendSuggestedMusicCreatedNotification::class
+            SendSuggestedMusicCreatedNotification::class,
         ],
 
         CommentCreated::class => [
-            SendCommentCreatedNotification::class
+            SendCommentCreatedNotification::class,
         ],
 
         EventNotificationEvent::class => [
-            SendEventNotification::class
+            SendEventNotification::class,
         ],
     ];
 

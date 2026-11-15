@@ -24,13 +24,19 @@ class SuggestedMusicVoteObserver
     protected function handleVote(SuggestedMusicVote $vote): void
     {
         $suggestion = $vote->suggestedMusic;
-        if (!$suggestion) return;
+        if (! $suggestion) {
+            return;
+        }
 
         $event = $suggestion->event;
-        if (!$event) return;
+        if (! $event) {
+            return;
+        }
 
         $ownerUserId = optional($event->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user?->id ?? 0;
-        if ($ownerUserId <= 0) return;
+        if ($ownerUserId <= 0) {
+            return;
+        }
 
         // Deduplication/Spam prevention
         // group_key = event_id + suggestionId + hour window
@@ -64,7 +70,7 @@ class SuggestedMusicVoteObserver
             [
                 'vote_type' => $vote->vote_type,
                 'song_title' => $suggestion->title,
-                'group_key' => $groupKey
+                'group_key' => $groupKey,
             ]
         );
     }

@@ -29,10 +29,14 @@ class EventLocationObserver
     protected function dispatch(EventLocation $location, string $key): void
     {
         $event = $location->event;
-        if (!$event) return;
+        if (! $event) {
+            return;
+        }
 
         $ownerUserId = optional($event->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user?->id ?? 0;
-        if ($ownerUserId <= 0) return;
+        if ($ownerUserId <= 0) {
+            return;
+        }
 
         $user = Auth::user();
         $actor = [

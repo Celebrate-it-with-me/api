@@ -6,30 +6,28 @@ use App\Events\ResetPasswordEvent;
 use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
+use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Requests\app\ForgotPasswordRequest;
 use App\Http\Requests\app\ResetPasswordRequest;
+use App\Http\Requests\Auth\AdminTwoFactorLoginRequest;
 use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
-use App\Http\Requests\Auth\AdminTwoFactorLoginRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Services\Admin\Account\AdminLoginService;
-use App\Http\Services\Admin\AdminAudit;
-use App\Http\Middleware\EnsureNotSuspended;
 use App\Models\User;
-use App\Support\AdminPermissions;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Support\Str;
-use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthenticationController extends Controller
 {
@@ -59,9 +57,9 @@ class AuthenticationController extends Controller
     /**
      * Register a new user based on the provided request data.
      *
-     * @param AppRegisterRequest $request The request object containing user data to be validated and registered.
-     *
+     * @param  AppRegisterRequest  $request  The request object containing user data to be validated and registered.
      * @return JsonResponse A JSON response containing a message and the registered user data with HTTP status code 201.
+     *
      * @throws ConnectionException
      */
     public function appRegister(AppRegisterRequest $request): JsonResponse
@@ -69,7 +67,7 @@ class AuthenticationController extends Controller
         if (config('services.hcaptcha.enabled')) {
             $token = $request->input('hcaptcha_token');
 
-            if (!$token || !$this->verifyHCaptcha($token) ) {
+            if (! $token || ! $this->verifyHCaptcha($token)) {
                 return response()->json(['message' => __('errors.auth.captcha_invalid')], 422);
             }
         }
@@ -86,26 +84,23 @@ class AuthenticationController extends Controller
         event(new UserRegistered($user));
 
         return response()->json([
-           'message' => 'User registered successfully!',
-           'user' => $user,
+            'message' => 'User registered successfully!',
+            'user' => $user,
         ], 201);
     }
 
     /**
      * Confirm the user's email address.
-     * @param Request $request
-     * @param User $user
-     * @return JsonResponse
      */
     public function confirmEmail(Request $request, User $user): JsonResponse
     {
-        if (!$request->hasValidSignature() || !$request->user) {
+        if (! $request->hasValidSignature() || ! $request->user) {
             return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
         }
 
         $user = User::query()->find($request->user);
 
-        if (!$user || !$user->hasVerifiedEmail()) {
+        if (! $user || ! $user->hasVerifiedEmail()) {
             $user->email_verified_at = now();
             $user->save();
         }
@@ -115,8 +110,6 @@ class AuthenticationController extends Controller
 
     /**
      * Forgot Password functionality.
-     * @param ForgotPasswordRequest $request
-     * @return JsonResponse
      */
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
@@ -124,7 +117,7 @@ class AuthenticationController extends Controller
 
         // At most 3 emails per hour to one address: the answer stays the same so it does not reveal anything.
         $limitKey = 'app-forgot:' . Str::lower((string) $request->input('email'));
-        if (!$user || RateLimiter::tooManyAttempts($limitKey, 3)) {
+        if (! $user || RateLimiter::tooManyAttempts($limitKey, 3)) {
             return response()->json(['message' => 'Password reset link sent successfully!']);
         }
         RateLimiter::hit($limitKey, 3600);
@@ -136,12 +129,10 @@ class AuthenticationController extends Controller
 
     /**
      * Check reset password link.
-     * @param Request $request
-     * @return JsonResponse
      */
     public function checkPasswordLink(Request $request): JsonResponse
     {
-        if (!$request->hasValidSignature() || !$request->user) {
+        if (! $request->hasValidSignature() || ! $request->user) {
             return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
         }
 
@@ -197,11 +188,11 @@ class AuthenticationController extends Controller
     /**
      * Authenticates the user for the mobile application login.
      *
-     * @param AppLoginRequest $request The request containing user login information.
-     *
+     * @param  AppLoginRequest  $request  The request containing user login information.
      * @return JsonResponse Returns a JSON response with the authentication token, user data, and a success message if login is successful.
-     * If authentication fails due to incorrect credentials, returns a JSON response with an error message and status code 401 (Unauthorized).
-     * If the user does not have the required role for the app login, returns a JSON response with an error message and status code 403 (Forbidden).
+     *                      If authentication fails due to incorrect credentials, returns a JSON response with an error message and status code 401 (Unauthorized).
+     *                      If the user does not have the required role for the app login, returns a JSON response with an error message and status code 403 (Forbidden).
+     *
      * @throws ConnectionException
      */
     public function appLogin(AppLoginRequest $request): JsonResponse
@@ -209,7 +200,7 @@ class AuthenticationController extends Controller
         if (config('services.hcaptcha.enabled')) {
             $token = $request->input('hcaptcha_token');
 
-            if (!$token || !$this->verifyHCaptcha($token) ) {
+            if (! $token || ! $this->verifyHCaptcha($token)) {
                 return response()->json(['message' => __('errors.auth.captcha_invalid')], 422);
             }
         }
@@ -227,7 +218,7 @@ class AuthenticationController extends Controller
                 ->header('Retry-After', RateLimiter::availableIn($limitKey));
         }
 
-        if (!$user || !Hash::check($request->input('password'), $user->password)) {
+        if (! $user || ! Hash::check($request->input('password'), $user->password)) {
             RateLimiter::hit($limitKey, 15 * 60);
 
             return response()->json(['message' => __('errors.auth.invalid_credentials')], 401);
@@ -246,12 +237,12 @@ class AuthenticationController extends Controller
         if ($request->hasSession()) {
             $request->session()->regenerate();
         }
-        
+
         if ($user->is_first_login) {
             $user->is_first_login = false;
             $user->save();
         }
-        
+
         UserLoggedInEvent::dispatch($user, $request);
 
         return response()->json([
@@ -259,12 +250,9 @@ class AuthenticationController extends Controller
             'user' => $user,
         ]);
     }
-    
+
     /**
      * Check if authentication is ready.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function checkAuthReady(Request $request): JsonResponse
     {
@@ -278,9 +266,9 @@ class AuthenticationController extends Controller
     /**
      * Verify the hCaptcha token.
      *
-     * @param string $token The hCaptcha token to verify.
-     *
+     * @param  string  $token  The hCaptcha token to verify.
      * @return bool Returns true if the verification is successful, false otherwise.
+     *
      * @throws ConnectionException
      */
     private function verifyHCaptcha(string $token): bool
@@ -300,8 +288,7 @@ class AuthenticationController extends Controller
     /**
      * Logout the authenticated user by deleting their current access token.
      *
-     * @param Request $request The incoming request containing the user information.
-     *
+     * @param  Request  $request  The incoming request containing the user information.
      * @return JsonResponse A JSON response indicating the success of the logout operation.
      */
     public function appLogout(Request $request): JsonResponse
@@ -325,5 +312,4 @@ class AuthenticationController extends Controller
 
         return response()->json(['message' => 'Logged out successfully!']);
     }
-
 }

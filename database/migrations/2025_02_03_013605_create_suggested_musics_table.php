@@ -22,30 +22,30 @@ return new class extends Migration
             $table->string('platformId');
             $table->text('thumbnailUrl');
             $table->unsignedBigInteger('suggested_by');
-            
+
             $table->foreign('event_id')
                 ->references('id')
                 ->on('events')
                 ->onDelete('cascade');
             $table->timestamps();
         });
-        
+
         Schema::create('suggested_music_votes', function (Blueprint $table) {
-           $table->id();
-           $table->unsignedBigInteger('suggested_music_id');
-           $table->unsignedBigInteger('main_guest_id');
-           $table->enum('vote_type', ['up', 'down'])
-               ->default('up');
-           
-           $table->foreign('suggested_music_id')
-               ->references('id')
-               ->on('suggested_music')
+            $table->id();
+            $table->unsignedBigInteger('suggested_music_id');
+            $table->unsignedBigInteger('main_guest_id');
+            $table->enum('vote_type', ['up', 'down'])
+                ->default('up');
+
+            $table->foreign('suggested_music_id')
+                ->references('id')
+                ->on('suggested_music')
                 ->onDelete('cascade');
-           $table->foreign('main_guest_id')
-               ->references('id')
-               ->on('main_guests')
-               ->onDelete('cascade');
-           $table->timestamps();
+            $table->foreign('main_guest_id')
+                ->references('id')
+                ->on('main_guests')
+                ->onDelete('cascade');
+            $table->timestamps();
         });
     }
 

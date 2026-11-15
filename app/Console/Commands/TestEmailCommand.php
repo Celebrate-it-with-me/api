@@ -28,16 +28,18 @@ class TestEmailCommand extends Command
     public function handle(): int
     {
         $email = $this->argument('email');
-        
+
         try {
             Mail::raw('🚀 This is a test email from Celebrate It With Me production environment.', function ($message) use ($email) {
                 $message->to($email)->subject('CWM Production Email Test');
             });
-            
+
             $this->info("Test email sent successfully to {$email}");
+
             return self::SUCCESS;
         } catch (Throwable $th) {
             $this->error('Email failed:' . $th->getMessage());
+
             return self::FAILURE;
         }
     }

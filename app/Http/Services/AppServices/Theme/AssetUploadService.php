@@ -18,12 +18,6 @@ class AssetUploadService
     ) {}
 
     /**
-     * @param Events $event
-     * @param UploadedFile $file
-     * @param string $section
-     * @param string $assetType
-     * @param array $metadata
-     * @return ThemeAsset
      * @throws Throwable
      */
     public function uploadAsset(
@@ -53,7 +47,7 @@ class AssetUploadService
                 'mime_type' => $file->getMimeType(),
                 'alt_text' => $metadata['alt_text'] ?? null,
                 'sort_order' => $metadata['sort_order'] ?? 0,
-                'is_active' => true
+                'is_active' => true,
             ]);
 
             $this->deactivateOtherAssetsIfUnique($theme, $section, $assetType, $asset);
@@ -63,10 +57,6 @@ class AssetUploadService
     }
 
     /**
-     * @param ThemeAsset $existingAsset
-     * @param UploadedFile $newFile
-     * @param array $metadata
-     * @return ThemeAsset
      * @throws Throwable
      */
     public function replaceAsset(
@@ -105,8 +95,6 @@ class AssetUploadService
     }
 
     /**
-     * @param ThemeAsset $asset
-     * @return void
      * @throws Throwable
      */
     public function deleteAsset(ThemeAsset $asset): void
@@ -120,13 +108,6 @@ class AssetUploadService
         });
     }
 
-    /**
-     * @param Events $event
-     * @param string $section
-     * @param string $assetType
-     * @param UploadedFile $file
-     * @return string
-     */
     private function generateAssetPath(Events $event, string $section, string $assetType, UploadedFile $file): string
     {
         $extension = $file->extension();
@@ -136,9 +117,6 @@ class AssetUploadService
     }
 
     /**
-     * @param UploadedFile $file
-     * @param string $assetType
-     * @return UploadedFile|null
      * @throws Exception
      */
     private function processFileIfNeeded(UploadedFile $file, string $assetType): ?UploadedFile
@@ -152,13 +130,6 @@ class AssetUploadService
         return null;
     }
 
-    /**
-     * @param $theme
-     * @param string $section
-     * @param string $assetType
-     * @param ThemeAsset $newAsset
-     * @return void
-     */
     private function deactivateOtherAssetsIfUnique(
         $theme,
         string $section,
@@ -176,7 +147,6 @@ class AssetUploadService
         }
     }
 
-
     public function validateFile(UploadedFile $file, string $assetType): array
     {
         $errors = [];
@@ -186,27 +156,23 @@ class AssetUploadService
             'background_video' => ['video/mp4', 'video/webm'],
             'logo' => ['image/png', 'image/svg+xml', 'image/jpeg'],
             'favicon' => ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon'],
-            'custom' => []
+            'custom' => [],
         ];
 
         if ($assetType !== 'custom' && isset($allowedTypes[$assetType])) {
-            if (!in_array($file->getMimeType(), $allowedTypes[$assetType])) {
+            if (! in_array($file->getMimeType(), $allowedTypes[$assetType])) {
                 $errors[] = "Invalid file type for {$assetType}. Allowed: " . implode(', ', $allowedTypes[$assetType]);
             }
         }
 
         $maxSize = $this->getSize($assetType);
         if ($file->getSize() > $maxSize) {
-            $errors[] = "File size (" . round($file->getSize() / 1024 / 1024, 2) . "MB) exceeds maximum allowed (" . round($maxSize / 1024 / 1024, 2) . "MB)";
+            $errors[] = 'File size (' . round($file->getSize() / 1024 / 1024, 2) . 'MB) exceeds maximum allowed (' . round($maxSize / 1024 / 1024, 2) . 'MB)';
         }
 
         return $errors;
     }
 
-    /**
-     * @param string $assetType
-     * @return mixed
-     */
     private function getSize(string $assetType): mixed
     {
         $maxSizes = [
@@ -214,7 +180,7 @@ class AssetUploadService
             'background_video' => 50 * 1024 * 1024, // 50MB
             'logo' => 1 * 1024 * 1024, // 1MB
             'favicon' => 0.5 * 1024 * 1024, // 500KB
-            'custom' => 10 * 1024 * 1024 // 10MB
+            'custom' => 10 * 1024 * 1024, // 10MB
         ];
 
         return $maxSizes[$assetType] ?? $maxSizes['custom'];

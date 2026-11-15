@@ -4,8 +4,6 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
 use App\Models\Guest;
-use App\Models\MainGuest;
-use App\Models\SaveTheDate;
 use App\Models\SuggestedMusic;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +23,7 @@ class SuggestedMusicServices
 
     /**
      * Get event save the date.
-     * @param Events $event
+     *
      * @return mixed
      */
     public function getSuggestedMusic(Events $event, array $options = []): LengthAwarePaginator
@@ -41,7 +39,7 @@ class SuggestedMusicServices
 
         // Apply search
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'LIKE', "%{$search}%")
                     ->orWhere('artist', 'LIKE', "%{$search}%")
                     ->orWhere('album', 'LIKE', "%{$search}%");
@@ -66,7 +64,7 @@ class SuggestedMusicServices
         // Check for duplicate
         $this->checkDuplicateSong($event->id, $this->request->get('platformId'));
 
-        return DB::transaction(function() use ($event, $user) {
+        return DB::transaction(function () use ($event, $user) {
             return SuggestedMusic::create([
                 'event_id' => $event->id,
                 'title' => $this->request->get('title'),
@@ -92,9 +90,9 @@ class SuggestedMusicServices
             ->where('event_id', $event->id)
             ->first();
 
-        if (!$guest) {
+        if (! $guest) {
             throw ValidationException::withMessages([
-                'accessCode' => 'Invalid access code for this event.'
+                'accessCode' => 'Invalid access code for this event.',
             ]);
         }
 
@@ -104,7 +102,7 @@ class SuggestedMusicServices
         // Check for duplicate
         $this->checkDuplicateSong($event->id, $this->request->get('platformId'));
 
-        return DB::transaction(function() use ($event, $guest) {
+        return DB::transaction(function () use ($event, $guest) {
             return SuggestedMusic::create([
                 'event_id' => $event->id,
                 'title' => $this->request->get('title'),
@@ -122,13 +120,14 @@ class SuggestedMusicServices
 
     /**
      * Remove suggested music
+     *
      * @throws \Throwable
      */
     public function remove(SuggestedMusic $suggestedMusic): SuggestedMusic
     {
         $clone = clone $suggestedMusic;
 
-        DB::transaction(function() use ($suggestedMusic) {
+        DB::transaction(function () use ($suggestedMusic) {
             // Votes will be cascade deleted by foreign key
             $suggestedMusic->delete();
         });
@@ -150,7 +149,7 @@ class SuggestedMusicServices
 
         if ($currentCount >= $maxSuggestions) {
             throw ValidationException::withMessages([
-                'limit' => "You have reached the maximum of {$maxSuggestions} song suggestions."
+                'limit' => "You have reached the maximum of {$maxSuggestions} song suggestions.",
             ]);
         }
     }

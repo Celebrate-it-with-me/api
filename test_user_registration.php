@@ -7,8 +7,8 @@ require_once 'vendor/autoload.php';
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 // Simulate the user creation process
 echo "Testing user registration permission assignment...\n\n";
@@ -17,12 +17,12 @@ echo "Testing user registration permission assignment...\n\n";
 $appUserRole = Role::where('name', 'appUser')->first();
 $appPermission = Permission::where('name', 'app')->first();
 
-if (!$appUserRole) {
+if (! $appUserRole) {
     echo "❌ ERROR: 'appUser' role not found. Please run the RolesAndPermissionSeeder.\n";
     exit(1);
 }
 
-if (!$appPermission) {
+if (! $appPermission) {
     echo "❌ ERROR: 'app' permission not found. Please run the RolesAndPermissionSeeder.\n";
     exit(1);
 }
@@ -55,8 +55,8 @@ $hasAppUserRole = $user->hasRole('appUser');
 $hasAppPermission = $user->hasPermissionTo('app');
 
 echo "Permission verification:\n";
-echo "   - Has 'appUser' role: " . ($hasAppUserRole ? "✅ YES" : "❌ NO") . "\n";
-echo "   - Has 'app' permission: " . ($hasAppPermission ? "✅ YES" : "❌ NO") . "\n\n";
+echo "   - Has 'appUser' role: " . ($hasAppUserRole ? '✅ YES' : '❌ NO') . "\n";
+echo "   - Has 'app' permission: " . ($hasAppPermission ? '✅ YES' : '❌ NO') . "\n\n";
 
 if ($hasAppUserRole && $hasAppPermission) {
     echo "🎉 SUCCESS: User registration now correctly assigns frontend permissions!\n";

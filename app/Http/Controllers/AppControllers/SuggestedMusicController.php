@@ -3,22 +3,18 @@
 namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\app\StoreSaveTheDateRequest;
 use App\Http\Requests\app\StoreSuggestedMusicRequest;
-use App\Http\Resources\AppResources\SaveTheDateResource;
 use App\Http\Resources\AppResources\SuggestedMusicResource;
-use App\Http\Services\AppServices\SuggestedMusicServices;
 use App\Http\Services\AppServices\SuggestedMusicExportService;
+use App\Http\Services\AppServices\SuggestedMusicServices;
 use App\Models\Events;
 use App\Models\SuggestedMusic;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class SuggestedMusicController extends Controller
 {
-
     public function __construct(
         private readonly SuggestedMusicServices $suggestedMusicServices,
         private readonly SuggestedMusicExportService $exportService
@@ -44,13 +40,14 @@ class SuggestedMusicController extends Controller
                     'total' => $music->total(),
                     'per_page' => $music->perPage(),
                     'last_page' => $music->lastPage(),
-                ]
+                ],
             ]);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }
@@ -65,7 +62,7 @@ class SuggestedMusicController extends Controller
 
             return response()->json([
                 'message' => 'Song added successfully!',
-                'data' => SuggestedMusicResource::make($music)
+                'data' => SuggestedMusicResource::make($music),
             ], 201);
         } catch (ValidationException $e) {
             report($e);
@@ -83,9 +80,10 @@ class SuggestedMusicController extends Controller
             ], 422);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }
@@ -100,13 +98,14 @@ class SuggestedMusicController extends Controller
 
             return response()->json([
                 'message' => 'Song removed successfully!',
-                'data' => SuggestedMusicResource::make($removed)
+                'data' => SuggestedMusicResource::make($removed),
             ]);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }
@@ -118,8 +117,8 @@ class SuggestedMusicController extends Controller
     {
         try {
             $format = request()->query('format', 'csv');
-            
-            if (!in_array($format, ['csv', 'xlsx', 'pdf'])) {
+
+            if (! in_array($format, ['csv', 'xlsx', 'pdf'])) {
                 return response()->json([
                     'message' => 'Invalid format. Supported formats: csv, xlsx, pdf',
                 ], 422);
@@ -128,9 +127,10 @@ class SuggestedMusicController extends Controller
             return $this->exportService->export($event, $format);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }

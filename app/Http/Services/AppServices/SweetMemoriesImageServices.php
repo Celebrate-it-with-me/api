@@ -16,33 +16,28 @@ use Intervention\Image\ImageManager;
 class SweetMemoriesImageServices
 {
     protected Request $request;
+
     protected SweetMemoriesImage $sweetMemoriesImage;
+
     protected ImageManager $imageManager;
+
     const STORAGE_DISK = 'sweet-memories';
 
     /**
      * SweetMemoriesImageServices constructor.
-     * @param Request $request
-     * @param ImageManager $imageManager
-     * @param SweetMemoriesImage $sweetMemoriesImage
      */
     public function __construct(
         Request $request,
         ImageManager $imageManager,
         SweetMemoriesImage $sweetMemoriesImage
-    )
-    {
+    ) {
         $this->request = $request;
         $this->sweetMemoriesImage = $sweetMemoriesImage;
         $this->imageManager = $imageManager;
     }
 
-
     /**
      * Create a new sweet configuration for the given event.
-     *
-     * @param Events $event
-     * @return Collection
      */
     public function create(Events $event): Collection
     {
@@ -51,11 +46,12 @@ class SweetMemoriesImageServices
         try {
             $files = $this->request->file('files');
             foreach ($files as $index => $file) {
-                if (!$file->isValid()) {
+                if (! $file->isValid()) {
                     Log::error('Invalid file upload', [
                         'error' => $file->getError(),
-                        'errorMessage' => $file->getErrorMessage()
+                        'errorMessage' => $file->getErrorMessage(),
                     ]);
+
                     continue;
                 }
 
@@ -88,7 +84,7 @@ class SweetMemoriesImageServices
         } catch (Exception $e) {
             Log::error('File upload error', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -97,8 +93,7 @@ class SweetMemoriesImageServices
     /**
      * Generate a thumbnail for the given file and event.
      *
-     * @param $file
-     * @param Events $event
+     * @param  Events  $event
      * @return array
      */
     /** A name of its own, even for two files with the same content: each row owns its files. */
@@ -110,23 +105,19 @@ class SweetMemoriesImageServices
     private function generateThumbnail($file, $event): array
     {
         $imageThumbnail = $this->imageManager->decodePath($file->getPathname())
-                            ->resize(150, 150);
+            ->resize(150, 150);
 
         // A name of its own: two uploads called "foto.jpg" must not share (or delete) each other's thumbnail.
         $thumbnailName = 'thumbnail_' . $this->uniqueName($file);
         $thumbnailPath = "images/event/$event->id/memories-thumbnails/$thumbnailName";
 
-        Storage::disk(self::STORAGE_DISK)->put($thumbnailPath,(string) $imageThumbnail->encode());
+        Storage::disk(self::STORAGE_DISK)->put($thumbnailPath, (string) $imageThumbnail->encode());
 
         return [$thumbnailPath, $thumbnailName];
     }
 
     /**
      * Deletes a sweet memories image and its associated files from storage.
-     *
-     * @param Events $event
-     * @param SweetMemoriesImage $sweetMemoriesImage
-     * @return array
      */
     public function destroy(Events $event, SweetMemoriesImage $sweetMemoriesImage): array
     {
@@ -138,22 +129,19 @@ class SweetMemoriesImageServices
 
             $sweetMemoriesImage->delete();
 
-            return [ true, 'Sweet memories image deleted successfully', 200 ];
+            return [true, 'Sweet memories image deleted successfully', 200];
         } catch (Exception $e) {
             Log::error('Error deleting sweet memories image', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return [ false, 'Error deleting sweet memories image', 500];
+
+            return [false, 'Error deleting sweet memories image', 500];
         }
     }
 
     /**
      * Updates the sweet memories image.
-     *
-     * @param Request $request
-     * @param SweetMemoriesImage $sweetMemoriesImage
-     * @return array
      */
     public function update(Request $request, SweetMemoriesImage $sweetMemoriesImage): array
     {
@@ -175,46 +163,47 @@ class SweetMemoriesImageServices
 
                 $data['image_path'] = $path;
                 $data['image_name'] = $file->getClientOriginalName();
-                $data['image_original_name'] = Arr::get($metadata, "0.name", $file->getClientOriginalName());
-                $data['image_size'] = Arr::get($metadata, "0.size", $file->getSize());
+                $data['image_original_name'] = Arr::get($metadata, '0.name', $file->getClientOriginalName());
+                $data['image_size'] = Arr::get($metadata, '0.size', $file->getSize());
                 $data['thumbnail_path'] = $thumbnailPath;
                 $data['thumbnail_name'] = $thumbnailName;
             }
 
             $sweetMemoriesImage->update($data);
 
-            return [ true, 'Sweet memories image updated successfully', 200 ];
+            return [true, 'Sweet memories image updated successfully', 200];
         } catch (Exception $e) {
             Log::error('Error updating sweet memories image', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return [ false, 'Error updating sweet memories image', 500];
+
+            return [false, 'Error updating sweet memories image', 500];
         }
     }
 
     /**
      * Updates the name of the sweet memories image.
      *
-     * @param Request $request The HTTP request instance containing the new name.
-     * @param SweetMemoriesImage $sweetMemoriesImage The SweetMemoriesImage model instance to be updated.
+     * @param  Request  $request  The HTTP request instance containing the new name.
+     * @param  SweetMemoriesImage  $sweetMemoriesImage  The SweetMemoriesImage model instance to be updated.
      * @return array Returns an array with a success status (true/false) and an HTTP status code.
      */
     public function updateName(Request $request, SweetMemoriesImage $sweetMemoriesImage): array
     {
         try {
             $sweetMemoriesImage->update([
-                'image_original_name' => $request->get('name')
+                'image_original_name' => $request->get('name'),
             ]);
 
-            return [ true, 200 ];
+            return [true, 200];
         } catch (Exception $e) {
             Log::error('Error updating sweet memories image name', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return [ false, 500];
+
+            return [false, 500];
         }
     }
-
 }

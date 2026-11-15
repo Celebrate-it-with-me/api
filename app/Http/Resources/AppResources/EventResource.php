@@ -62,7 +62,7 @@ class EventResource extends JsonResource
 
     private function getUserRole($user): ?string
     {
-        if (!$user || !$this->userRoles) {
+        if (! $user || ! $this->userRoles) {
             return null;
         }
 

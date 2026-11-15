@@ -7,9 +7,8 @@
  * Every write goes through App\Http\Services\Admin\AdminAudit and asks for a reason when it is sensitive.
  */
 
-use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\Admin\Impersonation\ImpersonationController;
+use Illuminate\Support\Facades\Route;
 
 Route::post('users/{user}/impersonate', [ImpersonationController::class, 'store'])
     ->middleware('admin.can:admin.impersonate');

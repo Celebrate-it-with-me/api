@@ -26,7 +26,7 @@ class Table extends Model
         'capacity' => 'integer',
         'priority' => 'integer',
     ];
-    
+
     /**
      * Get the event that owns the table.
      */
@@ -34,7 +34,7 @@ class Table extends Model
     {
         return $this->belongsTo(Events::class);
     }
-    
+
     /**
      * Get all assignments for this table.
      */
@@ -42,7 +42,7 @@ class Table extends Model
     {
         return $this->hasMany(TableAssignment::class);
     }
-    
+
     /**
      * Get assigned guests through assignments.
      */
@@ -57,7 +57,7 @@ class Table extends Model
             'guest_id'       // Local key on table_assignments table
         )->with('tableAssignment');
     }
-    
+
     /**
      * Scope: Filter by event
      */
@@ -65,7 +65,7 @@ class Table extends Model
     {
         return $query->where('event_id', $eventId);
     }
-    
+
     /**
      * Scope: Filter by type
      */
@@ -73,7 +73,7 @@ class Table extends Model
     {
         return $query->where('type', $type);
     }
-    
+
     /**
      * Scope: Order by priority
      */
@@ -81,7 +81,7 @@ class Table extends Model
     {
         return $query->orderBy('priority', $direction);
     }
-    
+
     /**
      * Scope: With assigned guests count
      */
@@ -89,7 +89,7 @@ class Table extends Model
     {
         return $query->withCount('assignments as assigned_guests_count');
     }
-    
+
     /**
      * Check if table has available seats
      */
@@ -97,7 +97,7 @@ class Table extends Model
     {
         return $this->assignments()->count() < $this->capacity;
     }
-    
+
     /**
      * Get number of available seats
      */
@@ -105,7 +105,7 @@ class Table extends Model
     {
         return $this->capacity - $this->assignments()->count();
     }
-    
+
     /**
      * Get occupancy percentage (0-100)
      */
@@ -114,11 +114,12 @@ class Table extends Model
         if ($this->capacity === 0) {
             return 0;
         }
-        
+
         $assigned = $this->assignments()->count();
+
         return round(($assigned / $this->capacity) * 100, 2);
     }
-    
+
     /**
      * Check if table is full
      */
@@ -126,7 +127,7 @@ class Table extends Model
     {
         return $this->assignments()->count() >= $this->capacity;
     }
-    
+
     /**
      * Check if guest can be assigned to this table
      */
@@ -134,13 +135,14 @@ class Table extends Model
     {
         return $this->hasAvailableSeats();
     }
-    
+
     /**
      * Get next available seat number
      */
     public function getNextSeatNumber(): string
     {
         $count = $this->assignments()->count();
+
         return "{$this->name} - Seat " . ($count + 1);
     }
 }

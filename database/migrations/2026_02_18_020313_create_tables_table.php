@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('event_id')
                 ->constrained('events')
                 ->cascadeOnDelete();
-            
+
             $table->string('name', 50);
             $table->integer('capacity');
             $table->enum('type', ['vip', 'family', 'friends', 'general']);
@@ -25,17 +25,17 @@ return new class extends Migration
             $table->enum('location', ['front', 'center', 'back', 'side', 'entrance'])->nullable();
             $table->timestamps();
         });
-        
+
         Schema::create('table_assignments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('table_id')
                 ->constrained('tables')
                 ->cascadeOnDelete();
-            
+
             $table->foreignId('guest_id')
                 ->constrained('guests')
                 ->cascadeOnDelete();
-            
+
             $table->string('seat_number');
             $table->dateTime('assigned_at');
             $table->foreignId('assigned_by')

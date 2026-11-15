@@ -2,27 +2,31 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
- * 
- *
  * @property int $id
  * @property int $main_guest_id
  * @property string $name
  * @property string $confirmed
  * @property string|null $confirmed_date
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\MainGuest|null $mainGuest
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read MainGuest|null $mainGuest
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read Collection<int, PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static \Illuminate\Database\Eloquent\Builder|PartyMember newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|PartyMember newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|PartyMember query()
@@ -33,6 +37,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static \Illuminate\Database\Eloquent\Builder|PartyMember whereMainGuestId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PartyMember whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PartyMember whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class PartyMember extends Model
@@ -54,8 +59,6 @@ class PartyMember extends Model
 
     /**
      * Get the main guest associated with the model.
-     *
-     * @return BelongsTo
      */
     public function mainGuest(): BelongsTo
     {

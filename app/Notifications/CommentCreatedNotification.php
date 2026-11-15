@@ -6,8 +6,6 @@ use App\Support\Notifications\NotificationEntities;
 use App\Support\Notifications\NotificationKeys;
 use App\Support\Notifications\NotificationMetaMap;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class CommentCreatedNotification extends Notification
@@ -15,8 +13,11 @@ class CommentCreatedNotification extends Notification
     use Queueable;
 
     protected int $eventId;
+
     protected int $commentId;
+
     protected string $comment;
+
     protected array $actor;
 
     /**
@@ -27,8 +28,7 @@ class CommentCreatedNotification extends Notification
         int $commentId,
         string $comment,
         array $actor
-    )
-    {
+    ) {
         $this->eventId = $eventId;
         $this->commentId = $commentId;
         $this->comment = $comment;

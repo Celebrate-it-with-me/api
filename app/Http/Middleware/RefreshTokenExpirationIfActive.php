@@ -5,8 +5,8 @@ namespace App\Http\Middleware;
 use App\Http\Services\Admin\Impersonation\ImpersonationService;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Laravel\Sanctum\PersonalAccessToken;
+use Symfony\Component\HttpFoundation\Response;
 
 class RefreshTokenExpirationIfActive
 {
@@ -17,7 +17,7 @@ class RefreshTokenExpirationIfActive
     {
         $user = $request->user();
 
-        if ($user && !$request->remember_me) {
+        if ($user && ! $request->remember_me) {
             $now = now();
 
             $token = $user->currentAccessToken();

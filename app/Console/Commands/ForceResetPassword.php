@@ -33,8 +33,9 @@ class ForceResetPassword extends Command
 
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->error('User with this email does not exist');
+
             return;
         }
 
@@ -45,11 +46,13 @@ class ForceResetPassword extends Command
 
         if ($newPassword !== $confirmationPassword) {
             $this->error('Passwords do not match');
+
             return;
         }
 
         if (strlen($newPassword) < 8) {
             $this->error('Password must be at least 8 characters long');
+
             return;
         }
 

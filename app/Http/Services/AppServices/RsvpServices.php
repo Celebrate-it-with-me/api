@@ -4,62 +4,56 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\Events;
 use App\Models\Guest;
-use App\Models\GuestCompanion;
-use App\Models\MainGuest;
 use App\Models\Rsvp;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class RsvpServices
 {
     const STATUS_ATTENDING = 'attending';
+
     const STATUS_PENDING = 'pending';
+
     const STATUS_NOT_ATTENDING = 'not-attending';
 
     private Request $request;
+
     private Rsvp $rsvp;
 
     public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->rsvp = new Rsvp();
+        $this->rsvp = new Rsvp;
     }
 
     public function create(Events $event)
     {
         return Rsvp::query()->create([
-           'event_id' => $event->id,
-           'title' => $this->request->input('title'),
-           'description' => $this->request->input('description'),
-           'custom_fields' => $this->request->input('customFields'),
-           'confirmation_deadline' => $this->request->input('confirmationDeadline'),
+            'event_id' => $event->id,
+            'title' => $this->request->input('title'),
+            'description' => $this->request->input('description'),
+            'custom_fields' => $this->request->input('customFields'),
+            'confirmation_deadline' => $this->request->input('confirmationDeadline'),
         ]);
     }
 
-
     /**
      * Revert the RSVP confirmation status of a guest and their companions.
-     * @param Events $event
-     * @return array
      */
     public function summary(Events $event): array
     {
         $guests = Guest::query()
-            ->where('event_id',  $event->id)
-            ->get(['id', 'event_id','parent_id', 'rsvp_status']);
-
+            ->where('event_id', $event->id)
+            ->get(['id', 'event_id', 'parent_id', 'rsvp_status']);
 
         $selectedPlan = $event->eventPlan;
 
         return [
             'totalGuests' => $guests->count(),
             'confirmed' => $guests->where('rsvp_status', 'attending')->count(),
-            'declined' => $guests->where('rsvp_status',  'not-attending')->count(),
-            'pending' => $guests->where('rsvp_status',  'pending')->count(),
+            'declined' => $guests->where('rsvp_status', 'not-attending')->count(),
+            'pending' => $guests->where('rsvp_status', 'pending')->count(),
             'mainGuests' => $guests->whereNull('parent_id')->count(),
             'companions' => $guests->whereNotNull('parent_id')->count(),
             'totalAllowed' => $selectedPlan->max_guests,
@@ -69,9 +63,6 @@ class RsvpServices
     /**
      * Retrieves a paginated list of RSVP guests for a specific event with optional
      * filtering by status and search term.
-     *
-     * @param Events $event
-     * @return LengthAwarePaginator
      */
     public function getRsvpGuests(Events $event): LengthAwarePaginator
     {
@@ -104,7 +95,7 @@ class RsvpServices
     /**
      * Retrieves RSVP statistics for a given event.
      *
-     * @param mixed $event The event object for which RSVP statistics are calculated.
+     * @param  mixed  $event  The event object for which RSVP statistics are calculated.
      * @return array An associative array containing RSVP statistics, including:
      *               - 'attending': The number of guests with an RSVP status of 'attending'.
      *               - 'not_attending': The number of guests with an RSVP status of 'not-attending'.
@@ -118,7 +109,7 @@ class RsvpServices
         return Cache::remember(
             "event.{$event->id}.rsvp.stats",
             now()->addMinutes(10),
-            function() use ($event) {
+            function () use ($event) {
                 return $this->getEventStats($event);
             }
         );
@@ -127,7 +118,7 @@ class RsvpServices
     /**
      * Retrieves statistical data related to the RSVP statuses of guests and their companions for a given event.
      *
-     * @param Events $event The event for which the stats are being calculated.
+     * @param  Events  $event  The event for which the stats are being calculated.
      * @return array An associative array containing the following statistical information:
      *               - 'attending': Attendance counts for guests, companions, and total.
      *               - 'pending': Pending RSVP counts for guests, companions, and total.
@@ -198,5 +189,4 @@ class RsvpServices
             'response_rate' => $responseRate,
         ];
     }
-
 }

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->tinyInteger('use_preview')->default(0);
             $table->tinyInteger('use_vote_system')->default(0);
             $table->integer('search_limit')->default(10);
-            
+
             $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
             $table->timestamps();
         });

@@ -15,9 +15,6 @@ class PublicEventService
 
     /**
      * Getting event data for guests.
-     * @param int $eventId
-     * @param string $guestToken
-     * @return array
      */
     public function getEventDataForGuest(int $eventId, string $guestToken): array
     {
@@ -26,14 +23,13 @@ class PublicEventService
         return [
             'event' => $this->formatEventData($event),
             'guest' => $this->formatGuestData($guest),
-            'theme' => $this->getEventThemeData($event)
+            'theme' => $this->getEventThemeData($event),
         ];
     }
 
     /**
      * Getting event theme for guests.
-     * @param int $eventId
-     * @param string $guestToken
+     *
      * @return array[]
      */
     public function getEventThemeForGuest(int $eventId, string $guestToken): array
@@ -41,16 +37,12 @@ class PublicEventService
         [$event, $guest] = $this->validateEventAndGuest($eventId, $guestToken);
 
         return [
-            'theme' => $this->getEventThemeData($event)
+            'theme' => $this->getEventThemeData($event),
         ];
     }
 
     /**
      * Submitting guest RSVP
-     * @param int $eventId
-     * @param string $guestToken
-     * @param array $rsvpData
-     * @return Guest
      */
     public function submitGuestRsvp(int $eventId, string $guestToken, array $rsvpData): Guest
     {
@@ -61,7 +53,7 @@ class PublicEventService
             'rsvp_guests_count' => $rsvpData['guests_count'] ?? 1,
             'rsvp_notes' => $rsvpData['notes'] ?? null,
             'rsvp_dietary_restrictions' => $rsvpData['dietary_restrictions'] ?? null,
-            'rsvp_submitted_at' => now()
+            'rsvp_submitted_at' => now(),
         ]);
 
         return $guest->fresh();
@@ -69,10 +61,6 @@ class PublicEventService
 
     /**
      * Getting section data for guest
-     * @param int $eventId
-     * @param string $guestToken
-     * @param string $section
-     * @return array
      */
     public function getEventSectionForGuest(int $eventId, string $guestToken, string $section): array
     {
@@ -81,15 +69,12 @@ class PublicEventService
 
         return [
             'section' => $section,
-            'data' => $this->getSectionData($event, $section)
+            'data' => $this->getSectionData($event, $section),
         ];
     }
 
     /**
      * Validating Event and token
-     * @param int $eventId
-     * @param string $guestToken
-     * @return array
      */
     private function validateEventAndGuest(int $eventId, string $guestToken): array
     {
@@ -99,7 +84,7 @@ class PublicEventService
             ->where('event_id', $event->id)
             ->first();
 
-        if (!$guest) {
+        if (! $guest) {
             throw new ModelNotFoundException('Invalid guest token');
         }
 
@@ -108,32 +93,28 @@ class PublicEventService
 
     /**
      * Validating Sections
-     * @param string $section
-     * @return void
      */
     private function validateSection(string $section): void
     {
         $allowedSections = ['hero', 'details', 'location', 'rsvp', 'save_the_date', 'gallery'];
 
-        if (!in_array($section, $allowedSections)) {
+        if (! in_array($section, $allowedSections)) {
             throw new InvalidArgumentException('Invalid section');
         }
     }
 
     /**
      * Theme data.
-     * @param Events $event
-     * @return array
      */
     private function getEventThemeData(Events $event): array
     {
         $theme = $event->theme;
 
-        if (!$theme) {
+        if (! $theme) {
             return [
                 'config' => $this->themeService->resolveConfig([]),
                 'assets' => [],
-                'has_custom_theme' => false
+                'has_custom_theme' => false,
             ];
         }
 
@@ -143,14 +124,12 @@ class PublicEventService
         return [
             'config' => $resolvedConfig,
             'assets' => $assets,
-            'has_custom_theme' => true
+            'has_custom_theme' => true,
         ];
     }
 
     /**
      * Getting theme assets
-     * @param $theme
-     * @return array
      */
     private function formatThemeAssets($theme): array
     {
@@ -164,7 +143,7 @@ class PublicEventService
                             'id' => $asset->id,
                             'url' => $asset->full_url,
                             'alt_text' => $asset->alt_text,
-                            'file_name' => $asset->file_name
+                            'file_name' => $asset->file_name,
                         ];
                     });
                 });
@@ -173,8 +152,6 @@ class PublicEventService
 
     /**
      * Formatting api data for the event.
-     * @param Events $event
-     * @return array
      */
     private function formatEventData(Events $event): array
     {
@@ -189,18 +166,16 @@ class PublicEventService
             'dress_code' => $event->dressCode,
             'additional_info' => $event->additionalInfo,
             'is_public' => $event->isPublic ?? false,
-            'created_at' => $event->created_at->toISOString()
+            'created_at' => $event->created_at->toISOString(),
         ];
     }
 
     /**
      * Formatting location data.
-     * @param Events $event
-     * @return array|null
      */
     private function formatLocationData(Events $event): ?array
     {
-        if (!$event->location) {
+        if (! $event->location) {
             return null;
         }
 
@@ -211,15 +186,13 @@ class PublicEventService
             'state' => $event->location->state,
             'coordinates' => [
                 'lat' => $event->location->latitude,
-                'lng' => $event->location->longitude
-            ]
+                'lng' => $event->location->longitude,
+            ],
         ];
     }
 
     /**
      * Formatting guest data
-     * @param Guest $guest
-     * @return array
      */
     private function formatGuestData(Guest $guest): array
     {
@@ -234,29 +207,28 @@ class PublicEventService
             'rsvp_dietary_restrictions' => $guest->rsvp_dietary_restrictions,
             'rsvp_submitted_at' => $guest->rsvp_submitted_at?->toISOString(),
             'can_bring_guests' => $guest->can_bring_guests ?? true,
-            'max_guests' => $guest->max_guests ?? 1
+            'max_guests' => $guest->max_guests ?? 1,
         ];
     }
 
     /**
      * Getting section data.
-     * @param Events $event
-     * @param string $section
+     *
      * @return array|string[]
      */
     private function getSectionData(Events $event, string $section): array
     {
-        $baseData = match($section) {
+        $baseData = match ($section) {
             'details' => [
                 'name' => $event->eventName,
                 'description' => $event->eventDescription,
                 'date' => $event->eventDate,
                 'time' => [
                     'start' => $event->startTime,
-                    'end' => $event->endTime
+                    'end' => $event->endTime,
                 ],
                 'dress_code' => $event->dressCode,
-                'additional_info' => $event->additionalInfo
+                'additional_info' => $event->additionalInfo,
             ],
 
             'location' => [
@@ -267,12 +239,12 @@ class PublicEventService
                 'zip_code' => $event->location?->zip_code,
                 'coordinates' => [
                     'lat' => $event->location?->latitude,
-                    'lng' => $event->location?->longitude
-                ]
+                    'lng' => $event->location?->longitude,
+                ],
             ],
 
             default => [
-                'section_name' => $section
+                'section_name' => $section,
             ]
         };
 

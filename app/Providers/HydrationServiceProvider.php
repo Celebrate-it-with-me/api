@@ -15,8 +15,6 @@ class HydrationServiceProvider extends ServiceProvider
 {
     /**
      * Registers hydration services.
-     *
-     * @return void
      */
     public function register(): void
     {
@@ -32,7 +30,6 @@ class HydrationServiceProvider extends ServiceProvider
     /**
      * Boots the application services and performs environment-specific initialization.
      *
-     * @return void
      * @throws BindingResolutionException
      */
     public function boot(): void

@@ -26,5 +26,4 @@ class GuestInvitationResource extends JsonResource
             'attemptedBy' => $this->attempted_by,
         ];
     }
-    
 }

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description');
             $table->json('custom_fields');
             $table->dateTime('confirmation_deadline');
-            
+
             $table->foreign('event_id')->references('id')->on('events');
             $table->timestamps();
         });

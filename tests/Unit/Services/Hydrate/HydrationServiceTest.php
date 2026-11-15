@@ -1,11 +1,11 @@
 <?php
 
 use App\Http\Services\AppServices\Hydrate\EventAuthorizationService;
+use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\AppServices\Hydrate\EventDataLoader;
 use App\Http\Services\AppServices\Hydrate\EventRepository;
 use App\Http\Services\AppServices\Hydrate\HydrationResponseBuilder;
 use App\Http\Services\AppServices\Hydrate\HydrationService;
-use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Models\Events;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -16,7 +16,6 @@ use Illuminate\Support\Collection;
  * These tests demonstrate the improved testability of the refactored code.
  * Using Pest for cleaner, more readable test syntax.
  */
-
 beforeEach(function () {
     // Setup common mocks
     $this->eventRepository = Mockery::mock(EventRepository::class);
@@ -213,7 +212,7 @@ describe('HydrationService', function () {
 describe('EventAuthorizationService', function () {
 
     it('checks if user can view event', function () {
-        $service = new EventAuthorizationService();
+        $service = new EventAuthorizationService;
         $user = User::factory()->create();
         $event = Events::factory()->create();
 
@@ -223,7 +222,7 @@ describe('EventAuthorizationService', function () {
     });
 
     it('returns user permissions for an event', function () {
-        $service = new EventAuthorizationService();
+        $service = new EventAuthorizationService;
         $user = User::factory()->create();
         $event = Events::factory()->create();
 
@@ -235,7 +234,7 @@ describe('EventAuthorizationService', function () {
 describe('EventRepository', function () {
 
     it('retrieves active event with all relations', function () {
-        $repository = new EventRepository();
+        $repository = new EventRepository;
         $user = User::factory()->create(['last_active_event_id' => null]);
 
         $result = $repository->getActiveEventWithRelations($user);
@@ -244,7 +243,7 @@ describe('EventRepository', function () {
     });
 
     it('returns null when user has no last active event', function () {
-        $repository = new EventRepository();
+        $repository = new EventRepository;
         $user = User::factory()->create(['last_active_event_id' => null]);
 
         $result = $repository->getActiveEventWithRelations($user);
@@ -253,7 +252,7 @@ describe('EventRepository', function () {
     });
 
     it('checks if event exists', function () {
-        $repository = new EventRepository();
+        $repository = new EventRepository;
 
         $exists = $repository->exists(999999);
 

@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\SaveTheDate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\SaveTheDate>
+ * @extends Factory<SaveTheDate>
  */
 class SaveTheDateFactory extends Factory
 {

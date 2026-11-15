@@ -23,8 +23,7 @@ class TableAssignment extends Model
         'assigned_at' => 'datetime',
         'assigned_by' => 'integer',
     ];
-    
-    
+
     /**
      * Get the table this assignment belongs to.
      */
@@ -32,7 +31,7 @@ class TableAssignment extends Model
     {
         return $this->belongsTo(Table::class);
     }
-    
+
     /**
      * Get the guest assigned.
      */
@@ -40,7 +39,7 @@ class TableAssignment extends Model
     {
         return $this->belongsTo(Guest::class);
     }
-    
+
     /**
      * Get the user who made the assignment.
      */
@@ -48,7 +47,7 @@ class TableAssignment extends Model
     {
         return $this->belongsTo(User::class, 'assigned_by');
     }
-    
+
     /**
      * Scope: Filter by table
      */
@@ -56,7 +55,7 @@ class TableAssignment extends Model
     {
         return $query->where('table_id', $tableId);
     }
-    
+
     /**
      * Scope: Filter by guest
      */
@@ -64,7 +63,7 @@ class TableAssignment extends Model
     {
         return $query->where('guest_id', $guestId);
     }
-    
+
     /**
      * Scope: Recent assignments first
      */
@@ -72,7 +71,7 @@ class TableAssignment extends Model
     {
         return $query->orderBy('assigned_at', 'desc');
     }
-    
+
     /**
      * Boot method to set assigned_at automatically
      */

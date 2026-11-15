@@ -6,8 +6,6 @@ use App\Support\Notifications\NotificationEntities;
 use App\Support\Notifications\NotificationKeys;
 use App\Support\Notifications\NotificationMetaMap;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class SuggestedMusicNotification extends Notification
@@ -15,9 +13,13 @@ class SuggestedMusicNotification extends Notification
     use Queueable;
 
     protected int $eventId;
+
     protected int $suggestionId;
+
     protected string $songTitle;
+
     protected ?string $artist;
+
     protected array $actor;
 
     /**
@@ -29,8 +31,7 @@ class SuggestedMusicNotification extends Notification
         string $songTitle,
         string $artist,
         array $actor
-    )
-    {
+    ) {
         $this->eventId = $eventId;
         $this->suggestionId = $suggestionId;
         $this->songTitle = $songTitle;

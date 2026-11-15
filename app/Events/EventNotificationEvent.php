@@ -10,10 +10,15 @@ class EventNotificationEvent
     use Dispatchable, SerializesModels;
 
     public string $key;
+
     public int $eventId;
+
     public ?int $entityId;
+
     public array $actor;
+
     public int $ownerUserId;
+
     public array $payload;
 
     /**

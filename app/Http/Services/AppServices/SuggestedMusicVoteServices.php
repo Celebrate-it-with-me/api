@@ -29,9 +29,9 @@ class SuggestedMusicVoteServices
             ->where('event_id', $eventId)
             ->first();
 
-        if (!$guest) {
+        if (! $guest) {
             throw ValidationException::withMessages([
-                'accessCode' => 'Invalid access code for this event.'
+                'accessCode' => 'Invalid access code for this event.',
             ]);
         }
 
@@ -39,9 +39,9 @@ class SuggestedMusicVoteServices
         if ($guest->parent_id !== null) {
             $mainGuest = $guest->parent;
 
-            if (!$mainGuest) {
+            if (! $mainGuest) {
                 throw ValidationException::withMessages([
-                    'accessCode' => 'Main guest not found.'
+                    'accessCode' => 'Main guest not found.',
                 ]);
             }
 
@@ -78,6 +78,7 @@ class SuggestedMusicVoteServices
 
     /**
      * Store or update vote (with toggle logic) - using accessCode
+     *
      * @throws Throwable
      */
     public function storeOrUpdate(SuggestedMusic $suggestedMusic, string $accessCode): array
@@ -85,14 +86,14 @@ class SuggestedMusicVoteServices
         $mainGuest = $this->getMainGuestFromCode($accessCode, $suggestedMusic->event_id);
         $direction = $this->request->get('direction'); // 'up' or 'down'
 
-        return DB::transaction(function() use ($suggestedMusic, $mainGuest, $direction) {
+        return DB::transaction(function () use ($suggestedMusic, $mainGuest, $direction) {
             // Find existing vote
             $existingVote = SuggestedMusicVote::where('suggested_music_id', $suggestedMusic->id)
                 ->where('guest_id', $mainGuest->id)
                 ->first();
 
             // Scenario 1: No existing vote - CREATE NEW
-            if (!$existingVote) {
+            if (! $existingVote) {
                 // Check if user has available votes
                 $totalVotes = 1 + $mainGuest->companions()->count();
                 $votesUsed = SuggestedMusicVote::where('guest_id', $mainGuest->id)->count();
@@ -100,7 +101,7 @@ class SuggestedMusicVoteServices
 
                 if ($available <= 0) {
                     throw ValidationException::withMessages([
-                        'votes' => 'You have no votes remaining.'
+                        'votes' => 'You have no votes remaining.',
                     ]);
                 }
 

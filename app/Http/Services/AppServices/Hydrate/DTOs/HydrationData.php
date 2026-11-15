@@ -18,8 +18,8 @@ class HydrationData
         public mixed $location = null,
         public ?array $comments = null,
         public ?array $userPermissions = null,
-        public Collection $eventTypes = new Collection(),
-        public Collection $eventPlans = new Collection(),
+        public Collection $eventTypes = new Collection,
+        public Collection $eventPlans = new Collection,
     ) {}
 
     /**
@@ -48,15 +48,15 @@ class HydrationData
     /**
      * Creates an empty instance of the class with optionally provided collections.
      *
-     * @param Collection|null $events Optional collection of events. Defaults to null.
-     * @param Collection $eventTypes Collection of event types. Defaults to an empty collection.
-     * @param Collection $eventPlans Collection of event plans. Defaults to an empty collection.
+     * @param  Collection|null  $events  Optional collection of events. Defaults to null.
+     * @param  Collection  $eventTypes  Collection of event types. Defaults to an empty collection.
+     * @param  Collection  $eventPlans  Collection of event plans. Defaults to an empty collection.
      * @return self Returns a new instance of the class.
      */
     public static function empty(
         ?Collection $events = null,
-        Collection $eventTypes = new Collection(),
-        Collection $eventPlans = new Collection(),
+        Collection $eventTypes = new Collection,
+        Collection $eventPlans = new Collection,
     ): self {
         return new self(
             events: $events,

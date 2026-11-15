@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BackgroundMusic extends Model
 {
     protected $table = 'background_music';
-    
+
     protected $fillable = [
         'event_id',
         'icon_size',
@@ -18,15 +18,13 @@ class BackgroundMusic extends Model
         'song_url',
         'title',
     ];
-    
+
     /**
      * Define a relationship to the Events model.
      *
      * This function establishes a "Belongs To" relationship
      * with the Events model, associating the current model's
      * 'event_id' column with the 'id' column in the Events table.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {

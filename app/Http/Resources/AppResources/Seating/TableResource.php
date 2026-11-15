@@ -5,7 +5,6 @@ namespace App\Http\Resources\AppResources\Seating;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-
 class TableResource extends JsonResource
 {
     /**
@@ -24,19 +23,18 @@ class TableResource extends JsonResource
             'priority' => $this->priority,
             'reserved_for' => $this->reserved_for,
             'location' => $this->location,
-            
+
             // Computed attributes
             'available_seats' => $this->available_seats,
             'occupancy_percentage' => $this->occupancy_percentage,
             'is_full' => $this->isFull(),
-            
+
             // Assigned guests (when loaded)
             'assigned_guests' => SeatGuestResource::collection($this->whenLoaded('assignedGuests')),
-            
+
             // Metadata
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
-    
 }

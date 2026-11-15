@@ -5,12 +5,19 @@ namespace App\Support\Notifications;
 final class NotificationEntities
 {
     public const EVENT = 'event';
+
     public const LOCATION = 'location';
+
     public const RSVP = 'rsvp';
+
     public const COMMENT = 'comment';
+
     public const MUSIC_SUGGESTION = 'music_suggestion';
+
     public const BUDGET = 'budget';
+
     public const BUDGET_ITEM = 'budget_item';
+
     public const SAVE_THE_DATE = 'save_the_date';
 
     /**

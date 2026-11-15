@@ -37,5 +37,4 @@ class EventCommentResource extends JsonResource
     {
         return $author->name;
     }
-
 }

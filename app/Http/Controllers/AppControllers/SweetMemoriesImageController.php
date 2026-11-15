@@ -26,8 +26,6 @@ class SweetMemoriesImageController extends Controller
 
     /**
      * Get all event sweet memories images.
-     * @param Events $event
-     * @return AnonymousResourceCollection
      */
     public function index(Events $event): AnonymousResourceCollection
     {
@@ -37,7 +35,7 @@ class SweetMemoriesImageController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreSweetMemoriesImageRequest $request, Events $event): AnonymousResourceCollection | JsonResponse
+    public function store(StoreSweetMemoriesImageRequest $request, Events $event): AnonymousResourceCollection|JsonResponse
     {
         try {
             return SweetMemoriesImageResource::collection($this->sweetMemoriesImageServices->create($event));
@@ -50,7 +48,6 @@ class SweetMemoriesImageController extends Controller
 
     /**
      * Update the specified resource in storage.
-     *
      */
     public function update(UpdateSweetMemoriesImageRequest $request, Events $event, SweetMemoriesImage $sweetMemoriesImage): JsonResponse
     {

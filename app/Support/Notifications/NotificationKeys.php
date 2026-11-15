@@ -6,30 +6,40 @@ final class NotificationKeys
 {
     // Events
     public const EVENT_CREATED = 'event.created';
+
     public const EVENT_UPDATED = 'event.updated';
+
     public const EVENT_PUBLISHED = 'event.published';
 
     // Locations
     public const LOCATION_CREATED = 'location.created';
+
     public const LOCATION_UPDATED = 'location.updated';
+
     public const LOCATION_DELETED = 'location.deleted';
 
     // RSVP
     public const RSVP_CONFIRMED = 'rsvp.confirmed';
+
     public const RSVP_DECLINED = 'rsvp.declined';
 
     // Comments
     public const COMMENT_CREATED = 'comment.created';
+
     public const COMMENT_UPDATED = 'comment.updated';
+
     public const COMMENT_DELETED = 'comment.deleted';
 
     // Suggested Music
     public const MUSIC_SUGGESTED = 'music.suggested';
+
     public const MUSIC_REACTED = 'music.reacted';
 
     // Budget
     public const BUDGET_ITEM_CREATED = 'budget.item_created';
+
     public const BUDGET_ITEM_PAID = 'budget.item_paid';
+
     public const BUDGET_ITEM_REMINDER = 'budget.item_reminder';
 
     // Save the date
@@ -70,5 +80,4 @@ final class NotificationKeys
             self::SAVE_THE_DATE_UPDATED,
         ];
     }
-
 }

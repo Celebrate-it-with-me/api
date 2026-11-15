@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ThemeAssetFactory;
 use Illuminate\Contracts\Routing\UrlGenerator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,9 +11,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ThemeAsset extends Model
 {
-    /** @use HasFactory<\Database\Factories\ThemeAssetFactory> */
+    /** @use HasFactory<ThemeAssetFactory> */
     use HasFactory;
-
 
     protected $fillable = [
         'event_theme_id',
@@ -35,9 +35,6 @@ class ThemeAsset extends Model
 
     /**
      * Establishes a relationship indicating that this model belongs to an EventTheme.
-     *
-     * @return BelongsTo
-     *
      */
     public function eventTheme(): BelongsTo
     {
@@ -66,9 +63,6 @@ class ThemeAsset extends Model
 
     /**
      * Scope by section
-     * @param $query
-     * @param $section
-     * @return mixed
      */
     public function scopeSection($query, $section): mixed
     {
@@ -77,9 +71,6 @@ class ThemeAsset extends Model
 
     /**
      * Scope by asset type
-     * @param $query
-     * @param $type
-     * @return mixed
      */
     public function scopeAssetType($query, $type): mixed
     {
@@ -88,8 +79,6 @@ class ThemeAsset extends Model
 
     /**
      * Scope for active assets
-     * @param $query
-     * @return mixed
      */
     public function scopeActive($query): mixed
     {
@@ -98,7 +87,6 @@ class ThemeAsset extends Model
 
     /**
      * Check if the asset is an image
-     * @return bool
      */
     public function isImage(): bool
     {

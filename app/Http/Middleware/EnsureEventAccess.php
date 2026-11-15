@@ -51,7 +51,7 @@ class EnsureEventAccess
         if (isset($params['menuItem'], $params['menu']) && (int) $params['menuItem']->menu_id !== (int) $params['menu']->id) {
             abort(404);
         }
-        
+
         $needed = $permission ?? (in_array($request->method(), self::READ_METHODS, true) ? 'view_event' : 'edit_event');
 
         if (! in_array($needed, $user->getEventPermissions($event), true)) {

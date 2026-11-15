@@ -19,7 +19,7 @@ class GuestServices
     public function __construct(
         private readonly CalculateAccessCodeService $accessCodeService
     ) {
-        $this->guest = new MainGuest();
+        $this->guest = new MainGuest;
     }
 
     /**
@@ -35,11 +35,9 @@ class GuestServices
      * Get event guests.
      */
 
-
     /**
      * Create event guest.
-     * @param Events $event
-     * @return Model|Builder
+     *
      * @throws Exception
      */
     public function create(Events $event): Model|Builder
@@ -64,8 +62,8 @@ class GuestServices
             'code' => $this->accessCodeService->generateForEvent($event),
         ]);
 
-        if (!$mainGuest) {
-            throw new \Exception('Failed to create the main guest.');
+        if (! $mainGuest) {
+            throw new Exception('Failed to create the main guest.');
         }
 
         if (count($namedCompanions) > 0) {
@@ -82,7 +80,6 @@ class GuestServices
                 ]);
             }
         }
-
 
         if ($unnamedCompanions > 0) {
             for ($i = 0; $i < $unnamedCompanions; $i++) {
@@ -116,5 +113,4 @@ class GuestServices
 
         return $mainGuest;
     }
-
 }

@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\EventUserRol;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EventUserRol>
+ * @extends Factory<EventUserRol>
  */
 class EventUserRoleFactory extends Factory
 {
