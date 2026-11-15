@@ -2,10 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Events;
+use App\Models\Menu;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Menu>
+ * @extends Factory<Menu>
  */
 class MenuFactory extends Factory
 {
@@ -17,7 +19,12 @@ class MenuFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'event_id' => Events::factory(),
+            'title' => fake()->words(3, true),
+            'description' => fake()->sentence(),
+            'allow_multiple_choices' => false,
+            'allow_custom_request' => false,
+            'is_default' => false,
         ];
     }
 }

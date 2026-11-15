@@ -2,7 +2,7 @@
 
 use App\Http\Services\WhatsApp\MetaGateway;
 use App\Http\Services\WhatsApp\WhatsAppException;
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
@@ -85,8 +85,8 @@ it('reports a failed connection check', function () {
 });
 
 it('normalizes and masks phones', function () {
-    expect(Phone::normalize('(305) 555-0123'))->toBe('+13055550123')->and(Phone::normalize('+52 55 1234 5678'))->toBe('+525512345678')
-        ->and(Phone::normalize('1-305-555-0123'))->toBe('+13055550123')->and(Phone::normalize('0013055550123'))->toBe('+13055550123')
-        ->and(Phone::normalize('555-0123'))->toBeNull()->and(Phone::normalize(''))->toBeNull()->and(Phone::normalize(null))->toBeNull();
-    expect(Phone::mask('+13055550123'))->toBe('+1305***0123');
+    expect(PhoneNumber::e164('(305) 555-0123'))->toBe('+13055550123')->and(PhoneNumber::e164('+52 55 1234 5678'))->toBe('+525512345678')
+        ->and(PhoneNumber::e164('1-305-555-0123'))->toBe('+13055550123')->and(PhoneNumber::e164('0013055550123'))->toBe('+13055550123')
+        ->and(PhoneNumber::e164('555-0123'))->toBeNull()->and(PhoneNumber::e164(''))->toBeNull()->and(PhoneNumber::e164(null))->toBeNull();
+    expect(PhoneNumber::mask('+13055550123'))->toBe('+1305***0123');
 });

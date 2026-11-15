@@ -9,7 +9,7 @@ use App\Http\Services\WhatsApp\WhatsAppService;
 use App\Models\Events;
 use App\Models\WhatsApp\Message;
 use App\Models\WhatsApp\OptOut;
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use Illuminate\Bus\Queueable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -91,7 +91,7 @@ class SendWhatsAppMessage implements ShouldQueue
                 $id = $gateway->sendTemplate($message->to_phone, $template->meta_name, $message->locale, $composer->positional($template, $message->params ?? []), $payloads);
             }
         } catch (WhatsAppException $e) {
-            Log::warning('whatsapp send failed', ['message' => $message->id, 'to' => Phone::mask($message->to_phone), 'code' => $e->errorCode, 'retryable' => $e->retryable]);
+            Log::warning('whatsapp send failed', ['message' => $message->id, 'to' => PhoneNumber::mask($message->to_phone), 'code' => $e->errorCode, 'retryable' => $e->retryable]);
 
             // The outcome is unknown (timeout, 5xx): Meta may have delivered it. Never resend by itself.
             if ($e->ambiguous) {

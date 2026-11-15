@@ -54,6 +54,34 @@ class PhoneNumber
         return ['e164' => null, 'status' => self::INVALID];
     }
 
+    /** Just the E.164 string, or null when the number is empty or cannot be one (WhatsApp sending and matching). */
+    public static function e164(?string $raw): ?string
+    {
+        return self::normalize($raw)['e164'];
+    }
+
+    public static function valid(string $e164): bool
+    {
+        return (bool) preg_match('/^\+[1-9]\d{7,14}$/', $e164);
+    }
+
+    /** `+1305***0123`. Never log or show a full number outside the organizer's own guest list. */
+    public static function mask(?string $e164): ?string
+    {
+        if ($e164 === null || $e164 === '') {
+            return null;
+        }
+        $len = strlen($e164);
+
+        return $len <= 9 ? str_repeat('*', $len) : substr($e164, 0, 5) . '***' . substr($e164, -4);
+    }
+
+    /** `...1234` for ids shown in the admin. */
+    public static function tail(?string $value): ?string
+    {
+        return $value ? '...' . substr($value, -4) : null;
+    }
+
     /** E.164 allows 8 to 15 digits (we ask for at least 8 so a short local number is not taken as international). */
     private static function fits(string $digits): bool
     {

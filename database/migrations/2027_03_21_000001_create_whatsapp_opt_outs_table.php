@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +21,7 @@ return new class extends Migration
         DB::table('guests')->whereNotNull('whatsapp_opted_out_at')->select(['id', 'phone', 'whatsapp_opted_out_at'])->orderBy('id')
             ->chunkById(500, function ($guests) {
                 foreach ($guests as $guest) {
-                    $phone = Phone::normalize($guest->phone);
+                    $phone = PhoneNumber::e164($guest->phone);
                     if ($phone) {
                         DB::table('whatsapp_opt_outs')->insertOrIgnore(['phone_e164' => $phone, 'created_at' => $guest->whatsapp_opted_out_at]);
                     }

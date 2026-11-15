@@ -107,7 +107,6 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/purchase/checkout',
             'GET api/v1/app/event/{event}/purchase/quote',
             'GET api/v1/app/event/{event}/purchase/status',
-            'GET api/v1/app/exports/download',
             'GET api/v1/app/event/{event}/roster/export',
             'GET api/v1/app/event/{event}/roster/export/venue',
             'GET api/v1/app/account/purchases', 'GET api/v1/app/account/invoices/{invoice}/pdf', 'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
