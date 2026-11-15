@@ -8,6 +8,15 @@ use Illuminate\Validation\Rule;
 
 class InvitationRsvpRequest extends FormRequest
 {
+    /** Bidi controls (LRM, RLM, LRE..RLO, LRI..PDI) can reverse text on screen and in exports: refused in free text. */
+    private const BIDI = '\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}';
+
+    /** A name: no control characters at all (not even a line break), no direction controls. */
+    private const NAME_PATTERN = '/^[^\p{Cc}' . self::BIDI . ']+$/u';
+
+    /** A note: plain text where only line breaks (LF, CR) are allowed among the control characters. */
+    private const NOTE_PATTERN = '/^[^\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F' . self::BIDI . ']*$/u';
+
     public function authorize(): bool
     {
         // The guest code in the URL is the credential; it is checked in the controller.
@@ -26,8 +35,8 @@ class InvitationRsvpRequest extends FormRequest
             'companions.*.id' => ['required', 'integer', 'distinct'],
             'companions.*.rsvpStatus' => ['required', 'string', $status],
             // Optional: a missing key leaves things as they are; a null/empty note clears it.
-            'companions.*.name' => ['sometimes', 'bail', 'required', 'string', 'min:2', 'max:120', 'regex:/^[^\p{Cc}]+$/u'],
-            'note' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'companions.*.name' => ['sometimes', 'bail', 'required', 'string', 'min:2', 'max:120', 'regex:' . self::NAME_PATTERN],
+            'note' => ['sometimes', 'nullable', 'string', 'max:500', 'regex:' . self::NOTE_PATTERN],
         ];
     }
 
@@ -37,6 +46,7 @@ class InvitationRsvpRequest extends FormRequest
         return [
             'note.max' => 'too_long',
             'note.string' => 'invalid_characters',
+            'note.regex' => 'invalid_characters',
             'companions.max' => 'invalid',
             'companions.array' => 'invalid',
             'companions.*.id.required' => 'invalid',

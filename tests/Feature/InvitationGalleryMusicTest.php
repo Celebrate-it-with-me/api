@@ -489,6 +489,25 @@ describe('RSVP note and companion names', function () {
         '121 letters' => [str_repeat('a', 121), 'too_long'],
         'control character' => ["Ana\x07 López", 'invalid_characters'],
         'newline' => ["Ana\nLópez", 'invalid_characters'],
+        'right-to-left override' => ["Ana\u{202E}López", 'invalid_characters'],
+        'isolate' => ["Ana\u{2066}López", 'invalid_characters'],
+        'direction mark' => ["Ana\u{200F}López", 'invalid_characters'],
+    ]);
+
+    it('refuses direction and control characters in the note but keeps line breaks and accents', function (string $note, bool $valid) {
+        galleryEvent();
+
+        $response = rsvpPost($this, ['note' => $note]);
+        $valid ? $response->assertOk() : $response->assertStatus(422)->assertJsonPath('errors.note.0', 'invalid_characters');
+    })->with([
+        'line breaks' => ["Hola\r\nllegamos tarde ñ 🎉", true],
+        'bell' => ["Hola\x07", false],
+        'escape' => ["Hola\x1B[31m", false],
+        'tab' => ["Hola\tmundo", false],
+        'rlo' => ["Hola \u{202E}evol", false],
+        'lri' => ["Hola \u{2066}x", false],
+        'rlm' => ["Hola\u{200F}mundo", false],
+        'nul' => ["Hola\0mundo", false],
     ]);
 
     it('accepts names of 2 and 120 characters', function () {
