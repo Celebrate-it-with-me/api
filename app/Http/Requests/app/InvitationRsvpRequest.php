@@ -8,8 +8,12 @@ use Illuminate\Validation\Rule;
 
 class InvitationRsvpRequest extends FormRequest
 {
-    /** Bidi controls (LRM, RLM, LRE..RLO, LRI..PDI) can reverse text on screen and in exports: refused in free text. */
-    private const BIDI = '\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}';
+    /**
+     * Bidi controls (LRM, RLM, LRE..RLO, LRI..PDI) can reverse text on screen and in exports, and zero-width characters
+     * (ZWSP, ZWNJ, ZWJ, word joiner, BOM) make two names look identical: refused in free text. Note that ZWJ also
+     * glues emoji sequences, so a family or flag-with-ZWJ emoji is refused too.
+     */
+    private const BIDI = '\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}\x{2066}-\x{2069}\x{FEFF}';
 
     /** A name: no control characters at all (not even a line break), no direction controls. */
     private const NAME_PATTERN = '/^[^\p{Cc}' . self::BIDI . ']+$/u';

@@ -46,7 +46,7 @@ class BackgroundMusicController extends Controller
     public function destroy(Request $request, Events $event): JsonResponse
     {
         if (! $this->music->delete($event)) {
-            return response()->json(['message' => 'This event has no background music.', 'code' => 'background_music_not_found'], 404);
+            return response()->json(['message' => __('This event has no background music.'), 'code' => 'background_music_not_found'], 404);
         }
 
         return response()->json(['data' => null]);

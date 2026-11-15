@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Events;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -55,7 +56,7 @@ class EnsureEventAccess
         $needed = $permission ?? (in_array($request->method(), self::READ_METHODS, true) ? 'view_event' : 'edit_event');
 
         if (! in_array($needed, $user->getEventPermissions($event), true)) {
-            abort(403, __('errors.permission.event_action'));
+            throw new HttpResponseException(response()->json(['message' => __('errors.permission.event_action'), 'code' => 'forbidden'], 403));
         }
 
         return $next($request);
