@@ -8,7 +8,6 @@ use App\Models\AssistantCustomTask;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 /**
  * Smart assistant, phase 1 (docs/plans/assistant-contract.md). Reading needs `view_event`; every write needs
@@ -34,11 +33,13 @@ class AssistantController extends Controller
     {
         $days = null;
         if ($action === 'snooze') {
-            $validator = Validator::make($request->only('days'), ['days' => ['nullable', 'integer', 'between:1,90']]);
-            if ($validator->fails()) {
-                return $this->invalid(['days' => ['invalid_days']]);
+            $raw = $request->input('days');
+            if ($raw !== null) {
+                $days = is_int($raw) || (is_string($raw) && $raw !== '') ? filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 90]]) : false;
+                if ($days === false) {
+                    return $this->invalid(['days' => ['invalid_days']]);
+                }
             }
-            $days = $request->filled('days') ? (int) $request->input('days') : null;
         }
 
         $task = $this->assistant->act($event, $request->user(), $key, self::ACTIONS[$action], $this->lang($request), $days);
@@ -127,7 +128,7 @@ class AssistantController extends Controller
 
         if (array_key_exists('due_date', $input)) {
             $date = $input['due_date'];
-            if ($date !== null && (! is_string($date) || Validator::make(['d' => $date], ['d' => ['date_format:Y-m-d']])->fails())) {
+            if ($date !== null && ! $this->isDate($date)) {
                 $errors['due_date'] = ['invalid_date'];
             } else {
                 $data['due_date'] = $date;
@@ -144,6 +145,16 @@ class AssistantController extends Controller
         }
 
         return $errors === [] ? $data : $this->invalid($errors);
+    }
+
+    private function isDate(mixed $value): bool
+    {
+        if (! is_string($value)) {
+            return false;
+        }
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value;
     }
 
     private function customTask(Events $event, int $id): ?AssistantCustomTask
