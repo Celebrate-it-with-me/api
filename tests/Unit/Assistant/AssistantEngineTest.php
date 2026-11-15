@@ -324,3 +324,53 @@ describe('detectors', function () {
         'manual step' => [null, [], null],
     ]);
 });
+
+describe('reason wording', function () {
+    function asstReason(string $key, string $code, string $lang, array $ctx, int $impact = 0): string
+    {
+        $def = TaskDefinition::fromCatalogRow($key, AssistantTaskSeeder::CATALOG[$key]);
+        $task = new EvaluatedTask($def, 'next', null, [], null, false, $impact, 1.0, true, $code);
+
+        return (new AssistantReasons)->render($task, $lang, $ctx + ['months' => 6.0, 'days' => 180, 'unlocks' => 0, 'late' => 1.0, 'guests' => 0, 'done' => 0])['reason'];
+    }
+
+    it('agrees singular, plural and zero in both languages', function (string $key, string $code, string $lang, array $ctx, string $expected, int $impact = 0) {
+        expect(asstReason($key, $code, $lang, $ctx, $impact))->toContain($expected);
+    })->with([
+        'es 1 day' => ['rehearsal', 'event_close', 'es', ['days' => 1], 'Falta 1 día.'],
+        'es 2 days' => ['rehearsal', 'event_close', 'es', ['days' => 2], 'Faltan 2 días.'],
+        'en 1 day' => ['rehearsal', 'event_close', 'en', ['days' => 1], '1 day to go.'],
+        'en 5 days' => ['rehearsal', 'event_close', 'en', ['days' => 5], '5 days to go.'],
+        'es 1 month' => ['program', 'time_window', 'es', ['months' => 1.0], 'Falta 1 mes y este es el momento ideal.'],
+        'es 1,5 months' => ['program', 'time_window', 'es', ['months' => 1.5], 'Faltan 1,5 meses'],
+        'en 1.5 months' => ['program', 'time_window', 'en', ['months' => 1.5], '1.5 months to go'],
+        'en 1 month' => ['program', 'time_window', 'en', ['months' => 1.0], '1 month to go'],
+        'es 0 months' => ['program', 'time_window', 'es', ['months' => 0.02], 'Falta menos de un mes y este'],
+        'en 0 months' => ['program', 'time_window', 'en', ['months' => 0.02], 'less than a month to go'],
+        'es late 1,4' => ['book_venue', 'overdue', 'es', ['late' => 1.4], '1,4 meses antes'],
+        'en late 1.4' => ['book_venue', 'overdue', 'en', ['late' => 1.4], '1.4 months out'],
+        'es late 1' => ['book_venue', 'overdue', 'es', ['late' => 1.0], '1 mes antes'],
+        'en late 0' => ['book_venue', 'overdue', 'en', ['late' => 0.0], 'less than a month out'],
+        'es one thing' => ['program', 'unlocks', 'es', ['unlocks' => 1], 'De esto depende otra cosa.'],
+        'es many things' => ['program', 'unlocks', 'es', ['unlocks' => 3], 'De esto dependen otras 3 cosas.'],
+        'en one thing' => ['program', 'unlocks', 'en', ['unlocks' => 1], '1 other thing depends on this.'],
+        'en many things' => ['program', 'unlocks', 'en', ['unlocks' => 3], '3 other things depend on this.'],
+        'es 1 guest' => ['rsvp_follow_up', 'time_window', 'es', ['guests' => 1], 'Hay 1 invitado sin responder.'],
+        'en 1 guest' => ['rsvp_follow_up', 'time_window', 'en', ['guests' => 1], '1 guest hasn\'t replied.'],
+        'es unlocks in why, 1' => ['book_venue', 'unlocks', 'es', ['unlocks' => 1], 'de aquí sale 1 cosa más'],
+    ]);
+
+    it('uses one decimal convention per language, in every sentence of the same reason', function () {
+        $es = asstReason('send_invitations', 'overdue', 'es', ['months' => 1.4, 'late' => 1.5]);
+        $en = asstReason('send_invitations', 'overdue', 'en', ['months' => 1.4, 'late' => 1.5]);
+
+        expect($es)->toContain('1,5 meses')->not->toContain('1.5')
+            ->and($en)->toContain('1.5 months')->not->toContain('1,5');
+    });
+
+    it('never calls the same step both "just in time" and "past the best moment"', function (string $lang) {
+        $text = asstReason('send_invitations', 'overdue', $lang, ['months' => 1.4, 'late' => 1.5]);
+
+        expect($text)->not->toMatch('/tiempo justo|just enough time/u');
+    })->with(['es', 'en']);
+});

@@ -88,7 +88,7 @@ class AssistantTaskSeeder extends Seeder
             'Con ella publicada ya puedes compartir el enlace.', 'Once it\'s live, you can share the link.'],
         'send_invitations' => ['both', 'invitations', 30, 2.5, 1.5, ['publish_invitation', 'guests_contact'], 'invitations_sent', 'guests', '/dashboard/guests',
             'Envía las invitaciones', 'Send the invitations',
-            'Faltan {months} meses: tiempo justo para que confirmen.', '{months} months out: just enough time for replies.'],
+            'Tus invitados necesitan tiempo para confirmar.', 'Guests need time to reply.'],
         'rsvp_follow_up' => ['both', 'invitations', 40, 2, 0.5, ['send_invitations'], 'rsvp_responses', 'rsvp', '/dashboard/guests?status=pending',
             'Da seguimiento a las confirmaciones', 'Follow up on RSVPs',
             'Hay {guests} invitados sin responder.', '{guests} guests haven\'t replied.'],
