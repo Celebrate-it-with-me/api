@@ -255,3 +255,26 @@ it('W6-05 accepts a well-formed woff2', function () {
     $r = PackageBuilder::good()->asset('assets/fonts/ok.woff2', PackageBuilder::woff2(random_bytes(200)))->validate();
     expect(PackageBuilder::errors($r))->not->toContain('woff2_invalid');
 });
+
+// W6-06 --------------------------------------------------------------------------------------------------------------
+
+it('W6-06 refuses deeply nested parentheses before the parser sees them (it used to crash the PHP process)', function (string $open, int $depth) {
+    // 20 000 nested calc( killed the worker with SIGSEGV (exit 139) in the report; 100 KB, under the size cap.
+    $css = '.pkg-a{width:' . str_repeat($open, $depth) . '1px' . str_repeat(')', $depth) . '}';
+    expect(strlen($css))->toBeLessThan(204_800);
+    [$out, $codes] = w6css($css);
+    expect($out)->toBeNull()->and($codes)->toContain('css_size');
+})->with([
+    'calc 20000' => ['calc(', 20000],
+    'min 15000' => ['min(', 15000],
+    'calc 17' => ['calc(', 17],
+    'plain parens' => ['(', 5000],
+]);
+
+it('W6-06 refuses deeply nested blocks and still accepts a normal nesting', function () {
+    [$out, $codes] = w6css(str_repeat('@media (min-width:1px){', 9) . '.pkg-a{color:red}' . str_repeat('}', 9));
+    expect($out)->toBeNull()->and($codes)->toContain('css_size');
+
+    [$out, $codes] = w6css('.pkg-a{width:calc(100% - calc(2rem + calc(1px + 1px)))}@media (min-width:400px){.pkg-a{color:red}}');
+    expect($codes)->toBe([])->and($out)->not->toBeNull();
+});

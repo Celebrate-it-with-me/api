@@ -28,7 +28,7 @@ class PackageInstaller
     /** @return array<string, mixed> the installed package */
     public function install(string $token, string $reason): array
     {
-        $lock = Cache::lock('template-package-install', 120);
+        $lock = Cache::lock(PackageStage::LOCK, PackageStage::LOCK_SECONDS);
         try {
             $lock->block(10);
         } catch (LockTimeoutException) {

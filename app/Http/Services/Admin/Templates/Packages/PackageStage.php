@@ -20,14 +20,17 @@ use Illuminate\Support\Str;
  */
 class PackageStage
 {
-    private const LOCK = 'template-package-install';
+    public const LOCK = 'template-package-install';
+
+    /** Seconds the install lock lives if the process dies before releasing it (W6-06: it used to be 120). */
+    public const LOCK_SECONDS = 30;
 
     public function __construct(private readonly PackageFiles $files, private readonly AdminAudit $audit) {}
 
     /** @return array{valid: bool, stageToken: string, expiresAt: string, report: array} */
     public function validate(UploadedFile $zip): array
     {
-        $lock = Cache::lock(self::LOCK, 120);
+        $lock = Cache::lock(self::LOCK, self::LOCK_SECONDS);
         try {
             $lock->block(10);
         } catch (LockTimeoutException) {
@@ -35,6 +38,8 @@ class PackageStage
         }
 
         try {
+            // Validation has its own ceiling, below the lock's life, so a slow zip cannot hold the lock after it expired.
+            @set_time_limit(self::LOCK_SECONDS - 5);
             $path = (string) $zip->getRealPath();
             $result = (new TemplatePackageValidator)->validate($path, $this->context());
             $zipSha = (string) hash_file('sha256', $path);

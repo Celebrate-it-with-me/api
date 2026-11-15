@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Services\Admin\Templates\Packages\PackageFiles;
+use App\Http\Services\Admin\Templates\Packages\PackageStage;
 use App\Http\Services\AppServices\EventLifecycleService;
 use App\Http\Services\AppServices\EventTemplateConfigValidator;
 use App\Http\Services\AppServices\TemplateCatalog;
@@ -933,5 +935,38 @@ describe('wave 6 security (W6-04)', function () {
         pkgAdmin();
         $pkg = TemplatePackage::findOrFail(pkgInstall()['id']);
         expect($pkg->storage_path)->toMatch('#^botanical/1\.0\.0-[0-9a-f]{16}$#');
+    });
+});
+
+describe('wave 6 security (W6-06)', function () {
+    it('answers a nesting bomb with a report, keeps the worker alive and leaves the install lock free', function () {
+        pkgAdmin();
+        // Random numbers between the levels keep the zip ratio under the zip-bomb check, as a real attacker would.
+        mt_srand(7);
+        $css = '.pkg-a{width:';
+        for ($i = 0; $i < 15000; $i++) {
+            $css .= 'calc(' . mt_rand(1000, 9999) . 'px+';
+        }
+        $css .= '1px' . str_repeat(')', 15000) . '}';
+        $stage = pkgUpload(PackageBuilder::good()->with('theme.css', $css))->assertOk()->json('data');
+
+        expect($stage['valid'])->toBeFalse()->and(array_column($stage['report']['errors'], 'code'))->toContain('css_size');
+        // The next upload does not meet install_busy, and the lock a crash would leave behind lives 30 s, not 120.
+        pkgUpload(PackageBuilder::good())->assertOk();
+        expect(PackageStage::LOCK_SECONDS)->toBe(30);
+        $lock = Cache::lock(PackageStage::LOCK, 5);
+        expect($lock->get())->toBeTrue();
+        $lock->release();
+    });
+
+    it('releases the install lock when the validation blows up', function () {
+        pkgAdmin();
+        $this->mock(PackageFiles::class, fn ($m) => $m->shouldReceive('write')->andThrow(new RuntimeException('disk full')));
+        $this->withoutExceptionHandling();
+        expect(fn () => pkgUpload(PackageBuilder::good()))->toThrow(RuntimeException::class);
+
+        $lock = Cache::lock(PackageStage::LOCK, 5);
+        expect($lock->get())->toBeTrue();
+        $lock->release();
     });
 });

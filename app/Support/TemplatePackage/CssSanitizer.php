@@ -233,6 +233,8 @@ class CssSanitizer
             return null;
         }
 
+        $startedAt = microtime(true);
+        $memoryBefore = memory_get_usage();
         try {
             $document = (new Parser($css, Settings::create()->beStrict()))->parse();
         } catch (\Throwable $e) {
@@ -241,6 +243,11 @@ class CssSanitizer
             return null;
         }
 
+        if (microtime(true) - $startedAt > $this->limits->cssParseSeconds || memory_get_usage() - $memoryBefore > $this->limits->cssParseBytes) {
+            $report->error($file, 'css_size', 'El CSS es demasiado costoso de analizar (tiempo o memoria).');
+
+            return null;
+        }
         $this->restrictedKeyframes = [];
         $this->pendingKeyframes = [];
         $this->ruleKinds = ['free'];
@@ -292,6 +299,12 @@ class CssSanitizer
 
             return false;
         }
+        // The parser and the serializer recurse once per level: bound the nesting before anything is parsed (W6-06).
+        if (($pos = $this->tooDeep($css)) !== null) {
+            $this->report->error($this->file, 'css_size', 'Anidamiento excesivo de paréntesis o llaves (máximo ' . self::MAX_PAREN_DEPTH . ' y ' . self::MAX_BRACE_DEPTH . ' niveles).', $this->lineOf($css, $pos));
+
+            return false;
+        }
         if (($pos = strpos($css, '\\')) !== false) {
             $this->report->error($this->file, 'css_backslash', 'Las barras invertidas (escapes) están prohibidas.', $this->lineOf($css, $pos));
 
@@ -316,6 +329,39 @@ class CssSanitizer
         }
 
         return true;
+    }
+
+    private const MAX_PAREN_DEPTH = 16;
+
+    private const MAX_BRACE_DEPTH = 8;
+
+    /** @return int|null the offset where the nesting goes over the limit */
+    private function tooDeep(string $css): ?int
+    {
+        $paren = 0;
+        $brace = 0;
+        for ($i = 0, $n = strlen($css); $i < $n; $i += 1 + strcspn($css, '(){}', $i + 1)) {
+            switch ($css[$i]) {
+                case '(':
+                    if (++$paren > self::MAX_PAREN_DEPTH) {
+                        return $i;
+                    }
+                    break;
+                case ')':
+                    $paren = max(0, $paren - 1);
+                    break;
+                case '{':
+                    if (++$brace > self::MAX_BRACE_DEPTH) {
+                        return $i;
+                    }
+                    break;
+                case '}':
+                    $brace = max(0, $brace - 1);
+                    break;
+            }
+        }
+
+        return null;
     }
 
     /** The output must satisfy the same invariants by itself, whatever the walk did. */

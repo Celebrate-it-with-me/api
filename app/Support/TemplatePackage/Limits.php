@@ -41,6 +41,10 @@ class Limits
 
     public int $imagePixels = 12_000_000;
 
+    public float $cssParseSeconds = 5.0;
+
+    public int $cssParseBytes = 100_663_296;
+
     public int $runtimeWarn = 358_400;
 
     public int $runtimeMax = 1_048_576;
