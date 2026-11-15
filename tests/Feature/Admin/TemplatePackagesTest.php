@@ -1068,3 +1068,65 @@ describe('wave 6 security (W6-08)', function () {
         expect(Artisan::output())->toContain('missing X-Content-Type-Options')->toContain('without sandbox');
     });
 });
+
+describe('wave 6 security (W6-13, W6-14, W6-15)', function () {
+    it('W6-13 ties a stage to the admin who uploaded it: another superadmin cannot install, preview or discard it', function () {
+        $a = pkgAdmin();
+        $stage = pkgUpload(PackageBuilder::good())->assertOk()->json('data');
+        $token = $stage['stageToken'];
+
+        $this->actingAsReauthed(pkgStaff());
+        $this->postJson(PKG, ['stage_token' => $token, 'reason' => 'Instalar lo de otra persona'])->assertForbidden()->assertJson(['code' => 'stage_forbidden']);
+        $this->deleteJson(PKG . "/stages/{$token}")->assertForbidden();
+        $this->postJson('/api/v1/admin/templates/preview', ['stage_token' => $token, 'eventType' => 'wedding', 'locale' => 'es'])->assertForbidden();
+        expect(TemplatePackage::count())->toBe(0);
+
+        // The owner still can.
+        $this->actingAsReauthed($a);
+        $this->postJson(PKG, ['stage_token' => $token, 'reason' => 'Instalar el paquete'])->assertCreated();
+    });
+
+    it('W6-13 audits the valid uploads and who made them', function () {
+        $a = pkgAdmin();
+        pkgUpload(PackageBuilder::good())->assertOk();
+
+        $row = AdminAuditLog::where('action', 'template.package_validated')->firstOrFail();
+        expect($row->actor_id)->toBe($a->id)
+            ->and($row->after['slug'])->toBe('botanical')
+            ->and($row->after['zipSha256'])->toMatch('/^[0-9a-f]{64}$/');
+    });
+
+    it('W6-14 keeps stages for 2 hours and at most 5 valid ones per admin (the upload limit is 6 a minute)', function () {
+        pkgAdmin();
+        expect((int) config('invitation.packages.stage_hours'))->toBe(2);
+        $tokens = [];
+        foreach (range(1, 6) as $i) {
+            $tokens[] = pkgUpload(PackageBuilder::good()->with('theme.css', ".pkg-n{$i}{color:red}"))->assertOk()->json('data.stageToken');
+        }
+        $disk = Storage::disk('template-packages');
+        $alive = array_filter($tokens, fn ($t) => $disk->exists(PackageFiles::STAGING . "/{$t}/theme.css"));
+
+        expect($alive)->toHaveCount(5)->and(array_values($alive))->toBe(array_slice($tokens, 1));
+        expect($this->postJson(PKG, ['stage_token' => $tokens[0], 'reason' => 'Instalar el paquete'])->status())->toBe(404);
+    });
+
+    it('W6-15 reserves the classic slug (and the engine keyframe prefixes) to the trusted console', function (string $slug) {
+        pkgAdmin();
+        $stage = pkgUpload(PackageBuilder::good()->json('manifest.json', fn ($m) => [...$m, 'slug' => $slug]))->assertOk()->json('data');
+
+        expect($stage['valid'])->toBeFalse()->and(array_column($stage['report']['errors'], 'code'))->toContain('slug_invalid');
+        // It must not adopt the templates of the system.
+        expect(TemplatePackage::count())->toBe(0);
+    })->with(['classic', 'ui', 'pk', 'inv']);
+
+    it('W6-15 lets the trusted console lint a reserved slug only with the explicit flag', function () {
+        $dir = sys_get_temp_dir() . '/pkg-classic-' . uniqid();
+        mkdir($dir);
+        foreach (PackageBuilder::good()->json('manifest.json', fn ($m) => [...$m, 'slug' => 'classic'])->files as $path => $bytes) {
+            @mkdir(dirname("{$dir}/{$path}"), 0777, true);
+            file_put_contents("{$dir}/{$path}", $bytes);
+        }
+        expect(Artisan::call('templates:lint', ['path' => $dir]))->toBe(1);
+        expect(Artisan::call('templates:lint', ['path' => $dir, '--allow-reserved-slugs' => true]))->toBe(0);
+    });
+});

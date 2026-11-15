@@ -61,6 +61,10 @@ class PackageStage
             $this->discard($token);
             throw PackageError::gone('stage_expired', 'La subida caducó: vuelve a subir el paquete.');
         }
+        // A stage belongs to the admin who uploaded it (W6-13): the token alone is not enough to install, preview or discard it.
+        if (($meta['uploadedBy'] ?? null) === null || $meta['uploadedBy'] !== request()->user()?->id) {
+            throw PackageError::make(403, 'stage_forbidden', 'Esta subida la hizo otra persona del equipo: súbela de nuevo.');
+        }
 
         return $meta;
     }
@@ -134,6 +138,7 @@ class PackageStage
         $meta = [
             'valid' => $result['valid'],
             'expiresAt' => $expires->toIso8601String(),
+            'uploadedBy' => request()->user()?->id,
             'zipSha256' => $zipSha,
             'zipBytes' => $zipBytes,
             'report' => $result['report'],
@@ -148,6 +153,15 @@ class PackageStage
                 'json' => $build['json'],
             ];
             $this->files->write(PackageFiles::STAGING . "/{$token}", $build['public']);
+            $this->audit->record('template.package_validated', ['template_package', null], [
+                'after' => [
+                    'slug' => $build['json']['manifest']['slug'] ?? null,
+                    'version' => $build['json']['manifest']['version'] ?? null,
+                    'zipSha256' => $zipSha,
+                    'contentHash' => $build['contentHash'],
+                    'warnings' => array_values(array_unique(array_column($result['report']['warnings'], 'code'))),
+                ],
+            ]);
         } else {
             $this->audit->record('template.package_rejected', ['template_package', null], [
                 'after' => ['zipSha256' => $zipSha, 'codes' => $result['report']['errors'] === [] ? [] : array_values(array_unique(array_column($result['report']['errors'], 'code')))],
@@ -156,7 +170,38 @@ class PackageStage
         // Throws instead of writing an empty file the install could never read (W6-11).
         $this->local()->put($this->metaPath($token), json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
+        if ($result['valid'] && $meta['uploadedBy'] !== null) {
+            $this->enforceQuota($meta['uploadedBy'], $token);
+        }
+
         return ['valid' => $result['valid'], 'stageToken' => $token, 'expiresAt' => $meta['expiresAt'], 'report' => $result['report']];
+    }
+
+    /**
+     * Each valid upload leaves a public copy on disk until it is installed, discarded or expired: an admin keeps at most
+     * `max_stages_per_admin` of them, the oldest ones are discarded (W6-14).
+     */
+    private function enforceQuota(int $adminId, string $keep): void
+    {
+        $max = max(1, (int) config('invitation.packages.max_stages_per_admin'));
+        $mine = [];
+        foreach ($this->local()->files('template-staging') as $file) {
+            $token = basename($file, '.json');
+            $meta = $this->readMeta($token);
+            if ($meta !== null && ($meta['uploadedBy'] ?? null) === $adminId && ($meta['valid'] ?? false)) {
+                $mine[$token] = $meta['expiresAt'];
+            }
+        }
+        asort($mine);
+        foreach (array_keys($mine) as $token) {
+            if (count($mine) <= $max) {
+                break;
+            }
+            if ($token !== $keep) {
+                $this->discard($token);
+                unset($mine[$token]);
+            }
+        }
     }
 
     private function local(): Filesystem

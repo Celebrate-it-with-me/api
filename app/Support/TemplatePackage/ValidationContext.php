@@ -24,6 +24,7 @@ final class ValidationContext
         public ?int $engine = null,
         public ?array $level2Slugs = null,
         public bool $allowEngineFonts = false,
+        public bool $allowReservedSlugs = false,
     ) {
         $this->engine ??= (int) config('invitation.engine', 1);
         $this->level2Slugs ??= (array) config('invitation.level2_slugs', []);

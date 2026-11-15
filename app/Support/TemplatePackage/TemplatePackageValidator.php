@@ -20,6 +20,9 @@ class TemplatePackageValidator
 
     private const REQUIRED = ['manifest.json', 'tokens.json', 'sections.json', 'editable.json', 'LICENSES.md'];
 
+    /** Slugs only the trusted console may install: the system's own theme and the prefixes of the engine's keyframes. */
+    public const RESERVED_SLUGS = ['classic', 'inv', 'ui', 'pk', 'default', 'system', 'engine'];
+
     /** Families bundled with the SPA: usable without shipping a file. */
     private const ENGINE_FAMILIES = ['Fraunces', 'Figtree'];
 
@@ -240,6 +243,9 @@ class TemplatePackageValidator
         $slug = $m['slug'] ?? null;
         if (! is_string($slug) || ! preg_match('/^[a-z][a-z0-9-]{1,31}$/', $slug)) {
             $bad('slug', 'slug_invalid');
+        } elseif (in_array($slug, self::RESERVED_SLUGS, true) && ! $this->context->allowReservedSlugs) {
+            // `classic` belongs to the system: an upload would adopt its templates (W6-15); the others would shadow engine keyframes.
+            $bad('slug', 'slug_invalid', 'ese slug está reservado al sistema (solo lo instala la consola de confianza)');
         }
         foreach (['name' => 60, 'description' => 200] as $field => $max) {
             $v = $m[$field] ?? null;

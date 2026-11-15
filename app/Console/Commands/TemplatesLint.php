@@ -15,7 +15,8 @@ class TemplatesLint extends Command
 {
     protected $signature = 'templates:lint {path : A template package .zip, or a folder with its files}
         {--json : Print the report as JSON}
-        {--allow-engine-fonts : Trusted console install: allow the engine fonts that load from Google (Pinyon Script)}';
+        {--allow-engine-fonts : Trusted console install: allow the engine fonts that load from Google (Pinyon Script)}
+        {--allow-reserved-slugs : Trusted console install: allow the slugs reserved to the system (classic...)}';
 
     protected $description = 'Validate a template package and print the report (errors, warnings, stats)';
 
@@ -39,7 +40,7 @@ class TemplatesLint extends Command
         }
 
         try {
-            $result = (new TemplatePackageValidator)->validate($path, new ValidationContext(allowEngineFonts: (bool) $this->option('allow-engine-fonts')));
+            $result = (new TemplatePackageValidator)->validate($path, new ValidationContext(allowEngineFonts: (bool) $this->option('allow-engine-fonts'), allowReservedSlugs: (bool) $this->option('allow-reserved-slugs')));
         } finally {
             if ($temp !== null) {
                 @unlink($temp);
