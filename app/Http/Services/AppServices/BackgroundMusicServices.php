@@ -52,7 +52,11 @@ class BackgroundMusicServices
         $stale = $existing->skip(1)->concat($music ? [$music] : []);
         $oldFiles = $existing->pluck('song_url')->filter()->all();
 
-        $attributes = ['song_url' => $path, 'title' => $this->cleanTitle($data['title'] ?? null)];
+        $attributes = ['song_url' => $path];
+        // A replacement without a `title` key keeps the title it had; a key that comes empty clears it.
+        if (array_key_exists('title', $data) || ! $music) {
+            $attributes['title'] = $this->cleanTitle($data['title'] ?? null);
+        }
         foreach (['iconSize' => 'icon_size', 'iconPosition' => 'icon_position', 'iconColor' => 'icon_color'] as $input => $column) {
             if (array_key_exists($input, $data)) {
                 $attributes[$column] = $data[$input];
@@ -85,6 +89,17 @@ class BackgroundMusicServices
         Storage::disk(self::DISK)->delete($rows->pluck('song_url')->filter()->all());
 
         return true;
+    }
+
+    /**
+     * Whether an mp4-family file carries a video track (a `hdlr` box whose handler type is `vide`). The file is capped
+     * at 10 MB, so reading it whole to find the box is cheap; `moov` may sit at the end, hence no partial read.
+     */
+    public static function hasVideoTrack(UploadedFile $file): bool
+    {
+        $bytes = @file_get_contents($file->getRealPath());
+
+        return is_string($bytes) && preg_match('/hdlr.{8}vide/s', $bytes) === 1;
     }
 
     public static function mimeTypeOf(?string $path): ?string

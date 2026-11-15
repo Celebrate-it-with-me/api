@@ -54,6 +54,14 @@ class BackgroundMusicRequest extends FormRequest
                     if ($value instanceof UploadedFile && $value->getMimeType() === 'video/mp4'
                         && ! in_array($extension, BackgroundMusicServices::VIDEO_MP4_EXTENSIONS, true)) {
                         $fail('invalid_type');
+
+                        return;
+                    }
+
+                    // A video renamed .m4a/.aac is not music.
+                    if ($value instanceof UploadedFile && in_array($value->getMimeType(), ['video/mp4', 'audio/mp4', 'audio/x-m4a'], true)
+                        && BackgroundMusicServices::hasVideoTrack($value)) {
+                        $fail('invalid_type');
                     }
                 },
             ],

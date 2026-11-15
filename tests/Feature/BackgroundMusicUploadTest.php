@@ -60,3 +60,33 @@ it('accepts a real mp3', function () {
     $this->actingAs($owner)->post($url, musicBody($file), ['Accept' => 'application/json'])->assertSuccessful();
     expect(Storage::disk('public')->allFiles())->toHaveCount(1);
 });
+
+it('keeps the previous title when a replacement comes without a title, and clears it when the title comes empty', function () {
+    [$owner, $url, $file] = musicUpload('song.mp3', "ID3\x03\x00\x00\x00\x00\x00\x00" . str_repeat("\xFF\xFB\x90\x00", 500));
+    $this->actingAs($owner)->post($url, musicBody($file) + ['title' => 'Mi vals'], ['Accept' => 'application/json'])->assertCreated();
+
+    [, , $second] = musicUpload('b.mp3', "ID3\x03\x00\x00\x00\x00\x00\x00" . str_repeat("\xFF\xFB\x90\x00", 500));
+    $this->actingAs($owner)->post($url, musicBody($second), ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.title', 'Mi vals');
+
+    [, , $third] = musicUpload('c.mp3', "ID3\x03\x00\x00\x00\x00\x00\x00" . str_repeat("\xFF\xFB\x90\x00", 500));
+    $this->actingAs($owner)->post($url, musicBody($third) + ['title' => ''], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.title', null);
+});
+
+it('refuses a video renamed .m4a, and still accepts an audio-only mp4 box', function () {
+    $head = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom";
+    $video = $head . "\x00\x00\x00\x21hdlr\x00\x00\x00\x00\x00\x00\x00\x00vide" . str_repeat("\x00", 200);
+    $audio = $head . "\x00\x00\x00\x21hdlr\x00\x00\x00\x00\x00\x00\x00\x00soun" . str_repeat("\x00", 200);
+
+    [$owner, $url, $file] = musicUpload('clip.m4a', $video, 'audio/mp4');
+    $this->actingAs($owner)->post($url, musicBody($file), ['Accept' => 'application/json'])->assertStatus(422)->assertJsonPath('errors.songFile.0', 'invalid_type');
+
+    [, , $ok] = musicUpload('voice.m4a', $audio, 'audio/mp4');
+    $this->actingAs($owner)->post($url, musicBody($ok), ['Accept' => 'application/json'])->assertSuccessful();
+});
+
+it('answers the missing-song delete in the language of the request', function () {
+    [$owner, $url] = musicUpload('x.mp3', 'x');
+
+    $this->actingAs($owner)->deleteJson($url, [], ['X-Locale' => 'es'])->assertNotFound()->assertJsonPath('message', 'Este evento no tiene música de fondo.')->assertJsonPath('code', 'background_music_not_found');
+    $this->actingAs($owner)->deleteJson($url, [], ['X-Locale' => 'en'])->assertNotFound()->assertJsonPath('message', 'This event has no background music.');
+});
