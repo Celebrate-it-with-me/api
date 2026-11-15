@@ -50,7 +50,7 @@ class SelectorScoper
      */
     public function __construct(private readonly string $slug, private readonly array $classKinds = []) {}
 
-    /** @return array{css: string, kind: string, pseudo: bool}|array{error: string} */
+    /** @return array{css: string, kind: string, kinds: list<string>, pseudo: bool}|array{error: string} */
     public function scope(string $selector): array
     {
         $selector = trim($selector);
@@ -108,11 +108,11 @@ class SelectorScoper
             $out = '[data-inv-theme="' . $this->slug . '"] ' . $out;
         }
 
-        return ['css' => $out, 'kind' => $last['kind'], 'pseudo' => $last['pseudo']];
+        return ['css' => $out, 'kind' => $last['kind'], 'kinds' => $last['kinds'], 'pseudo' => $last['pseudo']];
     }
 
     /**
-     * @return array{css: string, kind: string, rootish: bool}|array{error: string}
+     * @return array{css: string, kind: string, kinds: list<string>, rootish: bool, pseudo: bool}|array{error: string}
      */
     private function compound(string $s, int &$pos, bool $first, bool $nested): array
     {
@@ -128,6 +128,7 @@ class SelectorScoper
         $hasSystemHook = false;
         $pseudoEl = false;
         $consumed = false;
+        $nestedKinds = [];
 
         if (preg_match('/\G(\*|[a-zA-Z][a-zA-Z0-9-]*)/', $s, $m, 0, $pos)) {
             $type = strtolower($m[1]);
@@ -207,6 +208,7 @@ class SelectorScoper
                     $css .= '[data-inv-theme="' . $this->slug . '"]';
                 } else {
                     $css .= $pseudo['css'];
+                    array_push($nestedKinds, ...($pseudo['kinds'] ?? []));
                     $pseudoEl = $pseudoEl || str_starts_with($pseudo['css'], '::');
                 }
                 $consumed = true;
@@ -226,35 +228,45 @@ class SelectorScoper
             $rootish = true;
         }
 
-        $kind = 'free';
-        $rank = ['free' => 0, 'bare' => 1, 'wrapper' => 2, 'photo' => 3, 'system' => 4];
-        $consider = function (string $k) use (&$kind, $rank): void {
-            if ($rank[$k] > $rank[$kind]) {
-                $kind = $k;
-            }
-        };
+        // Every subject the compound can be: the checks of all of them apply to the rule (a `:is()` argument counts too).
+        $kinds = [];
         foreach ($classes as $c) {
             if ($c !== 'inv-root' && preg_match(self::PHOTO_CLASS, $c)) {
-                $consider('photo');
+                $kinds[] = 'photo';
             } elseif ($c !== 'inv-root' && preg_match(self::SYSTEM_CLASS, $c)) {
-                $consider('system');
+                $kinds[] = 'system';
             } elseif (isset($this->classKinds[$c])) {
-                $consider($this->classKinds[$c]);
+                $kinds[] = $this->classKinds[$c];
             }
         }
         foreach ($ids as $id) {
             if (isset($this->classKinds['#' . $id])) {
-                $consider($this->classKinds['#' . $id]);
+                $kinds[] = $this->classKinds['#' . $id];
             }
         }
         if ($hasSystemHook && ! $hasScopeAttr) {
-            $consider('system');
+            $kinds[] = 'system';
+        }
+        if ($rootish) {
+            $kinds[] = 'root';
         }
         if (! $hasQualifier && ! $rootish) {
-            $consider('bare');
+            $kinds[] = 'bare';
+        }
+        array_push($kinds, ...$nestedKinds);
+        $kinds = array_values(array_unique($kinds));
+        if ($kinds === []) {
+            $kinds = ['free'];
+        }
+        $rank = ['free' => 0, 'bare' => 1, 'root' => 2, 'wrapper' => 3, 'photo' => 4, 'system' => 5];
+        $kind = 'free';
+        foreach ($kinds as $k) {
+            if ($rank[$k] > $rank[$kind]) {
+                $kind = $k;
+            }
         }
 
-        return ['css' => $css, 'kind' => $kind, 'rootish' => $rootish, 'pseudo' => $pseudoEl];
+        return ['css' => $css, 'kind' => $kind, 'kinds' => $kinds, 'rootish' => $rootish, 'pseudo' => $pseudoEl];
     }
 
     /** @return string|array{error: string} */
@@ -273,7 +285,7 @@ class SelectorScoper
         return $m[0];
     }
 
-    /** @return array{css: string, root: bool}|array{error: string} */
+    /** @return array{css: string, root: bool, kinds?: list<string>}|array{error: string} */
     private function pseudo(string $s, int &$pos, bool $mayBeRoot): array
     {
         if (! preg_match('/\G(::?)([a-zA-Z-]+)/', $s, $m, 0, $pos)) {
@@ -319,6 +331,7 @@ class SelectorScoper
 
         if (in_array($name, ['not', 'is', 'where'], true)) {
             $parts = [];
+            $kinds = [];
             foreach (explode(',', $arg) as $piece) {
                 $p = 0;
                 $piece = trim($piece);
@@ -327,9 +340,13 @@ class SelectorScoper
                     return ['error' => "argumento de :{$name}() fuera del subconjunto permitido"];
                 }
                 $parts[] = $c['css'];
+                // `:not()` matches everything else, so only the positive forms tell what the rule can reach.
+                if ($name !== 'not') {
+                    array_push($kinds, ...array_diff($c['kinds'], ['free', 'bare']));
+                }
             }
 
-            return ['css' => ":{$name}(" . implode(',', $parts) . ')', 'root' => false];
+            return ['css' => ":{$name}(" . implode(',', $parts) . ')', 'root' => false, 'kinds' => $kinds];
         }
         if ($name === 'lang') {
             if (! preg_match('/^\s*[a-z]{2,3}(-[a-z0-9]{2,8})*\s*$/i', $arg)) {

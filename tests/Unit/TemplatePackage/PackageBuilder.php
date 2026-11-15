@@ -34,6 +34,32 @@ class PackageBuilder
         return $b;
     }
 
+    /** A real PNG of incompressible noise (about 3 bytes per pixel): the weight tests need bytes that survive re-encoding. */
+    public static function noisyPng(int $side = 340): string
+    {
+        $im = imagecreatetruecolor($side, $side);
+        for ($y = 0; $y < $side; $y++) {
+            for ($x = 0; $x < $side; $x++) {
+                imagesetpixel($im, $x, $y, (mt_rand(0, 255) << 16) | (mt_rand(0, 255) << 8) | mt_rand(0, 255));
+            }
+        }
+        ob_start();
+        imagepng($im, null, 1);
+
+        return (string) ob_get_clean();
+    }
+
+    /** A structurally valid woff2 around the given "compressed" bytes (one table, no metadata), as Woff2Validator reads it. */
+    public static function woff2(string $compressed): string
+    {
+        $directory = "\x00" . "\x87\x68"; // cmap, no transform, origLength 1000 as UIntBase128
+        $end = 48 + strlen($directory) + strlen($compressed);
+        $pad = (4 - $end % 4) % 4;
+        $header = 'wOF2' . pack('NNnnNNnnNNNNN', 0x00010000, $end + $pad, 1, 0, 1028, strlen($compressed), 1, 0, 0, 0, 0, 0, 0);
+
+        return $header . $directory . $compressed . str_repeat("\0", $pad);
+    }
+
     /** About 1 MB and 100+ files: the worst package the contract allows to be valid. */
     public static function heavy(): self
     {
@@ -58,8 +84,7 @@ class PackageBuilder
             $b->asset("assets/img/wash{$i}.webp", (string) ob_get_clean());
         }
         for ($i = 0; $i < 4; $i++) {
-            $body = random_bytes(40_000);
-            $b->asset("assets/fonts/f{$i}.woff2", 'wOF2' . "\x00\x01\x00\x00" . pack('N', 12 + strlen($body)) . $body);
+            $b->asset("assets/fonts/f{$i}.woff2", self::woff2(random_bytes(40_000)));
         }
         $css = '';
         for ($i = 0; $i < 1200; $i++) {

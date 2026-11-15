@@ -291,7 +291,7 @@ it('warns about costly or infinite effects without blocking', function () {
 it('output invariants hold for every accepted stylesheet (property test over generated CSS)', function () {
     mt_srand(1234);
     $props = ['color:red', 'background:url(assets/img/a.webp)', 'margin:0 auto', 'transform:rotate(3deg)', 'width:calc(1px + 2rem)', 'animation:fade 1s', 'z-index:3', 'content:""', 'mask-image:url(assets/img/m.svg)'];
-    $sels = ['.pkg-a', '.pkg-t .pkg-h1', 'body', ':root', '.pkg-a > .pkg-b', '.pkg-a:hover::after', '.inv-root .pkg-x', '[data-inv-stage="x"] p.pkg-t', '.pkg-a:not(.pkg-b)', 'li.pkg-t:nth-child(2n+1)'];
+    $sels = ['.pkg-a', '.pkg-t .pkg-h1', 'body::before', ':root::after', '.pkg-a > .pkg-b', '.pkg-a:hover::after', '.inv-root .pkg-x', '[data-inv-stage="x"] p.pkg-t', '.pkg-a:not(.pkg-b)', 'li.pkg-t:nth-child(2n+1)'];
     $accepted = 0;
     for ($i = 0; $i < 300; $i++) {
         $src = '';

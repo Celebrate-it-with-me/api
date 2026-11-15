@@ -28,7 +28,7 @@ class PackageInstaller
     /** @return array<string, mixed> the installed package */
     public function install(string $token, string $reason): array
     {
-        $lock = Cache::lock('template-package-install', 120);
+        $lock = Cache::lock(PackageStage::LOCK, PackageStage::LOCK_SECONDS);
         try {
             $lock->block(10);
         } catch (LockTimeoutException) {
@@ -66,8 +66,14 @@ class PackageInstaller
             throw PackageError::invalid('stage_token', 'stale_stage', "Se instaló otra versión mientras tanto ({$highest}): vuelve a subir el paquete.");
         }
 
-        $folder = "{$slug}/{$semver}-" . substr($build['contentHash'], 0, 8);
+        $folder = "{$slug}/{$semver}-" . substr($build['contentHash'], 0, 16);
         $this->files->copyFolder(PackageFiles::STAGING . "/{$token}", $folder);
+
+        // What was copied must be exactly what the validator built (a tampered staging area would otherwise be promoted).
+        if (($problems = $this->files->differences($folder, $build['files'])) !== []) {
+            $this->files->delete($folder);
+            throw PackageError::conflict('stage_corrupt', 'Los archivos de la subida no coinciden con lo validado: vuelve a subir el paquete.', ['differences' => array_slice($problems, 0, 10)]);
+        }
 
         try {
             $package = DB::transaction(function () use ($meta, $build, $manifest, $folder) {

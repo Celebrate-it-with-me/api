@@ -27,3 +27,4 @@ Schedule::command('account:purge-archived')->dailyAt('03:30')->withoutOverlappin
 
 // Uploads of template packages that nobody installed are removed after their lifetime (24 h by default).
 Schedule::command('templates:purge-stages')->hourly()->withoutOverlapping();
+Schedule::command('templates:verify-packages')->dailyAt('04:30')->withoutOverlapping();

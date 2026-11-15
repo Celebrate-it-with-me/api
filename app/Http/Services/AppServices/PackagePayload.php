@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\Admin\Templates\Packages\MissingPackagesUrl;
 use App\Http\Services\Admin\Templates\Packages\PackageFiles;
 use App\Models\TemplatePackage;
 use Illuminate\Support\Facades\Cache;
@@ -48,6 +49,15 @@ class PackagePayload
 
         $allowed = array_intersect_key($eventOptions, $fragment['options']['known']);
 
+        try {
+            $cssUrl = $fragment['hasCss'] ? $this->files->url($fragment['folder'] . '/theme.css') : null;
+        } catch (MissingPackagesUrl $e) {
+            // No origin for the files: the invitation falls back to Classic instead of pointing at the API (W6-08).
+            report($e);
+
+            return null;
+        }
+
         return [
             'package' => [
                 'slug' => $fragment['slug'],
@@ -55,7 +65,7 @@ class PackagePayload
                 'level' => $fragment['level'],
                 'hash' => $fragment['hash'],
                 'engineMin' => $fragment['engineMin'],
-                'cssUrl' => $fragment['hasCss'] ? $this->files->url($fragment['folder'] . '/theme.css') : null,
+                'cssUrl' => $cssUrl,
                 // Files to preload (fonts of the package, at most 6): the @font-face rules themselves are in the css.
                 'preload' => array_slice(array_map(
                     fn (string $file) => ['url' => $this->files->url($fragment['folder'] . '/' . $file), 'as' => 'font', 'type' => 'font/woff2'],
@@ -125,7 +135,7 @@ class PackagePayload
             'level' => (int) $p['level'],
             'hash' => $p['content_hash'],
             'engineMin' => (int) $p['engine_min'],
-            'folder' => $folder ?? "{$p['slug']}/{$p['semver']}-" . substr($p['content_hash'], 0, 8),
+            'folder' => $folder ?? "{$p['slug']}/{$p['semver']}-" . substr($p['content_hash'], 0, 16),
             'hasCss' => in_array('theme.css', array_column($p['files'], 'path'), true),
             'fontFiles' => array_values(array_unique(array_merge(...array_column($fonts, 'files') ?: [[]]))),
             'strings' => $p['strings'] ?? (object) [],

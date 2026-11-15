@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\TemplateAssetController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class RouteServiceProvider extends ServiceProvider
     public const ROUTE_LIMITS = [
         'system-status' => [60, 1],
         'og-share' => [60, 1],
+        'template-assets' => [600, 1],
         'invitation-show' => [60, 1],
         'invitation-rsvp' => [20, 1],
         'invitation-calendar' => [30, 1],
@@ -108,6 +110,11 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            // Sanitized package files, outside the web and api groups on purpose: no session, no cookies (W6-08).
+            Route::middleware('throttle:template-assets')
+                ->get('template-assets/{path}', [TemplateAssetController::class, 'show'])
+                ->where('path', '.*');
         });
     }
 

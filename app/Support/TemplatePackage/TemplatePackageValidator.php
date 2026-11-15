@@ -20,6 +20,9 @@ class TemplatePackageValidator
 
     private const REQUIRED = ['manifest.json', 'tokens.json', 'sections.json', 'editable.json', 'LICENSES.md'];
 
+    /** Slugs only the trusted console may install: the system's own theme and the prefixes of the engine's keyframes. */
+    public const RESERVED_SLUGS = ['classic', 'inv', 'ui', 'pk', 'default', 'system', 'engine'];
+
     /** Families bundled with the SPA: usable without shipping a file. */
     private const ENGINE_FAMILIES = ['Fraunces', 'Figtree'];
 
@@ -100,7 +103,7 @@ class TemplatePackageValidator
         }
 
         $assets = array_values(array_filter(array_keys($files), fn (string $p) => str_starts_with($p, 'assets/')));
-        $this->assets($files, $assets, $report, $artifacts);
+        $this->assets($files, $assets, $report, $artifacts);  // re-encodes the rasters into $files
 
         $families = [];
         if (is_array($json['tokens.json'] ?? null)) {
@@ -179,7 +182,7 @@ class TemplatePackageValidator
         }
         foreach ($files as $path => $bytes) {
             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-            if (str_starts_with($path, 'assets/') && in_array($ext, ['webp', 'png', 'jpg', 'jpeg', 'avif', 'woff2'], true)) {
+            if (str_starts_with($path, 'assets/') && in_array($ext, ['webp', 'png', 'jpg', 'jpeg', 'woff2'], true)) {
                 $artifacts['blobs'][$path] = $bytes;
             }
         }
@@ -207,8 +210,14 @@ class TemplatePackageValidator
 
             return null;
         }
+        if (JsonPruner::hasNonFinite($value)) {
+            $report->error($name, $this->jsonCode($name), 'El JSON contiene un número que no es finito (p. ej. 1e999).');
 
-        return $value;
+            return null;
+        }
+
+        // Only the keys the contract declares survive (W6-12): the rest is never validated, stored or shown.
+        return JsonPruner::forFile($name, $value);
     }
 
     private function jsonCode(string $name): string
@@ -234,6 +243,9 @@ class TemplatePackageValidator
         $slug = $m['slug'] ?? null;
         if (! is_string($slug) || ! preg_match('/^[a-z][a-z0-9-]{1,31}$/', $slug)) {
             $bad('slug', 'slug_invalid');
+        } elseif (in_array($slug, self::RESERVED_SLUGS, true) && ! $this->context->allowReservedSlugs) {
+            // `classic` belongs to the system: an upload would adopt its templates (W6-15); the others would shadow engine keyframes.
+            $bad('slug', 'slug_invalid', 'ese slug está reservado al sistema (solo lo instala la consola de confianza)');
         }
         foreach (['name' => 60, 'description' => 200] as $field => $max) {
             $v = $m[$field] ?? null;
@@ -279,14 +291,14 @@ class TemplatePackageValidator
             $bad('engineMin', 'engine_too_new', "el motor actual es {$this->context->engine}");
         }
         $author = $m['author'] ?? null;
-        if (! is_array($author) || ! is_string($author['name'] ?? null) || $author['name'] === '' || mb_strlen($author['name']) > 80
-            || (isset($author['url']) && ! preg_match('/^https:\/\/[a-z0-9.-]+(\/\S*)?$/i', (string) $author['url']))) {
+        if (! is_array($author) || ! $this->plain($author['name'] ?? null, 80)
+            || (array_key_exists('url', $author) && ! UrlGuard::isOptionalHttps($author['url']))) {
             $bad('author');
         }
         $license = $m['license'] ?? null;
-        if (! is_array($license) || ! is_string($license['id'] ?? null) || $license['id'] === '' || mb_strlen($license['id']) > 60
+        if (! is_array($license) || ! $this->plain($license['id'] ?? null, 60)
             || ($license['document'] ?? null) !== 'LICENSES.md'
-            || ! is_string($license['summary'] ?? null) || $license['summary'] === '' || mb_strlen($license['summary']) > 300) {
+            || ! $this->plain($license['summary'] ?? null, 300)) {
             $report->error($f, 'license_missing', 'license.id, license.summary y license.document="LICENSES.md" son obligatorios.');
         }
         $marks = $m['thirdPartyMarks'] ?? null;
@@ -294,8 +306,12 @@ class TemplatePackageValidator
             $bad('thirdPartyMarks');
         } elseif ($marks !== []) {
             foreach ($marks as $mark) {
-                if (! is_array($mark) || ! is_string($mark['name'] ?? null) || ! is_string($mark['owner'] ?? null) || ! is_string($mark['usage'] ?? null)) {
+                if (! is_array($mark) || ! $this->plain($mark['name'] ?? null, 120) || ! $this->plain($mark['owner'] ?? null, 120) || ! $this->plain($mark['usage'] ?? null, 300)) {
                     $bad('thirdPartyMarks', 'manifest_invalid', 'cada marca necesita name, owner y usage');
+                    break;
+                }
+                if (array_key_exists('url', $mark) && ! UrlGuard::isOptionalHttps($mark['url'])) {
+                    $bad('thirdPartyMarks', 'manifest_invalid', 'la url de una marca solo admite https:// público');
                     break;
                 }
             }
@@ -308,6 +324,18 @@ class TemplatePackageValidator
             $bad('assetsCredits');
         }
         $this->variants($m['variants'] ?? [], $report);
+    }
+
+    /** A free text of the documents: plain, one line, no markup and no control characters (W6-12). */
+    private function plain(mixed $text, int $max, bool $required = true): bool
+    {
+        return is_string($text) && ($text !== '' || ! $required) && mb_strlen($text) <= $max && ! preg_match('/[<>\x00-\x1F\x7F]/', $text);
+    }
+
+    /** `{es, en}` of plain texts up to `$max` characters each. */
+    private function plainPair(mixed $pair, int $max): bool
+    {
+        return is_array($pair) && $this->plain($pair['es'] ?? null, $max) && $this->plain($pair['en'] ?? null, $max);
     }
 
     /**
@@ -336,15 +364,15 @@ class TemplatePackageValidator
      * @param  array<string, string>  $files
      * @param  list<string>  $assets
      */
-    private function assets(array $files, array $assets, Report $report, array &$artifacts): void
+    private function assets(array &$files, array $assets, Report $report, array &$artifacts): void
     {
         $svg = new SvgSanitizer;
         foreach ($assets as $path) {
             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
             $bytes = $files[$path];
 
-            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'avif', 'woff2'], true)) {
-                $report->error($path, 'ext_not_allowed', 'assets/ solo admite svg, webp, png, jpg, avif y woff2.');
+            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'woff2'], true)) {
+                $report->error($path, 'ext_not_allowed', 'assets/ solo admite svg, webp, png, jpg y woff2.');
 
                 continue;
             }
@@ -356,53 +384,71 @@ class TemplatePackageValidator
             } elseif ($ext === 'woff2') {
                 $this->woff2($bytes, $path, $report);
             } else {
-                $this->raster($bytes, $path, $ext, $report);
+                $clean = $this->raster($bytes, $path, $ext, $report);
+                if ($clean !== null) {
+                    $files[$path] = $clean;
+                }
             }
         }
     }
 
     private function woff2(string $bytes, string $path, Report $report): void
     {
-        if (strlen($bytes) < 48 || ! str_starts_with($bytes, 'wOF2') || strlen($bytes) > $this->limits->woff2Bytes) {
-            $code = strlen($bytes) > $this->limits->woff2Bytes ? 'file_too_large' : 'woff2_invalid';
-            $report->error($path, $code, $code === 'file_too_large' ? 'Fuente mayor de ' . intdiv($this->limits->woff2Bytes, 1024) . ' KB.' : 'No es un woff2 (firma wOF2 o tamaño).');
+        if (strlen($bytes) > $this->limits->woff2Bytes) {
+            $report->error($path, 'file_too_large', 'Fuente mayor de ' . intdiv($this->limits->woff2Bytes, 1024) . ' KB.');
 
             return;
         }
-        if (unpack('N', substr($bytes, 8, 4))[1] !== strlen($bytes)) {
-            $report->error($path, 'woff2_invalid', 'La longitud de la cabecera no coincide con el tamaño real.');
+        if (($problem = Woff2Validator::problem($bytes)) !== null) {
+            $report->error($path, 'woff2_invalid', $problem);
         }
     }
 
-    private function raster(string $bytes, string $path, string $ext, Report $report): void
+    /** @return string|null the re-encoded image (the only bytes that are ever stored), null on error */
+    private function raster(string $bytes, string $path, string $ext, Report $report): ?string
     {
         if (strlen($bytes) > $this->limits->rasterBytes) {
             $report->error($path, 'file_too_large', 'Imagen mayor de ' . intdiv($this->limits->rasterBytes, 1024) . ' KB.');
 
-            return;
+            return null;
         }
-        // Header only: nothing is ever decoded, so a pixel bomb (tiny file, huge canvas) costs nothing.
+        // The header is read first, so a pixel bomb (tiny file, huge canvas) is refused before anything is decoded.
         $info = @getimagesizefromstring($bytes);
         if ($info === false) {
             $report->error($path, 'image_decode', 'No se pudo leer la cabecera de la imagen.');
 
-            return;
+            return null;
         }
         $expected = match ($ext) {
             'webp' => IMAGETYPE_WEBP,
             'png' => IMAGETYPE_PNG,
-            'jpg', 'jpeg' => IMAGETYPE_JPEG,
-            default => IMAGETYPE_AVIF,
+            default => IMAGETYPE_JPEG,
         };
         if ($info[2] !== $expected) {
             $report->error($path, 'mime_mismatch', 'El contenido no corresponde a la extensión.', null, (string) image_type_to_mime_type($info[2]));
 
-            return;
+            return null;
         }
         [$w, $h] = $info;
         if ($w < 1 || $h < 1 || $w > $this->limits->imageSide || $h > $this->limits->imageSide || $w * $h > $this->limits->imagePixels) {
             $report->error($path, 'image_dimensions', 'Dimensiones fuera de límites.', null, "{$w}x{$h}");
+
+            return null;
         }
+        // Decode and encode again: what is stored carries no metadata, no trailing bytes and no foreign payload.
+        $clean = RasterCleaner::clean($bytes, $ext);
+        if ($clean === null) {
+            $report->error($path, 'image_decode', 'No se pudo decodificar la imagen.');
+
+            return null;
+        }
+        if (strlen($clean) > $this->limits->rasterBytes) {
+            $report->error($path, 'file_too_large', 'Imagen mayor de ' . intdiv($this->limits->rasterBytes, 1024) . ' KB tras normalizarla.');
+
+            return null;
+        }
+
+        return $clean;
     }
 
     /**
@@ -622,6 +668,38 @@ class TemplatePackageValidator
             if (! $this->labelOk($field['label'] ?? null)) {
                 $report->error($f, 'editable_invalid', "fields.{$i}.label necesita es y en.");
             }
+            if (isset($field['help']) && ! $this->plainPair($field['help'], 300)) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.help necesita es y en, texto plano de hasta 300 caracteres.");
+            }
+            foreach (['aspect' => '/^\d{1,2}:\d{1,2}$/', 'fallbackSlot' => '/^[a-z][a-z0-9-]{0,40}$/'] as $key => $re) {
+                if (isset($field[$key]) && (! is_string($field[$key]) || ! preg_match($re, $field[$key]))) {
+                    $report->error($f, 'editable_invalid', "fields.{$i}.{$key} inválido.");
+                }
+            }
+            if (isset($field['minWidth']) && (! is_int($field['minWidth']) || $field['minWidth'] < 1 || $field['minWidth'] > 8000)) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.minWidth debe ser un entero entre 1 y 8000.");
+            }
+            foreach (['required', 'multiline'] as $key) {
+                if (isset($field[$key]) && ! is_bool($field[$key])) {
+                    $report->error($f, 'editable_invalid', "fields.{$i}.{$key} debe ser booleano.");
+                }
+            }
+            if (isset($field['default']) && ! is_bool($field['default']) && ! $this->plain($field['default'], 100)) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.default inválido.");
+            }
+            if ($type === 'choice') {
+                $choices = $field['choices'] ?? null;
+                if (! is_array($choices) || ! array_is_list($choices) || count($choices) < 1 || count($choices) > 12) {
+                    $report->error($f, 'editable_invalid', "fields.{$i}.choices debe ser una lista de 1 a 12 opciones.");
+                } else {
+                    foreach ($choices as $choice) {
+                        if (! is_array($choice) || ! is_string($choice['value'] ?? null) || ! preg_match('/^[a-z0-9][a-z0-9_-]{0,23}$/', $choice['value']) || ! $this->labelOk($choice['label'] ?? null)) {
+                            $report->error($f, 'editable_invalid', "fields.{$i}.choices: cada opción necesita value (a-z0-9_-) y label es/en sin etiquetas.");
+                            break;
+                        }
+                    }
+                }
+            }
             if (isset($field['group']) && ! isset($groupIds[$field['group']])) {
                 $report->error($f, 'editable_invalid', "fields.{$i}.group no existe.");
             }
@@ -725,10 +803,19 @@ class TemplatePackageValidator
 
                 continue;
             }
-            foreach (['title', 'author', 'source', 'license'] as $k) {
+            foreach (['title' => 120, 'author' => 120, 'source' => 300, 'license' => 80] as $k => $max) {
                 if (! is_string($credit[$k] ?? null) || $credit[$k] === '') {
                     $report->error('manifest.json', 'license_asset_missing', "assetsCredits.{$k} vacío.", null, $path);
+                } elseif (! $this->plain($credit[$k], $max)) {
+                    $report->error('manifest.json', 'manifest_invalid', "assetsCredits.{$k}: texto plano de hasta {$max} caracteres, sin etiquetas ni caracteres de control.", null, $path);
                 }
+            }
+            // A credit that names a URL as its source must name a public https one; `original` and plain names are fine.
+            if (is_string($credit['source'] ?? null) && preg_match('/^[a-z][a-z0-9+.-]*:/i', $credit['source']) && ! UrlGuard::isHttps($credit['source'])) {
+                $report->error('manifest.json', 'manifest_invalid', 'assetsCredits.source: si es un enlace debe ser https:// público.', null, $path);
+            }
+            if (array_key_exists('url', $credit) && ! UrlGuard::isOptionalHttps($credit['url'])) {
+                $report->error('manifest.json', 'manifest_invalid', 'assetsCredits.url solo admite https:// público (sin credenciales, localhost ni IP).', null, $path);
             }
             $credited[$path] = true;
             if (! in_array($path, $assets, true)) {

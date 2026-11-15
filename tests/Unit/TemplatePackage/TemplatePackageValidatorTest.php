@@ -180,7 +180,7 @@ it('warns about unused files and package weight', function () {
     $r = PackageBuilder::good()->asset('assets/img/unused.svg', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>')->validate();
     expect($r['valid'])->toBeTrue()->and(PackageBuilder::warnings($r))->toContain('unused_file');
 
-    $png = pngHeader(10, 10) . random_bytes(390_000);
+    $png = PackageBuilder::noisyPng(340);
     $builder = PackageBuilder::good();
     $builder->asset('assets/img/big.png', $png);
     $r = $builder->validate();
@@ -189,7 +189,7 @@ it('warns about unused files and package weight', function () {
 
 it('rejects packages over the runtime budget', function () {
     $builder = PackageBuilder::good();
-    $blob = pngHeader(10, 10) . random_bytes(390_000);
+    $blob = PackageBuilder::noisyPng(340);
     foreach (range(1, 3) as $i) {
         $builder->asset("assets/img/blob{$i}.png", $blob);
     }

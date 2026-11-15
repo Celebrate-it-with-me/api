@@ -117,6 +117,39 @@ class CssSanitizer
         'position', 'z-index',
     ];
 
+    /** Subjects that can reach a system block (or the whole page): the stricter checks apply to them. */
+    private const RESTRICTED = ['root', 'bare', 'wrapper', 'photo', 'system'];
+
+    /** What the page root (`.inv-root`, `body`, `html`, `:root`) may carry: color, background and typography. */
+    private const ROOT_SAFE = [
+        'color', 'background', 'background-color', 'background-image', 'background-position', 'background-position-x',
+        'background-position-y', 'background-size', 'background-repeat', 'background-origin', 'background-clip',
+        'background-blend-mode', 'font', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-variant',
+        'font-variant-caps', 'font-variant-numeric', 'font-stretch', 'font-kerning', 'font-variation-settings',
+        'font-feature-settings', 'font-optical-sizing', 'letter-spacing', 'word-spacing', 'line-height', 'text-align',
+        'text-transform', 'text-wrap', 'white-space', 'overflow-wrap', 'word-break', 'hyphens', 'font-smoothing',
+        'text-size-adjust', 'text-decoration', 'text-decoration-color',
+    ];
+
+    /** A wrapper of a block may not move or transform what it contains, nor reposition itself. */
+    private const WRAPPER_FORBIDDEN = [
+        'transform', 'translate', 'scale', 'rotate', 'perspective', 'top', 'right', 'bottom', 'left', 'inset',
+        'inset-inline', 'inset-block', 'text-indent',
+    ];
+
+    private const KEYFRAME_SAFE = [
+        'color', 'background-color', 'background-position', 'border-color', 'border-top-color', 'border-right-color',
+        'border-bottom-color', 'border-left-color', 'outline-color', 'box-shadow', 'text-shadow', 'text-decoration-color',
+    ];
+
+    private const VISIBLE_DISPLAY = ['block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'flow-root', 'list-item'];
+
+    /** Properties whose value must never be zero or near zero on a subject that can reach a block. */
+    private const SHRINKABLE = [
+        'width', 'height', 'max-width', 'max-height', 'inline-size', 'block-size', 'max-inline-size', 'max-block-size',
+        'font-size', 'line-height',
+    ];
+
     private const FUNCTIONS = [
         'calc', 'min', 'max', 'clamp', 'var', 'rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'lab', 'lch', 'oklab', 'oklch', 'color-mix',
         'linear-gradient', 'radial-gradient', 'conic-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient',
@@ -162,6 +195,8 @@ class CssSanitizer
 
     private int $rules = 0;
 
+    private int $blendRules = 0;
+
     private int $errorsBefore = 0;
 
     private SelectorScoper $scoper;
@@ -192,6 +227,7 @@ class CssSanitizer
         $this->keyframes = [];
         $this->usedAssets = [];
         $this->rules = 0;
+        $this->blendRules = 0;
         $this->warnedKeys = [];
         $this->errorsBefore = $report->errorCount();
         $this->scoper = new SelectorScoper($slug, $classKinds);
@@ -200,6 +236,8 @@ class CssSanitizer
             return null;
         }
 
+        $startedAt = microtime(true);
+        $memoryBefore = memory_get_usage();
         try {
             $document = (new Parser($css, Settings::create()->beStrict()))->parse();
         } catch (\Throwable $e) {
@@ -208,8 +246,19 @@ class CssSanitizer
             return null;
         }
 
+        if (microtime(true) - $startedAt > $this->limits->cssParseSeconds || memory_get_usage() - $memoryBefore > $this->limits->cssParseBytes) {
+            $report->error($file, 'css_size', 'El CSS es demasiado costoso de analizar (tiempo o memoria).');
+
+            return null;
+        }
+        $this->restrictedKeyframes = [];
+        $this->pendingKeyframes = [];
+        $this->customProps = [];
+        $this->collectCustomProps($document);
+        $this->ruleKinds = ['free'];
         $this->collectKeyframes($document);
         $this->walk($document, 0);
+        $this->restrictedKeyframeCheck();
 
         if ($this->rules > 1500) {
             $report->error($file, 'css_size', 'Más de 1500 reglas.', null, (string) $this->rules);
@@ -255,6 +304,12 @@ class CssSanitizer
 
             return false;
         }
+        // The parser and the serializer recurse once per level: bound the nesting before anything is parsed (W6-06).
+        if (($pos = $this->tooDeep($css)) !== null) {
+            $this->report->error($this->file, 'css_size', 'Anidamiento excesivo de paréntesis o llaves (máximo ' . self::MAX_PAREN_DEPTH . ' y ' . self::MAX_BRACE_DEPTH . ' niveles).', $this->lineOf($css, $pos));
+
+            return false;
+        }
         if (($pos = strpos($css, '\\')) !== false) {
             $this->report->error($this->file, 'css_backslash', 'Las barras invertidas (escapes) están prohibidas.', $this->lineOf($css, $pos));
 
@@ -279,6 +334,39 @@ class CssSanitizer
         }
 
         return true;
+    }
+
+    private const MAX_PAREN_DEPTH = 16;
+
+    private const MAX_BRACE_DEPTH = 8;
+
+    /** @return int|null the offset where the nesting goes over the limit */
+    private function tooDeep(string $css): ?int
+    {
+        $paren = 0;
+        $brace = 0;
+        for ($i = 0, $n = strlen($css); $i < $n; $i += 1 + strcspn($css, '(){}', $i + 1)) {
+            switch ($css[$i]) {
+                case '(':
+                    if (++$paren > self::MAX_PAREN_DEPTH) {
+                        return $i;
+                    }
+                    break;
+                case ')':
+                    $paren = max(0, $paren - 1);
+                    break;
+                case '{':
+                    if (++$brace > self::MAX_BRACE_DEPTH) {
+                        return $i;
+                    }
+                    break;
+                case '}':
+                    $brace = max(0, $brace - 1);
+                    break;
+            }
+        }
+
+        return null;
     }
 
     /** The output must satisfy the same invariants by itself, whatever the walk did. */
@@ -446,6 +534,8 @@ class CssSanitizer
             return;
         }
         $frames->setAnimationName($this->keyframes[$name]);
+        $this->pendingKeyframes[$name] = ['frames' => $frames, 'line' => $line];
+        $this->ruleKinds = ['free'];
 
         foreach ($frames->getContents() as $step) {
             if (! $step instanceof DeclarationBlock) {
@@ -459,7 +549,7 @@ class CssSanitizer
                 }
             }
             foreach ($step->getDeclarations() as $declaration) {
-                $this->declaration($declaration, 'free');
+                $this->declaration($declaration, ['free']);
             }
         }
     }
@@ -467,10 +557,19 @@ class CssSanitizer
     /** True while the rule being checked only targets ::before / ::after pseudo-elements. */
     private bool $pseudoRule = false;
 
+    /** @var list<string> subjects of the rule being checked (see SelectorScoper) */
+    private array $ruleKinds = ['free'];
+
+    /** @var array<string, true> keyframes (original names) animated by a rule that can reach a block or the root */
+    private array $restrictedKeyframes = [];
+
+    /** @var array<string, array{frames: KeyFrame, line: ?int}> */
+    private array $pendingKeyframes = [];
+
     private function rule(DeclarationBlock $block, ?int $line): void
     {
         $this->rules++;
-        $kind = 'free';
+        $kinds = [];
         $this->pseudoRule = $block->getSelectors() !== [];
         foreach ($block->getSelectors() as $selector) {
             $scoped = $this->scoper->scope($selector->getSelector());
@@ -481,23 +580,72 @@ class CssSanitizer
             }
             $selector->setSelector($scoped['css']);
             $this->pseudoRule = $this->pseudoRule && $scoped['pseudo'];
-            $rank = ['free' => 0, 'bare' => 1, 'wrapper' => 2, 'photo' => 3, 'system' => 4];
-            if ($rank[$scoped['kind']] > $rank[$kind]) {
-                $kind = $scoped['kind'];
+            $kinds = array_merge($kinds, $scoped['kinds']);
+        }
+        $kinds = array_values(array_unique($kinds));
+
+        // What a wrapper (or the photo, or the root) draws with ::before / ::after is decoration: the renderer stacks the blocks above it.
+        if ($this->pseudoRule) {
+            $kinds = array_values(array_diff($kinds, ['wrapper', 'photo', 'root']));
+        }
+        if ($kinds === []) {
+            $kinds = ['free'];
+        }
+        $this->ruleKinds = $kinds;
+
+        $colors = [];
+        foreach ($block->getDeclarations() as $declaration) {
+            $this->declaration($declaration, $kinds);
+            $name = strtolower($declaration->getPropertyName());
+            if (in_array($name, ['color', 'background-color'], true)) {
+                $colors[$name] = $this->valueText($declaration);
             }
         }
-
-        // What a wrapper (or the photo) draws with ::before / ::after is decoration: the renderer stacks the blocks above it.
-        if ($this->pseudoRule && in_array($kind, ['wrapper', 'photo'], true)) {
-            $kind = 'free';
-        }
-
-        foreach ($block->getDeclarations() as $declaration) {
-            $this->declaration($declaration, $kind);
+        if (isset($colors['color'], $colors['background-color']) && $colors['color'] === $colors['background-color'] && $this->restricted($kinds) !== []) {
+            $this->report->error($this->file, 'css_forbidden_property', 'El color del texto no puede ser igual al del fondo en un bloque del sistema o lo que lo contiene.', $line, $colors['color']);
         }
     }
 
-    private function declaration(Declaration $d, string $kind): void
+    /**
+     * A keyframe animated on the root, a generic selector or anything that wraps or is a system block may only change
+     * colors and shadows: it can never fade, move, scale, clip or hide what it animates (W6-02).
+     */
+    private function restrictedKeyframeCheck(): void
+    {
+        foreach (array_keys($this->restrictedKeyframes) as $name) {
+            $pending = $this->pendingKeyframes[$name] ?? null;
+            if ($pending === null) {
+                continue;
+            }
+            foreach ($pending['frames']->getContents() as $step) {
+                if (! $step instanceof DeclarationBlock) {
+                    continue;
+                }
+                foreach ($step->getDeclarations() as $declaration) {
+                    $prop = strtolower($declaration->getPropertyName());
+                    if (! str_starts_with($prop, '--') && ! in_array(preg_replace('/^-(webkit|moz)-/', '', $prop), self::KEYFRAME_SAFE, true)) {
+                        $this->report->error($this->file, 'css_forbidden_property', 'Un @keyframes aplicado a la raíz, a un selector genérico o a un bloque del sistema (o a lo que lo contiene) solo puede animar colores y sombras.', $declaration->getLineNumber(), "{$name}: {$prop}");
+                    }
+                }
+            }
+        }
+    }
+
+    /** @param list<string> $kinds @return list<string> the subjects that can reach a system block or the root */
+    private function restricted(array $kinds): array
+    {
+        return array_values(array_intersect($kinds, self::RESTRICTED));
+    }
+
+    private function valueText(Declaration $d): string
+    {
+        return strtolower(trim($d->getValue() instanceof Renderable
+            ? $d->getValue()->render(OutputFormat::createCompact())
+            : (string) $d->getValue()));
+    }
+
+    /** @param list<string> $kinds */
+    private function declaration(Declaration $d, array $kinds): void
     {
         $line = $d->getLineNumber();
         $name = strtolower($d->getPropertyName());
@@ -524,80 +672,334 @@ class CssSanitizer
             return;
         }
 
-        if (($kind === 'system' && ! in_array($base, self::SYSTEM_SAFE, true))
-            || ($kind === 'photo' && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::PHOTO_EXTRA, true))) {
-            $this->report->error($this->file, 'css_forbidden_property', 'Un bloque del sistema solo admite propiedades visuales.', $line, $name);
+        if ((in_array('system', $kinds, true) && ! in_array($base, self::SYSTEM_SAFE, true))
+            || (in_array('photo', $kinds, true) && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::PHOTO_EXTRA, true))
+            || (in_array('root', $kinds, true) && ! in_array($base, self::ROOT_SAFE, true))) {
+            $this->report->error($this->file, 'css_forbidden_property', in_array('root', $kinds, true)
+                ? 'La raíz de la invitación (.inv-root, body, html, :root) solo admite color, fondo y tipografía.'
+                : 'Un bloque del sistema solo admite propiedades visuales.', $line, $name);
 
             return;
         }
-        if ($kind === 'wrapper' || $kind === 'system' || $kind === 'photo') {
-            $this->wrapperCheck($d, $base, $line, $kind);
-        }
-        if ($kind === 'bare' && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::BARE_EXTRA, true)) {
+        if (in_array('bare', $kinds, true) && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::BARE_EXTRA, true)) {
             $this->report->error($this->file, 'css_forbidden_property', 'Un selector sin clase (etiqueta o *) solo admite propiedades visuales; usa una clase del paquete.', $line, $name);
 
             return;
         }
+        if ($this->restricted($kinds) !== []) {
+            $this->restrictedCheck($d, $base, $kinds, $line);
+        }
+        if (str_starts_with($base, 'animation') || str_starts_with($base, 'transition')) {
+            // A computed or variable duration makes the 4 s cap meaningless (W6-07), and a variable could name a keyframe.
+            if (array_intersect($this->functionNames($d->getValue()), ['calc', 'var', 'env', 'attr', 'min', 'max', 'clamp']) !== []) {
+                $this->report->error($this->file, 'css_forbidden_property', 'animation y transition solo admiten valores literales (sin calc(), var(), min(), max() ni clamp()).', $line, $base);
+            }
+        }
 
         if (is_string($d->getValue()) && in_array($base, ['animation', 'animation-name'], true) && isset($this->keyframes[$d->getValue()])) {
+            $this->noteKeyframeUse($d->getValue());
             $d->setValue($this->keyframes[$d->getValue()]);
         }
         $this->value($d->getValue(), $base, $line);
-        $this->specialCases($d, $base, $kind, $line);
+        $this->specialCases($d, $base, $kinds, $line);
     }
 
-    /** Wrappers of a system block may be styled freely, except for the ways of hiding or disabling what they contain. */
-    private function wrapperCheck(Declaration $d, string $base, ?int $line, string $kind): void
+    private function noteKeyframeUse(string $name): void
     {
-        $text = strtolower(trim($d->getValue() instanceof Renderable
-            ? $d->getValue()->render(OutputFormat::createCompact())
-            : (string) $d->getValue()));
+        if ($this->restricted($this->ruleKinds) !== []) {
+            $this->restrictedKeyframes[$name] = true;
+        }
+    }
+
+    /**
+     * Everything that can hide, disable, shrink, move or cover a system block when the rule can reach one (root, wrapper,
+     * system hook, photo, generic selector). Values are judged by what they are: `calc()` / `var()` never, zero or
+     * near-zero in every spelling, displacements, transparent colors and gigantic shadows.
+     *
+     * @param  list<string>  $kinds
+     */
+    private function restrictedCheck(Declaration $d, string $base, array $kinds, ?int $line): void
+    {
+        $value = $d->getValue();
+        $text = $this->valueText($d);
+        $deny = fn (string $why) => $this->report->error($this->file, 'css_forbidden_property', $why, $line, "{$base}: {$text}");
+        $fns = $this->functionNames($value);
+        $wrapper = in_array('wrapper', $kinds, true);
+        $photo = in_array('photo', $kinds, true);
 
         $hiding = ['clip-path', 'mask', 'mask-image', 'mask-size', 'mask-position', 'mask-repeat', 'mask-mode', 'mask-composite', 'mask-origin', 'mask-clip', 'filter', 'backdrop-filter', 'pointer-events'];
-        if ($kind === 'photo') {
-            $hiding = ['backdrop-filter', 'pointer-events'];
-        } elseif ($kind === 'wrapper' && $this->pseudoRule) {
-            // The decoration a wrapper draws with ::before / ::after never takes the clicks of what it surrounds.
-            $hiding = array_diff($hiding, ['pointer-events']);
+        $photoHiding = ['backdrop-filter', 'pointer-events'];
+        if (($wrapper && in_array($base, [...$hiding, ...self::WRAPPER_FORBIDDEN], true))
+            || (! $wrapper && $photo && in_array($base, $photoHiding, true))
+            || (in_array('bare', $kinds, true) && in_array($base, [...$hiding, ...self::WRAPPER_FORBIDDEN], true))) {
+            $deny('Un bloque del sistema, o lo que lo contiene, no puede ocultarse, moverse ni deshabilitarse.');
+
+            return;
         }
-        if (in_array($base, $hiding, true)
-            || (in_array($base, ['width', 'height', 'max-width', 'max-height', 'font-size'], true) && preg_match('/^0(px|em|rem|%|vh|vw)?$/', $text))
-            || ($base === 'display' && $text === 'none')
-            || ($base === 'opacity' && is_numeric($text) && (float) $text < 0.6)
-            || ($base === 'transform' && preg_match('/scale\(\s*0/', $text))
-            || ($base === 'font-size' && preg_match('/^(0|[1-7](\.\d+)?px)$/', $text))
-            || ($base === 'color' && $kind === 'system' && in_array($text, ['transparent', 'rgba(0,0,0,0)'], true))) {
-            $this->report->error($this->file, 'css_forbidden_property', 'Un bloque del sistema, o lo que lo contiene, no puede ocultarse ni deshabilitarse.', $line, "{$base}: {$text}");
+
+        if ($base === 'display' && ! in_array($text, self::VISIBLE_DISPLAY, true)) {
+            $deny('display solo admite valores que muestran el elemento (block, flex, grid, inline...).');
+        }
+        if ($base === 'visibility' && $text !== 'visible') {
+            $deny('visibility solo admite visible.');
+        }
+        if ($base === 'position' && ! in_array($text, $photo && ! $wrapper ? ['relative', 'absolute', 'static'] : ['relative', 'static'], true)) {
+            $deny('position solo admite relative o static aquí.');
+        }
+        if ($base === 'opacity' && ! $this->opacityOk($value)) {
+            $deny('La opacidad debe ser un número o porcentaje literal de 0.6 (60%) o más; sin calc() ni var().');
+        }
+        if (in_array($base, ['color', 'text-fill-color', 'text-stroke-color'], true)) {
+            if ($this->transparentColor($text) || ! $this->varsOpaque($text, 0)) {
+                $deny('El texto no puede ser transparente, ni depender de una variable --pkg-* que no esté declarada con un color opaco.');
+            }
+        }
+        if (in_array($base, self::SHRINKABLE, true)) {
+            if (array_intersect($fns, ['calc', 'var', 'env', 'attr']) !== [] || ! $this->floorOk($value, $base)) {
+                $deny('Tamaño cero o casi cero, o expresado con calc()/var(): un bloque del sistema no puede encogerse.');
+            }
+        }
+        if (preg_match('/^(margin|padding)(-|$)|^(row-|column-)?gap$/', $base)) {
+            $engineOnly = $this->onlyEngineVars($text);
+            $banned = ['calc', 'env', 'attr'];
+            if (str_starts_with($base, 'margin')) {
+                $banned[] = 'var';
+            }
+            if (array_intersect($fns, $banned) !== [] || (in_array('var', $fns, true) && ! $engineOnly && str_starts_with($base, 'margin'))) {
+                $deny('Márgenes sin calc() ni var(); el espaciado interior solo admite valores literales o variables.');
+            }
+            foreach ($this->sizes($value) as $size) {
+                $v = $size->getSize();
+                $u = strtolower((string) $size->getUnit());
+                if (($v < 0 && str_starts_with($base, 'margin')) || abs($v) > match ($u) {
+                    'px' => 600, 'em', 'rem' => 40, '%' => 30, 'vw', 'vh', 'vmin', 'vmax', 'svh', 'dvh', 'lvh' => 30, default => 600,
+                }) {
+                    $deny('Espaciado negativo o desmesurado: podría sacar un bloque de la pantalla.');
+                    break;
+                }
+            }
+        }
+        if (in_array($base, ['letter-spacing', 'word-spacing'], true)) {
+            foreach ($this->sizes($value) as $size) {
+                if (abs($size->getSize()) > (in_array(strtolower((string) $size->getUnit()), ['em', 'rem'], true) ? 2 : 20)) {
+                    $deny('Espaciado de letras desmesurado.');
+                    break;
+                }
+            }
+            if (array_intersect($fns, ['calc', 'var']) !== []) {
+                $deny('letter-spacing sin calc() ni var().');
+            }
+        }
+        if (in_array($base, ['box-shadow', 'text-shadow', 'outline', 'outline-width', 'outline-offset'], true)) {
+            if (array_intersect($fns, ['calc', 'var']) !== [] && ! $this->onlyEngineVars($text)) {
+                $deny('Sombras y contornos sin calc() ni var() propias.');
+            }
+            foreach ($this->sizes($value) as $size) {
+                if (abs($size->getSize()) > (in_array(strtolower((string) $size->getUnit()), ['em', 'rem'], true) ? 8 : 100)) {
+                    $deny('Sombra o contorno desmesurado: cubriría a los bloques vecinos.');
+                    break;
+                }
+            }
         }
     }
 
-    private function specialCases(Declaration $d, string $base, string $kind, ?int $line): void
+    /** @return list<string> lower-case names of the CSS functions in a value */
+    private function functionNames(mixed $value): array
     {
-        $text = strtolower(trim($d->getValue() instanceof Renderable
-            ? $d->getValue()->render(OutputFormat::createCompact())
-            : (string) $d->getValue()));
+        $names = [];
+        if ($value instanceof CSSFunction) {
+            $names[] = strtolower($value->getName());
+        }
+        if ($value instanceof ValueList) {
+            foreach ($value->getListComponents() as $c) {
+                array_push($names, ...$this->functionNames($c));
+            }
+        }
+
+        return $names;
+    }
+
+    /** @return list<Size> */
+    private function sizes(mixed $value): array
+    {
+        if ($value instanceof Size) {
+            return [$value];
+        }
+        $out = [];
+        if ($value instanceof ValueList && ! $value instanceof URL) {
+            foreach ($value->getListComponents() as $c) {
+                array_push($out, ...$this->sizes($c));
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * True when every `var(--pkg-*)` in the text is declared in this stylesheet and every declaration of it is itself
+     * opaque (engine `--inv-*` variables are trusted: their values come from validated tokens).
+     */
+    private function varsOpaque(string $text, int $depth): bool
+    {
+        if (! preg_match_all('/var\(\s*(--[a-z0-9-]+)/', $text, $m)) {
+            return true;
+        }
+        foreach ($m[1] as $name) {
+            if (str_starts_with($name, '--inv-')) {
+                continue;
+            }
+            if ($depth >= 3 || ! isset($this->customProps[$name])) {
+                return false;
+            }
+            foreach ($this->customProps[$name] as $declared) {
+                if ($this->transparentColor($declared) || ! $this->varsOpaque($declared, $depth + 1)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /** @var array<string, list<string>> every value given to each --pkg-* property anywhere in the stylesheet */
+    private array $customProps = [];
+
+    private function collectCustomProps(CSSList $list): void
+    {
+        foreach ($list->getContents() as $item) {
+            if ($item instanceof DeclarationBlock) {
+                foreach ($item->getDeclarations() as $d) {
+                    $name = strtolower($d->getPropertyName());
+                    if (str_starts_with($name, '--pkg-')) {
+                        $this->customProps[$name][] = $this->valueText($d);
+                    }
+                }
+            } elseif ($item instanceof CSSList) {
+                $this->collectCustomProps($item);
+            }
+        }
+    }
+
+    private function onlyEngineVars(string $text): bool
+    {
+        return preg_match_all('/var\(\s*(--[a-z0-9-]+)/', $text, $m) > 0 && array_filter($m[1], fn ($v) => ! str_starts_with($v, '--inv-')) === [];
+    }
+
+    private function opacityOk(mixed $value): bool
+    {
+        if (is_string($value)) {
+            return in_array(strtolower($value), ['inherit', 'initial', 'unset', 'revert'], true);
+        }
+        if (! $value instanceof Size) {
+            return false;
+        }
+        $unit = strtolower((string) $value->getUnit());
+
+        return ($unit === '' && $value->getSize() >= 0.6 && $value->getSize() <= 1) || ($unit === '%' && $value->getSize() >= 60 && $value->getSize() <= 100);
+    }
+
+    /** True when the (lower-case) color text is, or may be, fully or mostly transparent. */
+    private function transparentColor(string $text): bool
+    {
+        if (preg_match('/\btransparent\b/', $text)) {
+            return true;
+        }
+        if (preg_match_all('/#([0-9a-f]{4}|[0-9a-f]{8})\b/', $text, $m)) {
+            foreach ($m[1] as $hex) {
+                $alpha = strlen($hex) === 4 ? hexdec($hex[3] . $hex[3]) : hexdec(substr($hex, 6, 2));
+                if ($alpha / 255 < 0.5) {
+                    return true;
+                }
+            }
+        }
+        if (preg_match_all('/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(([^)]*)\)/', $text, $m)) {
+            foreach ($m[1] as $inner) {
+                $parts = preg_split('/[\s,\/]+/', trim($inner), -1, PREG_SPLIT_NO_EMPTY);
+                if (count($parts) >= 4) {
+                    $a = end($parts);
+                    $alpha = str_ends_with($a, '%') ? (float) $a / 100 : (float) $a;
+                    if ($alpha < 0.5) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** False when the value is zero or nearly zero in any spelling: literal, `min()`, `max()` or `clamp()` of literals. */
+    private function floorOk(mixed $value, string $prop): bool
+    {
+        if ($value instanceof Size) {
+            return ! $this->tiny($value, $prop);
+        }
+        if (is_string($value)) {
+            return true; // keywords: auto, none, fit-content, inherit...
+        }
+        if ($value instanceof CSSFunction) {
+            $name = strtolower($value->getName());
+            $args = array_values(array_filter($value->getListComponents(), fn ($c) => $c !== ','));
+            foreach ($args as $a) {
+                if (! $a instanceof Size) {
+                    return false; // nested function, var(), string...
+                }
+            }
+            $ok = array_map(fn (Size $a) => ! $this->tiny($a, $prop), $args);
+
+            return match ($name) {
+                'min' => ! in_array(false, $ok, true),
+                'max' => in_array(true, $ok, true),
+                'clamp' => ($ok[0] ?? false) === true,
+                default => false,
+            };
+        }
+        if ($value instanceof ValueList) {
+            foreach ($value->getListComponents() as $c) {
+                if (! $this->floorOk($c, $prop)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function tiny(Size $s, string $prop): bool
+    {
+        $v = abs($s->getSize());
+        $text = $prop === 'font-size';
+        $line = $prop === 'line-height';
+
+        return match (strtolower((string) $s->getUnit())) {
+            '' => $line ? $v < 0.8 : $v < 0.0001,
+            'px' => $v < 8,
+            'em', 'rem', 'ex', 'ch' => $v < ($line ? 0.8 : 0.5),
+            '%' => $v < ($text ? 50 : ($line ? 80 : 5)),
+            'vw', 'vh', 'vmin', 'vmax', 'svh', 'dvh', 'lvh', 'svw', 'dvw', 'lvw' => $v < 2,
+            default => false,
+        };
+    }
+
+    private function specialCases(Declaration $d, string $base, array $kinds, ?int $line): void
+    {
+        $text = $this->valueText($d);
+        $restricted = $this->restricted($kinds) !== [];
 
         switch ($base) {
             case 'position':
                 if (! in_array($text, ['relative', 'absolute', 'static'], true)) {
                     $this->report->error($this->file, 'css_forbidden_property', 'position solo admite relative, absolute o static.', $line, $text);
-                } elseif ($kind === 'bare' && $text === 'absolute') {
-                    $this->report->error($this->file, 'css_forbidden_property', 'Un selector genérico solo admite position relative o static.', $line, $text);
                 }
                 break;
             case 'display':
-                if ($text === 'none' && $kind !== 'free') {
+                if ($text === 'none' && $restricted) {
                     $this->report->error($this->file, 'css_forbidden_property', 'No se puede ocultar un bloque del sistema ni un selector genérico.', $line, $text);
                 }
                 break;
             case 'visibility':
                 if ($text !== 'visible') {
                     $this->report->error($this->file, 'css_forbidden_property', 'visibility solo admite visible.', $line, $text);
-                }
-                break;
-            case 'opacity':
-                if ($kind !== 'free' && is_numeric($text) && (float) $text < 0.6) {
-                    $this->report->error($this->file, 'css_forbidden_property', 'Opacidad inferior a 0.6 en un bloque del sistema.', $line, $text);
                 }
                 break;
             case 'z-index':
@@ -616,7 +1018,7 @@ class CssSanitizer
                 }
                 break;
             case 'pointer-events':
-                if ($kind !== 'free' && ! ($kind === 'wrapper' && $this->pseudoRule && $text === 'none')) {
+                if ($restricted) {
                     $this->report->error($this->file, 'css_forbidden_property', 'pointer-events no se puede tocar en bloques del sistema.', $line, $text);
                 }
                 break;
@@ -636,6 +1038,9 @@ class CssSanitizer
             case 'filter':
             case 'backdrop-filter':
             case 'mix-blend-mode':
+                if ($base === 'mix-blend-mode' && ++$this->blendRules > 1) {
+                    $this->report->error($this->file, 'css_forbidden_property', 'mix-blend-mode solo se admite en una regla del paquete.', $line, $text);
+                }
                 if (! in_array($base, $this->warnedKeys, true)) {
                     $this->warnedKeys[] = $base;
                     $this->report->warning($this->file, 'css_costly_property', "{$base} es costoso de pintar en móviles modestos.", $line);
@@ -654,6 +1059,7 @@ class CssSanitizer
             foreach ($components as $i => $component) {
                 $this->value($component, $property, $line);
                 if (is_string($component) && in_array($property, ['animation', 'animation-name'], true) && isset($this->keyframes[$component])) {
+                    $this->noteKeyframeUse($component);
                     $components[$i] = $this->keyframes[$component];
                     $value->setListComponents($components);
                 }
@@ -688,6 +1094,21 @@ class CssSanitizer
             $this->report->error($this->file, 'css_forbidden_property', 'Función CSS no permitida.', $line, $name . '()');
 
             return false;
+        }
+        if (in_array($name, ['blur', 'drop-shadow'], true)) {
+            foreach ($this->sizes($fn) as $size) {
+                $unit = strtolower((string) $size->getUnit());
+                $px = match ($unit) {
+                    'px', '' => $size->getSize(),
+                    'em', 'rem' => $size->getSize() * 16,
+                    default => 1_000_000.0, // %, vw, vh...: unbounded for a filter
+                };
+                if (abs($px) > ($name === 'blur' ? 40 : 100)) {
+                    $this->report->error($this->file, 'css_forbidden_property', $name === 'blur' ? 'blur() admite como máximo 40px.' : 'drop-shadow() admite como máximo 100px.', $line, $name . '(' . $size->getSize() . $unit . ')');
+
+                    return false;
+                }
+            }
         }
         if ($name === 'var') {
             $args = $fn->getArguments();
@@ -749,11 +1170,28 @@ class CssSanitizer
 
     private function size(Size $size, string $property, ?int $line): void
     {
-        if (in_array($property, self::DURATION_PROPERTIES, true) && in_array(strtolower((string) $size->getUnit()), ['s', 'ms'], true)) {
-            $ms = $size->getSize() * (strtolower((string) $size->getUnit()) === 's' ? 1000 : 1);
+        $unit = strtolower((string) $size->getUnit());
+        $value = abs($size->getSize());
+        if (in_array($property, self::DURATION_PROPERTIES, true) && in_array($unit, ['s', 'ms'], true)) {
+            $ms = $value * ($unit === 's' ? 1000 : 1);
             if ($ms > 4000) {
-                $this->report->error($this->file, 'css_forbidden_property', 'Las duraciones y retardos no pueden pasar de 4 s.', $line, $size->getSize() . $size->getUnit());
+                $this->report->error($this->file, 'css_forbidden_property', 'Las duraciones y retardos no pueden pasar de 4 s (en positivo ni en negativo).', $line, $size->getSize() . $size->getUnit());
             }
+
+            return;
+        }
+        // Absolute sizes are bounded (W6-07): a 99999px box or blur costs a phone its graphics memory. Pill radii are exempt.
+        if (str_contains($property, 'radius')) {
+            return;
+        }
+        $limit = match ($unit) {
+            'px' => 4000,
+            'em', 'rem' => 250,
+            'vw', 'vh', 'vmin', 'vmax', 'svh', 'dvh', 'lvh', 'svw', 'dvw', 'lvw', 'cqw', 'cqh', '%' => 1000,
+            default => null,
+        };
+        if ($limit !== null && $value > $limit) {
+            $this->report->error($this->file, 'css_forbidden_property', "Tamaño fuera de límites (máximo {$limit}{$unit}).", $line, $size->getSize() . $size->getUnit());
         }
     }
 

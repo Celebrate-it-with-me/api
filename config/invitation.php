@@ -31,7 +31,11 @@ return [
     // validated upload waits to be installed.
     'packages' => [
         'disk' => 'template-packages',
-        'stage_hours' => 24,
+        'stage_hours' => 2,
+        // Valid uploads an admin may keep waiting to be installed (the oldest ones are discarded; W6-14).
+        'max_stages_per_admin' => 5,
+        // Origins that may read the package files from another origin (fonts, mask images). Defaults to the SPA domains.
+        'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) (env('TEMPLATE_ASSETS_ALLOWED_ORIGINS') ?: env('ALLOWED_SPA_DOMAINS', '')))))),
     ],
 
     'limits' => [

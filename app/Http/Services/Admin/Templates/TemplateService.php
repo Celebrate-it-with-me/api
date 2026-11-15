@@ -138,13 +138,17 @@ class TemplateService
     }
 
     /** @return array{version: array<string, mixed>, eventsOnPreviousVersion: int} */
-    public function publish(int $id, string $reason): array
+    /** @param  bool  $viaPackage  only `PackageLifecycle::activate` (checklist, marks, engineMin) may publish a version a package owns */
+    public function publish(int $id, string $reason, bool $viaPackage = false): array
     {
         $previousEvents = 0;
         $previousId = null;
 
-        $version = DB::transaction(function () use ($id, &$previousEvents, &$previousId) {
+        $version = DB::transaction(function () use ($id, $viaPackage, &$previousEvents, &$previousId) {
             $version = Version::query()->lockForUpdate()->findOrFail($id);
+            if (! $viaPackage) {
+                $this->assertNotPackageManaged($version);
+            }
             $this->assertDraft($version);
             TemplateSchema::assertValid($version->sections, $version->theme);
 
@@ -183,6 +187,7 @@ class TemplateService
     {
         $version = DB::transaction(function () use ($id) {
             $version = Version::query()->lockForUpdate()->findOrFail($id);
+            $this->assertNotPackageManaged($version);
 
             if ($version->status === Version::PUBLISHED) {
                 throw $this->unprocessable('cannot_archive_published', 'No se puede archivar la versión publicada: publica otra antes.');
@@ -202,6 +207,14 @@ class TemplateService
         ]);
 
         return $this->showVersion($version->id);
+    }
+
+    /** A package version goes live only through `activate` (checklist, third-party marks, engineMin) and leaves through the package endpoints. */
+    private function assertNotPackageManaged(Version $version): void
+    {
+        if ($version->package_id !== null) {
+            throw $this->conflict('package_managed', 'Esta versión la administra un paquete: se activa y se retira solo desde los endpoints del paquete.');
+        }
     }
 
     private function assertDraft(Version $version): void
