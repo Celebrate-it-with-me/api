@@ -22,7 +22,7 @@ class InvitationTemplateVersion extends Model
     public const SCHEMA_VERSION = 1;
 
     protected $fillable = [
-        'template_id', 'version', 'status', 'sections', 'theme', 'schema_version', 'notes',
+        'template_id', 'package_id', 'version', 'status', 'sections', 'theme', 'schema_version', 'notes',
         'created_by', 'published_by', 'published_at', 'archived_at',
     ];
 
@@ -37,6 +37,13 @@ class InvitationTemplateVersion extends Model
     {
         static::updating(function (self $version) {
             $was = $version->getOriginal('status');
+
+            // A version owned by a package is never edited by hand, not even as a draft (D-4); it can only be published
+            // or archived.
+            if ($was === self::DRAFT && $version->package_id !== null
+                && array_intersect(array_keys($version->getDirty()), ['sections', 'theme', 'notes', 'package_id']) !== []) {
+                throw new LogicException('A version managed by a package is not editable.');
+            }
 
             if ($was === self::DRAFT) {
                 return;
@@ -61,6 +68,12 @@ class InvitationTemplateVersion extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(InvitationTemplate::class, 'template_id');
+    }
+
+    /** The installed package that owns this version (its content is managed by the package, not by hand). */
+    public function package(): BelongsTo
+    {
+        return $this->belongsTo(TemplatePackage::class, 'package_id');
     }
 
     public function creator(): BelongsTo

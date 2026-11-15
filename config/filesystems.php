@@ -84,6 +84,23 @@ return [
             'endpoint' => env('AWS_ENDPOINT'),
             'throw' => true,
         ],
+
+        // Sanitized files of the installed template packages (theme.css and assets/). Public, immutable by path
+        // (<slug>/<version>-<hash8>/...) and meant to be served from an origin without cookies: TEMPLATE_PACKAGES_URL.
+        'template-packages' => [
+            'driver' => env('TEMPLATE_PACKAGES_DRIVER', 'local'),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => env('TEMPLATE_PACKAGES_DRIVER', 'local') === 'local'
+                ? env('TEMPLATE_PACKAGES_ROOT', storage_path('app/public/template-packages'))
+                : null,
+            'url' => env('TEMPLATE_PACKAGES_URL', env('APP_URL') . '/storage/template-packages'),
+            'visibility' => 'public',
+            'endpoint' => env('AWS_ENDPOINT'),
+            'throw' => true,
+        ],
     ],
 
     /*

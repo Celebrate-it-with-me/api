@@ -1,0 +1,10 @@
+<div class="pkg-hero" data-reveal="rise">
+  <div class="pkg-wash" role="presentation"></div>
+  <q-cover-photo aspect="4:5" priority></q-cover-photo>
+  <p class="pkg-hero__text" data-if="section.text">{{ section.text }}</p>
+  <p class="pkg-hero__for">{{ t.invitedFor }} {{ guest.first_name }}</p>
+  <q-names tag="h1" script class="pkg-hero__title"></q-names>
+  <q-date format="ring" weekday="short"></q-date>
+  <img src="assets/img/wash.svg" alt="" width="120" height="40" loading="lazy">
+  <q-cta action="confirm" variant="fill"></q-cta>
+</div>

@@ -1,0 +1,11 @@
+{
+  "wedding": [
+    { "type": "cover", "enabled": true, "order": 1, "title": { "es": "Nos casamos", "en": "We are getting married" }, "text": { "es": "Dos caminos se encontraron.", "en": "Two paths met." }, "settings": { "image": null } },
+    { "type": "rsvp", "enabled": true, "order": 2, "title": { "es": "¿Nos acompañas?", "en": "Will you join us?" }, "text": { "es": null, "en": null }, "settings": {} },
+    { "type": "closing", "enabled": true, "order": 3, "title": { "es": "Gracias", "en": "Thank you" }, "text": { "es": null, "en": null }, "settings": {} }
+  ],
+  "quinceanera": [
+    { "type": "cover", "enabled": true, "order": 1, "title": { "es": "Mis quince", "en": "My quince" }, "text": { "es": "Te espero.", "en": "See you there." }, "settings": { "image": null } },
+    { "type": "rsvp", "enabled": true, "order": 2, "title": { "es": "Confirma", "en": "RSVP" }, "text": { "es": null, "en": null }, "settings": {} }
+  ]
+}

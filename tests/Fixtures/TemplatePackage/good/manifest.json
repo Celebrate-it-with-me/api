@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "slug": "botanical",
+  "name": { "es": "Botánica acuarela", "en": "Watercolor botanical" },
+  "description": { "es": "Papel marfil, acuarela y eucalipto.", "en": "Ivory paper, watercolor and eucalyptus." },
+  "version": "1.0.0",
+  "level": 1,
+  "eventTypes": ["wedding", "quinceanera"],
+  "tier": "premium",
+  "visibility": "public",
+  "engineMin": 1,
+  "author": { "name": "Estudio Ejemplo", "url": "https://example.com" },
+  "license": { "id": "original-work", "summary": "Obra original del equipo, licencia propia para Quinvite.", "document": "LICENSES.md" },
+  "assetsCredits": [
+    { "path": "assets/img/wash.svg", "title": "Mancha acuarela", "author": "Equipo Quinvite", "source": "original", "license": "original-work" },
+    { "path": "assets/img/paper.webp", "title": "Textura de papel", "author": "Equipo Quinvite", "source": "original", "license": "original-work" },
+    { "path": "assets/fonts/script-400.woff2", "title": "Great Vibes 400", "author": "Robert Leuschke", "source": "https://fonts.google.com/specimen/Great+Vibes", "license": "OFL-1.1" }
+  ],
+  "thirdPartyMarks": []
+}

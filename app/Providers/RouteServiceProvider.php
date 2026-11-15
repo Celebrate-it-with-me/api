@@ -48,6 +48,9 @@ class RouteServiceProvider extends ServiceProvider
         'admin-whatsapp-test' => [10, 1],
         'assistant-read' => [120, 1],
         'assistant-write' => [60, 1],
+        'admin-template-package-upload' => [6, 1],
+        'admin-template-package-install' => [10, 1],
+        'admin-template-package-change' => [10, 1],
     ];
 
     /**
