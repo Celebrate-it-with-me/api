@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\MenuFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventPlan extends Model
 {
-    /** @use HasFactory<\Database\Factories\MenuFactory> */
+    /** @use HasFactory<MenuFactory> */
     use HasFactory;
 
     protected $table = 'event_plans';
@@ -18,7 +18,7 @@ class EventPlan extends Model
     protected $fillable = [
         'name', 'description', 'max_guests', 'price_cents', 'currency', 'slug', 'has_gallery', 'has_music', 'has_custom_design',
         'has_drag_editor', 'has_ai_assistant', 'has_invitations', 'has_sms',
-        'has_gift_registry', 'support_level'
+        'has_gift_registry', 'support_level',
     ];
 
     /**
@@ -36,5 +36,4 @@ class EventPlan extends Model
     {
         return $this->hasMany(Events::class, 'event_plan_id', 'id');
     }
-
 }

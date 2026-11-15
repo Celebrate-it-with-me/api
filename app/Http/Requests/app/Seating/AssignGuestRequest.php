@@ -5,7 +5,6 @@ namespace App\Http\Requests\app\Seating;
 use App\Models\Guest;
 use App\Models\Seating\TableAssignment;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class AssignGuestRequest extends FormRequest
 {
@@ -15,9 +14,10 @@ class AssignGuestRequest extends FormRequest
     public function authorize(): bool
     {
         $table = $this->route('table');
-        return /*$this->user()->can('manage', $table->event)*/true;
+
+        return /* $this->user()->can('manage', $table->event) */ true;
     }
-    
+
     /**
      * Get the validation rules that apply to the request.
      */
@@ -32,7 +32,7 @@ class AssignGuestRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     $table = $this->route('table');
                     $guest = Guest::find($value);
-                    
+
                     if ($guest && $guest->event_id !== $table->event_id) {
                         $fail('Guest does not belong to this event.');
                     }
@@ -40,7 +40,7 @@ class AssignGuestRequest extends FormRequest
                 // Guest cannot already be assigned to a table
                 function ($attribute, $value, $fail) {
                     $exists = TableAssignment::query()->where('guest_id', $value)->exists();
-                    
+
                     if ($exists) {
                         $fail('Guest is already assigned to a table.');
                     }
@@ -48,15 +48,15 @@ class AssignGuestRequest extends FormRequest
                 // Table must have available seats
                 function ($attribute, $value, $fail) {
                     $table = $this->route('table');
-                    
-                    if (!$table->hasAvailableSeats()) {
+
+                    if (! $table->hasAvailableSeats()) {
                         $fail('Table is full.');
                     }
                 },
             ],
         ];
     }
-    
+
     /**
      * Get custom messages for validator errors.
      */

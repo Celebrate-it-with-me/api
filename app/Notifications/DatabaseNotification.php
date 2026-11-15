@@ -103,7 +103,7 @@ class DatabaseNotification extends Notification
             ],
             NotificationKeys::EVENT_PUBLISHED => [
                 'title' => 'Event Published',
-                'body' => "The event is now published!",
+                'body' => 'The event is now published!',
             ],
             NotificationKeys::LOCATION_CREATED => [
                 'title' => 'Location Added',
@@ -143,7 +143,7 @@ class DatabaseNotification extends Notification
             ],
             NotificationKeys::BUDGET_ITEM_PAID => [
                 'title' => 'Budget Item Paid',
-                'body' => "Budget item marked as paid: " . ($this->payload['item_title'] ?? ''),
+                'body' => 'Budget item marked as paid: ' . ($this->payload['item_title'] ?? ''),
             ],
             NotificationKeys::SAVE_THE_DATE_UPDATED => [
                 'title' => 'Save the Date Updated',

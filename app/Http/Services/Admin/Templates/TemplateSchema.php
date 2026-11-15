@@ -98,7 +98,7 @@ class TemplateSchema
                 $this->errors["{$at}.order"] = 'El orden debe ser un número entero entre 0 y 99.';
             }
 
-            $this->localized($section['title'] ?? null, "{$at}.title", (int) config('invitation.limits.title'), true);
+            $this->localized($section['title'] ?? null, "{$at}.title", (int) config('invitation.limits.title'), $type !== 'music'); // the floating music button has no visible title
             $this->localized($section['text'] ?? null, "{$at}.text", (int) config('invitation.limits.text'), false);
             $this->settings($section['settings'] ?? null, "{$at}.settings", $type);
         }
@@ -151,11 +151,18 @@ class TemplateSchema
             return;
         }
 
-        $allowed = $type === 'cover' ? ['image'] : [];
+        $allowed = match ($type) {
+            'cover' => ['image'],
+            'gallery' => ['layout', 'maxPhotos', 'showCaptions'],
+            'music' => ['title'],
+            default => [],
+        };
 
         foreach (array_diff(array_keys($settings), $allowed) as $key) {
             $this->errors["{$at}.{$key}"] = 'Ajuste no permitido para esta sección.';
         }
+
+        $this->mediaSettings($settings, $at, $type);
 
         if (array_key_exists('image', $settings) && in_array('image', $allowed, true)) {
             $image = $settings['image'];
@@ -163,6 +170,28 @@ class TemplateSchema
             if ($image !== null && (! is_string($image) || ! $this->isRelativeImage($image))) {
                 $this->errors["{$at}.image"] = 'La imagen debe ser una ruta relativa que empiece por «/» (sin dominios externos).';
             }
+        }
+    }
+
+    /** Settings of the gallery and music sections (the public invitation reads only these, with defaults for the rest). */
+    private function mediaSettings(array $settings, string $at, mixed $type): void
+    {
+        if ($type === 'gallery') {
+            if (array_key_exists('layout', $settings) && ! in_array($settings['layout'], ['grid', 'carousel'], true)) {
+                $this->errors["{$at}.layout"] = 'La disposición debe ser «grid» o «carousel».';
+            }
+
+            if (array_key_exists('maxPhotos', $settings) && (! is_int($settings['maxPhotos']) || $settings['maxPhotos'] < 1 || $settings['maxPhotos'] > 40)) {
+                $this->errors["{$at}.maxPhotos"] = 'El máximo de fotos debe ser un número entero entre 1 y 40.';
+            }
+
+            if (array_key_exists('showCaptions', $settings) && ! is_bool($settings['showCaptions'])) {
+                $this->errors["{$at}.showCaptions"] = 'Indica si se muestran los pies de foto (verdadero o falso).';
+            }
+        }
+
+        if ($type === 'music' && array_key_exists('title', $settings) && $settings['title'] !== null) {
+            $this->localized($settings['title'], "{$at}.title", 60, false);
         }
     }
 

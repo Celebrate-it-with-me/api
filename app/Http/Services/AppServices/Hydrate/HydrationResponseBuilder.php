@@ -3,31 +3,33 @@
 namespace App\Http\Services\AppServices\Hydrate;
 
 use App\Http\Resources\AppResources\EventResource;
+use App\Http\Services\AppServices\EventModules;
 use App\Http\Services\AppServices\Hydrate\DTOs\HydrationData;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 
 class HydrationResponseBuilder
 {
     private ?Collection $events = null;
+
     private mixed $activeEvent = null;
+
     private ?array $eventData = null;
+
     private ?array $userPermissions = null;
+
     private Collection $eventTypes;
+
     private Collection $eventPlans;
 
     /**
      * Constructor for HydrationResponseBuilder.
-     *
-     * @param EventCacheService $eventCacheService
      */
     public function __construct(
         private readonly EventCacheService $eventCacheService
-    )
-    {
+    ) {
         $this->eventTypes = $this->eventCacheService->getEventTypes();
         $this->eventPlans = $this->eventCacheService->getEventPlans();
     }
@@ -35,48 +37,48 @@ class HydrationResponseBuilder
     /**
      * Sets the events for the hydration response.
      *
-     * @param Collection|null $events
      * @return $this
      */
     public function withEvents(?Collection $events): self
     {
         $this->events = $events;
+
         return $this;
     }
 
     /**
      * Sets the active event for the hydration response.
      *
-     * @param Events|null $event
      * @return $this
      */
     public function withActiveEvent(?Events $event): self
     {
         $this->activeEvent = $event;
+
         return $this;
     }
 
     /**
      * Sets the event data for the hydration response.
      *
-     * @param array|null $eventData
      * @return $this
      */
     public function withEventData(?array $eventData): self
     {
         $this->eventData = $eventData;
+
         return $this;
     }
 
     /**
      * Sets the user permissions for the hydration response.
      *
-     * @param array|null $permissions
      * @return $this
      */
     public function withUserPermissions(?array $permissions): self
     {
         $this->userPermissions = $permissions;
+
         return $this;
     }
 
@@ -130,24 +132,20 @@ class HydrationResponseBuilder
 
     /**
      * Formats the events into a collection of event resources.
-     *
-     * @return AnonymousResourceCollection|null
      */
     private function formatEvents(): ?AnonymousResourceCollection
     {
-        if (!$this->events) {
+        if (! $this->events) {
             return null;
         }
 
-        app(\App\Http\Services\AppServices\EventModules::class)->preload($this->events);
+        app(EventModules::class)->preload($this->events);
 
         return EventResource::collection($this->events);
     }
 
     /**
      * Gets the raw events collection.
-     *
-     * @return Collection|null
      */
     private function getEventsCollection(): ?Collection
     {
@@ -156,12 +154,10 @@ class HydrationResponseBuilder
 
     /**
      * Formats the active event into a single event resource.
-     *
-     * @return EventResource|null
      */
     private function formatActiveEvent(): ?EventResource
     {
-        if (!$this->activeEvent) {
+        if (! $this->activeEvent) {
             return null;
         }
 

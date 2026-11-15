@@ -1,9 +1,10 @@
 <?php
 
+use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\AppServices\Hydrate\HydrationService;
 use App\Models\EventPlan;
-use App\Models\EventType;
 use App\Models\Events;
+use App\Models\EventType;
 use App\Models\Guest;
 use App\Models\User;
 use Database\Seeders\AdminUserSeeder;
@@ -181,7 +182,7 @@ describe('event types', function () {
     it('keeps hidden types out of the hydration payload', function () {
         $this->seed(DatabaseSeeder::class);
 
-        $slugs = app(\App\Http\Services\AppServices\Hydrate\EventCacheService::class)
+        $slugs = app(EventCacheService::class)
             ->getEventTypes()->pluck('slug')->sort()->values()->all();
 
         expect($slugs)->toBe(['quinceanera', 'wedding']);

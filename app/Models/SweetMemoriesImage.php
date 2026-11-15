@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\SweetMemoriesImageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SweetMemoriesImage extends Model
 {
-    /** @use HasFactory<\Database\Factories\SweetMemoriesImageFactory> */
+    /** @use HasFactory<SweetMemoriesImageFactory> */
     use HasFactory;
 
     protected $table = 'sweet_memories_images';
@@ -42,7 +43,6 @@ class SweetMemoriesImage extends Model
 
     /**
      * Defines the relationship between the current model and the Events model.
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {

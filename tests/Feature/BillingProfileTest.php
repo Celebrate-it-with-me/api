@@ -195,8 +195,8 @@ describe('resend from My purchases', function () {
         $note = CreditNote::firstOrFail();
         $stranger = User::factory()->create();
 
-        $this->actingAs($stranger)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'account'])->assertForbidden();
-        $this->actingAs($stranger)->postJson("/api/v1/app/account/credit-notes/{$note->id}/resend", ['to' => 'account'])->assertForbidden();
+        $this->actingAs($stranger)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'account'])->assertNotFound();
+        $this->actingAs($stranger)->postJson("/api/v1/app/account/credit-notes/{$note->id}/resend", ['to' => 'account'])->assertNotFound();
         $this->actingAs($me)->postJson('/api/v1/app/account/invoices/999999/resend', ['to' => 'account'])->assertNotFound();
         $this->actingAs($me)->postJson("/api/v1/app/account/credit-notes/{$note->id}/resend", ['to' => 'account'])->assertOk();
     });

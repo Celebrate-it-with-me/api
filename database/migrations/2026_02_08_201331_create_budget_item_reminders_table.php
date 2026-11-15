@@ -15,11 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('budget_item_id')->constrained('budget_items')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            
+
             $table->unsignedTinyInteger('threshold_days');
             $table->timestamp('sent_at');
             $table->timestamps();
-            
+
             $table->unique(['budget_item_id', 'user_id', 'threshold_days'], 'budget_item_reminders_unique');
             $table->index('sent_at');
             $table->index('budget_item_id');

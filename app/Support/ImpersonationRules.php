@@ -16,6 +16,8 @@ final class ImpersonationRules
     /** Passwords, 2FA, sessions, purchases and payments, exports of personal data, deleting, access to the event. */
     public const BLOCKED = [
         'DELETE api/v1/app/event/{event}',
+        'DELETE api/v1/app/event/{event}/background-music',
+        'POST api/v1/app/event/{event}/background-music',
         'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
         'DELETE api/v1/app/event/{event}/collaborators/{user}',
         'GET api/v1/app/event/{event}/budget/export',
@@ -25,7 +27,6 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/roster/export',
         'GET api/v1/app/event/{event}/roster/export/venue',
         'GET api/v1/app/event/{event}/suggest-music/export',
-        'GET api/v1/app/exports/download',
         // Billing documents of the owner: support sees them from the admin, not by impersonating.
         'GET api/v1/app/account/billing-profile',
         // Support never deletes an account on behalf of its owner.
@@ -41,6 +42,15 @@ final class ImpersonationRules
         'POST api/v1/app/account/invoices/{invoice}/resend',
         // Nothing is dismissed on behalf of the user.
         'POST api/v1/app/announcements/{announcement}/dismiss',
+        // The assistant's plan is the organizer's own: support reads it, never marks, hides or writes steps for her.
+        'DELETE api/v1/app/event/{event}/assistant/custom-tasks/{id}',
+        'PATCH api/v1/app/event/{event}/assistant/custom-tasks/{id}',
+        'POST api/v1/app/event/{event}/assistant/custom-tasks',
+        'POST api/v1/app/event/{event}/assistant/tasks/{key}/done',
+        'POST api/v1/app/event/{event}/assistant/tasks/{key}/hide',
+        'POST api/v1/app/event/{event}/assistant/tasks/{key}/not-applicable',
+        'POST api/v1/app/event/{event}/assistant/tasks/{key}/reset',
+        'POST api/v1/app/event/{event}/assistant/tasks/{key}/snooze',
         'POST api/v1/app/event/{event}/collaborators',
         'PATCH api/v1/app/event/{event}/collaborators/{user}',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
@@ -86,6 +96,8 @@ final class ImpersonationRules
         'GET api/v1/app/auth/ready',
         'GET api/v1/app/event/filters',
         'GET api/v1/app/event/{event}',
+        'GET api/v1/app/event/{event}/assistant/next',
+        'GET api/v1/app/event/{event}/assistant/plan',
         'GET api/v1/app/event/{event}/background-music',
         'GET api/v1/app/event/{event}/budget',
         'GET api/v1/app/event/{event}/budget/items',
@@ -132,7 +144,6 @@ final class ImpersonationRules
         'PATCH api/v1/app/sweet-memories-images/{sweetMemoriesImage}',
         'POST api/v1/app/event',
         'POST api/v1/app/event/{event}/archive',
-        'POST api/v1/app/event/{event}/background-music',
         'POST api/v1/app/event/{event}/budget/categories',
         'POST api/v1/app/event/{event}/budget/items',
         'POST api/v1/app/event/{event}/budget/items/{item}/payments',

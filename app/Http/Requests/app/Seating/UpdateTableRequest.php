@@ -13,9 +13,10 @@ class UpdateTableRequest extends FormRequest
     public function authorize(): bool
     {
         $table = $this->route('table');
-        return true/*$this->user()->can('manage', $table->event)*/;
+
+        return true/* $this->user()->can('manage', $table->event) */;
     }
-    
+
     /**
      * Get the validation rules that apply to the request.
      */
@@ -33,7 +34,7 @@ class UpdateTableRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     $table = $this->route('table');
                     $assignedCount = $table->assignments()->count();
-                    
+
                     if ($value < $assignedCount) {
                         $fail("Cannot reduce capacity below currently assigned guests ($assignedCount).");
                     }
@@ -45,7 +46,7 @@ class UpdateTableRequest extends FormRequest
             'location' => ['nullable', Rule::in(['front', 'center', 'back', 'side', 'entrance'])],
         ];
     }
-    
+
     /**
      * Get custom messages for validator errors.
      */

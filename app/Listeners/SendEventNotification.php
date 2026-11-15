@@ -4,14 +4,14 @@ namespace App\Listeners;
 
 use App\Events\EventNotificationEvent;
 use App\Models\User;
-use App\Support\Notifications\NotificationKeys;
+use App\Notifications\BudgetDatabaseNotification;
+use App\Notifications\CommentDatabaseNotification;
 use App\Notifications\EventDatabaseNotification;
 use App\Notifications\LocationDatabaseNotification;
-use App\Notifications\RsvpDatabaseNotification;
-use App\Notifications\CommentDatabaseNotification;
 use App\Notifications\MusicDatabaseNotification;
-use App\Notifications\BudgetDatabaseNotification;
+use App\Notifications\RsvpDatabaseNotification;
 use App\Notifications\SaveTheDateDatabaseNotification;
+use App\Support\Notifications\NotificationKeys;
 
 class SendEventNotification
 {
@@ -22,18 +22,18 @@ class SendEventNotification
     {
         $owner = User::find($event->ownerUserId);
 
-        if (!$owner) {
+        if (! $owner) {
             return;
         }
 
         // Do not notify the same user who performed the action
-        if ($event->actor['type'] === 'user' && (int)$event->actor['id'] === (int)$owner->id) {
+        if ($event->actor['type'] === 'user' && (int) $event->actor['id'] === (int) $owner->id) {
             return;
         }
 
         $notificationClass = $this->resolveNotificationClass($event->key);
 
-        if (!$notificationClass) {
+        if (! $notificationClass) {
             return;
         }
 

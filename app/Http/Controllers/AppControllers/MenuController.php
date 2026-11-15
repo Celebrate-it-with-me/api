@@ -16,9 +16,6 @@ class MenuController extends Controller
 {
     /**
      * Getting menu from this event.
-     * @param Request $request
-     * @param Events $event
-     * @return JsonResponse
      */
     public function index(Request $request, Events $event): JsonResponse
     {
@@ -26,20 +23,14 @@ class MenuController extends Controller
         return response()->json($event->menus()->with('menuItems')->get());
     }
 
-    /**
-     *
-     * @param Request $request
-     * @param Events $event
-     * @return JsonResponse|AnonymousResourceCollection
-     */
-    public function getGuestsMenu(Request $request, Events $event): JsonResponse | AnonymousResourceCollection
+    public function getGuestsMenu(Request $request, Events $event): JsonResponse|AnonymousResourceCollection
     {
         try {
             $guests = Guest::query()
                 ->with(['selectedMenuItems'])
                 ->where('event_id', $event->id)
                 ->paginate($request->get('per_page', 10));
-            
+
             // No guests yet is a normal answer: an empty page.
             return GuestMenuConfirmationResource::collection($guests);
         } catch (\Throwable $e) {
@@ -48,26 +39,19 @@ class MenuController extends Controller
             return response()->json(['message' => 'The guest menu selections could not be loaded.'], 500);
         }
     }
-    
-    
+
     /**
      * Display the menu for the given event.
-     *
-     * @param Events $event
-     * @return JsonResponse
      */
     public function show(Events $event, Menu $menu): JsonResponse
     {
         $menu = $menu->load('menuItems');
+
         return response()->json($menu);
     }
-    
+
     /**
      * Store a new menu for the given event.
-     *
-     * @param Request $request
-     * @param Events $event
-     * @return JsonResponse
      */
     public function store(Request $request, Events $event): JsonResponse
     {
@@ -80,13 +64,13 @@ class MenuController extends Controller
             'allowCustomRequests' => 'boolean',
             'isDefault' => 'boolean',
         ]);
-        
+
         if ($data['isDefault'] ?? false) {
             $event->menus()->update([
                 'is_default' => false,
             ]);
         }
-        
+
         $menu = $event->menus()->create([
             'title' => $data['title'] ?? null,
             'description' => $data['description'] ?? null,
@@ -94,7 +78,7 @@ class MenuController extends Controller
             'allow_custom_request' => $data['allowCustomRequests'] ?? false,
             'is_default' => $data['isDefault'] ?? $this->getIsDefaultMenu($event),
         ]);
-        
+
         EventActivityLogger::log(
             $event->id,
             'menu_created',
@@ -108,25 +92,23 @@ class MenuController extends Controller
                 'is_default' => $menu->is_default,
             ]
         );
-        
+
         return response()->json($menu, 201);
     }
-    
+
     /**
      * Check if the menu is default.
-     * @param Events $event
-     * @return bool
      */
     private function getIsDefaultMenu(Events $event): bool
     {
-        $menus = $event->menus()->where('is_default',  true)->get();
+        $menus = $event->menus()->where('is_default', true)->get();
         if ($menus->isEmpty()) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     public function update(Request $request, Events $event, Menu $menu): JsonResponse
     {
         $this->acceptBothSpellings($request);
@@ -171,15 +153,12 @@ class MenuController extends Controller
 
     /**
      * Delete the menu for the given event.
-     *
-     * @param Events $event
-     * @return JsonResponse
      */
     public function destroy(Events $event, Menu $menu): JsonResponse
     {
         try {
             $menu->delete();
-            
+
             EventActivityLogger::log(
                 $event->id,
                 'menu_deleted',
@@ -192,7 +171,7 @@ class MenuController extends Controller
                     'allow_custom_request' => $menu->allow_custom_request,
                 ]
             );
-            
+
             return response()->json(['message' => 'Menu deleted successfully']);
         } catch (\Throwable $e) {
             report($e);

@@ -37,7 +37,7 @@ class BudgetDatabaseNotification extends Notification
             ],
             NotificationKeys::BUDGET_ITEM_PAID => [
                 'title' => 'Budget Item Paid',
-                'body' => "Budget item marked as paid: " . ($this->payload['item_title'] ?? ''),
+                'body' => 'Budget item marked as paid: ' . ($this->payload['item_title'] ?? ''),
             ],
             default => [
                 'title' => 'Budget Notification',

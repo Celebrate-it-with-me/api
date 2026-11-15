@@ -2,7 +2,6 @@
 
 use App\Models\AdminAuditLog;
 use App\Models\EventPlan;
-use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\EventType;
 use App\Models\EventUserRole;
@@ -10,7 +9,6 @@ use App\Models\User;
 use App\Support\AdminPermissions;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);

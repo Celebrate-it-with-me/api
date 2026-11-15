@@ -1,21 +1,24 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
 |--------------------------------------------------------------------------
 */
 
-pest()->extend(Tests\TestCase::class)
+pest()->extend(TestCase::class)
     ->in('Feature');
 
 // Configuración para tests Unit
-pest()->extend(Tests\TestCase::class)
+pest()->extend(TestCase::class)
     ->in('Unit');
 
 // Hydration tests create users/events and read event_types/event_plans: they must migrate by themselves.
 // (A uses(...)->in('Unit/Services/Hydrate') inside tests/Helpers is resolved against that folder and never matched.)
-pest()->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->use(RefreshDatabase::class)
     ->in('Unit/Services/Hydrate');
 
 /*

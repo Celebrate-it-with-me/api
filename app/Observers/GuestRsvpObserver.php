@@ -10,15 +10,19 @@ class GuestRsvpObserver
 {
     public function updated(Guest $guest): void
     {
-        if (!$guest->wasChanged('rsvp_status')) {
+        if (! $guest->wasChanged('rsvp_status')) {
             return;
         }
 
         $event = $guest->event;
-        if (!$event) return;
+        if (! $event) {
+            return;
+        }
 
         $ownerUserId = optional($event->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user?->id ?? 0;
-        if ($ownerUserId <= 0) return;
+        if ($ownerUserId <= 0) {
+            return;
+        }
 
         $key = match ($guest->rsvp_status) {
             'attending' => NotificationKeys::RSVP_CONFIRMED,
@@ -26,7 +30,9 @@ class GuestRsvpObserver
             default => null,
         };
 
-        if (!$key) return;
+        if (! $key) {
+            return;
+        }
 
         $actor = [
             'type' => 'guest',

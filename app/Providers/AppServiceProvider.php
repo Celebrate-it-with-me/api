@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
+use App\Http\Services\Admin\Account\TokenLifetime;
 use App\Models\Guest;
 use App\Models\User;
-use App\Http\Services\Admin\Account\TokenLifetime;
 use App\Support\Mail\MessageOverrides;
 use App\Support\Mail\OverridableTranslator;
 use App\Support\ProductionSafetyCheck;
@@ -23,8 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(ImageManager::class, function($app) {
-            return new ImageManager(new Driver());
+        $this->app->singleton(ImageManager::class, function ($app) {
+            return new ImageManager(new Driver);
         });
 
         // Lines of the `mail` lang group can be overridden by the admin (message editor); everything else is untouched.

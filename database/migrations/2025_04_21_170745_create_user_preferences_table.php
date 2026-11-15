@@ -18,11 +18,11 @@ return new class extends Migration
             $table->string('timezone')->default('America/New_York');
             $table->string('visual_theme')->default('system');
             $table->string('date_format')->default('MM/DD/YYYY');
-            
+
             $table->boolean('notify_by_email')->default(true);
             $table->boolean('notify_by_sms')->default(false);
             $table->boolean('smart_tips')->default(true);
-            
+
             $table->timestamps();
         });
     }

@@ -1,44 +1,47 @@
 <?php
-    
-    use App\Http\Controllers\AppControllers\BackgroundMusicController;
-    use App\Http\Controllers\AppControllers\Budget\BudgetController;
-    use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
-    use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
-    use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
-    use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
-    use App\Http\Controllers\AppControllers\EventConfigCommentsController;
-    use App\Http\Controllers\AppControllers\EventLocationController;
-    use App\Http\Controllers\AppControllers\EventLifecycleController;
-    use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
-    use App\Http\Controllers\AppControllers\EventsController;
-    use App\Http\Controllers\AppControllers\ExportController;
-    use App\Http\Controllers\AppControllers\GuestController;
-    use App\Http\Controllers\AppControllers\GuestExportController;
-    use App\Http\Controllers\AppControllers\GuestImportController;
-    use App\Http\Controllers\AppControllers\GuestRosterController;
-    use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
-    use App\Http\Controllers\AppControllers\MenuController;
-    use App\Http\Controllers\AppControllers\MenuItemController;
-    use App\Http\Controllers\AppControllers\OnboardingController;
-    use App\Http\Controllers\AppControllers\OrganizerRsvpController;
-    use App\Http\Controllers\AppControllers\PadrinoController;
-    use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
-    use App\Http\Controllers\AppControllers\RsvpController;
-    use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
-    use App\Http\Controllers\AppControllers\Seating\TableController;
-    use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
-    use App\Http\Controllers\AppControllers\SpotifySearchController;
-    use App\Http\Controllers\AppControllers\SuggestedMusicController;
-    use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
-    use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
-    use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
-    use App\Http\Controllers\AppControllers\Timeline\TimelineController;
-    use App\Http\Controllers\AppControllers\UserPreferenceController;
-    use App\Http\Controllers\AppControllers\UserSettingsController;
-    use App\Http\Controllers\AppControllers\UserTwoFAController;
-    use App\Http\Controllers\AuthenticationController;
-    use App\Http\Controllers\DressCodeController;
-    use App\Http\Controllers\AppControllers\PublicInvitationController;
+
+use App\Http\Controllers\AppControllers\BackgroundMusicController;
+use App\Http\Controllers\AppControllers\Budget\BudgetController;
+use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
+use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
+use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
+use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
+use App\Http\Controllers\AppControllers\EventConfigCommentsController;
+use App\Http\Controllers\AppControllers\EventLifecycleController;
+use App\Http\Controllers\AppControllers\EventLocationController;
+use App\Http\Controllers\AppControllers\EventPermissions\EventPermissionsController;
+use App\Http\Controllers\AppControllers\EventsController;
+use App\Http\Controllers\AppControllers\ExportController;
+use App\Http\Controllers\AppControllers\GuestController;
+use App\Http\Controllers\AppControllers\GuestExportController;
+use App\Http\Controllers\AppControllers\GuestImportController;
+use App\Http\Controllers\AppControllers\GuestRosterController;
+use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
+use App\Http\Controllers\AppControllers\Impersonation\ImpersonationEndController;
+use App\Http\Controllers\AppControllers\MenuController;
+use App\Http\Controllers\AppControllers\MenuItemController;
+use App\Http\Controllers\AppControllers\OnboardingController;
+use App\Http\Controllers\AppControllers\OrganizerRsvpController;
+use App\Http\Controllers\AppControllers\PadrinoController;
+use App\Http\Controllers\AppControllers\PublicInvitationController;
+use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
+use App\Http\Controllers\AppControllers\RsvpController;
+use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
+use App\Http\Controllers\AppControllers\Seating\TableController;
+use App\Http\Controllers\AppControllers\SpotifySearchController;
+use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
+use App\Http\Controllers\AppControllers\SuggestedMusicController;
+use App\Http\Controllers\AppControllers\SuggestedMusicVoteController;
+use App\Http\Controllers\AppControllers\Support\SupportRequestController;
+use App\Http\Controllers\AppControllers\SweetMemoriesConfigController;
+use App\Http\Controllers\AppControllers\SweetMemoriesImageController;
+use App\Http\Controllers\AppControllers\Timeline\TimelineController;
+use App\Http\Controllers\AppControllers\UserPreferenceController;
+use App\Http\Controllers\AppControllers\UserSettingsController;
+use App\Http\Controllers\AppControllers\UserTwoFAController;
+use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\DressCodeController;
+use App\Http\Controllers\Payments\PurchaseController;
 
 // ========================================
 // PUBLIC ROUTES (No Authentication)
@@ -47,7 +50,7 @@
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
     Route::get('', [PublicInvitationController::class, 'show'])->middleware('throttle:invitation-show')->name('show');
-    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'module.access:rsvp'])->name('rsvp');
+    Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'throttle:invitation-rsvp-code', 'module.access:rsvp'])->name('rsvp');
     Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
 });
 
@@ -63,7 +66,7 @@ Route::prefix('template')->name('template.')->group(function () {
             Route::get('', [PublicSuggestedMusicController::class, 'index'])->name('index');
             Route::post('', [PublicSuggestedMusicController::class, 'store'])->name('store');
             Route::delete('', [PublicSuggestedMusicController::class, 'destroy'])->name('destroy');
-            
+
             Route::get('votes/available', [SuggestedMusicVoteController::class, 'getAvailableVotes'])
                 ->name('votes.available'); // Body: { accessCode: 'ABC123' }
             Route::get('{suggestedMusic}/vote', [SuggestedMusicVoteController::class, 'getUserVote'])
@@ -75,7 +78,7 @@ Route::prefix('template')->name('template.')->group(function () {
 });
 
 // Authentication Routes
-Route::post('payments/webhook', [\App\Http\Controllers\Payments\PurchaseController::class, 'webhook'])->middleware('throttle:payments-webhook')->name('payments.webhook');
+Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle:payments-webhook')->name('payments.webhook');
 
 // "Mis compras" (invoices): its own file, own auth middleware. Keep it above the group that ends the impersonation
 // session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
@@ -83,6 +86,7 @@ require __DIR__ . '/app/invoices.php';
 require __DIR__ . '/app/whatsapp.php';
 require __DIR__ . '/app/announcements.php';
 require __DIR__ . '/app/account-deletion.php';
+require __DIR__ . '/app/assistant.php';
 
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
@@ -100,8 +104,6 @@ Route::prefix('')->name('auth.')->group(function () {
         ->name('reset.password');
 });
 
-
-
 // Public Collaborator Invitation Routes
 Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])
     ->middleware('throttle:collaborator-token')->name('collaborators.checkToken');
@@ -116,16 +118,16 @@ Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, '
 
 Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refresh.token'])->group(function () {
 
-    //=========================================
+    // =========================================
     // CHECK IF AUTH IS READY
-    //=========================================
+    // =========================================
     Route::get('/auth/ready', [AuthenticationController::class, 'checkAuthReady'])
         ->name('auth.ready');
 
     // "Necesito ayuda": the organizer's own support requests.
-    Route::get('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'index'])->name('support.index');
-    Route::post('support', [\App\Http\Controllers\AppControllers\Support\SupportRequestController::class, 'store'])->middleware('throttle:support-request')->name('support.store');
-    
+    Route::get('support', [SupportRequestController::class, 'index'])->name('support.index');
+    Route::post('support', [SupportRequestController::class, 'store'])->middleware('throttle:support-request')->name('support.store');
+
     // ========================================
     // USER MANAGEMENT ROUTES
     // ========================================
@@ -187,9 +189,9 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::get('', [EventsController::class, 'show'])->name('show');
             Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
             Route::prefix('purchase')->name('purchase.')->middleware('event.access:delete_event')->group(function () {
-                Route::get('quote', [\App\Http\Controllers\Payments\PurchaseController::class, 'quote'])->name('quote');
-                Route::post('checkout', [\App\Http\Controllers\Payments\PurchaseController::class, 'checkout'])->name('checkout');
-                Route::get('status', [\App\Http\Controllers\Payments\PurchaseController::class, 'status'])->name('status');
+                Route::get('quote', [PurchaseController::class, 'quote'])->name('quote');
+                Route::post('checkout', [PurchaseController::class, 'checkout'])->name('checkout');
+                Route::get('status', [PurchaseController::class, 'status'])->name('status');
             });
             Route::post('publish', [EventLifecycleController::class, 'publish'])->name('publish');
             Route::post('unpublish', [EventLifecycleController::class, 'unpublish'])->name('unpublish');
@@ -289,7 +291,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::post('', [DressCodeController::class, 'store'])->name('store'); // create or replace
                 Route::delete('', [DressCodeController::class, 'destroy'])->name('destroy');
             });
-            
+
             // ========================================
             // Timeline
             // ========================================
@@ -300,31 +302,29 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::put('{timeline}', [TimelineController::class, 'update'])->name('update');
                 Route::delete('{timeline}', [TimelineController::class, 'destroy'])->name('destroy');
             });
-            
-            
+
             // ========================================
             // Seating
             // ========================================
-                // Tables
-            Route::prefix('tables')->name('tables.')->middleware('module.access:seating')->group(function() {
+            // Tables
+            Route::prefix('tables')->name('tables.')->middleware('module.access:seating')->group(function () {
                 Route::get('', [TableController::class, 'index'])->name('index');
                 Route::post('', [TableController::class, 'store'])->name('store');
                 Route::get('{table}', [TableController::class, 'show'])->name('show');
                 Route::put('{table}', [TableController::class, 'update'])->name('update');
                 Route::delete('{table}', [TableController::class, 'destroy'])->name('destroy');
-                
+
                 Route::post('{table}/assign', [TableController::class, 'assignGuest'])->name('assign-guests');
                 Route::delete('{table}/guest/{guest}', [TableController::class, 'removeGuest'])->name('remove-guest');
             });
-            
-                // Seating
-            Route::prefix('seating')->name('seating.')->middleware('module.access:seating')->group(function() {
+
+            // Seating
+            Route::prefix('seating')->name('seating.')->middleware('module.access:seating')->group(function () {
                 Route::get('unassigned', [TableController::class, 'unassignedGuests'])->name('unassigned-guests');
                 Route::post('bulk-assign', [TableController::class, 'bulkAssign'])->name('bulk-assign');
                 Route::delete('clear-all', [TableController::class, 'clearAll'])->name('clear-all');
             });
-            
-            
+
             // ========================================
             // LOCATION
             // ========================================
@@ -398,7 +398,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             Route::prefix('background-music')->name('background-music.')->group(function () {
                 Route::get('', [BackgroundMusicController::class, 'index'])->name('index');
-                Route::post('', [BackgroundMusicController::class, 'store'])->name('store');
+                Route::post('', [BackgroundMusicController::class, 'store'])->middleware(['module.access:background_music', 'throttle:background-music-upload'])->name('store');
+                Route::delete('', [BackgroundMusicController::class, 'destroy'])->middleware('module.access:background_music')->name('destroy');
             });
 
             Route::prefix('suggest-music-config')->name('suggest-music-config.')->middleware('module.access:suggested_music')->group(function () {
@@ -431,7 +432,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::put('{commentConfig}', [EventConfigCommentsController::class, 'update'])->name('update');
             });
 
-            Route::scopeBindings()->prefix('comments')->name('comments.')->middleware('module.access:comments')->group(function() {
+            Route::scopeBindings()->prefix('comments')->name('comments.')->middleware('module.access:comments')->group(function () {
                 Route::get('', [OrganizerEventCommentController::class, 'index'])->name('index');
                 Route::get('paginated', [OrganizerEventCommentController::class, 'indexPaginated'])->name('indexPaginated');
                 Route::post('', [OrganizerEventCommentController::class, 'store'])->name('store');
@@ -453,17 +454,10 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     });
 
     // ========================================
-    // EXPORTS
-    // ========================================
-    Route::prefix('exports')->name('exports.')->group(function () {
-        Route::get('download', [ExportController::class, 'exportsDownload'])->name('download');
-    });
-
-    // ========================================
     // LOGOUT
     // ========================================
     Route::post('logout', [AuthenticationController::class, 'appLogout'])->name('logout');
 
     // Ends a support (impersonation) session; only works with an impersonation token.
-    Route::post('impersonation/end', \App\Http\Controllers\AppControllers\Impersonation\ImpersonationEndController::class)->name('impersonation.end');
+    Route::post('impersonation/end', ImpersonationEndController::class)->name('impersonation.end');
 });

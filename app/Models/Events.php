@@ -4,14 +4,13 @@ namespace App\Models;
 
 use App\Http\Services\AppServices\EventModules;
 use Database\Factories\EventsFactory;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Log;
 
 class Events extends Model
 {
@@ -56,8 +55,6 @@ class Events extends Model
 
     /**
      * Get the organizer associated with the event.
-     *
-     * @return HasMany
      */
     public function userRoles(): HasMany
     {
@@ -66,8 +63,6 @@ class Events extends Model
 
     /**
      * Get the owner/organizer of the event.
-     *
-     * @return HasOne
      */
     public function owner(): HasOne
     {
@@ -80,18 +75,14 @@ class Events extends Model
 
     /**
      * Get the owner user directly.
-     *
-     * @return User|null
      */
     public function getOwnerUserAttribute(): ?User
     {
         return $this->owner?->user;
     }
-    
+
     /**
      * Get the owner user directly.
-     *
-     * @return User|null
      */
     public function getOrganizerAttribute(): ?User
     {
@@ -100,8 +91,6 @@ class Events extends Model
 
     /**
      * Get the owner user ID directly.
-     *
-     * @return int
      */
     public function getOwnerUserIdAttribute(): int
     {
@@ -150,8 +139,6 @@ class Events extends Model
 
     /**
      * Get the main guest associated with the event.
-     *
-     * @return HasMany
      */
     public function guests(): HasMany
     {
@@ -160,8 +147,6 @@ class Events extends Model
 
     /**
      * Define a one-to-one relationship with the SaveTheDate model.
-     *
-     * @return HasOne
      */
     public function saveTheDate(): HasOne
     {
@@ -170,8 +155,6 @@ class Events extends Model
 
     /**
      * Define a one-to-one relationship with the Rsvp model.
-     *
-     * @return HasOne
      */
     public function rsvp(): HasOne
     {
@@ -180,8 +163,6 @@ class Events extends Model
 
     /**
      * Get the suggested music for the event.
-     *
-     * @return HasMany
      */
     public function musicSuggestions(): HasMany
     {
@@ -190,8 +171,6 @@ class Events extends Model
 
     /**
      * Get the suggested music configuration for the event.
-     *
-     * @return HasOne
      */
     public function suggestedMusicConfig(): HasOne
     {
@@ -200,8 +179,6 @@ class Events extends Model
 
     /**
      * Get the background music associated with the event.
-     *
-     * @return HasOne
      */
     public function backgroundMusic(): HasOne
     {
@@ -210,8 +187,6 @@ class Events extends Model
 
     /**
      * Get the comments associated with the event.
-     *
-     * @return HasMany
      */
     public function comments(): HasMany
     {
@@ -220,18 +195,14 @@ class Events extends Model
 
     /**
      * Get the event configuration comment associated with the event.
-     *
-     * @return HasOne
      */
-    public function eventConfigComment() : HasOne
+    public function eventConfigComment(): HasOne
     {
         return $this->hasOne(EventConfigComment::class, 'event_id', 'id');
     }
 
     /**
      * Get the sweet memories configuration for the event.
-     *
-     * @return HasOne
      */
     public function sweetMemoriesConfig(): HasOne
     {
@@ -246,8 +217,6 @@ class Events extends Model
 
     /**
      * Get the locations associated with the event.
-     *
-     * @return HasMany
      */
     public function locations(): HasMany
     {
@@ -264,8 +233,6 @@ class Events extends Model
 
     /**
      * Get the event plan associated with the event.
-     *
-     * @return BelongsTo
      */
     public function eventPlan(): BelongsTo
     {
@@ -274,8 +241,6 @@ class Events extends Model
 
     /**
      * Get the event type associated with the event.
-     *
-     * @return BelongsTo
      */
     public function eventType(): BelongsTo
     {
@@ -284,8 +249,6 @@ class Events extends Model
 
     /**
      * Get the activities associated with the event.
-     *
-     * @return HasMany
      */
     public function activities(): HasMany
     {
@@ -294,8 +257,6 @@ class Events extends Model
 
     /**
      * Get the event collaboration invites associated with the event.
-     *
-     * @return HasMany
      */
     public function collaborators(): HasMany
     {
@@ -317,9 +278,6 @@ class Events extends Model
         return $this->hasOne(EventBudget::class, 'event_id', 'id');
     }
 
-    /**
-     * @return HasOne
-     */
     public function dressCode(): HasOne
     {
         return $this->hasOne(DressCode::class, 'event_id', 'id');
@@ -327,17 +285,12 @@ class Events extends Model
 
     /**
      * Get the theme associated with the event.
-     *
-     * @return HasOne|Events
      */
     public function theme(): HasOne|Events
     {
         return $this->hasOne(EventTheme::class, 'event_theme_id', 'id');
     }
 
-    /**
-     * @return array
-     */
     public function getThemeConfigAttribute(): array
     {
         return $this->theme
@@ -356,14 +309,14 @@ class Events extends Model
             'global' => [
                 'colors' => [
                     'primary' => '#e91e63',
-                    'secondary' => '#7b2cbf'
+                    'secondary' => '#7b2cbf',
                 ],
                 'typography' => [
                     'primary_font' => 'Inter',
-                    'secondary_font' => 'Inter'
-                ]
+                    'secondary_font' => 'Inter',
+                ],
             ],
-            'sections' => []
+            'sections' => [],
         ];
     }
 
@@ -422,14 +375,14 @@ class Events extends Model
     /**
      * Determines if a specific feature is completed based on the given feature type.
      *
-     * @param string $feature The feature to check for completion.
+     * @param  string  $feature  The feature to check for completion.
      * @return bool True if the feature is completed, false otherwise.
      */
     private function isFeatureCompleted(string $feature): bool
     {
         return match ($feature) {
             'save_the_date' => $this->saveTheDate !== null &&
-                !empty($this->saveTheDate->message),
+                ! empty($this->saveTheDate->message),
             'rsvp' => $this->isRsvpCompleted(),
             'menus' => $this->menus()->count() > 0 &&
                 $this->menus()->first()?->menuItems()->count() > 0,
@@ -439,15 +392,14 @@ class Events extends Model
                 $this->musicSuggestions()->count() > 0,
             'comments' => $this->eventConfigComment !== null,
             'seating' => $this->locations !== null &&
-                !empty($this->locations->capacity),
+                ! empty($this->locations->capacity),
             'budget' => $this->budget !== null &&
                 $this->budget->items()->count() > 0,
             'locations' => $this->locations !== null &&
-                !empty($this->locations->address),
+                ! empty($this->locations->address),
             default => false,
         };
     }
-
 
     private function isRsvpCompleted(): bool
     {
@@ -467,8 +419,8 @@ class Events extends Model
     /**
      * Evaluates whether the RSVP process can be considered complete based on the total guest count and the number of confirmed guests.
      *
-     * @param int $totalGuestCount The total number of guests expected for the event.
-     * @param int $confirmedGuests The number of guests who have confirmed their attendance.
+     * @param  int  $totalGuestCount  The total number of guests expected for the event.
+     * @param  int  $confirmedGuests  The number of guests who have confirmed their attendance.
      * @return bool Returns true if the RSVP completion criteria are met, otherwise false.
      */
     private function evaluateRsvpCompletion(int $totalGuestCount, int $confirmedGuests): bool

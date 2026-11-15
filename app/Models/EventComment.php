@@ -89,7 +89,9 @@ class EventComment extends Model
 
     public function scopeWithStatus($query, $status)
     {
-        if (!$status) return $query;
+        if (! $status) {
+            return $query;
+        }
 
         $normalizedStatus = $status instanceof EventCommentStatus
             ? $status->value

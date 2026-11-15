@@ -2,6 +2,7 @@
 
 use App\Http\Services\AppServices\UserTwoFactorService;
 use App\Models\User;
+use App\Support\ImpersonationRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Crypt;
@@ -266,7 +267,7 @@ describe('isolation and impersonation', function () {
             ->flatMap(fn ($r) => collect($r->methods())->reject(fn ($m) => $m === 'HEAD')->map(fn ($m) => "$m {$r->uri()}"));
         expect($routes)->not->toBeEmpty();
         foreach ($routes as $route) {
-            expect(\App\Support\ImpersonationRules::BLOCKED)->toContain($route);
+            expect(ImpersonationRules::BLOCKED)->toContain($route);
         }
     });
 });

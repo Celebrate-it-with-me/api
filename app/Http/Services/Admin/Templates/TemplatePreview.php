@@ -30,7 +30,7 @@ class TemplatePreview
                 'title' => $this->invitation->localized($s['title'] ?? null, $locale),
                 'text' => $this->invitation->localized($s['text'] ?? null, $locale),
                 'data' => $this->data($s, $sample) ?: (object) [],
-            ])
+            ] + $this->invitation->settingsEntry($s, $locale))
             ->values()
             ->all();
 
@@ -59,6 +59,9 @@ class TemplatePreview
             'locations' => ['items' => $sample['locations']],
             'dress_code' => $sample['dressCode'],
             'padrinos' => ['items' => $sample['padrinos']],
+            'gallery' => ['photos' => $sample['photos']],
+            // No real song in a preview: the player is drawn disabled.
+            'music' => ['url' => '', 'title' => 'Nuestra canción', 'mimeType' => 'audio/mpeg', 'loop' => true],
             'rsvp' => [
                 'guest' => ['id' => 1, 'name' => 'Rosa Fernández', 'status' => 'pending'],
                 'companions' => [['id' => 2, 'name' => 'Luis Fernández', 'status' => 'pending']],
@@ -100,6 +103,12 @@ class TemplatePreview
                 'type' => 'formal', 'description' => 'Formal, en tonos suaves.', 'reservedColors' => ['#ffffff'],
                 'suggestedColors' => ['#b04a62', '#5f7a5b'], 'images' => [],
             ],
+            // Plain colored tiles (inline SVG): the preview has no real photos.
+            'photos' => array_map(fn (int $i, string $color) => [
+                'id' => $i, 'title' => "Foto {$i}", 'description' => null, 'year' => 2015 + $i,
+                'url' => 'data:image/svg+xml,' . rawurlencode("<svg xmlns='http://www.w3.org/2000/svg' width='600' height='450'><rect width='600' height='450' fill='{$color}'/></svg>"),
+                'thumbUrl' => 'data:image/svg+xml,' . rawurlencode("<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150'><rect width='150' height='150' fill='{$color}'/></svg>"),
+            ], [1, 2, 3, 4], ['#e8c9d0', '#cfdccb', '#c9d5e6', '#efe2bd']),
             'padrinos' => [
                 ['name' => 'Tía Elena', 'relationship' => 'Madrina', 'sponsors' => ['Pastel'], 'thanks' => 'Gracias por tanto cariño.'],
                 ['name' => 'Tío Marcos', 'relationship' => 'Padrino', 'sponsors' => ['Música'], 'thanks' => null],

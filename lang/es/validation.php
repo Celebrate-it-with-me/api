@@ -211,6 +211,7 @@ return [
         'commitments.*.budgetItemId' => 'partida del presupuesto',
         'companions' => 'acompañantes',
         'companions.*.id' => 'acompañante',
+        'companions.*.name' => 'nombre del acompañante',
         'companions.*.notes' => 'notas del acompañante',
         'companions.*.rsvpStatus' => 'respuesta del acompañante',
         'companions.*.rsvp_status' => 'respuesta del acompañante',

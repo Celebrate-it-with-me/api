@@ -17,7 +17,7 @@ return new class extends Migration
                 ->unique()
                 ->constrained('events')
                 ->onDelete('cascade');
-            
+
             $table->decimal('budget_cap', 12, 2)->nullable();
             $table->timestamps();
         });

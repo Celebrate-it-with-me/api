@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
 class SendBudgetItemReminders extends Command
 {
     public const THRESHOLD_DAYS = [7, 3, 1, 0];
-    
+
     /**
      * The name and signature of the console command.
      *
@@ -35,9 +35,10 @@ class SendBudgetItemReminders extends Command
     {
         $isDryRun = $this->option('dry-run');
         $budgetItems = $this->getBudgetItemsNeedingReminders();
-        
+
         if ($budgetItems->isEmpty()) {
             $this->info('No budget items need reminders');
+
             return self::SUCCESS;
         }
 
@@ -49,7 +50,7 @@ class SendBudgetItemReminders extends Command
                 return $now->diffInDays($item->due_date->startOfDay(), false) == $threshold;
             });
         }
-        
+
         $itemIds = $budgetItems->pluck('id')->toArray();
         $existingReminders = BudgetItemReminder::whereIn('budget_item_id', $itemIds)
             ->get()
@@ -59,7 +60,8 @@ class SendBudgetItemReminders extends Command
         foreach ($itemsByThreshold as $threshold => $items) {
             $itemsByThreshold[$threshold] = $items->filter(function ($item) use ($existingReminders, $threshold) {
                 $sentThresholds = $existingReminders->get($item->id, []);
-                return !in_array($threshold, $sentThresholds);
+
+                return ! in_array($threshold, $sentThresholds);
             });
         }
 
@@ -68,28 +70,31 @@ class SendBudgetItemReminders extends Command
             foreach ($itemsByThreshold as $threshold => $items) {
                 $this->displayDryRunInfo($items, $threshold);
             }
+
             return self::SUCCESS;
         }
 
         $sentCount = 0;
-        
+
         // Group items by event to consolidate notifications
         $itemsByEvent = [];
         foreach ($itemsByThreshold as $threshold => $items) {
             foreach ($items as $item) {
                 $eventId = $item->budget?->event_id;
-                if (!$eventId) continue;
-                
-                if (!isset($itemsByEvent[$eventId])) {
+                if (! $eventId) {
+                    continue;
+                }
+
+                if (! isset($itemsByEvent[$eventId])) {
                     $itemsByEvent[$eventId] = [
                         'event' => $item->budget->event,
-                        'items' => []
+                        'items' => [],
                     ];
                 }
-                
+
                 $itemsByEvent[$eventId]['items'][] = [
                     'item' => $item,
-                    'threshold' => $threshold
+                    'threshold' => $threshold,
                 ];
             }
         }
@@ -116,13 +121,19 @@ class SendBudgetItemReminders extends Command
 
     protected function processConsolidatedNotifications($event, array $budgetItemsData): int
     {
-        if (empty($budgetItemsData)) return 0;
+        if (empty($budgetItemsData)) {
+            return 0;
+        }
 
         $ownerUserId = optional($event->userRoles->first())->user_id ?? 0;
-        if (!$ownerUserId) return 0;
+        if (! $ownerUserId) {
+            return 0;
+        }
 
         $user = User::find($ownerUserId);
-        if (!$user) return 0;
+        if (! $user) {
+            return 0;
+        }
 
         $user->notify(new BudgetItemReminderNotification($budgetItemsData, $event));
 
@@ -143,8 +154,6 @@ class SendBudgetItemReminders extends Command
      *
      * The method queries the 'BudgetItem' model to find items that are unpaid and have
      * a due date within a defined threshold.
-     *
-     * @return Collection
      */
     private function getBudgetItemsNeedingReminders(): Collection
     {
@@ -161,5 +170,4 @@ class SendBudgetItemReminders extends Command
             // Only what still has a balance: a fully paid item needs no reminder.
             ->reject(fn (BudgetItem $item) => $item->isPaid());
     }
-    
 }

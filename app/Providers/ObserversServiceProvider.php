@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use App\Models\EventComment;
 use App\Models\BudgetItem;
+use App\Models\EventComment;
 use App\Models\EventLocation;
 use App\Models\Events;
 use App\Models\Guest;

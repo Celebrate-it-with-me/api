@@ -24,7 +24,7 @@ class TableServices
                 'total_tables' => $tables->count(),
                 'total_capacity' => $tables->sum('capacity'),
                 'total_assigned' => $tables->sum('assigned_guests_count'),
-            ]
+            ],
         ];
     }
 
@@ -71,13 +71,14 @@ class TableServices
             ->where('guest_id', $guestId)
             ->first();
 
-        if (!$assignment) {
+        if (! $assignment) {
             return false;
         }
 
         return DB::transaction(function () use ($assignment, $table) {
             $assignment->delete();
             $this->updateSeatNumbers($table);
+
             return true;
         });
     }
@@ -104,11 +105,12 @@ class TableServices
 
                 if ($table->event_id !== $event->id) {
                     $errors[] = "Table {$table->name} does not belong to this event.";
+
                     continue;
                 }
 
                 foreach ($assignment['guest_ids'] as $guestId) {
-                    if (!$table->hasAvailableSeats()) {
+                    if (! $table->hasAvailableSeats()) {
                         $errors[] = "Table {$table->name} is full.";
                         break;
                     }
@@ -116,6 +118,7 @@ class TableServices
                     $existingAssignment = TableAssignment::where('guest_id', $guestId)->first();
                     if ($existingAssignment) {
                         $errors[] = "Guest ID {$guestId} is already assigned.";
+
                         continue;
                     }
 
@@ -154,7 +157,7 @@ class TableServices
 
         foreach ($assignments as $index => $assignment) {
             $assignment->update([
-                'seat_number' => "{$table->name} - Seat " . ($index + 1)
+                'seat_number' => "{$table->name} - Seat " . ($index + 1),
             ]);
         }
     }

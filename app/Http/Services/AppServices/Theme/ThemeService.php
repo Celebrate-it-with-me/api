@@ -25,23 +25,23 @@ class ThemeService
                     'accent' => '#ffd700',
                     'background' => '#ffffff',
                     'text_primary' => '#333333',
-                    'text_secondary' => '#666666'
+                    'text_secondary' => '#666666',
                 ],
                 'typography' => [
                     'primary_font' => 'Inter',
                     'secondary_font' => 'Inter',
                     'heading_weight' => '600',
-                    'body_weight' => '400'
-                ]
+                    'body_weight' => '400',
+                ],
             ],
-            'sections' => []
+            'sections' => [],
         ];
     }
 
     /**
      * Retrieves the theme associated with the given event. If no theme exists, a default theme is created and returned.
      *
-     * @param Events $event The event for which the theme is retrieved or created.
+     * @param  Events  $event  The event for which the theme is retrieved or created.
      * @return EventTheme The existing or newly created theme for the event.
      */
     public function getOrCreateTheme(Events $event): EventTheme
@@ -52,8 +52,9 @@ class ThemeService
     /**
      * Creates a default theme for the given event within a database transaction.
      *
-     * @param Events $event The event for which the default theme is to be created.
+     * @param  Events  $event  The event for which the default theme is to be created.
      * @return EventTheme The newly created default theme associated with the event.
+     *
      * @throws Throwable
      */
     public function createDefaultTheme(Events $event): EventTheme
@@ -62,7 +63,7 @@ class ThemeService
             return EventTheme::create([
                 'event_id' => $event->id,
                 'theme_config' => $this->getDefaultConfig(),
-                'is_active' => true
+                'is_active' => true,
             ]);
         });
     }
@@ -74,9 +75,10 @@ class ThemeService
      * existing configuration, and updates the theme associated with the event
      * within a database transaction.
      *
-     * @param Events $event The event for which the theme configuration is being updated.
-     * @param array $themeConfig The new theme configuration data to be applied.
+     * @param  Events  $event  The event for which the theme configuration is being updated.
+     * @param  array  $themeConfig  The new theme configuration data to be applied.
      * @return EventTheme The updated theme associated with the event.
+     *
      * @throws Throwable
      */
     public function updateThemeConfig(Events $event, array $themeConfig): EventTheme
@@ -92,7 +94,7 @@ class ThemeService
             );
 
             $theme->update([
-                'theme_config' => $mergedConfig
+                'theme_config' => $mergedConfig,
             ]);
 
             return $theme->fresh();
@@ -102,8 +104,9 @@ class ThemeService
     /**
      * Reset the theme configuration of an event to its default settings.
      *
-     * @param Events $event The event for which the theme configuration is to be reset.
+     * @param  Events  $event  The event for which the theme configuration is to be reset.
      * @return EventTheme The updated theme associated with the event.
+     *
      * @throws Throwable If there is an error during the database transaction.
      */
     public function resetToDefault(Events $event): EventTheme
@@ -112,7 +115,7 @@ class ThemeService
             $theme = $this->getOrCreateTheme($event);
 
             $theme->update([
-                'theme_config' => $this->getDefaultConfig()
+                'theme_config' => $this->getDefaultConfig(),
             ]);
 
             return $theme->fresh();
@@ -120,9 +123,6 @@ class ThemeService
     }
 
     /**
-     *
-     * @param Events $event
-     * @return void
      * @throws Throwable
      */
     public function deleteTheme(Events $event): void
@@ -136,9 +136,6 @@ class ThemeService
 
     /**
      * Resolve the theme configuration by applying global inheritance to section configurations.
-     *
-     * @param EventTheme $theme
-     * @return array
      */
     public function getResolvedConfig(EventTheme $theme): array
     {
@@ -148,7 +145,7 @@ class ThemeService
     /**
      * Resolve the theme configuration by applying global inheritance to section configurations.
      *
-     * @param array $config The theme configuration to resolve.
+     * @param  array  $config  The theme configuration to resolve.
      * @return array The resolved theme configuration.
      */
     public function resolveConfig(array $config): array
@@ -163,15 +160,10 @@ class ThemeService
         return [
             'global' => $global,
             'sections' => $resolvedSections,
-            'resolved_sections' => $resolvedSections // Para fácil acceso en frontend
+            'resolved_sections' => $resolvedSections, // Para fácil acceso en frontend
         ];
     }
 
-    /**
-     * @param array $global
-     * @param array $section
-     * @return array
-     */
     private function mergeSectionWithGlobal(array $global, array $section): array
     {
         $merged = [];
@@ -187,7 +179,7 @@ class ThemeService
         );
 
         foreach ($section as $key => $value) {
-            if (!in_array($key, ['colors', 'typography'])) {
+            if (! in_array($key, ['colors', 'typography'])) {
                 $merged[$key] = $value;
             }
         }
@@ -197,10 +189,6 @@ class ThemeService
 
     /**
      * Merge two theme configurations recursively, preserving structure.
-     *
-     * @param array $existing
-     * @param array $new
-     * @return array
      */
     private function mergeThemeConfigs(array $existing, array $new): array
     {
@@ -226,22 +214,21 @@ class ThemeService
     /**
      * Validates the structure of the theme configuration.
      *
-     * @param array $config The theme configuration to validate.
-     * @return void
+     * @param  array  $config  The theme configuration to validate.
      */
     private function validateThemeConfig(array $config): void
     {
-        if (!is_array($config)) {
+        if (! is_array($config)) {
             throw ValidationException::withMessages([
-                'theme_config' => 'Theme config must be an array'
+                'theme_config' => 'Theme config must be an array',
             ]);
         }
 
         if (isset($config['global']['colors'])) {
             foreach ($config['global']['colors'] as $colorKey => $colorValue) {
-                if (!$this->isValidColor($colorValue)) {
+                if (! $this->isValidColor($colorValue)) {
                     throw ValidationException::withMessages([
-                        "theme_config.global.colors.$colorKey" => 'Invalid color format'
+                        "theme_config.global.colors.$colorKey" => 'Invalid color format',
                     ]);
                 }
             }
@@ -251,9 +238,9 @@ class ThemeService
             foreach ($config['sections'] as $sectionName => $sectionConfig) {
                 if (isset($sectionConfig['colors'])) {
                     foreach ($sectionConfig['colors'] as $colorKey => $colorValue) {
-                        if (!$this->isValidColor($colorValue)) {
+                        if (! $this->isValidColor($colorValue)) {
                             throw ValidationException::withMessages([
-                                "theme_config.sections.$sectionName.colors.$colorKey" => 'Invalid color format'
+                                "theme_config.sections.$sectionName.colors.$colorKey" => 'Invalid color format',
                             ]);
                         }
                     }
@@ -268,7 +255,7 @@ class ThemeService
      * This method checks whether the input string matches the format of
      * valid hex color codes or valid RGB/RGBA color definitions.
      *
-     * @param string $color The color string to validate.
+     * @param  string  $color  The color string to validate.
      * @return bool True if the color string is valid, false otherwise.
      */
     private function isValidColor(string $color): bool

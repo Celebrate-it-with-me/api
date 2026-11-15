@@ -107,7 +107,6 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/purchase/checkout',
             'GET api/v1/app/event/{event}/purchase/quote',
             'GET api/v1/app/event/{event}/purchase/status',
-            'GET api/v1/app/exports/download',
             'GET api/v1/app/event/{event}/roster/export',
             'GET api/v1/app/event/{event}/roster/export/venue',
             'GET api/v1/app/account/purchases', 'GET api/v1/app/account/invoices/{invoice}/pdf', 'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
@@ -125,9 +124,13 @@ describe('route classification', function () {
             'DELETE api/v1/app/event/{event}/collaborators/invite/{id}',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
             'GET api/v1/app/event/{event}/suggest-music/export',
+            'POST api/v1/app/event/{event}/background-music', 'DELETE api/v1/app/event/{event}/background-music',
             'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
             'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
             'POST api/v1/app/announcements/{announcement}/dismiss',
+            'POST api/v1/app/event/{event}/assistant/tasks/{key}/done', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/snooze', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/hide', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/not-applicable', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/reset',
+            'POST api/v1/app/event/{event}/assistant/custom-tasks',
+            'PATCH api/v1/app/event/{event}/assistant/custom-tasks/{id}', 'DELETE api/v1/app/event/{event}/assistant/custom-tasks/{id}',
             'DELETE api/v1/app/account', 'GET api/v1/app/account/deletion-preview',
         ];
 

@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\Rsvp;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Rsvp>
+ * @extends Factory<Rsvp>
  */
 class RsvpFactory extends Factory
 {

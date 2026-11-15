@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 class AdminUserSeeder extends Seeder
 {
     public const LOCAL_EMAIL = 'admin@cwm.test';
+
     public const LOCAL_PASSWORD = 'password';
 
     public function run(): void

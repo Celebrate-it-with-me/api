@@ -26,6 +26,7 @@ class RouteServiceProvider extends ServiceProvider
         'invitation-show' => [60, 1],
         'invitation-rsvp' => [20, 1],
         'invitation-calendar' => [30, 1],
+        'background-music-upload' => [10, 1],
         'guest-event' => [60, 1],
         'payments-webhook' => [120, 1],
         'reset-password' => [5, 1],
@@ -45,6 +46,8 @@ class RouteServiceProvider extends ServiceProvider
         'admin-2fa-reset' => [10, 1],
         'admin-invitation-resend' => [6, 1],
         'admin-whatsapp-test' => [10, 1],
+        'assistant-read' => [120, 1],
+        'assistant-write' => [60, 1],
     ];
 
     /**
@@ -77,6 +80,15 @@ class RouteServiceProvider extends ServiceProvider
                 Limit::perDay(30)->by('collab-event:' . (is_object($event) ? $event->getKey() : $event)),
             ];
         });
+
+        // Answers to one invitation are limited by the link (slug + code), not only by IP: one family cannot be
+        // hammered from many addresses. 10 per 10 minutes.
+        RateLimiter::for('invitation-rsvp-code', fn (Request $request) => Limit::perMinutes(10, 10)
+            ->by('invitation-rsvp-code|' . $request->route('slug') . '|' . $request->route('code'))
+            ->response(fn (Request $request, array $headers) => response()->json([
+                'message' => __('errors.too_many_attempts'),
+                'code' => 'too_many_attempts',
+            ], 429, $headers)));
 
         $this->routes(function () {
             Route::middleware('api')

@@ -36,12 +36,13 @@ class GenerateGuestsCommand extends Command
         // List events if requested
         if ($this->option('list-events')) {
             $this->listEvents();
+
             return 0;
         }
 
         // Get event
         $event = $this->getEvent();
-        if (!$event) {
+        if (! $event) {
             return 1;
         }
 
@@ -53,6 +54,7 @@ class GenerateGuestsCommand extends Command
         // Validate input
         if ($mainGuestsCount <= 0 || $companionsCount < 0) {
             $this->error('Invalid guest counts. Main guests must be > 0, companions must be >= 0.');
+
             return 1;
         }
 
@@ -62,6 +64,7 @@ class GenerateGuestsCommand extends Command
                 $this->clearExistingGuests($event);
             } else {
                 $this->info('Operation cancelled.');
+
                 return 0;
             }
         }
@@ -71,8 +74,9 @@ class GenerateGuestsCommand extends Command
         $this->info("Main guests: {$mainGuestsCount}");
         $this->info("Companions: {$companionsCount}");
 
-        if (!$this->confirm('Proceed?', true)) {
+        if (! $this->confirm('Proceed?', true)) {
             $this->info('Operation cancelled.');
+
             return 0;
         }
 
@@ -89,12 +93,13 @@ class GenerateGuestsCommand extends Command
     {
         $eventOption = $this->option('event');
 
-        if (!$eventOption) {
+        if (! $eventOption) {
             // Show available events and ask user to select
             $events = Events::orderBy('event_name')->get();
 
             if ($events->isEmpty()) {
                 $this->error('No events found. Please create an event first.');
+
                 return null;
             }
 
@@ -108,8 +113,9 @@ class GenerateGuestsCommand extends Command
 
             $eventId = $this->ask('Enter event ID');
 
-            if (!$eventId) {
+            if (! $eventId) {
                 $this->error('Event ID is required.');
+
                 return null;
             }
 
@@ -123,8 +129,9 @@ class GenerateGuestsCommand extends Command
             $event = Events::where('event_name', 'like', "%{$eventOption}%")->first();
         }
 
-        if (!$event) {
+        if (! $event) {
             $this->error("Event not found: {$eventOption}");
+
             return null;
         }
 
@@ -140,6 +147,7 @@ class GenerateGuestsCommand extends Command
 
         if ($events->isEmpty()) {
             $this->info('No events found.');
+
             return;
         }
 
@@ -150,13 +158,14 @@ class GenerateGuestsCommand extends Command
             $events->map(function ($event) {
                 $mainGuests = Guest::where('event_id', $event->id)->whereNull('parent_id')->count();
                 $companions = Guest::where('event_id', $event->id)->whereNotNull('parent_id')->count();
+
                 return [
                     $event->id,
                     $event->event_name,
                     $event->start_date ?? 'Not set',
                     $mainGuests,
                     $companions,
-                    $mainGuests + $companions
+                    $mainGuests + $companions,
                 ];
             })->toArray()
         );

@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,7 +20,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Safety net for the template review status (Meta also pushes it through the webhook).
-Illuminate\Support\Facades\Schedule::command('whatsapp:sync-templates')->hourly()->withoutOverlapping();
+Schedule::command('whatsapp:sync-templates')->hourly()->withoutOverlapping();
 
 // Events kept 30 days after their owner deleted her account are removed for good (docs/plans/account-deletion-contract.md).
-Illuminate\Support\Facades\Schedule::command('account:purge-archived')->dailyAt('03:30')->withoutOverlapping();
+Schedule::command('account:purge-archived')->dailyAt('03:30')->withoutOverlapping();

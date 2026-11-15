@@ -4,7 +4,6 @@ namespace App\Http\Resources\AppResources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class SweetMemoriesImageResource extends JsonResource
@@ -30,7 +29,7 @@ class SweetMemoriesImageResource extends JsonResource
             'description' => $this->description,
             'visible' => $this->visible,
             'order' => $this->order,
-            'year' => $this->year
+            'year' => $this->year,
         ];
     }
 }

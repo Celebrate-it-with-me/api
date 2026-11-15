@@ -67,7 +67,7 @@ it('serves the PDF to its owner and refuses everyone else', function () {
     expect(substr($res->getContent(), 0, 5))->toBe('%PDF-');
     $this->actingAs($me)->get("/api/v1/app/account/credit-notes/{$note->id}/pdf")->assertOk();
 
-    $this->actingAs($stranger)->get("/api/v1/app/account/invoices/{$mine->id}/pdf")->assertForbidden();
-    $this->actingAs($stranger)->get("/api/v1/app/account/credit-notes/{$note->id}/pdf")->assertForbidden();
+    $this->actingAs($stranger)->get("/api/v1/app/account/invoices/{$mine->id}/pdf")->assertNotFound();
+    $this->actingAs($stranger)->get("/api/v1/app/account/credit-notes/{$note->id}/pdf")->assertNotFound();
     $this->actingAs($me)->get('/api/v1/app/account/invoices/999999/pdf')->assertNotFound();
 });

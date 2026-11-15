@@ -1,4 +1,7 @@
 <?php
+
+use App\Http\Controllers\Admin\System\SystemStatusController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -18,9 +21,8 @@
 |
 */
 
-
 // Public, unauthenticated: just enough for the SPA to show a "we are under maintenance" notice.
-Route::get('public/system-status', \App\Http\Controllers\Admin\System\SystemStatusController::class)->middleware('throttle:system-status');
+Route::get('public/system-status', SystemStatusController::class)->middleware('throttle:system-status');
 
 // WhatsApp webhook (public, signed by Meta).
 require __DIR__ . '/api/whatsapp-webhook.php';

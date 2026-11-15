@@ -29,8 +29,8 @@ class BudgetService
 
         $budget = EventBudget::query()->create(['event_id' => $event->id, 'budget_cap' => null]);
 
-        foreach ($this->catalog->names($event->eventType?->slug, $event->locale ?? 'es') as $order => $name) {
-            $budget->categories()->create(['name' => $name, 'sort_order' => $order + 1, 'is_default' => true]);
+        foreach ($this->catalog->entries($event->eventType?->slug, $event->locale ?? 'es') as $order => $entry) {
+            $budget->categories()->create(['name' => $entry['name'], 'slug' => $entry['slug'], 'sort_order' => $order + 1, 'is_default' => true]);
         }
 
         return $budget;

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Cache;
 
 class RsvpController extends Controller
 {
-    private RsvpServices  $rsvpService;
+    private RsvpServices $rsvpService;
 
     public function __construct(RsvpServices $rsvpService)
     {
@@ -30,16 +30,13 @@ class RsvpController extends Controller
             return RsvpResource::make($this->rsvpService->create($event));
         } catch (\Throwable $th) {
             report($th);
+
             return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
 
     /**
      * Revert the RSVP confirmation status of a guest and their companions.
-     * @param Request $request
-     * @param Events $event
-     * @param Guest $guest
-     * @return JsonResponse
      */
     public function revertConfirmation(Request $request, Events $event, Guest $guest): JsonResponse
     {
@@ -67,6 +64,7 @@ class RsvpController extends Controller
             return response()->json(['message' => 'Rsvp reverted.']);
         } catch (\Throwable $th) {
             report($th);
+
             return response()->json(['message' => __('errors.generic.error'), 'data' => []], 500);
         }
     }
@@ -74,7 +72,7 @@ class RsvpController extends Controller
     /**
      * Retrieve RSVP statistics for a given event.
      *
-     * @param Events $event The event for which to retrieve RSVP statistics.
+     * @param  Events  $event  The event for which to retrieve RSVP statistics.
      * @return JsonResponse The JSON response containing the RSVP statistics.
      */
     public function getRsvpStats(Events $event): JsonResponse
@@ -83,5 +81,4 @@ class RsvpController extends Controller
 
         return response()->json(['message' => 'Rsvp stats retrieved.', 'data' => $stats]);
     }
-
 }

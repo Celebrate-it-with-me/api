@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\EventLocationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventLocationImages extends Model
 {
-    /** @use HasFactory<\Database\Factories\EventLocationFactory> */
+    /** @use HasFactory<EventLocationFactory> */
     use HasFactory;
 
     protected $table = 'event_location_images';
@@ -23,8 +24,6 @@ class EventLocationImages extends Model
 
     /**
      * Define a relationship to the Events model.
-     *
-     * @return BelongsTo
      */
     public function eventLocation(): BelongsTo
     {

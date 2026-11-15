@@ -20,11 +20,11 @@ class SendCommentCreatedNotification
     {
         $owner = User::query()->find($event->ownerUserId);
 
-        if (!$owner) {
+        if (! $owner) {
             return;
         }
 
-        if ($event->actor['type'] === 'user' && (int)$event->actor['id'] === $owner->id) {
+        if ($event->actor['type'] === 'user' && (int) $event->actor['id'] === $owner->id) {
             return;
         }
 

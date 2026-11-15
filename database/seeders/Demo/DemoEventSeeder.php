@@ -332,7 +332,7 @@ class DemoEventSeeder extends Seeder
 
     /**
      * @param  array<int, array{0:string,1:string,2:bool,3:array}>  $menus  title, description, default?, items[type,name,diet]
-     * @return array{default:int, kids:int|null, veg:int|null}  menu ids
+     * @return array{default:int, kids:int|null, veg:int|null} menu ids
      */
     private function menus(int $event, array $menus): array
     {
@@ -387,7 +387,7 @@ class DemoEventSeeder extends Seeder
                 'event_id' => $event,
                 'parent_id' => null,
                 'name' => $name,
-                'email' => Str::slug($name, '.').'@example.com',
+                'email' => Str::slug($name, '.') . '@example.com',
                 'phone' => sprintf('+1 305 555 %04d', 100 + $i),
                 'is_vip' => $vip,
                 'rsvp_status' => $status,
@@ -597,7 +597,7 @@ class DemoEventSeeder extends Seeder
                 'album' => $album,
                 'platform' => 'spotify',
                 'platformId' => sprintf('demo-%d-track-%02d', $event, $i + 1),
-                'thumbnailUrl' => 'https://placehold.co/300x300?text='.rawurlencode($title),
+                'thumbnailUrl' => 'https://placehold.co/300x300?text=' . rawurlencode($title),
                 'suggested_by_entity' => 'guest',
                 'suggested_by_id' => $attending[$i % $attending->count()]['id'],
             ]));

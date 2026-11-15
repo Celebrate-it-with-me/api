@@ -3,9 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\EventCollaborationInvite;
-use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 class ExpireCollaborationInvites extends Command
 {
@@ -32,13 +30,14 @@ class ExpireCollaborationInvites extends Command
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
             ->get();
-        
+
         $expired->each(function ($invite) {
             $invite->status = 'declined';
             $invite->save();
         });
-        
+
         $this->info('Pending invitations sent successfully.');
+
         return 0;
     }
 }

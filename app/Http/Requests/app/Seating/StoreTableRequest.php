@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\app\Seating;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +19,7 @@ class StoreTableRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -32,7 +33,7 @@ class StoreTableRequest extends FormRequest
             'location' => ['nullable', Rule::in(['front', 'center', 'back', 'side', 'entrance'])],
         ];
     }
-    
+
     /**
      * Get custom messages for validator errors.
      */
@@ -52,7 +53,7 @@ class StoreTableRequest extends FormRequest
             'location.in' => 'Invalid location. Must be: front, center, back, side, or entrance.',
         ];
     }
-    
+
     /**
      * Prepare the data for validation.
      */

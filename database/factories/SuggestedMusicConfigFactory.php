@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\SuggestedMusicConfig;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\SuggestedMusicConfig>
+ * @extends Factory<SuggestedMusicConfig>
  */
 class SuggestedMusicConfigFactory extends Factory
 {

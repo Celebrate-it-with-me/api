@@ -18,7 +18,7 @@ class UploadAssetRequest extends FormRequest
             'section' => 'required|string|in:hero,rsvp,save_the_date,location,details,gallery,global',
             'asset_type' => 'required|string|in:background_image,background_video,logo,favicon,custom',
             'alt_text' => 'sometimes|string|max:255',
-            'sort_order' => 'sometimes|integer|min:0'
+            'sort_order' => 'sometimes|integer|min:0',
         ];
     }
 
@@ -41,11 +41,11 @@ class UploadAssetRequest extends FormRequest
             'background_video' => ['video/mp4', 'video/webm'],
             'logo' => ['image/png', 'image/svg+xml', 'image/jpeg'],
             'favicon' => ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon'],
-            'custom' => []
+            'custom' => [],
         ];
 
         if ($assetType !== 'custom' && isset($allowedTypes[$assetType])) {
-            if (!in_array($file->getMimeType(), $allowedTypes[$assetType])) {
+            if (! in_array($file->getMimeType(), $allowedTypes[$assetType])) {
                 $validator->errors()->add('file', "Invalid file type for {$assetType}");
             }
         }

@@ -4,7 +4,7 @@ namespace App\Http\Services\WhatsApp;
 
 use App\Models\WhatsApp\Message;
 use App\Models\WhatsApp\Template;
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 
 /** The `Message` and `Template` resources of docs/plans/communications-contract.md (camelCase, ISO 8601 UTC). */
 class Presenter
@@ -20,7 +20,7 @@ class Presenter
             'guestName' => $m->guest?->name,
             'templateKey' => $m->template_key,
             'locale' => $m->locale,
-            'to' => $mask ? Phone::mask($m->to_phone) : $m->to_phone,
+            'to' => $mask ? PhoneNumber::mask($m->to_phone) : $m->to_phone,
             'status' => $m->status,
             'errorCode' => $m->error_code,
             'errorMessage' => $m->error_message,

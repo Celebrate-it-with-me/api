@@ -2,16 +2,9 @@
 
 namespace App\Http\Services\AppServices;
 
-use App\Models\Events;
 use App\Models\Guest;
-use App\Models\GuestCompanion;
 use App\Models\GuestRsvpLog;
-use App\Models\MainGuest;
 use App\Models\Rsvp;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -20,18 +13,16 @@ use Illuminate\Support\Facades\Log;
 class OrganizerRsvpServices
 {
     const STATUS_ATTENDING = 'attending';
-    const STATUS_PENDING = 'pending';
-    const STATUS_NOT_ATTENDING = 'not-attending';
 
+    const STATUS_PENDING = 'pending';
+
+    const STATUS_NOT_ATTENDING = 'not-attending';
 
     public function __construct() {}
 
     /**
      * Process organizer RSVP confirmation for main guest and companions
      *
-     * @param Guest $mainGuest
-     * @param array $validatedData
-     * @return array
      * @throws \Exception
      */
     public function processRsvpConfirmation(Guest $mainGuest, array $validatedData): array
@@ -64,20 +55,17 @@ class OrganizerRsvpServices
                 'success' => true,
                 'guest' => $mainGuest,
                 'updated_guests_summary' => $updatedGuests,
-                'statistics' => $this->getEventStatistics($mainGuest->event_id)
+                'statistics' => $this->getEventStatistics($mainGuest->event_id),
             ];
 
         } catch (\Exception $e) {
             DB::rollback();
-            throw new \Exception("Failed to process RSVP confirmation: " . $e->getMessage());
+            throw new \Exception('Failed to process RSVP confirmation: ' . $e->getMessage());
         }
     }
 
     /**
      * Get RSVP status for main guest and companions (for modal pre-population)
-     *
-     * @param Guest $mainGuest
-     * @return array
      */
     public function getRsvpStatusData(Guest $mainGuest): array
     {
@@ -92,7 +80,7 @@ class OrganizerRsvpServices
                 'phone' => $mainGuest->phone,
                 'rsvp_status' => $mainGuest->rsvp_status,
                 'rsvp_status_date' => $mainGuest->rsvp_status_date?->format('Y-m-d H:i:s'),
-                'notes' => $mainGuest->notes
+                'notes' => $mainGuest->notes,
             ],
             'companions' => $mainGuest->companions->map(function ($companion) {
                 return [
@@ -100,19 +88,15 @@ class OrganizerRsvpServices
                     'name' => $companion->name,
                     'rsvp_status' => $companion->rsvp_status,
                     'rsvp_status_date' => $companion->rsvp_status_date?->format('Y-m-d H:i:s'),
-                    'notes' => $companion->notes
+                    'notes' => $companion->notes,
                 ];
-            })->toArray()
+            })->toArray(),
         ];
     }
 
     /**
      * Apply bulk status to all companions
      *
-     * @param Guest $mainGuest
-     * @param string $rsvpStatus
-     * @param string|null $notes
-     * @return array
      * @throws \Exception
      * @throws \Throwable
      */
@@ -132,7 +116,7 @@ class OrganizerRsvpServices
                 $companion->update([
                     'rsvp_status' => $rsvpStatus,
                     'rsvp_status_date' => now(),
-                    'notes' => $notes ?: $companion->notes
+                    'notes' => $notes ?: $companion->notes,
                 ]);
 
                 // Log the change
@@ -147,7 +131,7 @@ class OrganizerRsvpServices
                     'id' => $companion->id,
                     'name' => $companion->name,
                     'previous_status' => $previousStatus,
-                    'new_status' => $rsvpStatus
+                    'new_status' => $rsvpStatus,
                 ];
             }
 
@@ -158,24 +142,19 @@ class OrganizerRsvpServices
 
             return [
                 'success' => true,
-                'message' => "Applied '{$rsvpStatus}' to " . count($updatedCompanions) . " companions",
+                'message' => "Applied '{$rsvpStatus}' to " . count($updatedCompanions) . ' companions',
                 'updated_companions' => $updatedCompanions,
-                'main_guest' => $mainGuest->fresh('companions')
+                'main_guest' => $mainGuest->fresh('companions'),
             ];
 
         } catch (\Exception $e) {
             DB::rollback();
-            throw new \Exception("Failed to bulk update companions: " . $e->getMessage());
+            throw new \Exception('Failed to bulk update companions: ' . $e->getMessage());
         }
     }
 
     /**
      * Update main guest RSVP status
-     *
-     * @param Guest $mainGuest
-     * @param array $guestData
-     * @param int $organizerId
-     * @return array
      */
     private function updateMainGuest(Guest $mainGuest, array $guestData, int $organizerId): array
     {
@@ -185,7 +164,7 @@ class OrganizerRsvpServices
         $mainGuest->update([
             'rsvp_status' => $newStatus,
             'rsvp_status_date' => now(),
-            'notes' => $guestData['notes'] ?? $mainGuest->notes
+            'notes' => $guestData['notes'] ?? $mainGuest->notes,
         ]);
 
         // Log the change
@@ -195,17 +174,13 @@ class OrganizerRsvpServices
             'id' => $mainGuest->id,
             'name' => $mainGuest->name,
             'type' => 'main_guest',
-            'new_status' => $newStatus
+            'new_status' => $newStatus,
         ];
     }
 
     /**
      * Update companion RSVP status
      *
-     * @param Guest $mainGuest
-     * @param array $companionData
-     * @param int $organizerId
-     * @return array
      * @throws \Exception
      */
     private function updateCompanion(Guest $mainGuest, array $companionData, int $organizerId): array
@@ -224,7 +199,7 @@ class OrganizerRsvpServices
         $companion->update([
             'rsvp_status' => $newStatus,
             'rsvp_status_date' => now(),
-            'notes' => $companionData['notes'] ?? $companion->notes
+            'notes' => $companionData['notes'] ?? $companion->notes,
         ]);
 
         // Log the change
@@ -234,17 +209,12 @@ class OrganizerRsvpServices
             'id' => $companion->id,
             'name' => $companion->name,
             'type' => 'companion',
-            'new_status' => $newStatus
+            'new_status' => $newStatus,
         ];
     }
 
     /**
      * Create RSVP log entry for audit trail
-     *
-     * @param int $guestId
-     * @param string $newStatus
-     * @param int $organizerId
-     * @param string $changeType
      */
     private function createRsvpLog(int $guestId, string $newStatus, int $organizerId, string $changeType): void
     {
@@ -253,15 +223,12 @@ class OrganizerRsvpServices
             'status' => $newStatus,
             'changed_by' => $organizerId,
             'notes' => "Organizer {$changeType} RSVP update via confirmation modal",
-            'changed_at' => now()
+            'changed_at' => now(),
         ]);
     }
 
     /**
      * Get RSVP statistics for event
-     *
-     * @param int $eventId
-     * @return object
      */
     private function getEventStatistics(int $eventId): object
     {
@@ -277,8 +244,6 @@ class OrganizerRsvpServices
 
     /**
      * Clear event-related cache
-     *
-     * @param int $eventId
      */
     private function clearEventCache(int $eventId): void
     {
@@ -289,30 +254,25 @@ class OrganizerRsvpServices
 
     /**
      * Validate RSVP status
-     *
-     * @param string $status
-     * @return bool
      */
     public static function isValidRsvpStatus(string $status): bool
     {
         return in_array($status, [
             self::STATUS_ATTENDING,
             self::STATUS_NOT_ATTENDING,
-            self::STATUS_PENDING
+            self::STATUS_PENDING,
         ]);
     }
 
     /**
      * Get all valid RSVP statuses
-     *
-     * @return array
      */
     public static function getValidRsvpStatuses(): array
     {
         return [
             self::STATUS_ATTENDING,
             self::STATUS_NOT_ATTENDING,
-            self::STATUS_PENDING
+            self::STATUS_PENDING,
         ];
     }
 }

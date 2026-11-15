@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Services\Admin\Account\AccountSecurity;
 use App\Http\Services\Admin\Account\TwoFactorService;
 use App\Http\Services\Admin\AdminAudit;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -95,15 +96,26 @@ class TwoFactorController extends Controller
         return response()->json(['data' => ['recoveryCodes' => $codes] + $this->status($request)]);
     }
 
-    /** Turns two-factor off (password required) and closes her other sessions. */
+    /**
+     * Turns two-factor off and closes her other sessions. With two-factor active it takes the current password AND a
+     * valid code (TOTP or recovery code); a stolen token alone, or the password alone, is not enough (S-21).
+     * Wrong or missing code: 422 `errors.code[0]` = `invalid_code` | `required`. Attempts are limited per person and address.
+     */
     public function disable(Request $request): JsonResponse
     {
         $user = $request->user();
-        $request->validate(['password' => ['required', 'string']], ['password.required' => 'Escribe tu contraseña.']);
+        $request->validate([
+            'password' => ['required', 'string'],
+            'code' => ['nullable', 'string', 'max:20'],
+        ], ['password.required' => 'Escribe tu contraseña.', 'code.string' => 'invalid_code', 'code.max' => 'invalid_code']);
         $this->security->confirmPassword($user, $request->input('password'), 'password');
 
-        // Also clears a half-finished enrolment (QR shown, never confirmed).
+        // Also clears a half-finished enrolment (QR shown, never confirmed): that one has no code to ask for.
         $wasActive = $user->hasAdminTwoFactor();
+        if ($wasActive) {
+            $this->assertValidCode($request, $user->loadMissing('adminTwoFactor'));
+        }
+
         $this->twoFactor->disable($user);
         $closed = $wasActive ? $this->security->revokeTokens($user, $this->security->currentToken($user)) : 0;
 
@@ -114,6 +126,32 @@ class TwoFactorController extends Controller
         $user->unsetRelation('adminTwoFactor');
 
         return response()->json(['data' => $this->status($request)]);
+    }
+
+    private function assertValidCode(Request $request, User $user): void
+    {
+        $code = trim((string) $request->input('code', ''));
+        if ($code === '') {
+            throw ValidationException::withMessages(['code' => ['required']]);
+        }
+
+        $limiter = "admin-2fa-disable:{$user->id}|{$request->ip()}";
+        if (RateLimiter::tooManyAttempts($limiter, 5)) {
+            abort(429, __('errors.too_many_attempts'));
+        }
+
+        $digits = preg_replace('/\s+/', '', $code) ?? '';
+        $ok = preg_match('/^\d{6}$/', $digits)
+            ? $this->twoFactor->verifyLoginCode($user, $digits)
+            : $this->twoFactor->useRecoveryCode($user, $code);
+
+        if (! $ok) {
+            RateLimiter::hit($limiter, 900);
+            $this->audit->record('account.two_factor_disable_failed', $user);
+
+            throw ValidationException::withMessages(['code' => ['invalid_code']]);
+        }
+        RateLimiter::clear($limiter);
     }
 
     private function status(Request $request): array

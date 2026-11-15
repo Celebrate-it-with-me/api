@@ -14,14 +14,13 @@ use Throwable;
 
 class SweetMemoriesConfigController extends Controller
 {
-    
     private SweetMemoriesConfigServices $sweetMemoriesConfigServices;
-    
+
     public function __construct(SweetMemoriesConfigServices $sweetMemoriesConfigServices)
     {
         $this->sweetMemoriesConfigServices = $sweetMemoriesConfigServices;
     }
-    
+
     /**
      * Display a listing of the resource.
      */
@@ -29,17 +28,18 @@ class SweetMemoriesConfigController extends Controller
     {
         try {
             $config = $this->sweetMemoriesConfigServices->getSweetMemoriesConfig($event);
-            
+
             if ($config !== null) {
                 return SweetMemoriesConfigResource::make($config);
             }
-            
+
             return response()->json([
                 'message' => 'No sweet memories configuration exists for the given event',
-                'data' => []
+                'data' => [],
             ], 404);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
@@ -53,6 +53,7 @@ class SweetMemoriesConfigController extends Controller
             return SweetMemoriesConfigResource::make($this->sweetMemoriesConfigServices->create($event));
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
@@ -66,6 +67,7 @@ class SweetMemoriesConfigController extends Controller
             return SweetMemoriesConfigResource::make($sweetMemoriesConfig);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
@@ -77,14 +79,14 @@ class SweetMemoriesConfigController extends Controller
         UpdateSweetMemoriesConfigRequest $request,
         Events $event,
         SweetMemoriesConfig $sweetMemoriesConfig
-    ): SweetMemoriesConfigResource|JsonResponse
-    {
+    ): SweetMemoriesConfigResource|JsonResponse {
         try {
             return SweetMemoriesConfigResource::make(
                 $this->sweetMemoriesConfigServices->update($sweetMemoriesConfig)
             );
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }
@@ -98,6 +100,7 @@ class SweetMemoriesConfigController extends Controller
             return SweetMemoriesConfigResource::make($this->sweetMemoriesConfigServices->destroy($sweetMemoriesConfig));
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'An error occurred.', 'data' => []], 500);
         }
     }

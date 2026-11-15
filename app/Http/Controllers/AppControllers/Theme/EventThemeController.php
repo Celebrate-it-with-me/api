@@ -20,20 +20,20 @@ class EventThemeController extends Controller
      * Handles the retrieval of the theme based on the given event, creates a theme if it does not already exist,
      * and returns a JSON response with the theme data and its resolved configuration.
      *
-     * @param Events $event The event instance used to retrieve or create a theme.
+     * @param  Events  $event  The event instance used to retrieve or create a theme.
      * @return JsonResponse A JSON response containing the success status, theme data,
-     *                                       and its resolved configuration.
+     *                      and its resolved configuration.
      */
     public function show(Events $event)
     {
         $theme = $this->themeService->getOrCreateTheme($event);
 
         return response()->json([
-           'success' => true,
-           'data' => [
-               'theme' => $theme,
-               'resolved_config' => $this->themeService->getResolvedConfig($theme)
-           ]
+            'success' => true,
+            'data' => [
+                'theme' => $theme,
+                'resolved_config' => $this->themeService->getResolvedConfig($theme),
+            ],
         ]);
     }
 
@@ -41,8 +41,8 @@ class EventThemeController extends Controller
      * Updates the theme configuration associated with the given event using the validated request data,
      * and returns a JSON response indicating the success or failure of the operation.
      *
-     * @param Events $event The event instance for which the theme configuration is to be updated.
-     * @param UpdateThemeRequest $request The request instance containing the validated theme configuration data.
+     * @param  Events  $event  The event instance for which the theme configuration is to be updated.
+     * @param  UpdateThemeRequest  $request  The request instance containing the validated theme configuration data.
      * @return JsonResponse A JSON response indicating the success or failure of the update operation,
      *                      along with the updated theme data and its resolved configuration on success.
      */
@@ -59,14 +59,14 @@ class EventThemeController extends Controller
                 'message' => 'Theme updated successfully',
                 'data' => [
                     'theme' => $theme,
-                    'resolved_config' => $this->themeService->getResolvedConfig($theme)
-                ]
+                    'resolved_config' => $this->themeService->getResolvedConfig($theme),
+                ],
             ]);
 
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update theme'
+                'message' => 'Failed to update theme',
             ], 500);
         }
     }
@@ -74,7 +74,7 @@ class EventThemeController extends Controller
     /**
      * Resets the theme to its default configuration.
      *
-     * @param Events $event The event triggering the reset operation.
+     * @param  Events  $event  The event triggering the reset operation.
      * @return JsonResponse A JSON response containing the result of the reset operation.
      */
     public function reset(Events $event): JsonResponse
@@ -87,14 +87,14 @@ class EventThemeController extends Controller
                 'message' => 'Theme reset to default',
                 'data' => [
                     'theme' => $theme,
-                    'resolved_config' => $this->themeService->getResolvedConfig($theme)
-                ]
+                    'resolved_config' => $this->themeService->getResolvedConfig($theme),
+                ],
             ]);
 
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reset theme'
+                'message' => 'Failed to reset theme',
             ], 500);
         }
     }
@@ -102,7 +102,7 @@ class EventThemeController extends Controller
     /**
      * Deletes a custom theme and reverts to system default settings.
      *
-     * @param Events $event The event associated with the deletion operation.
+     * @param  Events  $event  The event associated with the deletion operation.
      * @return JsonResponse A JSON response indicating the result of the deletion process.
      */
     public function destroy(Events $event): JsonResponse
@@ -112,13 +112,13 @@ class EventThemeController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Custom theme deleted, reverted to system defaults'
+                'message' => 'Custom theme deleted, reverted to system defaults',
             ]);
 
         } catch (Throwable $th) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete theme'
+                'message' => 'Failed to delete theme',
             ], 500);
         }
     }
@@ -126,8 +126,8 @@ class EventThemeController extends Controller
     /**
      * Generates a preview of the theme configuration based on the provided input.
      *
-     * @param Events $event The event triggering the preview operation.
-     * @param Request $request The HTTP request containing the theme configuration input.
+     * @param  Events  $event  The event triggering the preview operation.
+     * @param  Request  $request  The HTTP request containing the theme configuration input.
      * @return JsonResponse A JSON response containing the resolved preview configuration.
      */
     public function preview(Events $event, Request $request): JsonResponse
@@ -139,10 +139,8 @@ class EventThemeController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'preview_config' => $resolvedConfig
-            ]
+                'preview_config' => $resolvedConfig,
+            ],
         ]);
     }
 }
-
-

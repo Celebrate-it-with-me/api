@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use Database\Factories\SuggestedMusicConfigFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SweetMemoriesConfig extends Model
 {
-    /** @use HasFactory<\Database\Factories\SuggestedMusicConfigFactory> */
+    /** @use HasFactory<SuggestedMusicConfigFactory> */
     use HasFactory;
-    
+
     protected $table = 'sweet_memories_config';
-    
+
     protected $fillable = [
         'event_id',
         'title',
@@ -20,12 +21,10 @@ class SweetMemoriesConfig extends Model
         'background_color',
         'max_pictures',
     ];
-    
+
     /**
      * Defines the relationship between the current model and the Events model.
      * This indicates that the current model belongs to an event.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {

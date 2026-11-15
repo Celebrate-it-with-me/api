@@ -88,6 +88,9 @@ class GuestRoster
             'status' => $guest->rsvp_status,
             'statusDate' => $guest->rsvp_status_date?->toIso8601String(),
             'notes' => $guest->notes,
+            // The guest's own message from the RSVP (plain text); `notes` above is the organizer's.
+            'rsvpNote' => $guest->rsvp_note,
+            'rsvpNoteAt' => $guest->rsvp_note_at?->toIso8601String(),
             // The invitation language: what the organizer set (null = the event's) and the one the guest will see.
             'locale' => $guest->locale,
             'effectiveLocale' => $guest->locale ?: ($event->locale ?: 'es'),

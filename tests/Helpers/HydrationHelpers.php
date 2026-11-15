@@ -7,14 +7,15 @@
  * tests/Helpers/HydrationHelpers.php file
  */
 
-use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\AppServices\Hydrate\EventAuthorizationService;
+use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\AppServices\Hydrate\EventDataLoader;
 use App\Http\Services\AppServices\Hydrate\EventRepository;
 use App\Http\Services\AppServices\Hydrate\HydrationResponseBuilder;
 use App\Http\Services\AppServices\Hydrate\HydrationService;
 use App\Models\Events;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,8 +80,7 @@ expect()->extend('toBeEmptyHydrationResponse', function () {
 /**
  * Create a mock HydrationService with customizable behavior
  *
- * @param array $config Configuration for mocked dependencies
- * @return HydrationService
+ * @param  array  $config  Configuration for mocked dependencies
  */
 function createMockHydrationService(array $config = []): HydrationService
 {
@@ -111,21 +111,17 @@ function createUserWithEvent(): array
 {
     $event = Events::factory()->create();
     $user = User::factory()->create([
-        'last_active_event_id' => $event->id
+        'last_active_event_id' => $event->id,
     ]);
 
     return [
         'user' => $user,
-        'event' => $event
+        'event' => $event,
     ];
 }
 
 /**
  * Create mock event repository with standard responses
- *
- * @param User|null $user
- * @param Events|null $event
- * @return EventRepository
  */
 function mockEventRepository(?User $user = null, ?Events $event = null): EventRepository
 {
@@ -142,10 +138,6 @@ function mockEventRepository(?User $user = null, ?Events $event = null): EventRe
 
 /**
  * Create mock authorization service
- *
- * @param bool $authorized
- * @param array $permissions
- * @return EventAuthorizationService
  */
 function mockAuthService(bool $authorized = true, array $permissions = ['view_event']): EventAuthorizationService
 {
@@ -159,9 +151,6 @@ function mockAuthService(bool $authorized = true, array $permissions = ['view_ev
 
 /**
  * Create mock data loader with default empty data
- *
- * @param array $customData
- * @return EventDataLoader
  */
 function mockDataLoader(array $customData = []): EventDataLoader
 {
@@ -185,8 +174,7 @@ function mockDataLoader(array $customData = []): EventDataLoader
 /**
  * Assert response has valid hydration structure
  *
- * @param \Illuminate\Http\JsonResponse $response
- * @return void
+ * @param  JsonResponse  $response
  */
 function assertValidHydrationStructure($response): void
 {
@@ -220,12 +208,12 @@ function assertValidHydrationStructure($response): void
 
 dataset('user_scenarios', [
     'user with no events' => [
-        fn() => User::factory()->create(['last_active_event_id' => null])
+        fn () => User::factory()->create(['last_active_event_id' => null]),
     ],
     'user with active event' => [
-        fn() => User::factory()->create([
-            'last_active_event_id' => Events::factory()->create()->id
-        ])
+        fn () => User::factory()->create([
+            'last_active_event_id' => Events::factory()->create()->id,
+        ]),
     ],
 ]);
 

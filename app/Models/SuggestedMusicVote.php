@@ -21,8 +21,6 @@ class SuggestedMusicVote extends Model
      * This function establishes a "Belongs To" relationship
      * with the Events model, associating the current model's
      * 'event_id' column with the 'id' column in the Events table.
-     *
-     * @return BelongsTo
      */
     public function suggestedMusic(): BelongsTo
     {
@@ -35,8 +33,6 @@ class SuggestedMusicVote extends Model
      * This function establishes a "Belongs To" relationship
      * with the MainGuest model, linking the current model's
      * 'suggested_by' column to the 'id' column in the MainGuest table.
-     *
-     * @return BelongsTo
      */
     public function mainGuest(): BelongsTo
     {

@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             EventTypeSeeder::class,
             EventPlanSeeder::class,
             ModuleSeeder::class,
+            AssistantTaskSeeder::class,
             InvitationTemplateSeeder::class,
             AdminUserSeeder::class,
         ]);

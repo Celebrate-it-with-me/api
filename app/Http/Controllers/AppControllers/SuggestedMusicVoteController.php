@@ -27,10 +27,10 @@ class SuggestedMusicVoteController extends Controller
         try {
             $accessCode = $request->input('accessCode');
 
-            if (!$accessCode) {
+            if (! $accessCode) {
                 return response()->json([
                     'message' => 'Access code is required.',
-                    'data' => []
+                    'data' => [],
                 ], 422);
             }
 
@@ -40,19 +40,21 @@ class SuggestedMusicVoteController extends Controller
             );
 
             return response()->json([
-                'data' => $votesData
+                'data' => $votesData,
             ]);
         } catch (ValidationException $e) {
             report($e);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Please try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }
@@ -64,18 +66,17 @@ class SuggestedMusicVoteController extends Controller
         StoreSuggestedVoteMusicRequest $request,
         Events $event,
         SuggestedMusic $suggestedMusic
-    ): JsonResponse
-    {
+    ): JsonResponse {
         // The song must belong to the event in the address (and its guest code): no voting on other events' songs.
         abort_unless((int) $suggestedMusic->event_id === (int) $event->id, 404);
 
         try {
             $accessCode = $request->input('accessCode');
 
-            if (!$accessCode) {
+            if (! $accessCode) {
                 return response()->json([
                     'message' => 'Access code is required.',
-                    'data' => []
+                    'data' => [],
                 ], 422);
             }
 
@@ -97,19 +98,21 @@ class SuggestedMusicVoteController extends Controller
                     'action' => $result['action'],
                     'vote' => $result['vote'] ? SuggestedMusicVoteResource::make($result['vote']) : null,
                     'votesRemaining' => $result['votesRemaining'],
-                ]
+                ],
             ]);
         } catch (ValidationException $e) {
             report($e);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Please try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }
@@ -121,37 +124,38 @@ class SuggestedMusicVoteController extends Controller
         Request $request,
         Events $event,
         SuggestedMusic $suggestedMusic
-    ): JsonResponse
-    {
+    ): JsonResponse {
         // The song must belong to the event in the address (and its guest code): no voting on other events' songs.
         abort_unless((int) $suggestedMusic->event_id === (int) $event->id, 404);
 
         try {
             $accessCode = $request->input('accessCode');
 
-            if (!$accessCode) {
+            if (! $accessCode) {
                 return response()->json([
                     'message' => 'Access code is required.',
-                    'data' => []
+                    'data' => [],
                 ], 422);
             }
 
             $vote = $this->suggestedMusicVoteServices->getUserVote($suggestedMusic, $accessCode);
 
             return response()->json([
-                'data' => $vote ? SuggestedMusicVoteResource::make($vote) : null
+                'data' => $vote ? SuggestedMusicVoteResource::make($vote) : null,
             ]);
         } catch (ValidationException $e) {
             report($e);
+
             return response()->json([
                 'message' => 'Something went wrong. Try again.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json([
                 'message' => 'Something went wrong. Please try again.',
-                'data' => []
+                'data' => [],
             ], 500);
         }
     }

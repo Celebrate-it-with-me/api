@@ -2,8 +2,10 @@
 
 namespace App\Console;
 
+use App\Http\Services\Admin\Health\QueueStatus;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Cache;
 
 class Kernel extends ConsoleKernel
 {
@@ -20,7 +22,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('admin:audit-prune')->dailyAt('03:00');
         $schedule->command('modules:prune-overrides')->dailyAt('03:30');
         $schedule->command('impersonation:close-expired')->everyMinute();
-        $schedule->call(fn () => \Illuminate\Support\Facades\Cache::put(\App\Http\Services\Admin\Health\QueueStatus::HEARTBEAT_KEY, now()->toIso8601String(), 600))->name('health-heartbeat')->everyMinute();
+        $schedule->call(fn () => Cache::put(QueueStatus::HEARTBEAT_KEY, now()->toIso8601String(), 600))->name('health-heartbeat')->everyMinute();
     }
 
     /**
@@ -28,7 +30,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

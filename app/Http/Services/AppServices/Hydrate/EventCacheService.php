@@ -2,8 +2,6 @@
 
 namespace App\Http\Services\AppServices\Hydrate;
 
-use App\Http\Resources\AppResources\EventPlansResource;
-use App\Http\Resources\AppResources\EventTypesResource;
 use App\Models\EventPlan;
 use App\Models\EventType;
 use Illuminate\Support\Collection;
@@ -12,7 +10,9 @@ use Illuminate\Support\Facades\Cache;
 class EventCacheService
 {
     private const CACHE_TTL = 3600; // 1 hour
+
     private const EVENT_TYPES_KEY = 'hydration.event_types';
+
     private const EVENT_PLANS_KEY = 'hydration.event_plans';
 
     /**
@@ -20,8 +20,6 @@ class EventCacheService
      *
      * Performance optimization: Event types rarely change, so we cache them
      * to avoid repeated database queries.
-     *
-     * @return Collection
      */
     public function getEventTypes(): Collection
     {
@@ -41,8 +39,6 @@ class EventCacheService
      * Get all event plans with caching.
      *
      * Performance optimization: Event plans are static data, perfect for caching.
-     *
-     * @return Collection
      */
     public function getEventPlans(): Collection
     {
@@ -59,8 +55,6 @@ class EventCacheService
      * Clear cached event types and plans.
      *
      * Use this when event types or plans are modified.
-     *
-     * @return void
      */
     public function clearCache(): void
     {
@@ -78,8 +72,6 @@ class EventCacheService
      * Warm up the cache by preloading data.
      *
      * Useful for deployment or scheduled tasks.
-     *
-     * @return void
      */
     public function warmUp(): void
     {

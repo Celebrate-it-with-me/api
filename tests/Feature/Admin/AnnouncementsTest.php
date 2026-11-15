@@ -188,10 +188,28 @@ describe('admin validation', function () {
     });
 
     it('rejects malicious or unsupported urls', function () {
-        foreach (['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,hi', 'http://example.com', '//evil.com', '/\\evil.com', 'https://', 'ftp://x.com', 'example.com', "/ok\n/x", 'https://ex ample.com'] as $url) {
+        foreach (['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,hi', 'http://example.com', '//evil.com', '/\\evil.com', 'https://', 'ftp://x.com', 'example.com', "/ok\n/x", 'https://ex ample.com', 'https://evil.example.org/x', 'https://quinvite.com.evil.org/x', 'https://user@quinvite.com/x', 'https://quinvite.com/impersonate', '/impersonate', '/Impersonate?token=x', '/%69mpersonate', '/admin/users', '/api/v1/app/logout', '/a/../impersonate', 'https://admin.quinvite.com/impersonate#token=x'] as $url) {
             annAssert($this, ['cta_url' => $url, 'cta_label_es' => 'Ver', 'cta_label_en' => 'View'], 'cta_url', 'invalid_url');
         }
         expect(Announcement::count())->toBe(0);
+    });
+
+    it('only allows hosts of the allow-list, which ANNOUNCEMENT_ALLOWED_HOSTS replaces (W-08)', function () {
+        config(['app.announcement_allowed_hosts' => 'promo.example.org, *.partner.test']);
+
+        foreach (['https://promo.example.org/a', 'https://shop.partner.test/b'] as $url) {
+            $this->actingAsReauthed(annStaff())->postJson(ANN_ADMIN, annPayload(['cta_url' => $url, 'cta_label_es' => 'Ver', 'cta_label_en' => 'View']))->assertCreated();
+        }
+        annAssert($this, ['cta_url' => 'https://quinvite.com/x', 'cta_label_es' => 'Ver', 'cta_label_en' => 'View'], 'cta_url', 'invalid_url');
+        annAssert($this, ['cta_url' => 'https://partner.test.evil.org/x', 'cta_label_es' => 'Ver', 'cta_label_en' => 'View'], 'cta_url', 'invalid_url');
+    });
+
+    it('defaults to the hosts of the app config', function () {
+        config(['app.announcement_allowed_hosts' => null, 'app.url' => 'https://api.mine.test', 'services.admin_url' => 'https://admin.mine.test']);
+
+        foreach (['https://api.mine.test/x', 'https://admin.mine.test/y', 'https://www.quinvite.com/z'] as $url) {
+            $this->actingAsReauthed(annStaff())->postJson(ANN_ADMIN, annPayload(['cta_url' => $url, 'cta_label_es' => 'Ver', 'cta_label_en' => 'View']))->assertCreated();
+        }
     });
 
     it('accepts https and internal urls', function () {

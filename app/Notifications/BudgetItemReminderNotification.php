@@ -2,7 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Models\BudgetItem;
 use App\Models\Events;
 use App\Support\Mail\MailLinks;
 use App\Support\Notifications\NotificationEntities;
@@ -57,7 +56,7 @@ class BudgetItemReminderNotification extends Notification
             ],
             'payload' => [
                 'items_count' => $count,
-                'items' => collect($this->budgetItems)->map(fn($item) => [
+                'items' => collect($this->budgetItems)->map(fn ($item) => [
                     'id' => $item['item']->id,
                     'title' => $item['item']->title,
                     'threshold' => $item['threshold'],

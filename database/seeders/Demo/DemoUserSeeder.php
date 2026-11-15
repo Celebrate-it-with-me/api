@@ -40,6 +40,6 @@ class DemoUserSeeder extends Seeder
             );
         }
 
-        $this->command?->info('Demo users ready (password: '.self::PASSWORD.').');
+        $this->command?->info('Demo users ready (password: ' . self::PASSWORD . ').');
     }
 }

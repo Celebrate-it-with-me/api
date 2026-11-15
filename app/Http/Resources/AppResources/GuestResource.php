@@ -43,7 +43,7 @@ class GuestResource extends JsonResource
             'invitationUrl' => $invitationUrl,
             'invitationQR' => $this->when(
                 $isMainGuest && $invitationUrl,
-                fn() => base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
+                fn () => base64_encode(QrCode::format('png')->size(200)->generate($invitationUrl))
             ),
 
             'companions' => $this->when(
@@ -63,13 +63,13 @@ class GuestResource extends JsonResource
 
     private function getOptimizedMenuWithItems(): array
     {
-        if (!$this->assigned_menu_id || !$this->relationLoaded('assignedMenu')) {
+        if (! $this->assigned_menu_id || ! $this->relationLoaded('assignedMenu')) {
             return [];
         }
 
         $menu = $this->assignedMenu;
 
-        if (!$menu) {
+        if (! $menu) {
             return [];
         }
 
@@ -79,22 +79,22 @@ class GuestResource extends JsonResource
 
         return [
             'menu' => $menu->toArray(),
-            'menuItems' => $groupedItems
+            'menuItems' => $groupedItems,
         ];
     }
-    
+
     private function getSeatNumber(): ?string
     {
         $seat = '';
-        
+
         $tableAssignment = $this->relationLoaded('tableAssignment') ? $this->tableAssignment : null;
-        
+
         if ($tableAssignment) {
             $fullSeat = $tableAssignment->seat_number;
             $parts = explode(' - ', $fullSeat);
             $seat = count($parts) > 1 ? $parts[1] : $fullSeat;
         }
-        
+
         return $seat;
     }
 }

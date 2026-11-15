@@ -12,7 +12,7 @@ use App\Http\Services\WhatsApp\WhatsAppService;
 use App\Jobs\SendWhatsAppMessage;
 use App\Models\WhatsApp\Message;
 use App\Models\WhatsApp\Template;
-use App\Support\WhatsApp\Phone;
+use App\Support\PhoneNumber;
 use App\Support\WhatsApp\TemplateCatalog;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
@@ -32,8 +32,8 @@ class WhatsAppAdminController extends Controller
         return response()->json(['data' => [
             'driver' => $this->whatsapp->driverName(),
             'configured' => $this->whatsapp->isAvailable(),
-            'phoneNumberId' => Phone::tail(config('services.whatsapp.phone_number_id')),
-            'businessAccountId' => Phone::tail(config('services.whatsapp.business_account_id')),
+            'phoneNumberId' => PhoneNumber::tail(config('services.whatsapp.phone_number_id')),
+            'businessAccountId' => PhoneNumber::tail(config('services.whatsapp.business_account_id')),
             'webhookUrl' => url('/api/v1/webhooks/whatsapp'),
             'verifyTokenSet' => (bool) config('services.whatsapp.verify_token'),
             'appSecretSet' => (bool) config('services.whatsapp.app_secret'),
@@ -159,7 +159,7 @@ class WhatsAppAdminController extends Controller
     public function test(AdminWhatsAppRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $to = Phone::normalize($data['to']);
+        $to = PhoneNumber::e164($data['to']);
         if (! $to) {
             throw ValidationException::withMessages(['to' => ['invalid_phone']]);
         }
@@ -177,7 +177,7 @@ class WhatsAppAdminController extends Controller
         SendWhatsAppMessage::dispatch($message->id);
 
         $this->audit->record('whatsapp.test', ['whatsapp_message', $message->id], [
-            'reason' => $data['reason'], 'after' => ['to' => Phone::mask($to), 'templateKey' => $template->key, 'locale' => $template->locale],
+            'reason' => $data['reason'], 'after' => ['to' => PhoneNumber::mask($to), 'templateKey' => $template->key, 'locale' => $template->locale],
         ]);
 
         return response()->json(['data' => Presenter::message($message->refresh(), true)], 202);

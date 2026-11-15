@@ -3,13 +3,13 @@
 echo "Fixing permissions..."
 
 # Cambiar ownership de todo a sail:sail
-chown -R sail:sail /var/www/html
+find /var/www/html \( -name .git -o -name node_modules \) -prune -o -exec chown sail:sail {} +
 
 # Permisos correctos para directorios (775)
-find /var/www/html -type d -exec chmod 775 {} \;
+find /var/www/html \( -name .git -o -name node_modules \) -prune -o -type d -exec chmod 775 {} +
 
 # Permisos correctos para archivos (664)
-find /var/www/html -type f -exec chmod 664 {} \;
+find /var/www/html \( -name .git -o -name node_modules \) -prune -o -type f -exec chmod 664 {} +
 
 # Permisos especiales para storage y bootstrap/cache
 chmod -R 775 /var/www/html/storage

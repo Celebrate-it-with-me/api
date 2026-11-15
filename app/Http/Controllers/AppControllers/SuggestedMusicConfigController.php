@@ -14,14 +14,13 @@ use Throwable;
 
 class SuggestedMusicConfigController extends Controller
 {
-    
     private SuggestedMusicConfigServices $suggestedMusicConfigServices;
-    
+
     public function __construct(SuggestedMusicConfigServices $suggestedMusicConfigServices)
     {
         $this->suggestedMusicConfigServices = $suggestedMusicConfigServices;
     }
-    
+
     /**
      * Display a listing of the resource.
      */
@@ -29,17 +28,18 @@ class SuggestedMusicConfigController extends Controller
     {
         try {
             $config = $this->suggestedMusicConfigServices->getSuggestedMusicConfig($event);
-            
+
             if ($config !== null) {
                 return SuggestedMusicConfigResource::make($config);
             }
-            
+
             return response()->json([
                 'message' => 'No suggested music configuration exists for the given event',
-                'data' => []
+                'data' => [],
             ], 404);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
@@ -53,6 +53,7 @@ class SuggestedMusicConfigController extends Controller
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->create($event));
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
@@ -66,6 +67,7 @@ class SuggestedMusicConfigController extends Controller
             return SuggestedMusicConfigResource::make($suggestedMusicConfig);
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
@@ -79,6 +81,7 @@ class SuggestedMusicConfigController extends Controller
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->update($suggestedMusicConfig));
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }
@@ -92,6 +95,7 @@ class SuggestedMusicConfigController extends Controller
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->destroy($suggestedMusicConfig));
         } catch (Throwable $th) {
             report($th);
+
             return response()->json(['message' => 'Something went wrong. Try again.', 'data' => []], 500);
         }
     }

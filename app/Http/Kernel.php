@@ -5,8 +5,14 @@ namespace App\Http;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureAdmin;
-use App\Http\Middleware\ImpersonationGuard;
 use App\Http\Middleware\EnsureAdminPermission;
+use App\Http\Middleware\EnsureEventAccess;
+use App\Http\Middleware\EnsureGuestEventAccess;
+use App\Http\Middleware\EnsureModuleAccess;
+use App\Http\Middleware\EnsureNotSuspended;
+use App\Http\Middleware\EnsureRecentReauth;
+use App\Http\Middleware\ImpersonationGuard;
+use App\Http\Middleware\PreventRequestForgery;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RefreshTokenExpirationIfActive;
@@ -15,7 +21,6 @@ use App\Http\Middleware\StatelessForImpersonation;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
-use App\Http\Middleware\PreventRequestForgery;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -29,8 +34,8 @@ use Illuminate\Foundation\Http\Middleware\ValidatePostSize;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Middleware\SetCacheHeaders;
 use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Routing\Router;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Router;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -94,14 +99,14 @@ class Kernel extends HttpKernel
         'signed' => ValidateSignature::class,
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,
-        'not.suspended' => \App\Http\Middleware\EnsureNotSuspended::class,
+        'not.suspended' => EnsureNotSuspended::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
-        'impersonation.guard' => \App\Http\Middleware\ImpersonationGuard::class,
-        'admin' => \App\Http\Middleware\EnsureAdmin::class,
-        'admin.reauth' => \App\Http\Middleware\EnsureRecentReauth::class,
-        'admin.can' => \App\Http\Middleware\EnsureAdminPermission::class,
-        'event.access' => \App\Http\Middleware\EnsureEventAccess::class,
-        'event.guest' => \App\Http\Middleware\EnsureGuestEventAccess::class,
-        'module.access' => \App\Http\Middleware\EnsureModuleAccess::class,
+        'impersonation.guard' => ImpersonationGuard::class,
+        'admin' => EnsureAdmin::class,
+        'admin.reauth' => EnsureRecentReauth::class,
+        'admin.can' => EnsureAdminPermission::class,
+        'event.access' => EnsureEventAccess::class,
+        'event.guest' => EnsureGuestEventAccess::class,
+        'module.access' => EnsureModuleAccess::class,
     ];
 }

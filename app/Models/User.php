@@ -2,35 +2,37 @@
 
 namespace App\Models;
 
-use Eloquent;
 use App\Support\Mail\MailLocale;
+use Eloquent;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
- *
- *
  * @property int $id
  * @property string $name
  * @property string $email
- * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property Carbon|null $email_verified_at
  * @property mixed $password
  * @property string|null $remember_token
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
+ *
  * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
  * @method static Builder|User newModelQuery()
  * @method static Builder|User newQuery()
@@ -43,11 +45,12 @@ use Spatie\Permission\Traits\HasRoles;
  * @method static Builder|User wherePassword($value)
  * @method static Builder|User whereRememberToken($value)
  * @method static Builder|User whereUpdatedAt($value)
+ *
  * @mixin Eloquent
  */
 class User extends Authenticatable implements HasLocalePreference
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /** @var array<string, mixed> */
     protected $attributes = [
@@ -100,7 +103,7 @@ class User extends Authenticatable implements HasLocalePreference
     ];
 
     protected $appends = [
-      'avatar_url'
+        'avatar_url',
     ];
 
     /** Two-factor enrolment of a staff member (admin panel); null when she never started it. */
@@ -122,29 +125,29 @@ class User extends Authenticatable implements HasLocalePreference
 
     /**
      * Relation with user login sessions.
-     * @return HasMany
      */
     public function userLoginSessions(): HasMany
     {
-        return $this->hasMany(UserLoginSession::class, 'user_id', 'id' );
+        return $this->hasMany(UserLoginSession::class, 'user_id', 'id');
     }
 
     /**
      * Retrieves the latest user login session where the last login time is not null.
-     *
-     * @return HasOne
      */
     public function lastLoginSession(): HasOne
     {
-        return $this->hasOne(UserLoginSession::class, 'user_id', 'id' )
+        return $this->hasOne(UserLoginSession::class, 'user_id', 'id')
             ->whereNotNull('logout_time')
             ->latest('id');
     }
 
     /**
      * Relation with user active event.
+     *
      * @property-read Events|null $activeEvent
+     *
      * @method static Builder|User whereActiveEvent($value)
+     *
      * @mixin Eloquent
      */
     public function activeEvent(): HasOne
@@ -154,7 +157,6 @@ class User extends Authenticatable implements HasLocalePreference
 
     /**
      * Relation with user social accounts.
-     * @return Builder|User|HasMany
      */
     public function socialAccounts(): Builder|User|HasMany
     {
@@ -163,8 +165,11 @@ class User extends Authenticatable implements HasLocalePreference
 
     /**
      * Getting the user avatar URL.
+     *
      * @property string|null $avatar
+     *
      * @method string userAvatarAttribute()
+     *
      * @mixin Eloquent
      */
     public function getAvatarUrlAttribute(): string
@@ -182,7 +187,7 @@ class User extends Authenticatable implements HasLocalePreference
 
     /**
      * Relation with user preferences.
-     * @return HasOne
+     *
      * @property-read UserPreference|null $preferences
      */
     public function preferences(): HasOne
@@ -192,7 +197,6 @@ class User extends Authenticatable implements HasLocalePreference
 
     /**
      * Retrieves all events that the user has access to.
-     * @return Collection
      */
     public function accessibleEvents(): Collection
     {
@@ -206,19 +210,18 @@ class User extends Authenticatable implements HasLocalePreference
     {
         return Events::query()
             ->whereHas('userRoles', function ($query) {
-            $query->where('user_id', $this->id)
-                ->whereHas('role', function ($q) {
-                    $q->where('name', 'owner');
-                });
-        })->get();
+                $query->where('user_id', $this->id)
+                    ->whereHas('role', function ($q) {
+                        $q->where('name', 'owner');
+                    });
+            })->get();
     }
 
     /**
      * Check if the user has a specific role for the given event.
      *
-     * @param Events $event The event instance.
-     * @param string $roleSlug The slug of the role to check.
-     *
+     * @param  Events  $event  The event instance.
+     * @param  string  $roleSlug  The slug of the role to check.
      * @return bool True if the user has the specified role for the event, otherwise false.
      */
     public function hasEventRole(Events $event, ?string $roleSlug = null): bool
@@ -236,10 +239,6 @@ class User extends Authenticatable implements HasLocalePreference
 
     /**
      * Check if the user has a specific permission for the given event.
-     *
-     * @param Events $event
-     * @param string $permissionSlug
-     * @return bool
      */
     public function hasEventPermission(Events $event, string $permissionSlug): bool
     {
@@ -247,10 +246,9 @@ class User extends Authenticatable implements HasLocalePreference
             ->where('event_id', $event->id)
             ->where('user_id', $this->id)
             ->first();
-        if (!$eventUserRole) {
+        if (! $eventUserRole) {
             return false;
         }
-        
 
         return $eventUserRole->role
             ->permissions()
@@ -266,7 +264,7 @@ class User extends Authenticatable implements HasLocalePreference
     /**
      * Retrieves the permissions associated with a specific event for the current user.
      *
-     * @param Events $event The event instance for which to retrieve permissions.
+     * @param  Events  $event  The event instance for which to retrieve permissions.
      * @return array An array containing the names of the permissions.
      */
     public function getEventPermissions(Events $event): array
@@ -276,21 +274,18 @@ class User extends Authenticatable implements HasLocalePreference
             ->with('role.permissions')
             ->first();
 
-        if (!$eventUserRole || !$eventUserRole->role) {
+        if (! $eventUserRole || ! $eventUserRole->role) {
             return [];
         }
 
         return $eventUserRole->role->permissions->pluck('name')->toArray();
     }
-    
+
     /**
      * Retrieve the reminders associated with a user.
-     *
-     * @return HasMany
      */
     public function budgetItemReminders(): HasMany
     {
         return $this->hasMany(BudgetItemReminder::class, 'user_id', 'id');
     }
-    
 }

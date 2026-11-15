@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('event_collaboration_invites', function (Blueprint $table) {
             $table->id();
-            
+
             $table->foreignId('event_id')->constrained()->cascadeOnDelete();
             $table->string('email')->index();
             $table->string('role')->default('viewer');
-            
+
             $table->string('token')->unique();
             $table->enum('status', ['pending', 'accepted', 'declined', 'expired'])->default('pending');
-            
+
             $table->foreignId('invited_by_user_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedTinyInteger('resend_count')->default(0);
             $table->timestamp('sent_at')->nullable();

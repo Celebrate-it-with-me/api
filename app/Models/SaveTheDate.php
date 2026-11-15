@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SaveTheDate extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'save_the_dates';
-    
+
     protected $fillable = [
         'event_id',
         'show_countdown',
@@ -26,7 +26,7 @@ class SaveTheDate extends Model
         'calendar_location_override',
         'calendar_description_override',
     ];
-    
+
     protected $casts = [
         'show_countdown' => 'boolean',
         'use_add_to_calendar' => 'boolean',
@@ -34,7 +34,7 @@ class SaveTheDate extends Model
         'countdown_units' => 'array',
         'calendar_providers' => 'array',
     ];
-    
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class);

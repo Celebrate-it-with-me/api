@@ -51,7 +51,7 @@ class MyPurchasesController extends Controller
     public function invoicePdf(int $invoice): Response
     {
         $invoice = Invoice::query()->findOrFail($invoice);
-        Gate::authorize('view', $invoice);
+        abort_unless(Gate::allows('view', $invoice), 404); // not hers = does not exist (no id oracle)
 
         return $this->download($invoice);
     }
@@ -59,7 +59,7 @@ class MyPurchasesController extends Controller
     public function creditNotePdf(int $creditNote): Response
     {
         $creditNote = CreditNote::query()->with('invoice')->findOrFail($creditNote);
-        Gate::authorize('viewCreditNote', [$creditNote->invoice]);
+        abort_unless(Gate::allows('viewCreditNote', [$creditNote->invoice]), 404); // not hers = does not exist (no id oracle)
 
         return $this->download($creditNote);
     }
@@ -68,7 +68,7 @@ class MyPurchasesController extends Controller
     public function resendInvoice(ResendDocumentRequest $request, int $invoice): JsonResponse
     {
         $invoice = Invoice::query()->findOrFail($invoice);
-        Gate::authorize('view', $invoice);
+        abort_unless(Gate::allows('view', $invoice), 404); // not hers = does not exist (no id oracle)
 
         return $this->resend($request, $invoice, $invoice);
     }
@@ -76,7 +76,7 @@ class MyPurchasesController extends Controller
     public function resendCreditNote(ResendDocumentRequest $request, int $creditNote): JsonResponse
     {
         $creditNote = CreditNote::query()->with('invoice')->findOrFail($creditNote);
-        Gate::authorize('viewCreditNote', [$creditNote->invoice]);
+        abort_unless(Gate::allows('viewCreditNote', [$creditNote->invoice]), 404); // not hers = does not exist (no id oracle)
 
         return $this->resend($request, $creditNote, $creditNote->invoice);
     }

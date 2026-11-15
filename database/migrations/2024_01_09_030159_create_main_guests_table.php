@@ -18,9 +18,9 @@ return new class extends Migration
             $table->string('email');
             $table->string('phone_number');
             $table->json('party_members');
-            $table->enum('confirmed',['unused','yes', 'no', 'maybe']);
+            $table->enum('confirmed', ['unused', 'yes', 'no', 'maybe']);
             $table->timestamp('confirmed_date')->nullable();
-            $table->string('access_code',4);
+            $table->string('access_code', 4);
             $table->timestamps();
         });
     }

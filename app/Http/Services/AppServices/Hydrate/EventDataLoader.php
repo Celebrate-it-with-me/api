@@ -15,32 +15,29 @@ use App\Models\EventLocation;
 use App\Models\Events;
 use App\Models\Guest;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Collection;
 
 class EventDataLoader
 {
     /**
      * Constructor method.
      *
-     * @param LocationsServices $locationsServices Instance of LocationsServices.
-     * @param GuestServices $guestServices Instance of GuestServices.
-     * @param RsvpServices $rsvpServices Instance of RsvpServices.
-     *
+     * @param  LocationsServices  $locationsServices  Instance of LocationsServices.
+     * @param  GuestServices  $guestServices  Instance of GuestServices.
+     * @param  RsvpServices  $rsvpServices  Instance of RsvpServices.
      * @return void
      */
     public function __construct(
-        private LocationsServices   $locationsServices,
-        private GuestServices       $guestServices,
-        private RsvpServices        $rsvpServices,
+        private LocationsServices $locationsServices,
+        private GuestServices $guestServices,
+        private RsvpServices $rsvpServices,
         private EventCommentService $eventCommentService,
-        private EventModules        $modules,
+        private EventModules $modules,
     ) {}
 
     /**
      * Loads event-related data.
      *
-     * @param Events $event Instance of the Events model representing the specific event.
-     *
+     * @param  Events  $event  Instance of the Events model representing the specific event.
      * @return array Associative array containing event data including menus, features, guests, RSVP information, save-the-date details, menu guests, and locations.
      */
     public function loadEventData(Events $event): array
@@ -62,13 +59,10 @@ class EventDataLoader
 
     /**
      * Loads event menus.
-     *
-     * @param Events $event
-     * @return AnonymousResourceCollection|null
      */
     private function loadMenus(Events $event): ?AnonymousResourceCollection
     {
-        if (!$event->menus || $event->menus->isEmpty()) {
+        if (! $event->menus || $event->menus->isEmpty()) {
             return null;
         }
 
@@ -77,13 +71,10 @@ class EventDataLoader
 
     /**
      * Loads save-the-date details for the event.
-     *
-     * @param Events $event
-     * @return SaveTheDateResource|null
      */
     private function loadSaveTheDate(Events $event): ?SaveTheDateResource
     {
-        if (!$event->saveTheDate) {
+        if (! $event->saveTheDate) {
             return null;
         }
 
@@ -92,9 +83,6 @@ class EventDataLoader
 
     /**
      * Loads menu guests for the event.
-     *
-     * @param Events $event
-     * @return array|null
      */
     private function loadMenuGuests(Events $event): ?array
     {
@@ -114,9 +102,6 @@ class EventDataLoader
 
     /**
      * Loads event locations.
-     *
-     * @param Events $event
-     * @return EventLocation|null
      */
     private function loadLocation(Events $event): ?EventLocation
     {
@@ -125,9 +110,6 @@ class EventDataLoader
 
     /**
      * Loads event comments.
-     *
-     * @param Events $event
-     * @return array|null
      */
     private function loadComments(Events $event): ?array
     {

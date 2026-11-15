@@ -2,10 +2,7 @@
 
 namespace Tests\Unit;
 
-use Aws\Exception\AwsException;
-use Aws\S3\S3Client;
 use PHPUnit\Framework\TestCase;
-use function config;
 
 class ExampleTest extends TestCase
 {
@@ -19,10 +16,8 @@ class ExampleTest extends TestCase
 
     /**
      * Testing the connection to the S3 service using AWS SDK for PHP.
+     *
      * @return void
      */
-    public function testingConnection()
-    {
-
-    }
+    public function testing_connection() {}
 }

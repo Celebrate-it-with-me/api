@@ -18,14 +18,17 @@ class SocialAccount extends Model
         'expires_at',
     ];
 
+    /** Tokens never leave the model in clear text by accident (S-28). */
+    protected $hidden = ['access_token', 'refresh_token'];
+
     protected $casts = [
+        'access_token' => 'encrypted',
+        'refresh_token' => 'encrypted',
         'expires_at' => 'datetime',
     ];
 
     /**
      * Defines a relationship indicating that this model belongs to a single User.
-     *
-     * @return BelongsTo
      */
     public function user(): BelongsTo
     {

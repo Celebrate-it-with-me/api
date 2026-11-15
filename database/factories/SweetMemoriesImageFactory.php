@@ -2,10 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Events;
+use App\Models\SweetMemoriesImage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\SweetMemoriesImage>
+ * @extends Factory<SweetMemoriesImage>
  */
 class SweetMemoriesImageFactory extends Factory
 {
@@ -17,7 +19,7 @@ class SweetMemoriesImageFactory extends Factory
     public function definition(): array
     {
         return [
-            'event_id' => \App\Models\Events::factory(),
+            'event_id' => Events::factory(),
             'image_path' => 'images/event/1/memories-images/test.jpg',
             'image_name' => 'test.jpg',
             'image_original_name' => 'original_test.jpg',

@@ -40,6 +40,10 @@ class InvitationTemplateSeeder extends Seeder
                 'title' => ['es' => 'Con el cariño de', 'en' => 'With love from'],
                 'text' => ['es' => null, 'en' => null],
             ],
+            'gallery' => [
+                'title' => ['es' => 'Mis recuerdos', 'en' => 'My memories'],
+                'text' => ['es' => null, 'en' => null],
+            ],
             'rsvp' => [
                 'title' => ['es' => '¿Me acompañas?', 'en' => 'Will you join me?'],
                 'text' => ['es' => 'Confirma tu asistencia para que todo salga perfecto.', 'en' => 'Let me know if you can make it so everything is perfect.'],
@@ -47,6 +51,10 @@ class InvitationTemplateSeeder extends Seeder
             'closing' => [
                 'title' => ['es' => 'Gracias por ser parte de mi día', 'en' => 'Thank you for being part of my day'],
                 'text' => ['es' => 'Te espero con mucho cariño.', 'en' => 'I can’t wait to see you.'],
+            ],
+            'music' => [
+                'title' => ['es' => null, 'en' => null],
+                'text' => ['es' => null, 'en' => null],
             ],
         ]);
 
@@ -71,6 +79,10 @@ class InvitationTemplateSeeder extends Seeder
                 'title' => ['es' => 'Con el cariño de', 'en' => 'With love from'],
                 'text' => ['es' => null, 'en' => null],
             ],
+            'gallery' => [
+                'title' => ['es' => 'Nuestros recuerdos', 'en' => 'Our memories'],
+                'text' => ['es' => null, 'en' => null],
+            ],
             'rsvp' => [
                 'title' => ['es' => '¿Nos acompañas?', 'en' => 'Will you join us?'],
                 'text' => ['es' => 'Confirma tu asistencia para que todo salga perfecto.', 'en' => 'Let us know if you can make it so everything is perfect.'],
@@ -78,6 +90,10 @@ class InvitationTemplateSeeder extends Seeder
             'closing' => [
                 'title' => ['es' => 'Gracias por acompañarnos', 'en' => 'Thank you for celebrating with us'],
                 'text' => ['es' => 'Los esperamos con mucho cariño.', 'en' => 'We can’t wait to see you.'],
+            ],
+            'music' => [
+                'title' => ['es' => null, 'en' => null],
+                'text' => ['es' => null, 'en' => null],
             ],
         ]);
     }
@@ -97,7 +113,7 @@ class InvitationTemplateSeeder extends Seeder
                 'order' => ++$order,
                 'title' => $texts['title'],
                 'text' => $texts['text'],
-                'settings' => $type === 'cover' ? ['image' => null] : (object) [],
+                'settings' => self::defaultSettings($type),
             ];
         }
 
@@ -124,6 +140,17 @@ class InvitationTemplateSeeder extends Seeder
             ]);
             $template->forceFill(['current_version_id' => $version->id])->save();
         }
+    }
+
+    /** The settings a section starts with; gallery and music have no editor yet, so these are what the invitation uses. */
+    public static function defaultSettings(string $type): array|object
+    {
+        return match ($type) {
+            'cover' => ['image' => null],
+            'gallery' => ['layout' => 'grid', 'maxPhotos' => 12, 'showCaptions' => true],
+            'music' => ['title' => null],
+            default => (object) [],
+        };
     }
 
     /**

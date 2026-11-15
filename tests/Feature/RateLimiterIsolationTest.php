@@ -129,3 +129,14 @@ it('keeps the 429 of the global limiter readable, coded and with Retry-After', f
     $this->withHeader('Accept-Language', 'es')->getJson('/api/v1/__api-limited2')->assertStatus(429)
         ->assertJsonPath('message', 'Demasiados intentos. Inténtalo de nuevo más tarde.');
 });
+
+it('answers every named limiter 429 with the same body as the global api limiter', function () {
+    foreach (range(1, 5) as $i) {
+        $this->postJson('/api/v1/app/reset-password', [])->assertStatus(422);
+    }
+
+    $this->postJson('/api/v1/app/reset-password', [])
+        ->assertStatus(429)
+        ->assertHeader('Retry-After')
+        ->assertExactJson(['message' => __('errors.too_many_attempts'), 'code' => 'too_many_attempts']);
+});

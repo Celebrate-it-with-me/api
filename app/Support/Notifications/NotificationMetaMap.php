@@ -118,7 +118,7 @@ final class NotificationMetaMap
      */
     public static function get(string $key): array
     {
-        if (!isset(self::MAP[$key])) {
+        if (! isset(self::MAP[$key])) {
             throw new InvalidArgumentException("Notification meta not defined for key: {$key}");
         }
 

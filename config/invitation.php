@@ -6,7 +6,7 @@
  */
 return [
     // Section types the renderer understands (cover and rsvp can never be disabled or removed).
-    'section_types' => ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'rsvp', 'closing'],
+    'section_types' => ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing'],
     'required_sections' => ['cover', 'rsvp'],
 
     // Closed font lists: headings and body use the serif/sans group, the script slot the handwritten one.

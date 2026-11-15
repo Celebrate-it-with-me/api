@@ -41,7 +41,7 @@ class EventDatabaseNotification extends Notification
             ],
             NotificationKeys::EVENT_PUBLISHED => [
                 'title' => 'Event Published',
-                'body' => "The event is now published!",
+                'body' => 'The event is now published!',
             ],
             default => [
                 'title' => 'Event Notification',

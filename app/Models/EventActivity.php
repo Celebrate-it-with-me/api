@@ -29,31 +29,27 @@ class EventActivity extends Model
         'target_type',
         'payload',
     ];
-    
+
     protected $casts = [
-      'payload' => 'array',
+        'payload' => 'array',
     ];
-    
+
     /**
      * Define a relationship between the current model and the Events model.
-     *
-     * @return BelongsTo
      */
     public function event(): BelongsTo
     {
         return $this->belongsTo(Events::class, 'event_id', 'id');
     }
-    
+
     /**
      * Define a polymorphic relationship for the current model.
-     *
-     * @return MorphTo
      */
     public function actor(): MorphTo
     {
         return $this->morphTo();
     }
-    
+
     /**
      * Define a polymorphic relationship.
      */
@@ -61,7 +57,7 @@ class EventActivity extends Model
     {
         return $this->morphTo();
     }
-    
+
     /**
      * Define a relationship to the User model.
      */
@@ -81,7 +77,7 @@ class EventActivity extends Model
             'payload' => $impersonatedBy ? $payload + ['impersonated_by' => $impersonatedBy] : $payload,
         ]);
     }
-    
+
     /** Who did it, for the feed: "Soporte" when staff did it while impersonating. */
     public function actorName(): string
     {
@@ -89,7 +85,7 @@ class EventActivity extends Model
             return config('impersonation.staff_label');
         }
 
-        return $this->actor ? $this->actor->name : 'System';
+        return $this->actor ? $this->actor->name : __('System');
     }
 
     /**
@@ -97,17 +93,15 @@ class EventActivity extends Model
      *
      * This method dynamically generates a message based on the type of activity
      * and the associated payload data.
-     *
-     * @return object|array|string|null
      */
     public function getMessageAttribute(): object|array|string|null
     {
         return match ($this->type) {
-            'event_created' => __("Event :name, has been created by :user", [
+            'event_created' => __('Event :name has been created by :user', [
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actorName(),
             ]),
-            'event_updated' => __('Event :name, has been updated by :user', [
+            'event_updated' => __('Event :name has been updated by :user', [
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actorName(),
             ]),
@@ -127,54 +121,54 @@ class EventActivity extends Model
                 'name' => $this->payload['event_name'] ?? '',
                 'user' => $this->actorName(),
             ]),
-            'guest_created' => __('Guest :name, has been created by :user', [
+            'guest_created' => __('Guest :name has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'guest_updated' => __('Guest :name, has been updated by :user', [
+            'guest_updated' => __('Guest :name has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'guest_deleted' => __('Guest :name, has been deleted by :user', [
+            'guest_deleted' => __('Guest :name has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_created' => __('Menu :name, has been created by :user', [
+            'menu_created' => __('Menu :name has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_updated' => __('Menu :name, has been updated by :user', [
+            'menu_updated' => __('Menu :name has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_deleted' => __('Menu :name, has been deleted by :user', [
+            'menu_deleted' => __('Menu :name has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_item_created' => __('Menu item :name, has been created by :user', [
+            'menu_item_created' => __('Menu item :name has been created by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_item_updated' => __('Menu item :name, has been updated by :user', [
+            'menu_item_updated' => __('Menu item :name has been updated by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            'menu_item_deleted' => __('Menu item :name, has been deleted by :user', [
+            'menu_item_deleted' => __('Menu item :name has been deleted by :user', [
                 'name' => ($this->payload['name'] ?? $this->payload['title'] ?? ''),
                 'user' => $this->actorName(),
             ]),
-            
+
             'guests_imported' => __(':count guests imported by :user', [
                 'count' => $this->payload['count'] ?? 0,
                 'user' => $this->actorName(),
             ]),
-            'guest_confirmed' => __('Guest :name, has confirmed their attendance.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
+            'guest_confirmed' => __('Guest :name has confirmed their attendance.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'photo_uploaded' => __('Photo uploaded by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             'music_added' => __('Music added by :name.', ['name' => ($this->payload['name'] ?? $this->payload['title'] ?? '')]),
             default => __('Activity logged.'),
         };
     }
-    
+
     public function getIconAttribute(): string
     {
         return match ($this->type) {
@@ -198,7 +192,7 @@ class EventActivity extends Model
             default => 'activity',
         };
     }
-    
+
     public function getColorAttribute(): string
     {
         return match ($this->type) {
@@ -217,5 +211,4 @@ class EventActivity extends Model
             default => 'gray',
         };
     }
-    
 }

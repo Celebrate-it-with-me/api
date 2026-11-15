@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Controllers/ThemeAssetController.php
 
 namespace App\Http\Controllers\AppControllers\Theme;
@@ -7,8 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Services\AppServices\Theme\AssetUploadService;
 use App\Models\Events;
 use App\Models\ThemeAsset;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ThemeAssetController extends Controller
 {
@@ -16,21 +17,16 @@ class ThemeAssetController extends Controller
         private AssetUploadService $assetUploadService
     ) {}
 
-    /**
-     *
-     * @param Events $event
-     * @return JsonResponse
-     */
     public function index(Events $event): JsonResponse
     {
         $theme = $event->theme;
 
-        if (!$theme) {
+        if (! $theme) {
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'assets' => []
-                ]
+                    'assets' => [],
+                ],
             ]);
         }
 
@@ -44,8 +40,8 @@ class ThemeAssetController extends Controller
             'success' => true,
             'data' => [
                 'assets' => $assets,
-                'grouped_by_section' => $assets->groupBy('section')
-            ]
+                'grouped_by_section' => $assets->groupBy('section'),
+            ],
         ]);
     }
 
@@ -67,14 +63,14 @@ class ThemeAssetController extends Controller
                 'success' => true,
                 'message' => 'Asset uploaded successfully',
                 'data' => [
-                    'asset' => $asset
-                ]
+                    'asset' => $asset,
+                ],
             ], 201);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload asset'
+                'message' => 'Failed to upload asset',
             ], 500);
         }
     }
@@ -88,14 +84,14 @@ class ThemeAssetController extends Controller
         if ($asset->eventTheme->event_id !== $event->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Asset not found for this event'
+                'message' => 'Asset not found for this event',
             ], 404);
         }
 
         $request->validate([
             'alt_text' => 'sometimes|string|max:255',
             'sort_order' => 'sometimes|integer|min:0',
-            'is_active' => 'sometimes|boolean'
+            'is_active' => 'sometimes|boolean',
         ]);
 
         try {
@@ -105,14 +101,14 @@ class ThemeAssetController extends Controller
                 'success' => true,
                 'message' => 'Asset updated successfully',
                 'data' => [
-                    'asset' => $asset->fresh()
-                ]
+                    'asset' => $asset->fresh(),
+                ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update asset'
+                'message' => 'Failed to update asset',
             ], 500);
         }
     }
@@ -126,7 +122,7 @@ class ThemeAssetController extends Controller
         if ($asset->eventTheme->event_id !== $event->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Asset not found for this event'
+                'message' => 'Asset not found for this event',
             ], 404);
         }
 
@@ -135,13 +131,13 @@ class ThemeAssetController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Asset deleted successfully'
+                'message' => 'Asset deleted successfully',
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete asset'
+                'message' => 'Failed to delete asset',
             ], 500);
         }
     }
@@ -155,7 +151,7 @@ class ThemeAssetController extends Controller
         if ($asset->eventTheme->event_id !== $event->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Asset not found for this event'
+                'message' => 'Asset not found for this event',
             ], 404);
         }
 
@@ -170,14 +166,14 @@ class ThemeAssetController extends Controller
                 'success' => true,
                 'message' => 'Asset replaced successfully',
                 'data' => [
-                    'asset' => $newAsset
-                ]
+                    'asset' => $newAsset,
+                ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to replace asset'
+                'message' => 'Failed to replace asset',
             ], 500);
         }
     }
@@ -189,13 +185,13 @@ class ThemeAssetController extends Controller
     {
         $theme = $event->theme;
 
-        if (!$theme) {
+        if (! $theme) {
             return response()->json([
                 'success' => true,
                 'data' => [
                     'section' => $section,
-                    'assets' => []
-                ]
+                    'assets' => [],
+                ],
             ]);
         }
 
@@ -205,8 +201,8 @@ class ThemeAssetController extends Controller
             'success' => true,
             'data' => [
                 'section' => $section,
-                'assets' => $assets
-            ]
+                'assets' => $assets,
+            ],
         ]);
     }
 
@@ -218,7 +214,7 @@ class ThemeAssetController extends Controller
         $request->validate([
             'assets' => 'required|array',
             'assets.*.id' => 'required|exists:theme_assets,id',
-            'assets.*.sort_order' => 'required|integer|min:0'
+            'assets.*.sort_order' => 'required|integer|min:0',
         ]);
 
         try {
@@ -233,13 +229,13 @@ class ThemeAssetController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Assets reordered successfully'
+                'message' => 'Assets reordered successfully',
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reorder assets'
+                'message' => 'Failed to reorder assets',
             ], 500);
         }
     }

@@ -58,7 +58,7 @@ class EventPlanSeeder extends Seeder
                 'support_level' => 'priority',
             ],
         ];
-        
+
         foreach ($rows as $row) {
             // The price is edited by the admin: seeding again never overwrites it.
             $plan = EventPlan::query()->firstOrNew(['slug' => $row['slug']]);

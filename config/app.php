@@ -201,6 +201,15 @@ return [
         'url' => env('APP_FRONT_URL'),
     ],
 
+    // Load balancer address(es) whose X-Forwarded-* headers are believed (comma separated, `*` = all). See TrustProxies.
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
+    /*
+    | Hosts an announcement call-to-action may link to (W-08). Comma separated; `*.example.com` also allows its
+    | subdomains. Empty = the hosts of APP_URL, APP_FRONT_URL, SPA_URL, ADMIN_URL and the Quinvite domains.
+    */
+    'announcement_allowed_hosts' => env('ANNOUNCEMENT_ALLOWED_HOSTS'),
+
     'admin_user' => [
         'email' => env('DEFAULT_ADMIN_EMAIL'),
         'password' => env('DEFAULT_ADMIN_PASSWORD'),

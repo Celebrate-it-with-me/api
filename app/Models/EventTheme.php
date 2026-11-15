@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\EventThemeFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,18 +11,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventTheme extends Model
 {
-    /** @use HasFactory<\Database\Factories\EventThemeFactory> */
+    /** @use HasFactory<EventThemeFactory> */
     use HasFactory;
 
     protected $fillable = [
         'event_id',
         'theme_config',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
         'theme_config' => 'array',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -59,7 +60,7 @@ class EventTheme extends Model
     /**
      * Retrieves a collection of assets filtered by the specified section.
      *
-     * @param string $section The section to filter the assets by.
+     * @param  string  $section  The section to filter the assets by.
      * @return Collection A collection of assets belonging to the given section.
      */
     public function getAssetsBySection(string $section): Collection
@@ -70,8 +71,8 @@ class EventTheme extends Model
     /**
      * Retrieves a collection of active assets filtered by the specified section and asset type.
      *
-     * @param string $section The section to filter the assets by.
-     * @param string $assetType The type of asset to filter by.
+     * @param  string  $section  The section to filter the assets by.
+     * @param  string  $assetType  The type of asset to filter by.
      * @return Collection A collection of active assets matching the given section and asset type.
      */
     public function getAssets(string $section, string $assetType): Collection
@@ -86,7 +87,7 @@ class EventTheme extends Model
     /**
      * Retrieves the configuration array for a specific section.
      *
-     * @param string $section The section key to retrieve the configuration for.
+     * @param  string  $section  The section key to retrieve the configuration for.
      * @return array The configuration array for the provided section, or an empty array if not defined.
      */
     public function getSectionConfig(string $section): array
@@ -103,5 +104,4 @@ class EventTheme extends Model
     {
         return $this->theme_config['global'] ?? [];
     }
-
 }

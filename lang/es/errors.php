@@ -92,6 +92,12 @@ return [
         'not_dismissible' => 'Este aviso no se puede cerrar.',
         'invalid' => 'Los datos enviados no son válidos.',
     ],
+    'assistant' => [
+        'task_not_found' => 'No encontramos ese paso del asistente.',
+        'custom_task_not_found' => 'No encontramos esa tarea.',
+        'custom_task_limit' => 'Este evento ya tiene 50 tareas propias.',
+        'invalid' => 'Los datos enviados no son válidos.',
+    ],
     'guest_import' => [
         'cannot_import' => 'No se pudo importar el archivo.',
     ],

@@ -92,6 +92,12 @@ return [
         'not_dismissible' => 'This announcement cannot be dismissed.',
         'invalid' => 'The given data was invalid.',
     ],
+    'assistant' => [
+        'task_not_found' => 'Assistant step not found.',
+        'custom_task_not_found' => 'Custom task not found.',
+        'custom_task_limit' => 'This event already has 50 custom tasks.',
+        'invalid' => 'The given data was invalid.',
+    ],
     'guest_import' => [
         'cannot_import' => 'The file cannot be imported.',
     ],

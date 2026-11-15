@@ -15,7 +15,7 @@ class SaveTheDateController extends Controller
     public function __construct(
         private readonly SaveTheDateServices $service
     ) {}
-    
+
     public function show(Events $event): JsonResponse
     {
         // An event that has not set anything up still answers the defaults.
@@ -23,23 +23,23 @@ class SaveTheDateController extends Controller
 
         return response()->json(['data' => new SaveTheDateResource($saveTheDate)]);
     }
-    
+
     public function upsert(UpsertSaveTheDateRequest $request, Events $event): JsonResponse
     {
         $saveTheDate = $this->service->upsertForEvent(
             $event,
             $request->settings()
         );
-        
+
         return response()->json([
             'data' => new SaveTheDateResource($saveTheDate),
         ], 200);
     }
-    
+
     public function destroy(Events $event): JsonResponse
     {
         $deleted = $this->service->deleteForEvent($event);
-        
+
         return response()->json([
             'deleted' => $deleted,
         ], $deleted ? 200 : 404);

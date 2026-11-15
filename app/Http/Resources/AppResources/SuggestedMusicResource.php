@@ -38,14 +38,14 @@ class SuggestedMusicResource extends JsonResource
                 'up' => $this->upvotesCount ?? $this->upvotes_count ?? 0,
                 'down' => $this->downvotesCount ?? $this->downvotes_count ?? 0,
                 'netScore' => $this->netScore ?? (
-                        ($this->upvotes_count ?? 0) - ($this->downvotes_count ?? 0)
-                    ),
+                    ($this->upvotes_count ?? 0) - ($this->downvotes_count ?? 0)
+                ),
             ],
 
             // User's vote (if authenticated MainGuest)
             'userVote' => $this->when(
                 $request->user() && method_exists($request->user(), 'id'),
-                fn() => $this->getVoteByGuest($request->user()->id)?->vote_type
+                fn () => $this->getVoteByGuest($request->user()->id)?->vote_type
             ),
 
             // Timestamps

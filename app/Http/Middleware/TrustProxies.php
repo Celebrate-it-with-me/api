@@ -8,11 +8,19 @@ use Illuminate\Http\Request;
 class TrustProxies extends Middleware
 {
     /**
-     * The trusted proxies for this application.
+     * The trusted proxies for this application (I-04). Set TRUSTED_PROXIES to the load balancer's address(es),
+     * comma separated (CIDR allowed), or `*` only when the balancer overwrites X-Forwarded-For. Unset = no proxy is
+     * trusted and request()->ip() is the connection's address (the per-IP limits then count the balancer, not people).
      *
      * @var array<int, string>|string|null
      */
     protected $proxies;
+
+    public function __construct()
+    {
+        $configured = trim((string) config('app.trusted_proxies', ''));
+        $this->proxies = $configured === '' ? null : ($configured === '*' ? '*' : array_map('trim', explode(',', $configured)));
+    }
 
     /**
      * The headers that should be used to detect proxies.

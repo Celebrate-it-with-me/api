@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Resources\UserResource;
+use App\Http\Services\Admin\Account\TwoFactorService;
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\UsersServices;
 use App\Models\User;
-use App\Http\Services\Admin\Account\TwoFactorService;
 use App\Support\AdminPermissions;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -15,12 +15,10 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function __construct(private UsersServices $userService, private AdminAudit $audit){}
+    public function __construct(private UsersServices $userService, private AdminAudit $audit) {}
 
     /**
      * Create a new user.
-     * @param CreateUserRequest $request
-     * @return UserResource|JsonResponse
      */
     public function store(CreateUserRequest $request): UserResource|JsonResponse
     {
@@ -29,16 +27,15 @@ class UserController extends Controller
             $this->audit->record('user.create', $user, ['after' => $user->only(['name', 'email'])]);
 
             return UserResource::make($user);
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             report($e);
-            return response()->json(['message' => __('errors.generic.error')],409);
+
+            return response()->json(['message' => __('errors.generic.error')], 409);
         }
     }
 
     /**
      * Get Logged user.
-     * @param Request $request
-     * @return UserResource|JsonResponse
      */
     public function userInfo(Request $request): UserResource|JsonResponse
     {
@@ -58,16 +55,15 @@ class UserController extends Controller
                     'twoFactorSetupRequired' => TwoFactorService::requiredFor($user) && ! $user->hasAdminTwoFactor(),
                 ],
             ]]);
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             report($e);
-            return response()->json(['message' => __('errors.generic.error')],409);
+
+            return response()->json(['message' => __('errors.generic.error')], 409);
         }
     }
 
     /**
      * Remove User from database.
-     * @param User $user
-     * @return UserResource|JsonResponse
      */
     public function destroy(Request $request, User $user): UserResource|JsonResponse
     {
@@ -82,7 +78,8 @@ class UserController extends Controller
             return UserResource::make($deleted);
         } catch (Exception $e) {
             report($e);
-            return response()->json(['message' => __('errors.generic.error')],409);
+
+            return response()->json(['message' => __('errors.generic.error')], 409);
         }
     }
 }

@@ -4,9 +4,8 @@ namespace App\Observers;
 
 use App\Events\CommentCreated;
 use App\Events\EventNotificationEvent;
-use App\Support\Notifications\NotificationKeys;
 use App\Models\EventComment;
-use Illuminate\Support\Facades\Log;
+use App\Support\Notifications\NotificationKeys;
 
 class EventCommentObserver
 {
@@ -17,7 +16,7 @@ class EventCommentObserver
     {
         $event = $eventComment->event;
 
-        if (!$event) {
+        if (! $event) {
             return;
         }
 
@@ -52,7 +51,7 @@ class EventCommentObserver
      */
     public function updated(EventComment $eventComment): void
     {
-        if (!$eventComment->wasChanged('comment')) {
+        if (! $eventComment->wasChanged('comment')) {
             return;
         }
 
@@ -70,10 +69,14 @@ class EventCommentObserver
     protected function dispatchGeneric(EventComment $eventComment, string $key): void
     {
         $event = $eventComment->event;
-        if (!$event) return;
+        if (! $event) {
+            return;
+        }
 
         $ownerUserId = optional($event->userRoles->firstWhere(fn ($r) => $r->role?->name === 'owner'))->user?->id ?? 0;
-        if ($ownerUserId <= 0) return;
+        if ($ownerUserId <= 0) {
+            return;
+        }
 
         $actorModel = $eventComment->authorable;
         $actor = [
