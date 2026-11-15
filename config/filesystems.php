@@ -96,7 +96,9 @@ return [
             'root' => env('TEMPLATE_PACKAGES_DRIVER', 'local') === 'local'
                 ? env('TEMPLATE_PACKAGES_ROOT', storage_path('app/public/template-packages'))
                 : null,
-            'url' => env('TEMPLATE_PACKAGES_URL', env('APP_URL') . '/storage/template-packages'),
+            // Outside local/testing there is NO fallback: the files must come from an origin without cookies (W6-08).
+            // Locally the API serves them itself, with the right headers, at /template-assets.
+            'url' => env('TEMPLATE_PACKAGES_URL') ?: (in_array(env('APP_ENV', 'production'), ['local', 'testing'], true) ? rtrim((string) env('APP_URL'), '/') . '/template-assets' : null),
             'visibility' => 'public',
             'endpoint' => env('AWS_ENDPOINT'),
             'throw' => true,

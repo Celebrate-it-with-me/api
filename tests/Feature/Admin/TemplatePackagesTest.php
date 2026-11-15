@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Services\Admin\Templates\Packages\MissingPackagesUrl;
 use App\Http\Services\Admin\Templates\Packages\PackageFiles;
 use App\Http\Services\Admin\Templates\Packages\PackageStage;
 use App\Http\Services\AppServices\EventLifecycleService;
 use App\Http\Services\AppServices\EventTemplateConfigValidator;
+use App\Http\Services\AppServices\PackagePayload;
 use App\Http\Services\AppServices\TemplateCatalog;
 use App\Models\AdminAuditLog;
 use App\Models\EventPlan;
@@ -15,12 +17,15 @@ use App\Models\InvitationTemplateVersion;
 use App\Models\TemplatePackage;
 use App\Models\User;
 use App\Support\AdminPermissions;
+use App\Support\ProductionSafetyCheck;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -968,5 +973,98 @@ describe('wave 6 security (W6-06)', function () {
         $lock = Cache::lock(PackageStage::LOCK, 5);
         expect($lock->get())->toBeTrue();
         $lock->release();
+    });
+});
+
+describe('wave 6 security (W6-08)', function () {
+    function pkgInstalledActive(): TemplatePackage
+    {
+        pkgAdmin();
+        $pkg = pkgInstall();
+        pkgActivate($pkg['id']);
+
+        return TemplatePackage::findOrFail($pkg['id']);
+    }
+
+    it('serves the files with a fixed type, nosniff, a sandboxing CSP, CORS for the app only and immutable cache', function () {
+        $pkg = pkgInstalledActive();
+        config(['invitation.packages.allowed_origins' => ['https://app.quinvite.com']]);
+
+        foreach (['theme.css' => 'text/css; charset=utf-8', 'assets/img/wash.svg' => 'image/svg+xml', 'assets/img/paper.webp' => 'image/webp', 'assets/fonts/script-400.woff2' => 'font/woff2'] as $file => $type) {
+            $r = $this->get("/template-assets/{$pkg->storage_path}/{$file}", ['Origin' => 'https://app.quinvite.com'])->assertOk();
+            expect($r->headers->get('Content-Type'))->toBe($type)
+                ->and($r->headers->get('X-Content-Type-Options'))->toBe('nosniff')
+                ->and($r->headers->get('Content-Security-Policy'))->toContain('sandbox')->toContain("default-src 'none'")
+                ->and($r->headers->get('Access-Control-Allow-Origin'))->toBe('https://app.quinvite.com')
+                ->and($r->headers->get('Cache-Control'))->toContain('immutable')->toContain('max-age=31536000')
+                ->and($r->headers->get('Cross-Origin-Resource-Policy'))->toBe('cross-origin')
+                ->and($r->headers->get('Set-Cookie'))->toBeNull();
+        }
+        // An origin that is not the app's gets no CORS permission.
+        expect($this->get("/template-assets/{$pkg->storage_path}/theme.css", ['Origin' => 'https://evil.example'])->assertOk()->headers->get('Access-Control-Allow-Origin'))->toBeNull();
+    });
+
+    it('serves nothing outside the immutable folders of a package', function (string $path) {
+        pkgInstalledActive();
+        $this->get("/template-assets/{$path}")->assertNotFound();
+    })->with([
+        'traversal' => ['botanical/1.0.0-0123456789abcdef/assets/../../../../.env'],
+        'encoded traversal' => ['botanical/1.0.0-0123456789abcdef/assets/%2e%2e/x.css'],
+        'short hash' => ['botanical/1.0.0-01234567/theme.css'],
+        'a stored json' => ['botanical/1.0.0-0123456789abcdef/manifest.json'],
+        'not a package path' => ['../../.env'],
+        'extension not served' => ['botanical/1.0.0-0123456789abcdef/assets/x.html'],
+    ]);
+
+    it('has no origin for the files outside local: the invitation falls back to Classic and the doctor complains', function () {
+        $pkg = pkgInstalledActive();
+        config(['filesystems.disks.template-packages.url' => null]);
+
+        expect(app(PackagePayload::class)->forPackageId($pkg->id))->toBeNull()
+            ->and(fn () => app(PackageFiles::class)->url('x/theme.css'))->toThrow(MissingPackagesUrl::class);
+
+        app()->detectEnvironment(fn () => 'production');
+        expect(ProductionSafetyCheck::problems())->toContain('TEMPLATE_PACKAGES_URL must be set (an origin without cookies, serving the headers of the spec 5.2).');
+        app()->detectEnvironment(fn () => 'testing');
+    });
+
+    it('refuses to install files that differ from what was validated', function () {
+        pkgAdmin();
+        $stage = pkgUpload(PackageBuilder::good())->assertOk()->json('data');
+        Storage::disk('template-packages')->put(PackageFiles::STAGING . "/{$stage['stageToken']}/theme.css", 'body{display:none}');
+
+        $this->postJson(PKG, ['stage_token' => $stage['stageToken'], 'reason' => 'Instalar el paquete'])->assertStatus(409)->assertJson(['code' => 'stage_corrupt']);
+        expect(TemplatePackage::count())->toBe(0)->and(Storage::disk('template-packages')->allFiles('botanical'))->toBe([]);
+    });
+
+    it('templates:verify-packages finds a tampered, a missing and an extra file', function () {
+        $pkg = pkgInstalledActive();
+        $disk = Storage::disk('template-packages');
+        $this->artisan('templates:verify-packages')->assertSuccessful();
+
+        $disk->put("{$pkg->storage_path}/theme.css", 'a{color:red}');
+        $this->artisan('templates:verify-packages')->assertFailed();
+        $disk->delete("{$pkg->storage_path}/assets/img/paper.webp");
+        $disk->put("{$pkg->storage_path}/assets/img/extra.png", 'x');
+        expect(Artisan::call('templates:verify-packages'))->toBe(1);
+        expect(Artisan::output())->toContain('difiere theme.css')->toContain('falta assets/img/paper.webp')->toContain('sobra assets/img/extra.png');
+    });
+
+    it('templates:verify-packages --probe checks the headers of the real origin', function () {
+        $pkg = pkgInstalledActive();
+        config(['invitation.packages.allowed_origins' => ['https://app.quinvite.com']]);
+        $good = fn (string $type) => Http::response('x', 200, [
+            'Content-Type' => $type, 'X-Content-Type-Options' => 'nosniff', 'Content-Security-Policy' => "default-src 'none'; sandbox",
+            'Cache-Control' => 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin' => 'https://app.quinvite.com',
+        ]);
+
+        $first = collect($pkg->files)->first(fn ($f) => str_starts_with($f['path'], 'assets/'))['path'];
+        Http::fake(['*theme.css' => $good('text/css; charset=utf-8'), '*' . basename($first) => $good(PackageFiles::mime($first))]);
+        $this->artisan('templates:verify-packages --probe')->assertSuccessful();
+
+        Http::swap(new HttpFactory);
+        Http::fake(['*' => Http::response('x', 200, ['Content-Type' => 'text/html'])]);
+        expect(Artisan::call('templates:verify-packages', ['--probe' => true]))->toBe(1);
+        expect(Artisan::output())->toContain('missing X-Content-Type-Options')->toContain('without sandbox');
     });
 });

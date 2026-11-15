@@ -13,6 +13,9 @@ class PackageFiles
 {
     public const STAGING = '_staging';
 
+    /** Policy of every served file: inert even if opened directly (no script, no framing, no network). */
+    public const CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox";
+
     public function disk(): Filesystem
     {
         return Storage::disk((string) config('invitation.packages.disk'));
@@ -45,6 +48,7 @@ class PackageFiles
                 'visibility' => 'public',
                 'ContentType' => self::mime($path),
                 'CacheControl' => 'public, max-age=31536000, immutable',
+                'ContentDisposition' => 'inline',
             ]);
         }
     }
@@ -68,8 +72,53 @@ class PackageFiles
         return $this->disk()->exists($folder . '/theme.css');
     }
 
+    /** Base URL of the files; null when it is not configured (only local and testing may fall back to the API itself). */
+    public function baseUrl(): ?string
+    {
+        $url = config('filesystems.disks.' . config('invitation.packages.disk') . '.url');
+
+        return is_string($url) && trim($url) !== '' ? rtrim($url, '/') : null;
+    }
+
     public function url(string $path): string
     {
-        return $this->disk()->url($path);
+        $base = $this->baseUrl();
+        if ($base === null) {
+            throw new MissingPackagesUrl('TEMPLATE_PACKAGES_URL is not configured: package files have no public origin.');
+        }
+
+        return $base . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * Recomputes the sha256 of every published file of a folder against what was recorded when it was built.
+     *
+     * @param  list<array{path: string, size: int, sha256: string, published: bool}>  $expected
+     * @return list<string> human readable differences (empty when the folder is exactly what was built)
+     */
+    public function differences(string $folder, array $expected): array
+    {
+        $disk = $this->disk();
+        $problems = [];
+        $known = [];
+        foreach ($expected as $file) {
+            if (! ($file['published'] ?? false)) {
+                continue;
+            }
+            $known["{$folder}/{$file['path']}"] = true;
+            $path = "{$folder}/{$file['path']}";
+            if (! $disk->exists($path)) {
+                $problems[] = "falta {$file['path']}";
+            } elseif (hash('sha256', (string) $disk->get($path)) !== $file['sha256']) {
+                $problems[] = "difiere {$file['path']}";
+            }
+        }
+        foreach ($disk->allFiles($folder) as $found) {
+            if (! isset($known[$found])) {
+                $problems[] = 'sobra ' . substr($found, strlen($folder) + 1);
+            }
+        }
+
+        return $problems;
     }
 }

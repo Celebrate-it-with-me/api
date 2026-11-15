@@ -69,6 +69,12 @@ class PackageInstaller
         $folder = "{$slug}/{$semver}-" . substr($build['contentHash'], 0, 16);
         $this->files->copyFolder(PackageFiles::STAGING . "/{$token}", $folder);
 
+        // What was copied must be exactly what the validator built (a tampered staging area would otherwise be promoted).
+        if (($problems = $this->files->differences($folder, $build['files'])) !== []) {
+            $this->files->delete($folder);
+            throw PackageError::conflict('stage_corrupt', 'Los archivos de la subida no coinciden con lo validado: vuelve a subir el paquete.', ['differences' => array_slice($problems, 0, 10)]);
+        }
+
         try {
             $package = DB::transaction(function () use ($meta, $build, $manifest, $folder) {
                 $package = TemplatePackage::query()->create([
