@@ -86,7 +86,7 @@ final class CoverPhoto
             $this->fail('corrupt');
         }
         // Checked from the header, before anything is decoded: a small file can hold a huge picture.
-        if (max($info[0], $info[1]) > (int) config('invitation.cover.max_side') || $info[0] * $info[1] > (int) config('invitation.cover.max_pixels')) {
+        if (max($info[0], $info[1]) > (int) config('invitation.cover.max_side') || (int) config('invitation.cover.max_pixels') < $info[0] * $info[1]) {
             $this->fail('too_many_pixels');
         }
         if ($minWidth > 0 && $info[0] < $minWidth) {

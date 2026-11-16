@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Services\AppServices\EventTemplateConfigValidator;
 use App\Http\Services\AppServices\Invitation\CoverPhoto;
+use App\Http\Services\AppServices\InvitationService;
 use App\Models\EventActivity;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -8,6 +10,7 @@ use App\Models\EventType;
 use App\Models\EventUserRole;
 use App\Models\Guest;
 use App\Models\InvitationTemplate;
+use App\Models\TemplatePackage;
 use App\Models\User;
 use App\Support\AdminPermissions;
 use Database\Seeders\DatabaseSeeder;
@@ -15,6 +18,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 use Tests\Unit\TemplatePackage\PackageBuilder;
 
@@ -38,7 +43,7 @@ function edBuilder(string $slug = 'festival', string $tier = 'free'): PackageBui
         ->json('manifest.json', fn (array $m) => [...$m, 'slug' => $slug, 'tier' => $tier, 'name' => ['es' => 'Fiesta ' . $slug, 'en' => 'Feast ' . $slug]])
         ->json('tokens.json', function (array $t) {
             $salvia = $t['presets']['salvia'];
-            $t['presets']['oliva'] = ['label' => ['es' => 'Oliva', 'en' => 'Olive'], 'colors' => [...$salvia['colors'], 'primary' => '#6b705c']] ;
+            $t['presets']['oliva'] = ['label' => ['es' => 'Oliva', 'en' => 'Olive'], 'colors' => [...$salvia['colors'], 'primary' => '#6b705c']];
             $t['presets']['rosa'] = ['label' => ['es' => 'Rosa', 'en' => 'Rose'], 'colors' => [...$salvia['colors'], 'primary' => '#b5838d']];
 
             return $t;
@@ -231,6 +236,7 @@ describe('GET invitation/templates and impact', function () {
         $list = $this->actingAs($m['owner'])->getJson(edUrl($event, 'templates'))->assertOk()->json('data');
 
         expect($list[0])->toMatchArray(['slug' => 'festival-quinceanera', 'current' => true, 'locked' => false, 'tier' => 'free', 'hasPresets' => true])
+            ->and($list[0]['presets'][1])->toBe(['value' => 'oliva', 'label' => ['es' => 'Oliva', 'en' => 'Olive'], 'colors' => ['#fbf8f1', '#8c8658', '#6b705c']])
             ->and($list[0]['nameI18n'])->toBe(['es' => 'Fiesta festival', 'en' => 'Feast festival'])
             ->and(collect($list)->firstWhere('slug', 'galeria-quinceanera'))->toMatchArray(['locked' => true, 'current' => false, 'tier' => 'premium'])
             ->and(collect($list)->pluck('slug')->all())->not->toContain('festival-wedding');
@@ -299,18 +305,18 @@ describe('templateFor with the plan (D-4)', function () {
         [$event] = edEvent(['template_id' => edTemplateId('galeria'), 'status' => 'published', 'template_config' => ['theme' => ['colors' => ['primary' => '#123456']]]]);
         $guest = Guest::where('event_id', $event->id)->first();
 
-        $filtered = app(\App\Http\Services\AppServices\InvitationService::class)->build($event->fresh(), $guest);
+        $filtered = app(InvitationService::class)->build($event->fresh(), $guest);
         expect($filtered['theme']['name'])->not->toBe('galeria')
             ->and($filtered['theme']['colors']['primary'])->not->toBe('#123456');
 
         edPlan($event, 'premium');
-        $paid = app(\App\Http\Services\AppServices\InvitationService::class)->build($event->fresh(), $guest);
+        $paid = app(InvitationService::class)->build($event->fresh(), $guest);
         expect($paid['theme']['name'])->toBe('galeria')->and($paid['theme']['colors']['primary'])->toBe('#123456');
 
         // A refund after the invitation was fixed: the look does not change.
         $event->update(['template_version_id' => InvitationTemplate::find(edTemplateId('galeria'))->current_version_id]);
         edPlan($event, 'basic');
-        $kept = app(\App\Http\Services\AppServices\InvitationService::class)->build($event->fresh(), $guest);
+        $kept = app(InvitationService::class)->build($event->fresh(), $guest);
         expect($kept['theme']['name'])->toBe('galeria')->and($kept['theme']['colors']['primary'])->toBe('#123456');
     });
 });
@@ -683,5 +689,363 @@ describe('publish with expected_version_id', function () {
 
         $this->actingAs($m['owner'])->postJson("/api/v1/app/event/{$event->id}/publish")->assertOk();
         $this->postJson("/api/v1/app/event/{$event->id}/publish", ['expected_version_id' => 'x'])->assertUnprocessable();
+    });
+});
+
+describe('cover photo', function () {
+    function edUpload($test, Events $event, User $user, string|UploadedFile $file, array $extra = [])
+    {
+        $upload = $file instanceof UploadedFile ? $file : UploadedFile::fake()->createWithContent('foto.jpg', $file);
+
+        return $test->actingAs($user)->post(edUrl($event, 'cover-photo'), ['photo' => $upload] + $extra, ['Accept' => 'application/json']);
+    }
+
+    function edPhotoEvent(string $plan = 'basic'): array
+    {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        edPlan($event, $plan);
+
+        return [$event, $m];
+    }
+
+    it('stores a WebP cover and thumbnail named by event, and the editor and the invitation serve them', function () {
+        [$event, $m] = edPhotoEvent();
+
+        $res = edUpload($this, $event, $m['owner'], edJpeg(1800, 2400), ['focus' => '40% 25%'])->assertCreated();
+
+        $data = $res->json('data');
+        expect($data)->toMatchArray(['width' => 1440, 'height' => 1920, 'focus' => '40% 25%'])
+            ->and($data['bytes'])->toBeGreaterThan(1000)
+            ->and($data['url'])->toContain("images/event/{$event->id}/cover/")->and($data['thumbUrl'])->toEndWith('-thumb.webp');
+        $stored = $event->fresh()->template_config['sections'][0]['settings'];
+        expect($stored['image'])->toStartWith("upload:images/event/{$event->id}/cover/")->and($stored['focus'])->toBe('40% 25%');
+        $path = substr($stored['image'], 7);
+        $disk = Storage::disk('event-media');
+        expect($disk->exists($path))->toBeTrue()->and($disk->exists(CoverPhoto::thumbPath($path)))->toBeTrue()
+            ->and(getimagesizefromstring($disk->get($path))[0])->toBe(1440)
+            ->and(getimagesizefromstring($disk->get($path))['mime'])->toBe('image/webp')
+            ->and(getimagesizefromstring($disk->get(CoverPhoto::thumbPath($path)))[0])->toBe(480);
+
+        $field = collect($this->getJson(edUrl($event))->json('data.fields'))->firstWhere('id', 'cover_photo');
+        expect($field['value'])->toMatchArray(['width' => 1440, 'height' => 1920, 'focus' => '40% 25%'])->and($field['isDefault'])->toBeFalse();
+
+        $this->postJson("/api/v1/app/event/{$event->id}/publish")->assertOk();
+        $public = $this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->assertOk()->json('data.sections.0.data');
+        expect($public['image'])->toBe($data['url'])->and($public['focus'])->toBe('40% 25%');
+    });
+
+    it('carries a null focus when none was chosen', function () {
+        [$event] = edPhotoEvent();
+        $event->update(['status' => 'published']);
+
+        $cover = $this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->assertOk()->json('data.sections.0.data');
+
+        expect(array_keys($cover))->toBe(['eventName', 'description', 'image', 'focus'])->and($cover['focus'])->toBeNull();
+    });
+
+    it('drops every piece of metadata and applies the orientation', function () {
+        [$event, $m] = edPhotoEvent();
+        $source = edJpeg(900, 1200, 6, true);
+        expect(@exif_read_data('data://image/jpeg;base64,' . base64_encode($source), 'GPS', true)['GPS'] ?? null)->not->toBeNull('the fixture must carry GPS');
+
+        $res = edUpload($this, $event, $m['owner'], $source)->assertCreated();
+
+        // Rotated by the EXIF orientation 6: the portrait became a landscape.
+        expect($res->json('data.width'))->toBe(1200)->and($res->json('data.height'))->toBe(900);
+        $bytes = Storage::disk('event-media')->get(substr($event->fresh()->template_config['sections'][0]['settings']['image'], 7));
+        expect(str_contains($bytes, 'EXIF'))->toBeFalse()->and(str_contains($bytes, 'GPS'))->toBeFalse()->and(str_contains($bytes, 'Exif'))->toBeFalse()
+            ->and(substr($bytes, 0, 4))->toBe('RIFF')->and(substr($bytes, 8, 4))->toBe('WEBP');
+    });
+
+    it('answers a code per kind of bad file and keeps the photo she had', function () {
+        [$event, $m] = edPhotoEvent();
+        edUpload($this, $event, $m['owner'], edJpeg())->assertCreated();
+        $before = $event->fresh()->template_config;
+
+        $gif = (function () {
+            $im = imagecreatetruecolor(700, 700);
+            ob_start();
+            imagegif($im);
+
+            return (string) ob_get_clean();
+        })();
+        $tooWide = (function () {
+            $im = imagecreatetruecolor(8001, 10);
+            ob_start();
+            imagepng($im, null, 9);
+
+            return (string) ob_get_clean();
+        })();
+        $tooManyPixels = (function () {
+            $im = imagecreatetruecolor(7000, 6000);
+            ob_start();
+            imagepng($im, null, 9);
+
+            return (string) ob_get_clean();
+        })();
+        $tiny = (function () {
+            $im = imagecreatetruecolor(100, 100);
+            ob_start();
+            imagejpeg($im);
+
+            return (string) ob_get_clean();
+        })();
+        $cases = [
+            'not_an_image' => UploadedFile::fake()->createWithContent('a.jpg', 'esto es texto plano'),
+            'unsupported_type' => UploadedFile::fake()->createWithContent('a.jpg', $gif),
+            'corrupt' => UploadedFile::fake()->createWithContent('a.jpg', "\xFF\xD8\xFF\xE0" . random_bytes(300)),
+            'too_many_pixels' => UploadedFile::fake()->createWithContent('a.png', $tooWide),
+            'too_small' => UploadedFile::fake()->createWithContent('a.jpg', $tiny),
+            'too_large' => UploadedFile::fake()->create('big.jpg', 11 * 1024, 'image/jpeg'),
+            'required' => UploadedFile::fake()->create('empty.jpg', 0),
+        ];
+        foreach ($cases as $code => $file) {
+            $res = edUpload($this, $event, $m['owner'], $file)->assertUnprocessable();
+            expect($res->json('errors.photo.0'))->toBe($code, json_encode($res->json()));
+        }
+        $this->actingAs($m['owner'])->post(edUrl($event, 'cover-photo'), [], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonPath('errors.photo.0', 'required');
+        edUpload($this, $event, $m['owner'], edJpeg(), ['focus' => 'arriba'])->assertUnprocessable()->assertJsonPath('errors.focus.0', 'invalid_focus');
+        expect($event->fresh()->template_config)->toEqual($before)->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+    });
+
+    it('accepts a huge picture only up to the pixel limit, without exhausting memory', function () {
+        [$event, $m] = edPhotoEvent();
+        $im = imagecreatetruecolor(6000, 5000);
+        ob_start();
+        imagejpeg($im, null, 20);
+        $big = (string) ob_get_clean();
+
+        edUpload($this, $event, $m['owner'], $big)->assertCreated()->assertJsonPath('data.width', 1440);
+    });
+
+    it('replaces the photo and deletes the old files only after the new one is saved', function () {
+        [$event, $m] = edPhotoEvent();
+        edUpload($this, $event, $m['owner'], edJpeg())->assertCreated();
+        $first = substr($event->fresh()->template_config['sections'][0]['settings']['image'], 7);
+
+        edUpload($this, $event, $m['owner'], edJpeg(800, 1000))->assertCreated();
+
+        $second = substr($event->fresh()->template_config['sections'][0]['settings']['image'], 7);
+        expect($second)->not->toBe($first)->and(Storage::disk('event-media')->exists($first))->toBeFalse()
+            ->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+    });
+
+    it('removes the photo, idempotently', function () {
+        [$event, $m] = edPhotoEvent();
+        edUpload($this, $event, $m['owner'], edJpeg(), ['focus' => '10% 10%'])->assertCreated();
+
+        $this->actingAs($m['owner'])->deleteJson(edUrl($event, 'cover-photo'))->assertOk()->assertExactJson(['data' => null]);
+        $this->deleteJson(edUrl($event, 'cover-photo'))->assertOk();
+
+        expect($event->fresh()->template_config)->toBeNull()->and(Storage::disk('event-media')->allFiles())->toBe([]);
+        expect(EventActivity::where('event_id', $event->id)->where('type', 'invitation_cover_removed')->count())->toBe(1);
+    });
+
+    it('answers 409 when the template has no cover photo field', function () {
+        edInstall(edBuilder('sinfoto', 'free')->json('editable.json', fn ($e) => [...$e, 'fields' => array_values(array_filter($e['fields'], fn ($f) => $f['type'] !== 'image'))]));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('sinfoto')]);
+
+        edUpload($this, $event, $m['owner'], edJpeg())->assertConflict()->assertJson(['code' => 'package_no_cover_field']);
+    });
+
+    it('closes the endpoint to a viewer and a stranger, and limits uploads to 10 a minute', function () {
+        [$event, $m] = edPhotoEvent();
+
+        edUpload($this, $event, $m['viewer'], edJpeg())->assertForbidden();
+        edUpload($this, $event, $m['stranger'], edJpeg())->assertNotFound();
+        $this->actingAs($m['viewer'])->deleteJson(edUrl($event, 'cover-photo'))->assertForbidden();
+        for ($i = 0; $i < 10; $i++) {
+            edUpload($this, $event, $m['owner'], edJpeg(700, 900))->assertCreated();
+        }
+        edUpload($this, $event, $m['owner'], edJpeg(700, 900))->assertTooManyRequests();
+    });
+
+    it('serves an upload only from the folder of its own event', function () {
+        [$event, $m] = edPhotoEvent();
+        $ulid = strtolower((string) Str::ulid());
+        $event->update(['status' => 'published', 'template_config' => ['sections' => [['type' => 'cover', 'settings' => ['image' => "upload:images/event/999999/cover/{$ulid}-700x900.webp"]]]]]);
+
+        $cover = $this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->assertOk()->json('data.sections.0.data');
+        expect($cover['image'])->toBeNull();
+
+        $event->update(['template_config' => ['sections' => [['type' => 'cover', 'settings' => ['image' => 'upload:../../etc/passwd']]]]]);
+        expect($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->json('data.sections.0.data.image'))->toBeNull();
+    });
+
+    it('lets the config validator accept upload: only for the event it is checking', function () {
+        $package = new TemplatePackage(['editable' => ['fields' => [['id' => 'p', 'type' => 'image', 'bind' => ['section' => 'cover', 'setting' => 'image', 'focus' => 'focus'], 'plan' => 'free']]]]);
+        $ulid = strtolower((string) Str::ulid());
+        $config = fn (int $id) => ['sections' => [['type' => 'cover', 'settings' => ['image' => "upload:images/event/{$id}/cover/{$ulid}-700x900.webp"]]]];
+        $validator = new EventTemplateConfigValidator;
+
+        $validator->validate($config(7), $package, true, 7);
+        foreach ([[$config(8), 7], [$config(7), null]] as [$bad, $id]) {
+            expect(fn () => $validator->validate($bad, $package, true, $id))->toThrow(ValidationException::class);
+        }
+        foreach (['upload:images/event/7/cover/x.webp', 'upload:images/event/7/cover/' . $ulid . '-700x900.php', 'https://evil.test/a.jpg', '//evil.test/a.jpg'] as $value) {
+            $c = ['sections' => [['type' => 'cover', 'settings' => ['image' => $value]]]];
+            expect(fn () => $validator->validate($c, $package, true, 7))->toThrow(ValidationException::class);
+        }
+    });
+});
+
+describe('POST invitation/preview', function () {
+    function edPreview($test, Events $event, User $user, array $body = [])
+    {
+        return $test->actingAs($user)->postJson(edUrl($event, 'preview'), $body);
+    }
+
+    it('has the very shape of the public invitation and draws the real event', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival'), 'template_config' => ['theme' => ['preset' => 'rosa']]]);
+        $this->actingAs($m['owner'])->postJson("/api/v1/app/event/{$event->id}/publish")->assertOk();
+        $public = $this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->assertOk()->json('data');
+
+        $preview = edPreview($this, $event, $m['owner'])->assertOk()->json('data');
+
+        expect(array_keys($preview))->toBe(array_keys($public))
+            ->and($preview['event'])->toBe($public['event'])
+            ->and($preview['theme'])->toBe($public['theme'])
+            ->and(array_column($preview['sections'], 'type'))->toBe(array_column($public['sections'], 'type'))
+            ->and($preview['branding'])->toBe($public['branding'])
+            ->and($preview['guest']['name'])->toBe('Invitada/o');
+    });
+
+    it('shows unsaved changes and writes nothing', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $activity = EventActivity::count();
+
+        $res = edPreview($this, $event, $m['owner'], ['fields' => ['look_preset' => 'rosa', 'cover_text' => ['es' => 'Frase nueva'], 'color_primary' => '#123456'], 'locale' => 'es'])->assertOk();
+
+        expect($res->json('data.theme.preset'))->toBe('rosa')->and($res->json('data.theme.colors.primary'))->toBe('#123456')
+            ->and($res->json('data.sections.0.text'))->toBe('Frase nueva')
+            ->and($event->fresh()->template_config)->toBeNull()->and(EventActivity::count())->toBe($activity);
+        edPreview($this, $event, $m['owner'], ['preset' => 'oliva'])->assertOk()->assertJsonPath('data.theme.preset', 'oliva');
+        edPreview($this, $event, $m['owner'], ['locale' => 'en'])->assertOk()->assertJsonPath('data.locale', 'en');
+    });
+
+    it('previews another template, premium ones included, with the event data', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('galeria', 'premium'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival'), 'template_config' => ['theme' => ['preset' => 'rosa'], 'sections' => [['type' => 'cover', 'text' => ['es' => 'Mi frase']]]]]);
+
+        $res = edPreview($this, $event, $m['owner'], ['template_id' => edTemplateId('galeria')])->assertOk();
+
+        expect($res->json('data.theme.name'))->toBe('galeria')->and($res->json('data.theme.package.slug'))->toBe('galeria')
+            ->and($res->json('data.theme.preset'))->toBe('salvia')
+            ->and($res->json('data.sections.0.text'))->toBe('Mi frase')
+            ->and($res->json('data.event.name'))->toBe('Los XV de Valentina')
+            ->and($event->fresh()->template_id)->toBe(edTemplateId('festival'));
+        // Even a template that is not live for the event does not draw the free one instead.
+        edPlan($event, 'basic');
+        edPreview($this, $event, $m['owner'], ['template_id' => edTemplateId('galeria')])->assertOk()->assertJsonPath('data.theme.name', 'galeria');
+    });
+
+    it('draws the Save the date and the no photo state, with a sample guest and no real people', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival'), 'template_config' => ['sections' => [['type' => 'cover', 'settings' => ['image' => '/storage/x.jpg']]]]]);
+        $guest = Guest::where('event_id', $event->id)->first();
+        Guest::factory()->create(['event_id' => $event->id, 'parent_id' => $guest->id, 'name' => 'Acompanante Real']);
+        Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'name' => 'Otra Familia']);
+
+        $full = edPreview($this, $event, $m['owner'])->assertOk()->json('data');
+        $nophoto = edPreview($this, $event, $m['owner'], ['state' => 'no_photo'])->assertOk()->json('data');
+        $std = edPreview($this, $event, $m['owner'], ['state' => 'save_the_date'])->assertOk()->json('data');
+
+        expect($full['sections'][0]['data']['image'])->toBe('/storage/x.jpg')->and($nophoto['sections'][0]['data']['image'])->toBeNull()
+            ->and($std['stage'])->toBe('save_the_date')->and(array_column($std['sections'], 'type'))->toContain('cover')->not->toContain('rsvp')
+            ->and(json_encode($full))->not->toContain('Acompanante Real')->not->toContain('Otra Familia');
+        $rsvp = collect($full['sections'])->firstWhere('type', 'rsvp');
+        expect($rsvp['data']['companions'])->toBe([])->and($rsvp['data']['guest']['id'])->toBeNull();
+    });
+
+    it('answers the same codes as the writes, and 404/403 for templates', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('secreta', 'free')->json('manifest.json', fn ($mm) => [...$mm, 'visibility' => 'private']));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+
+        $r = edPreview($this, $event, $m['owner'], ['fields' => ['color_primary' => 'rojo']])->assertUnprocessable();
+        expect($r->json('errors')['fields.color_primary'][0])->toBe('invalid_color');
+        $r = edPreview($this, $event, $m['owner'], ['fields' => ['cover_text' => ['es' => str_repeat('x', 99)]]])->assertUnprocessable();
+        expect($r->json('errors')['fields.cover_text.es'][0])->toBe('too_long');
+        edPreview($this, $event, $m['owner'], ['fields' => ['nope' => 1]])->assertNotFound()->assertJson(['code' => 'field_not_found']);
+        edPreview($this, $event, $m['owner'], ['preset' => 'zzz'])->assertUnprocessable()->assertJsonPath('errors.preset.0', 'invalid_choice');
+        edPreview($this, $event, $m['owner'], ['template_id' => 999999])->assertNotFound()->assertJson(['code' => 'template_not_found']);
+        edPreview($this, $event, $m['owner'], ['template_id' => edTemplateId('secreta')])->assertForbidden()->assertJson(['code' => 'template_not_available']);
+        edPreview($this, $event, $m['owner'], ['locale' => 'fr'])->assertUnprocessable()->assertJsonPath('errors.locale.0', 'invalid');
+        edPreview($this, $event, $m['owner'], ['state' => 'x'])->assertUnprocessable()->assertJsonPath('errors.state.0', 'invalid');
+        edPreview($this, $event, $m['stranger'])->assertNotFound();
+        edPreview($this, $event, $m['viewer'])->assertForbidden();
+    });
+
+    it('limits previews to 30 a minute', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $this->actingAs($m['owner']);
+
+        for ($i = 0; $i < 30; $i++) {
+            $this->postJson(edUrl($event, 'preview'))->assertOk();
+        }
+        $this->postJson(edUrl($event, 'preview'))->assertTooManyRequests();
+    });
+});
+
+describe('selector thumbnails (D-5)', function () {
+    it('turns preview/mobile.png into a light public WebP 390x844 and links the templates', function () {
+        $package = edInstall(edBuilder('festival', 'free'));
+        $paths = InvitationTemplate::whereIn('slug', ['festival-wedding', 'festival-quinceanera'])->pluck('preview_image')->unique();
+
+        expect($paths)->toHaveCount(1)->and($paths[0])->toStartWith('previews/festival-1.0.0-')->and($paths[0])->toEndWith('.webp');
+        $bytes = Storage::disk('template-packages')->get($paths[0]);
+        $size = getimagesizefromstring($bytes);
+        expect([$size[0], $size[1], $size['mime']])->toBe([390, 844, 'image/webp'])
+            ->and(strlen($bytes))->toBeLessThan(80 * 1024)
+            ->and(strlen($bytes))->toBeLessThan(strlen((string) file_get_contents(__DIR__ . '/../Fixtures/TemplatePackage/good/preview/mobile.png')) + 1);
+
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $list = $this->actingAs($m['owner'])->getJson(edUrl($event, 'templates'))->assertOk()->json('data');
+        expect(collect($list)->firstWhere('slug', 'festival-quinceanera')['previewImage'])->toContain($paths[0]);
+    });
+
+    it('downsizes a 780x1688 capture', function () {
+        $png = (function () {
+            $im = imagecreatetruecolor(780, 1688);
+            imagefill($im, 0, 0, imagecolorallocate($im, 200, 180, 160));
+            ob_start();
+            imagepng($im);
+
+            return (string) ob_get_clean();
+        })();
+        edInstall(edBuilder('festival', 'free')->with('preview/mobile.png', $png));
+
+        $path = InvitationTemplate::where('slug', 'festival-quinceanera')->value('preview_image');
+
+        expect(getimagesizefromstring(Storage::disk('template-packages')->get($path))[1])->toBe(844);
+    });
+
+    it('regenerates a missing thumbnail from the original zip, idempotently', function () {
+        $builder = edBuilder('festival', 'free');
+        edInstall($builder);
+        $path = InvitationTemplate::where('slug', 'festival-quinceanera')->value('preview_image');
+        Storage::disk('template-packages')->delete($path);
+        InvitationTemplate::query()->update(['preview_image' => null]);
+
+        $this->artisan('templates:thumbnails')->assertFailed();
+        expect(InvitationTemplate::where('slug', 'festival-quinceanera')->value('preview_image'))->toBeNull();
+
+        $this->artisan('templates:thumbnails', ['--zip' => $builder->zip()])->assertSuccessful();
+        expect(InvitationTemplate::where('slug', 'festival-quinceanera')->value('preview_image'))->toBe($path)
+            ->and(Storage::disk('template-packages')->exists($path))->toBeTrue();
+
+        $bytes = Storage::disk('template-packages')->get($path);
+        $this->artisan('templates:thumbnails', ['--zip' => $builder->zip()])->assertSuccessful();
+        $this->artisan('templates:thumbnails')->assertSuccessful();
+        expect(Storage::disk('template-packages')->get($path))->toBe($bytes);
+
+        // A zip that is not an installed package is refused.
+        $other = edBuilder('otra', 'free')->json('manifest.json', fn ($mm) => [...$mm, 'slug' => 'otra']);
+        $this->artisan('templates:thumbnails', ['--zip' => $other->zip()])->assertFailed();
     });
 });

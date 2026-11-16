@@ -8,6 +8,7 @@ use App\Http\Services\Admin\Templates\Packages\PackageFiles;
 use App\Http\Services\AppServices\EventModules;
 use App\Http\Services\AppServices\EventTemplateConfigValidator;
 use App\Http\Services\AppServices\InvitationService;
+use App\Http\Services\AppServices\PackagePayload;
 use App\Http\Services\AppServices\TemplateCatalog;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Http\Services\Payments\PurchaseService;
@@ -18,6 +19,7 @@ use App\Models\InvitationTemplateVersion;
 use App\Models\TemplatePackage;
 use App\Models\User;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -100,6 +102,7 @@ class InvitationEditor
                     'previewImage' => $this->previewUrl($t->preview_image),
                     'eventTypes' => $manifest['eventTypes'] ?? array_values(array_filter([$t->eventType?->slug])),
                     'hasPresets' => $package !== null && count((array) ($package->tokens['presets'] ?? [])) > 1,
+                    'presets' => $this->presets($package),
                 ];
             })
             ->sortBy(fn (array $t) => [$t['current'] ? 0 : 1, $t['tier'] === InvitationTemplate::TIER_FREE ? 0 : 1, $t['id']])
@@ -495,7 +498,7 @@ class InvitationEditor
     /**
      * @return array{url: string, thumbUrl: string, width: int, height: int, focus: ?string, bytes: int}
      */
-    public function storeCover(Events $event, User $actor, ?\Illuminate\Http\UploadedFile $file, ?string $focus): array
+    public function storeCover(Events $event, User $actor, ?UploadedFile $file, ?string $focus): array
     {
         $this->assertWritable($event);
         $ctx = $this->context($event);
@@ -723,6 +726,26 @@ class InvitationEditor
             && (! isset($entry['savedAt']) || now()->diffInDays($entry['savedAt'], true) <= self::STASH_DAYS));
     }
 
+    /** @return list<array{value: string, label: array<string, mixed>, colors?: list<string>}> the palettes the organizer can pick */
+    private function presets(?TemplatePackage $package): array
+    {
+        if ($package === null) {
+            return [];
+        }
+        $tokens = (array) ($package->tokens['presets'] ?? []);
+        $field = collect((array) ($package->editable['fields'] ?? []))->first(fn ($f) => ($f['bind']['theme'] ?? null) === 'preset');
+        if ($field === null) {
+            return [];
+        }
+
+        return collect((array) ($field['choices'] ?? []))->map(function ($choice) use ($tokens) {
+            $colors = (array) ($tokens[$choice['value']]['colors'] ?? []);
+            $swatch = array_values(array_filter([$colors['surface'] ?? null, $colors['accent'] ?? null, $colors['primary'] ?? null]));
+
+            return ['value' => $choice['value'], 'label' => $choice['label'] ?? ['es' => $choice['value'], 'en' => $choice['value']]] + ($swatch === [] ? [] : ['colors' => $swatch]);
+        })->values()->all();
+    }
+
     private function livePackage(?TemplatePackage $package): ?TemplatePackage
     {
         return $package === null || $package->isWithdrawn() ? null : $package;
@@ -889,7 +912,7 @@ class InvitationEditor
 
         if (isset($bind['option'])) {
             $id = (string) $bind['option'];
-            $defaults = $ctx['package'] ? (app(\App\Http\Services\AppServices\PackagePayload::class)->fragment($ctx['package']->id)['options']['defaults'] ?? []) : [];
+            $defaults = $ctx['package'] ? (app(PackagePayload::class)->fragment($ctx['package']->id)['options']['defaults'] ?? []) : [];
             $default = $defaults[$id] ?? ($field['default'] ?? null);
             $set = $config['package']['options'][$id] ?? null;
 

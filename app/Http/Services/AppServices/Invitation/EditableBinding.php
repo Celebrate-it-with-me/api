@@ -88,7 +88,7 @@ final class EditableBinding
                 $out[$key] = $this->deep((array) ($config[$key] ?? []), (array) $fragment[$key]);
             }
         }
-        $sections = array_values(array_filter($bySection, fn (array $s) => array_diff(array_keys($s), ['type']) !== []));
+        $sections = array_values(array_filter(array_map(fn (array $s) => $this->strip($s, true), $bySection), fn (array $s) => array_diff(array_keys($s), ['type']) !== []));
         if ($sections !== []) {
             $out['sections'] = $sections;
         }

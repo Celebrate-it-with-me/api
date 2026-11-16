@@ -586,12 +586,12 @@ class InvitationService
         return $path === null ? null : Storage::disk(Invitation\CoverPhoto::DISK)->url($path);
     }
 
-    /** The point of the photo that must stay visible, only when the organizer chose one. @return array{focus?: string} */
+    /** The point of the photo that must stay visible (`"50% 30%"`), null when the organizer chose none. @return array{focus: ?string} */
     private function coverFocus(array $section): array
     {
         $focus = $section['settings']['focus'] ?? null;
 
-        return is_string($focus) && preg_match('/^\d{1,3}% \d{1,3}%$/', $focus) === 1 ? ['focus' => $focus] : [];
+        return ['focus' => is_string($focus) && preg_match('/^\d{1,3}% \d{1,3}%$/', $focus) === 1 ? $focus : null];
     }
 
     /**
