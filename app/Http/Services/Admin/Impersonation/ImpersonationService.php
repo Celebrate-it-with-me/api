@@ -7,9 +7,9 @@ use App\Mail\ImpersonationEndedMail;
 use App\Models\ImpersonationSession;
 use App\Models\User;
 use App\Support\AdminPermissions;
+use App\Support\Mail\Outbox;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
@@ -135,7 +135,7 @@ class ImpersonationService
         try {
             $user = $session->user;
             if ($user && ! $user->anonymized_at && $user->email) {
-                Mail::to($user->email)->send(new ImpersonationEndedMail($session, $user));
+                Outbox::send($user->email, new ImpersonationEndedMail($session, $user));
             }
         } catch (Throwable $e) {
             report($e); // a mail problem must not leave the session open

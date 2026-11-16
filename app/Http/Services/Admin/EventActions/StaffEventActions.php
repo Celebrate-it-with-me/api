@@ -15,8 +15,8 @@ use App\Models\EventCollaborationInvite;
 use App\Models\Events;
 use App\Models\EventUserRole;
 use App\Models\User;
+use App\Support\Mail\Outbox;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
@@ -64,10 +64,10 @@ class StaffEventActions
 
         if ($owner->email_verified_at === null) {
             $signed = URL::temporarySignedRoute('auth.confirm.email', now()->addDay(), ['user' => $owner->id]);
-            Mail::to($owner->email)->send(new ConfirmAccountEmail($owner, config('app.frontend_app.url') . '/confirm-email?confirm=' . urlencode($signed)));
+            Outbox::send($owner->email, new ConfirmAccountEmail($owner, config('app.frontend_app.url') . '/confirm-email?confirm=' . urlencode($signed)));
             $kind = 'confirm_account';
         } else {
-            Mail::to($owner->email)->send(new WelcomeEmail($owner));
+            Outbox::send($owner->email, new WelcomeEmail($owner));
             $kind = 'welcome';
         }
 
@@ -86,7 +86,7 @@ class StaffEventActions
         }
 
         $registered = User::where('email', $invite->email)->exists();
-        Mail::to($invite->email)->send($registered ? new InviteRegisteredUserMail($invite) : new InviteUnregisteredUserMail($invite));
+        Outbox::send($invite->email, $registered ? new InviteRegisteredUserMail($invite) : new InviteUnregisteredUserMail($invite));
 
         $invite->sent_at = now();
         $invite->resend_count = ($invite->resend_count ?? 0) + 1;
@@ -137,7 +137,7 @@ class StaffEventActions
         // Mails go after the commit: a failed delivery must not undo the transfer.
         foreach (array_filter([[$newOwner, 'new'], $previous ? [$previous, 'previous'] : null]) as [$user, $side]) {
             try {
-                Mail::to($user->email)->send(new OwnershipTransferredMail($event, $user, $side));
+                Outbox::send($user->email, new OwnershipTransferredMail($event, $user, $side));
             } catch (\Throwable $e) {
                 report($e);
             }

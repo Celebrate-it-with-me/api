@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Mail\SupportRequestMail;
 use App\Models\EventUserRole;
 use App\Models\SupportRequest;
+use App\Support\Mail\Outbox;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
 /** The organizer's side of "Necesito ayuda": send a request, list your own. */
@@ -70,7 +70,7 @@ class SupportRequestController extends Controller
         ]);
 
         try {
-            Mail::to(config('services.support.email'))->send(new SupportRequestMail($supportRequest->load(['user', 'event'])));
+            Outbox::send(config('services.support.email'), new SupportRequestMail($supportRequest->load(['user', 'event'])));
         } catch (\Throwable $e) {
             // The request is saved and shows in the inbox; a mail failure must not lose it for the user.
             report($e);

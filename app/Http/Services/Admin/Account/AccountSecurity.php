@@ -4,10 +4,10 @@ namespace App\Http\Services\Admin\Account;
 
 use App\Mail\AdminSecurityNoticeMail;
 use App\Models\User;
+use App\Support\Mail\Outbox;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -75,7 +75,7 @@ class AccountSecurity
     public function notify(User|string $to, User $user, string $type, array $details = []): void
     {
         $this->mailSafely(
-            fn () => Mail::to($to instanceof User ? $to->email : $to)->send(new AdminSecurityNoticeMail($user, $type, $details)),
+            fn () => Outbox::send($to instanceof User ? $to->email : $to, new AdminSecurityNoticeMail($user, $type, $details)),
             $user,
         );
     }
