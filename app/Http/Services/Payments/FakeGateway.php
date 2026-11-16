@@ -23,7 +23,12 @@ class FakeGateway implements PaymentGateway
 
     public function retrieveSession(string $sessionId): array
     {
-        return ['id' => $sessionId, 'state' => 'open', 'paymentStatus' => 'unpaid', 'paymentId' => null, 'amount' => null, 'currency' => null, 'url' => null];
+        return ['id' => $sessionId, 'state' => 'open', 'paymentStatus' => 'unpaid', 'paymentId' => null, 'amount' => null, 'currency' => null, 'tax' => null, 'url' => null];
+    }
+
+    public function retrievePayment(string $paymentId): array
+    {
+        return ['amountRefunded' => 0, 'refundId' => null, 'disputeId' => null, 'disputeStatus' => null];
     }
 
     public function expireSession(string $sessionId): void {}

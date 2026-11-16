@@ -115,7 +115,22 @@ class StripeGateway implements PaymentGateway
             'paymentId' => $intent ? (string) (is_array($intent) ? $intent['id'] : $intent) : null,
             'amount' => isset($s['amount_total']) ? (int) $s['amount_total'] : null,
             'currency' => isset($s['currency']) ? strtolower((string) $s['currency']) : null,
+            'tax' => isset($s['total_details']['amount_tax']) ? (int) $s['total_details']['amount_tax'] : null,
             'url' => $s['url'] ?? null,
+        ];
+    }
+
+    public function retrievePayment(string $paymentId): array
+    {
+        $refunds = $this->call(fn () => $this->client->refunds->all(['payment_intent' => $paymentId, 'limit' => 100]))->toArray()['data'] ?? [];
+        $succeeded = array_values(array_filter($refunds, fn ($r) => ($r['status'] ?? null) === 'succeeded'));
+        $disputes = $this->call(fn () => $this->client->disputes->all(['payment_intent' => $paymentId, 'limit' => 1]))->toArray()['data'] ?? [];
+
+        return [
+            'amountRefunded' => (int) array_sum(array_map(fn ($r) => (int) ($r['amount'] ?? 0), $succeeded)),
+            'refundId' => $succeeded[0]['id'] ?? null,
+            'disputeId' => $disputes[0]['id'] ?? null,
+            'disputeStatus' => $disputes[0]['status'] ?? null,
         ];
     }
 
@@ -185,6 +200,7 @@ class StripeGateway implements PaymentGateway
                     ...$base, kind: $kind, sessionId: $str($o['id'] ?? null), reference: $str($o['client_reference_id'] ?? null),
                     metadataReference: $str($o['metadata']['purchase_id'] ?? null), paymentId: $str($o['payment_intent'] ?? null),
                     amount: isset($o['amount_total']) ? (int) $o['amount_total'] : null, currency: $currency(),
+                    taxCents: isset($o['total_details']['amount_tax']) ? (int) $o['total_details']['amount_tax'] : null,
                 );
 
             case 'charge.refunded':

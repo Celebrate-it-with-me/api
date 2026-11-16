@@ -23,11 +23,21 @@ interface PaymentGateway
     /**
      * The provider's view of a session. `state` is open | complete | expired; `paymentStatus` is paid | unpaid.
      *
-     * @return array{id: string, state: string, paymentStatus: string, paymentId: string|null, amount: int|null, currency: string|null, url: string|null}
+     * @return array{id: string, state: string, paymentStatus: string, paymentId: string|null, amount: int|null, currency: string|null, tax: int|null, url: string|null}
      *
      * @throws PaymentGatewayException
      */
     public function retrieveSession(string $sessionId): array;
+
+    /**
+     * What happened to a payment after it was made: the refunds (sum of the succeeded ones, last refund id) and the
+     * dispute, if any. Used by the admin "sync" to catch what a lost webhook would have told us.
+     *
+     * @return array{amountRefunded: int, refundId: string|null, disputeId: string|null, disputeStatus: string|null}
+     *
+     * @throws PaymentGatewayException
+     */
+    public function retrievePayment(string $paymentId): array;
 
     /** Close an open session so it can no longer be paid. @throws PaymentGatewayException */
     public function expireSession(string $sessionId): void;

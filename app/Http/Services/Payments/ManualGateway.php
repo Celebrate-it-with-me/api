@@ -24,6 +24,11 @@ class ManualGateway implements PaymentGateway
         throw new LogicException('Manual payments have no session.');
     }
 
+    public function retrievePayment(string $paymentId): array
+    {
+        throw new LogicException('Manual payments have no gateway payment.');
+    }
+
     public function expireSession(string $sessionId): void {}
 
     public function refund(EventPurchase $purchase): ?string

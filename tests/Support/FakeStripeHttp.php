@@ -15,6 +15,11 @@ class FakeStripeHttp implements ClientInterface
 
     public bool $failNext = false;
 
+    /** @var list<array> refunds and disputes the "account" holds, by payment intent */
+    public array $refunds = [];
+
+    public array $disputes = [];
+
     private int $n = 0;
 
     public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null)
@@ -48,6 +53,16 @@ class FakeStripeHttp implements ClientInterface
             $this->sessions[$m[1]]['status'] = 'expired';
 
             return [json_encode($this->sessions[$m[1]]), 200, []];
+        }
+        if ($method === 'get' && $path === '/v1/refunds') {
+            $rows = array_values(array_filter($this->refunds, fn ($r) => $r['payment_intent'] === ($params['payment_intent'] ?? null)));
+
+            return [json_encode(['object' => 'list', 'data' => $rows, 'has_more' => false, 'url' => $path]), 200, []];
+        }
+        if ($method === 'get' && $path === '/v1/disputes') {
+            $rows = array_values(array_filter($this->disputes, fn ($d) => $d['payment_intent'] === ($params['payment_intent'] ?? null)));
+
+            return [json_encode(['object' => 'list', 'data' => $rows, 'has_more' => false, 'url' => $path]), 200, []];
         }
         if ($method === 'post' && $path === '/v1/refunds') {
             return [json_encode(['id' => 're_test_' . (++$this->n), 'object' => 'refund', 'status' => 'succeeded']), 200, []];

@@ -75,7 +75,7 @@ class PaymentSettlement
         }
 
         $outcome = match ($event->kind) {
-            GatewayEvent::PAID => $this->paid($purchase, $event->paymentId, $event->amount, $event->currency, $after),
+            GatewayEvent::PAID => $this->paid($purchase, $event->paymentId, $event->amount, $event->currency, $after, $event->taxCents),
             GatewayEvent::FAILED => $this->fail($purchase, 'payment_failed'),
             GatewayEvent::EXPIRED => $this->fail($purchase, 'expired'),
             GatewayEvent::REFUNDED => $this->externalRefund($purchase, $event, $after),
@@ -113,7 +113,7 @@ class PaymentSettlement
     }
 
     /** Confirmed payment (on a locked purchase). @param  array<int, \Closure>  $after */
-    private function paid(EventPurchase $purchase, ?string $paymentId, ?int $amount, ?string $currency, array &$after): string
+    private function paid(EventPurchase $purchase, ?string $paymentId, ?int $amount, ?string $currency, array &$after, ?int $tax = null): string
     {
         if (in_array($purchase->status, ['refunded', 'chargeback'], true)) {
             return 'ignored';
@@ -146,6 +146,9 @@ class PaymentSettlement
             return 'processed';
         }
 
+        if ($tax !== null && $tax > 0) {
+            $purchase->update(['tax_cents' => $tax]);
+        }
         $this->purchases->activate($purchase, $paymentId);
         $after[] = fn () => $this->purchases->invoice($purchase->refresh());
 
@@ -173,7 +176,7 @@ class PaymentSettlement
     }
 
     /** A refund made in the provider's dashboard (ours are already recorded: the purchase is no longer `paid`). */
-    private function externalRefund(EventPurchase $purchase, GatewayEvent $event, array &$after): string
+    private function externalRefund(EventPurchase $purchase, GatewayEvent $event, array &$after, ?string $refundId = null): string
     {
         if ($purchase->status !== 'paid' || $purchase->gateway_refund_id) {
             return 'ignored';
@@ -185,7 +188,7 @@ class PaymentSettlement
         }
 
         $this->reverse($purchase, 'refunded', 'Refunded from the payment dashboard', $after);
-        $purchase->update(['refunded_at' => now(), 'refund_reason' => 'Refunded from the payment dashboard']);
+        $purchase->update(['refunded_at' => now(), 'refund_reason' => 'Refunded from the payment dashboard', 'gateway_refund_id' => $refundId ?? $purchase->gateway_refund_id]);
 
         return 'processed';
     }
@@ -220,7 +223,7 @@ class PaymentSettlement
      */
     private function reverse(EventPurchase $purchase, string $status, string $reason, array &$after): void
     {
-        $purchase->update(['status' => $status]);
+        $purchase->update(['status' => $status, 'chargeback_at' => $status === 'chargeback' ? now() : $purchase->chargeback_at]);
 
         $note = app(InvoiceService::class)->creditForRefund($purchase, $reason);
         if ($note) {
@@ -263,7 +266,7 @@ class PaymentSettlement
             }
 
             if ($session['state'] === 'complete' && $session['paymentStatus'] === 'paid') {
-                $this->paid($locked, $session['paymentId'], $session['amount'], $session['currency'], $after);
+                $this->paid($locked, $session['paymentId'], $session['amount'], $session['currency'], $after, $session['tax'] ?? null);
             } elseif ($session['state'] === 'expired') {
                 $this->fail($locked, 'expired');
             }
@@ -274,6 +277,70 @@ class PaymentSettlement
         }
 
         return $purchase->refresh();
+    }
+
+    /**
+     * Admin "sync": ask the provider about everything that can have happened (session, refunds, dispute) and apply what
+     * is missing, with the same forward-only rules as the webhook.
+     *
+     * @throws PaymentGatewayException when the provider cannot be reached
+     */
+    public function sync(EventPurchase $purchase): EventPurchase
+    {
+        $gateway = $this->purchases->gateway($purchase->gateway);
+
+        $session = $purchase->gateway_session_id ? $gateway->retrieveSession($purchase->gateway_session_id) : null;
+        $paymentId = $purchase->gateway_payment_id ?? ($session['paymentId'] ?? null);
+        $payment = $paymentId ? $gateway->retrievePayment($paymentId) : null;
+
+        $after = [];
+        DB::transaction(function () use ($purchase, $session, $paymentId, $payment, &$after) {
+            $p = EventPurchase::query()->lockForUpdate()->findOrFail($purchase->id);
+
+            // A payment the webhook never told us about (also a late one on a session we had already given up on).
+            if ($session && in_array($p->status, ['pending', 'failed'], true)) {
+                if ($session['state'] === 'complete' && $session['paymentStatus'] === 'paid') {
+                    $this->paid($p, $session['paymentId'], $session['amount'], $session['currency'], $after, $session['tax'] ?? null);
+                } elseif ($session['state'] === 'expired' && $p->status === 'pending') {
+                    $this->fail($p, 'expired');
+                }
+                $p->refresh();
+            }
+
+            if (! $payment || $p->status !== 'paid') {
+                return;
+            }
+
+            if ($payment['disputeId']) {
+                $this->disputeSeen($p, $payment['disputeId'], $payment['disputeStatus'], $after);
+                $p->refresh();
+            }
+            if ($payment['amountRefunded'] > 0 && $p->status === 'paid') {
+                $this->externalRefund($p, new GatewayEvent(
+                    id: 'sync', type: 'sync', kind: GatewayEvent::REFUNDED, paymentId: $paymentId,
+                    amount: (int) $p->amount_cents, amountRefunded: $payment['amountRefunded'],
+                ), $after, $payment['refundId']);
+            }
+        });
+
+        foreach ($after as $callback) {
+            $callback();
+        }
+
+        return $purchase->refresh();
+    }
+
+    /** A dispute the provider reports (webhook or sync): creates the mark if new, then applies its status. */
+    private function disputeSeen(EventPurchase $purchase, string $disputeId, ?string $status, array &$after): void
+    {
+        if ($purchase->dispute_id !== $disputeId) {
+            $this->disputeCreated($purchase, new GatewayEvent(id: 'sync', type: 'sync', kind: GatewayEvent::DISPUTE_CREATED, disputeId: $disputeId, disputeStatus: $status));
+        }
+        if (in_array($status, ['won', 'lost'], true)) {
+            $this->disputeClosed($purchase, new GatewayEvent(id: 'sync', type: 'sync', kind: GatewayEvent::DISPUTE_CLOSED, disputeId: $disputeId, disputeStatus: $status), $after);
+        } else {
+            $purchase->update(['dispute_status' => $status]);
+        }
     }
 
     /**

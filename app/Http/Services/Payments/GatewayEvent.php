@@ -36,5 +36,7 @@ final class GatewayEvent
         public readonly ?int $amountRefunded = null,
         public readonly ?string $disputeId = null,
         public readonly ?string $disputeStatus = null,
+        /** Tax included in the amount (Stripe Tax), in cents. */
+        public readonly ?int $taxCents = null,
     ) {}
 }
