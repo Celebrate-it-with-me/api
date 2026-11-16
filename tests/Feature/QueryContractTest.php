@@ -152,6 +152,11 @@ function contractNormalized($response): array
     $plans = EventPlan::pluck('slug', 'id')->all();
     $data = contractNormalize($response->json(), $types, $plans);
 
+    // The order of a role's permissions is the database's: compare them as a set.
+    if (isset($data['userPermissions'])) {
+        sort($data['userPermissions']);
+    }
+
     // Seeded plans carry their seeding time.
     foreach (['eventPlans'] as $key) {
         if (isset($data[$key])) {
