@@ -27,6 +27,9 @@ class EventTemplateConfigValidator
     /** @var list<array<string, mixed>> fields the config touches */
     private array $touched = [];
 
+    /** The event the config belongs to: the only one whose uploaded photos (`upload:`) it may point to. */
+    private ?int $eventId = null;
+
     /** The package an event draws, or null when it uses the engine's own components. */
     public static function packageFor(Events $event): ?TemplatePackage
     {
@@ -38,14 +41,16 @@ class EventTemplateConfigValidator
     /**
      * @param  array<string, mixed>  $config  the `template_config` to save
      * @param  bool  $unlocked  whether the event is unlocked (`PurchaseService::isUnlocked`)
+     * @param  int|null  $eventId  the event; without it no `upload:` photo is accepted at all
      *
      * @throws ValidationException
      * @throws HttpResponseException
      */
-    public function validate(array $config, TemplatePackage $package, bool $unlocked): void
+    public function validate(array $config, TemplatePackage $package, bool $unlocked, ?int $eventId = null): void
     {
         $this->errors = [];
         $this->touched = [];
+        $this->eventId = $eventId;
         $fields = (array) ($package->editable['fields'] ?? []);
 
         foreach (array_diff(array_keys($config), ['sections', 'theme', 'package']) as $key) {
@@ -124,11 +129,24 @@ class EventTemplateConfigValidator
                 if ($value !== null && (! is_string($value) || ! preg_match('/^\d{1,3}% \d{1,3}%$/', $value))) {
                     $this->errors["{$at}.focus"] = 'invalid_focus';
                 }
-            } elseif ($value !== null && (! is_string($value) || strlen($value) > 255 || ! preg_match('#^/(?!/)[A-Za-z0-9._~/-]*$#', $value) || str_contains($value, '..'))) {
-                // Photos are stored by the app: a relative path, never an address on another site.
+            } elseif ($value !== null && ! $this->isPhoto($value)) {
+                // Photos are stored by the app: a relative path or one of the event's own uploads, never an address on
+                // another site.
                 $this->errors["{$at}.{$key}"] = 'invalid_type';
             }
         }
+    }
+
+    private function isPhoto(mixed $value): bool
+    {
+        if (! is_string($value) || strlen($value) > 255) {
+            return false;
+        }
+        if (str_starts_with($value, Invitation\CoverPhoto::PREFIX)) {
+            return $this->eventId !== null && Invitation\CoverPhoto::pathFor($value, $this->eventId) !== null;
+        }
+
+        return preg_match('#^/(?!/)[A-Za-z0-9._~/-]*$#', $value) === 1 && ! str_contains($value, '..');
     }
 
     private function text(mixed $value, ?array $field, string $at): void

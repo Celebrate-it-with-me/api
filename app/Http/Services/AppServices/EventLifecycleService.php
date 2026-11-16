@@ -6,6 +6,7 @@ use App\Enums\EventStatus;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\User;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 class EventLifecycleService
 {
     /** Make the invitation reachable. Needs the minimum a guest would see: name, date and type. */
-    public function publish(Events $event, ?User $actor, string $stage = Events::STAGE_INVITATION): Events
+    public function publish(Events $event, ?User $actor, string $stage = Events::STAGE_INVITATION, ?int $expectedVersionId = null): Events
     {
         // A published Save the date can be upgraded to the full invitation (same link); never the other way round.
         $upgrading = $event->status === EventStatus::PUBLISHED->value
@@ -43,12 +44,34 @@ class EventLifecycleService
         // A list over the plan's limit cannot be published (see GuestLimit).
         app(GuestLimit::class)->assertCanPublish($event);
 
+        $invitations = app(InvitationService::class);
+        $repin = $event->invitation_stage === Events::STAGE_SAVE_THE_DATE && $stage === Events::STAGE_INVITATION;
+        // The version the organizer saw in her preview must be the one that goes out: an admin may have activated a
+        // newer one in between (only checked when the app tells which one it showed).
+        if ($expectedVersionId !== null && $stage === Events::STAGE_INVITATION) {
+            $target = $event->template_version_id !== null && ! $repin
+                ? $event->template_version_id
+                : $invitations->templateFor($event)->current_version_id;
+            if ($target !== $expectedVersionId) {
+                throw new HttpResponseException(response()->json([
+                    'message' => 'La plantilla se actualizó mientras la revisabas: revisa la vista previa antes de publicar.',
+                    'code' => 'template_version_changed',
+                    'currentVersionId' => $target,
+                ], 409));
+            }
+        }
+
         $event->status = EventStatus::PUBLISHED->value;
         $event->invitation_stage = $stage;
         // The first publication is remembered forever: it is what locks the public address.
         $event->published_at ??= now();
-        // The look of a published invitation never changes behind the organizer's back (template manager, A7).
-        app(InvitationService::class)->pinVersion($event);
+        // The look of a published invitation never changes behind the organizer's back (template manager, A7). The Save
+        // the date fixes nothing; going from it to the full invitation fixes the version again (D-3).
+        $invitations->pinVersion($event, $stage, $repin);
+        if ($stage === Events::STAGE_INVITATION) {
+            // The choice is final now: what she set on the templates she left is no longer needed.
+            $event->template_config_stash = null;
+        }
 
         return $this->save($event, $actor, $upgrading ? 'event_stage_upgraded' : 'event_published');
     }

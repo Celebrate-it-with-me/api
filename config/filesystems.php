@@ -85,6 +85,25 @@ return [
             'throw' => true,
         ],
 
+        // Photos the organizers upload for their invitation (cover): WebP under images/event/<id>/cover/, public and
+        // immutable by name. Local in development (served through the storage link), S3 in production (D-6).
+        'event-media' => [
+            'driver' => env('EVENT_MEDIA_DRIVER', 'local'),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'root' => env('EVENT_MEDIA_DRIVER', 'local') === 'local'
+                ? env('EVENT_MEDIA_ROOT', storage_path('app/public/event-media'))
+                : null,
+            'url' => env('EVENT_MEDIA_URL') ?: (env('EVENT_MEDIA_DRIVER', 'local') === 'local'
+                ? env('APP_URL') . '/storage/event-media'
+                : env('AWS_URL')),
+            'visibility' => 'public',
+            'endpoint' => env('AWS_ENDPOINT'),
+            'throw' => true,
+        ],
+
         // Sanitized files of the installed template packages (theme.css and assets/). Public, immutable by path
         // (<slug>/<version>-<hash8>/...) and meant to be served from an origin without cookies: TEMPLATE_PACKAGES_URL.
         'template-packages' => [

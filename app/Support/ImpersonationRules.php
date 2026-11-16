@@ -59,6 +59,13 @@ final class ImpersonationRules
         'POST api/v1/app/event/{event}/purchase/{purchase}/cancel',
         // Messaging real guests is the organizer's act, never support's.
         'POST api/v1/app/event/{event}/whatsapp/send',
+        // The look of the invitation and the photo of the cover are the organizer's own act, never support's: support
+        // reads the editor and the preview to see what she sees. The photo is often a minor's.
+        'PATCH api/v1/app/event/{event}/invitation',
+        'PATCH api/v1/app/event/{event}/invitation/sections',
+        'PUT api/v1/app/event/{event}/invitation/template',
+        'POST api/v1/app/event/{event}/invitation/cover-photo',
+        'DELETE api/v1/app/event/{event}/invitation/cover-photo',
         'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
         'POST api/v1/app/logout',
         'POST api/v1/app/support',
@@ -72,6 +79,10 @@ final class ImpersonationRules
 
     /** Everything else the organizer does in her own account, so support can reproduce and fix what she sees. */
     public const ALLOWED = [
+        'GET api/v1/app/event/{event}/invitation',
+        'GET api/v1/app/event/{event}/invitation/templates',
+        'GET api/v1/app/event/{event}/invitation/templates/{template}/impact',
+        'POST api/v1/app/event/{event}/invitation/preview',
         'GET api/v1/app/event/{event}/whatsapp/messages',
         'GET api/v1/app/event/{event}/whatsapp/summary',
         'DELETE api/v1/app/event/{event}/budget/categories/{category}',

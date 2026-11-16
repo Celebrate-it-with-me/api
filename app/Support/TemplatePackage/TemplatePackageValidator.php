@@ -120,6 +120,10 @@ class TemplatePackageValidator
             $this->editable($json['editable.json'], $manifest, $report);
         }
         $this->previews($files, $report);
+        // The mobile capture is not published with the package; the installer turns it into the selector's thumbnail (D-5).
+        if (isset($files['preview/mobile.png'])) {
+            $artifacts['previewMobile'] = $files['preview/mobile.png'];
+        }
 
         // HTML first: its AST tells the CSS sanitizer which classes wrap system blocks.
         $classKinds = [];

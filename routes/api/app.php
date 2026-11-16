@@ -18,6 +18,7 @@ use App\Http\Controllers\AppControllers\GuestImportController;
 use App\Http\Controllers\AppControllers\GuestRosterController;
 use App\Http\Controllers\AppControllers\Hydrate\HydrateController;
 use App\Http\Controllers\AppControllers\Impersonation\ImpersonationEndController;
+use App\Http\Controllers\AppControllers\Invitation\InvitationEditorController;
 use App\Http\Controllers\AppControllers\MenuController;
 use App\Http\Controllers\AppControllers\MenuItemController;
 use App\Http\Controllers\AppControllers\OnboardingController;
@@ -193,6 +194,22 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware('throttle:10,1,purchase-checkout')->name('checkout');
                 Route::get('status', [PurchaseController::class, 'status'])->name('status');
                 Route::post('{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('throttle:10,1,purchase-cancel')->name('cancel');
+            });
+            // "Tu invitación": the editor, the template selector, the preview and the cover photo (stage 5 of the templates).
+            Route::prefix('invitation')->name('invitation-editor.')->group(function () {
+                Route::get('', [InvitationEditorController::class, 'show'])->name('show');
+                Route::get('templates', [InvitationEditorController::class, 'templates'])->name('templates');
+                Route::get('templates/{template}/impact', [InvitationEditorController::class, 'impact'])->name('impact');
+                Route::post('preview', [InvitationEditorController::class, 'preview'])->middleware('throttle:invitation-preview')->name('preview');
+                Route::middleware(['event.access:edit_event', 'throttle:invitation-edit'])->group(function () {
+                    Route::patch('', [InvitationEditorController::class, 'saveFields'])->name('fields');
+                    Route::patch('sections', [InvitationEditorController::class, 'saveSections'])->name('sections');
+                    Route::put('template', [InvitationEditorController::class, 'applyTemplate'])->name('template');
+                });
+                Route::middleware(['event.access:edit_event', 'throttle:invitation-cover-upload'])->group(function () {
+                    Route::post('cover-photo', [InvitationEditorController::class, 'storeCover'])->name('cover.store');
+                    Route::delete('cover-photo', [InvitationEditorController::class, 'destroyCover'])->name('cover.destroy');
+                });
             });
             Route::post('publish', [EventLifecycleController::class, 'publish'])->name('publish');
             Route::post('unpublish', [EventLifecycleController::class, 'unpublish'])->name('unpublish');
