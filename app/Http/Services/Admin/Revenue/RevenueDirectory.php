@@ -48,7 +48,9 @@ class RevenueDirectory
         $timeline = array_values(array_filter([
             ['type' => 'created', 'at' => $purchase->created_at?->toIso8601String(), 'by' => null],
             $purchase->paid_at ? ['type' => 'paid', 'at' => $purchase->paid_at->toIso8601String(), 'by' => $purchase->creator ? $this->person($purchase->creator) : null] : null,
+            $purchase->disputed_at ? ['type' => 'disputed', 'at' => $purchase->disputed_at->toIso8601String(), 'by' => null] : null,
             $purchase->refunded_at ? ['type' => 'refunded', 'at' => $purchase->refunded_at->toIso8601String(), 'by' => null] : null,
+            $purchase->chargeback_at ? ['type' => 'chargeback', 'at' => $purchase->chargeback_at->toIso8601String(), 'by' => null] : null,
         ]));
 
         return $this->row($purchase) + [
@@ -64,6 +66,13 @@ class RevenueDirectory
             'receiptUrl' => $purchase->receipt_url,
             // Gateway identifiers are never shown whole.
             'gatewayRef' => $this->mask($purchase->gateway_payment_id ?? $purchase->gateway_session_id),
+            'gatewayPaymentId' => $purchase->gateway_payment_id,
+            'gatewayRefundId' => $purchase->gateway_refund_id,
+            'failureCode' => $purchase->failure_code,
+            'disputeId' => $purchase->dispute_id,
+            'disputedAt' => $purchase->disputed_at?->toIso8601String(),
+            'taxCents' => (int) $purchase->tax_cents,
+            'stripeUrl' => $this->stripeUrl($purchase),
             'timeline' => $timeline,
             'invoices' => $purchase->invoices->map(fn ($i) => [
                 'id' => $i->id, 'number' => $i->number, 'status' => $i->status,
@@ -108,10 +117,26 @@ class RevenueDirectory
             'currency' => $p->currency,
             'paidAt' => $p->paid_at?->toIso8601String(),
             'refundedAt' => $p->refunded_at?->toIso8601String(),
+            'disputeStatus' => $p->dispute_status,
+            'needsReview' => (bool) $p->needs_review,
             'createdAt' => $p->created_at?->toIso8601String(),
             // A refund is full and only while the invitation is not published (PurchaseService::refund).
             'canRefund' => $p->status === 'paid' && $p->event?->status !== 'published',
         ];
+    }
+
+    /**
+     * Link to the payment in the Stripe dashboard. Built here from a fixed host and the id we stored (checked against
+     * Stripe's id format), test or live by the configured key; nothing in it comes from a request.
+     */
+    private function stripeUrl(EventPurchase $p): ?string
+    {
+        if ($p->gateway !== 'stripe' || ! $p->gateway_payment_id || ! preg_match('/^pi_[A-Za-z0-9_]+$/', $p->gateway_payment_id)) {
+            return null;
+        }
+        $test = ! preg_match('/^(sk|rk)_live_/', (string) config('services.stripe.secret'));
+
+        return 'https://dashboard.stripe.com/' . ($test ? 'test/' : '') . 'payments/' . $p->gateway_payment_id;
     }
 
     private function person($user): array
@@ -161,6 +186,12 @@ class RevenueDirectory
         }
         if (array_key_exists('founder', $f) && $f['founder'] !== null) {
             $query->where('event_purchases.is_founder', (bool) $f['founder']);
+        }
+        if (array_key_exists('disputed', $f) && $f['disputed'] !== null) {
+            $f['disputed'] ? $query->whereNotNull('event_purchases.dispute_id') : $query->whereNull('event_purchases.dispute_id');
+        }
+        if (array_key_exists('needsReview', $f) && $f['needsReview'] !== null) {
+            $query->where('event_purchases.needs_review', (bool) $f['needsReview']);
         }
         if (filled($f['coupon'] ?? null)) {
             $query->whereHas('coupon', fn ($c) => $c->where('code', strtoupper(trim($f['coupon']))));
