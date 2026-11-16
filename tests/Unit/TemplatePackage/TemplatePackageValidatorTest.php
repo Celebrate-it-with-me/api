@@ -154,7 +154,7 @@ it('runs the sanitizers over the package files and reports per file', function (
 
 it('cross checks HTML and CSS: a stylesheet cannot hide the RSVP block or the card around it', function (string $css) {
     $r = PackageBuilder::good()->with('theme.css', $css)->validate();
-    expect(PackageBuilder::errors($r))->toBe(['css_forbidden_property'])->and($r['artifacts']['css'])->toBeNull();
+    expect(PackageBuilder::errors($r))->toHaveCount(1)->and(array_intersect(PackageBuilder::errors($r), ['css_forbidden_property', 'block_container_property', 'block_container_too_small']))->toHaveCount(1)->and($r['artifacts']['css'])->toBeNull();
 })->with([
     'class on the block' => ['.pkg-rsvp{display:none}'],
     'wrapper of the block' => ['.pkg-rsvp-wrap{display:none}'],

@@ -123,6 +123,7 @@ class TemplatePackageValidator
 
         // HTML first: its AST tells the CSS sanitizer which classes wrap system blocks.
         $classKinds = [];
+        $htmlNodes = [];
         $usedAssets = [];
         $seenIds = [];
         $firstFold = [];
@@ -149,6 +150,11 @@ class TemplatePackageValidator
             if ($built !== null) {
                 $artifacts['ast'][$path] = $built['ast'];
                 $classKinds = $this->mergeKinds($classKinds, $built['classKinds']);
+                $offset = count($htmlNodes);
+                foreach ($built['nodes'] as $n) {
+                    $n['parent'] = $n['parent'] === null ? null : $n['parent'] + $offset;
+                    $htmlNodes[] = $n;
+                }
                 array_push($usedAssets, ...$built['assets']);
                 if ($kind === 'layout' || $type === 'cover') {
                     array_push($firstFold, ...$built['assets']);
@@ -166,6 +172,9 @@ class TemplatePackageValidator
             $sanitizer = new CssSanitizer($this->limits);
             $css = $sanitizer->sanitize($files['theme.css'], $slug, 'theme.css', $report, $assets, [...$families, ...self::ENGINE_FAMILIES, ...($this->context->allowEngineFonts ? self::ENGINE_REMOTE_FAMILIES : [])], $classKinds);
             $artifacts['css'] = $css;
+            if ($css !== null) {
+                (new DeclaredStyleCheck)->check($htmlNodes, $sanitizer->declaredStyles(), $this->tokenColorSets($json['tokens.json'] ?? null), $report);
+            }
             array_push($usedAssets, ...$sanitizer->usedAssets());
         } elseif (isset($files['theme.css'])) {
             $report->error('theme.css', 'slug_invalid', 'No se puede acotar el CSS sin un slug válido.');
@@ -871,6 +880,37 @@ class TemplatePackageValidator
             'runtimeBytes' => $runtime,
             'firstFoldBytes' => $fold,
         ];
+    }
+
+    /**
+     * The `--inv-*` color variables for the active colors and for each preset, as DeclaredStyleCheck reads them.
+     *
+     * @return list<array<string, string>>
+     */
+    private function tokenColorSets(mixed $tokens): array
+    {
+        if (! is_array($tokens)) {
+            return [];
+        }
+        $sets = [$tokens['colors'] ?? null];
+        foreach (is_array($tokens['presets'] ?? null) ? $tokens['presets'] : [] as $preset) {
+            $sets[] = is_array($preset) ? ($preset['colors'] ?? null) : null;
+        }
+        $out = [];
+        foreach ($sets as $colors) {
+            if (! is_array($colors)) {
+                continue;
+            }
+            $map = [];
+            foreach ($colors as $name => $hex) {
+                if (is_string($name) && is_string($hex) && preg_match(self::HEX, $hex)) {
+                    $map['--inv-' . strtolower((string) preg_replace('/(?<!^)[A-Z]/', '-$0', $name))] = $hex;
+                }
+            }
+            $out[] = $map;
+        }
+
+        return $out;
     }
 
     /** Informative: text colors against their surfaces (WCAG AA, 4.5:1), for the active colors and every preset. */

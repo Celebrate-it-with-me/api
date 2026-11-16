@@ -35,6 +35,9 @@ final class ReportCodes
         // blocks, variables, behaviors
         'block_unknown', 'block_scope', 'block_too_many', 'block_children', 'block_prop_invalid', 'var_invalid',
         'var_unknown', 'var_filter_unknown', 'behavior_unknown', 'behavior_scope', 'behavior_conflict',
+        // wave 7 (guard hardening): containers of blocks, states, music, fast animations, declared contrast
+        'block_container_property', 'block_container_too_small', 'state_selector_property', 'behavior_on_music',
+        'animation_too_fast', 'low_contrast_declared',
     ];
 
     /** Warnings never block. */
