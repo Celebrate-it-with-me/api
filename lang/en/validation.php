@@ -410,6 +410,7 @@ return [
         'platform' => 'platform',
         'platformId' => 'platform ID',
         'postalCode' => 'postal code',
+        'purchase' => 'purchase',
         'preferences' => 'preferences',
         'preferences.allergies' => 'allergies',
         'preferences.meal_preference' => 'meal preference',
