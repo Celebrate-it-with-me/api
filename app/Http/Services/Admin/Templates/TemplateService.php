@@ -19,7 +19,7 @@ class TemplateService
     public function index(): array
     {
         $templates = InvitationTemplate::query()
-            ->with(['currentVersion:id,template_id,version,published_at'])
+            ->with(['currentVersion:id,template_id,package_id,version,published_at'])
             ->withMax(['versions as draft_version_id' => fn ($q) => $q->where('status', Version::DRAFT)], 'id')
             ->orderBy('id')
             ->get();
@@ -33,18 +33,19 @@ class TemplateService
     public function show(int $id): array
     {
         $template = InvitationTemplate::query()
-            ->with(['currentVersion:id,template_id,version,published_at'])
+            ->with(['currentVersion:id,template_id,package_id,version,published_at'])
             ->withMax(['versions as draft_version_id' => fn ($q) => $q->where('status', Version::DRAFT)], 'id')
             ->findOrFail($id);
 
         $usage = $this->usage(InvitationTemplate::query()->get(['id', 'event_type_id', 'tier', 'is_active']));
         $versions = $template->versions()->orderByDesc('version')
-            ->get(['id', 'template_id', 'version', 'status', 'notes', 'created_at', 'published_at']);
+            ->get(['id', 'template_id', 'package_id', 'version', 'status', 'notes', 'created_at', 'published_at']);
 
         return $this->templateRow($template, $usage) + [
             'versions' => $versions->map(fn (Version $v) => [
                 'id' => $v->id,
                 'version' => $v->version,
+                'packageId' => $v->package_id,
                 'status' => $v->status,
                 'notes' => $v->notes,
                 'createdAt' => $v->created_at?->toIso8601String(),
@@ -74,6 +75,10 @@ class TemplateService
             }
 
             $source = $template->currentVersion ?? $template->versions()->orderByDesc('version')->first();
+            // A hand-made draft of a package's content would lose the package: the way forward is a new semver.
+            if ($source?->package_id !== null) {
+                throw $this->conflict('package_managed', 'Esta plantilla la administra un paquete: para cambiarla instala una versión nueva del paquete.');
+            }
             $next = (int) $template->versions()->max('version') + 1;
 
             return Version::query()->create([
@@ -100,6 +105,10 @@ class TemplateService
         $version = DB::transaction(function () use ($id, $changes) {
             $version = Version::query()->lockForUpdate()->findOrFail($id);
             $this->assertDraft($version);
+            // The content of a version a package installed comes from the package: a change is a new semver (D-4).
+            if ($version->package_id !== null && (array_key_exists('sections', $changes) || array_key_exists('theme', $changes))) {
+                throw $this->conflict('package_managed', 'Esta versión la administra un paquete: para cambiarla instala una versión nueva del paquete.');
+            }
 
             $sections = array_key_exists('sections', $changes) ? $changes['sections'] : $version->sections;
             $theme = array_key_exists('theme', $changes) ? $changes['theme'] : $version->theme;
@@ -129,13 +138,17 @@ class TemplateService
     }
 
     /** @return array{version: array<string, mixed>, eventsOnPreviousVersion: int} */
-    public function publish(int $id, string $reason): array
+    /** @param  bool  $viaPackage  only `PackageLifecycle::activate` (checklist, marks, engineMin) may publish a version a package owns */
+    public function publish(int $id, string $reason, bool $viaPackage = false): array
     {
         $previousEvents = 0;
         $previousId = null;
 
-        $version = DB::transaction(function () use ($id, &$previousEvents, &$previousId) {
+        $version = DB::transaction(function () use ($id, $viaPackage, &$previousEvents, &$previousId) {
             $version = Version::query()->lockForUpdate()->findOrFail($id);
+            if (! $viaPackage) {
+                $this->assertNotPackageManaged($version);
+            }
             $this->assertDraft($version);
             TemplateSchema::assertValid($version->sections, $version->theme);
 
@@ -174,6 +187,7 @@ class TemplateService
     {
         $version = DB::transaction(function () use ($id) {
             $version = Version::query()->lockForUpdate()->findOrFail($id);
+            $this->assertNotPackageManaged($version);
 
             if ($version->status === Version::PUBLISHED) {
                 throw $this->unprocessable('cannot_archive_published', 'No se puede archivar la versión publicada: publica otra antes.');
@@ -193,6 +207,14 @@ class TemplateService
         ]);
 
         return $this->showVersion($version->id);
+    }
+
+    /** A package version goes live only through `activate` (checklist, third-party marks, engineMin) and leaves through the package endpoints. */
+    private function assertNotPackageManaged(Version $version): void
+    {
+        if ($version->package_id !== null) {
+            throw $this->conflict('package_managed', 'Esta versión la administra un paquete: se activa y se retira solo desde los endpoints del paquete.');
+        }
     }
 
     private function assertDraft(Version $version): void
@@ -280,6 +302,7 @@ class TemplateService
             'currentVersion' => $t->currentVersion ? [
                 'id' => $t->currentVersion->id,
                 'version' => $t->currentVersion->version,
+                'packageId' => $t->currentVersion->package_id,
                 'publishedAt' => $t->currentVersion->published_at?->toIso8601String(),
             ] : null,
             'draftVersionId' => $t->draft_version_id !== null ? (int) $t->draft_version_id : null,
@@ -297,6 +320,7 @@ class TemplateService
             'version' => $v->version,
             'status' => $v->status,
             'schemaVersion' => $v->schema_version,
+            'packageId' => $v->package_id,
             'sections' => $v->sections,
             'theme' => $v->theme,
             'notes' => $v->notes,

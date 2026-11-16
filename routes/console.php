@@ -24,3 +24,7 @@ Schedule::command('whatsapp:sync-templates')->hourly()->withoutOverlapping();
 
 // Events kept 30 days after their owner deleted her account are removed for good (docs/plans/account-deletion-contract.md).
 Schedule::command('account:purge-archived')->dailyAt('03:30')->withoutOverlapping();
+
+// Uploads of template packages that nobody installed are removed after their lifetime (24 h by default).
+Schedule::command('templates:purge-stages')->hourly()->withoutOverlapping();
+Schedule::command('templates:verify-packages')->dailyAt('04:30')->withoutOverlapping();

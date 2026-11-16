@@ -30,6 +30,11 @@ class ProductionSafetyCheck
             $problems[] = 'SANCTUM_STATEFUL_DOMAINS must list only the real SPA domains.';
         }
 
+        // Package files must have their own origin (W6-08): without it they would be addressed on the API's origin.
+        if (! app()->environment('local', 'testing') && blank(config('filesystems.disks.template-packages.url'))) {
+            $problems[] = 'TEMPLATE_PACKAGES_URL must be set (an origin without cookies, serving the headers of the spec 5.2).';
+        }
+
         // WhatsApp (audit W-10): the fake driver "sends" nothing; Meta without its secrets leaves the webhook answering 403.
         $driver = config('services.whatsapp.driver');
         if ($driver === 'fake') {

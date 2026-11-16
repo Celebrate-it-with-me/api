@@ -85,7 +85,7 @@ function tplPublishNewVersion(string $coverTitle, ?InvitationTemplate $template 
     $sections[0]['title']['es'] = $coverTitle;
 
     test()->actingAs(tplStaff())->patchJson(TPL . "/versions/{$draftId}", ['sections' => $sections])->assertOk();
-    test()->actingAs(tplStaff())->postJson(TPL . "/versions/{$draftId}/publish", ['reason' => 'Nuevo título'])->assertOk();
+    test()->actingAsReauthed(tplStaff())->postJson(TPL . "/versions/{$draftId}/publish", ['reason' => 'Nuevo título'])->assertOk();
 
     return $draftId;
 }
@@ -278,11 +278,11 @@ describe('drafts', function () {
         expect($res['sections'][1]['title']['en'])->toBe('New English title')->and($res['notes'])->toBe('Más claro');
 
         // Publishing v2 archives v1: both are immutable from then on.
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$draftId}/publish", ['reason' => 'Listo para salir'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$draftId}/publish", ['reason' => 'Listo para salir'])->assertOk();
         $this->actingAs($admin)->patchJson(TPL . "/versions/{$published}", ['notes' => 'x'])->assertStatus(409)->assertJson(['code' => 'version_immutable']);
         $this->actingAs($admin)->patchJson(TPL . "/versions/{$draftId}", ['notes' => 'x'])->assertStatus(409)->assertJson(['code' => 'version_immutable']);
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$published}/publish", ['reason' => 'Volver atrás'])->assertStatus(409)->assertJson(['code' => 'version_immutable']);
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$published}/archive", ['reason' => 'Ya archivada'])->assertStatus(409)->assertJson(['code' => 'version_immutable']);
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$published}/publish", ['reason' => 'Volver atrás'])->assertStatus(409)->assertJson(['code' => 'version_immutable']);
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$published}/archive", ['reason' => 'Ya archivada'])->assertStatus(409)->assertJson(['code' => 'version_immutable']);
     });
 
     it('needs something to change', function () {
@@ -298,7 +298,7 @@ describe('publish and archive', function () {
         tplPublish(tplPublishedEvent('xv-fijado'));
 
         $draftId = tplDraft();
-        $res = $this->actingAs($admin)->postJson(TPL . "/versions/{$draftId}/publish", ['reason' => 'Nueva versión'])->assertOk()->json('data');
+        $res = $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$draftId}/publish", ['reason' => 'Nueva versión'])->assertOk()->json('data');
 
         expect($res['eventsOnPreviousVersion'])->toBe(1)
             ->and($res['version']['status'])->toBe('published')
@@ -312,19 +312,19 @@ describe('publish and archive', function () {
     it('requires a reason to publish and to archive', function () {
         $draftId = tplDraft();
 
-        $this->actingAs(tplStaff())->postJson(TPL . "/versions/{$draftId}/publish", [])->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs(tplStaff())->postJson(TPL . "/versions/{$draftId}/archive", ['reason' => 'no'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed(tplStaff())->postJson(TPL . "/versions/{$draftId}/publish", [])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed(tplStaff())->postJson(TPL . "/versions/{$draftId}/archive", ['reason' => 'no'])->assertUnprocessable()->assertJsonValidationErrors('reason');
     });
 
     it('archives a draft but never the only published version', function () {
         $admin = tplStaff();
         $published = tplTemplate()->current_version_id;
 
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$published}/archive", ['reason' => 'Quitarla del medio'])
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$published}/archive", ['reason' => 'Quitarla del medio'])
             ->assertUnprocessable()->assertJson(['code' => 'cannot_archive_published']);
 
         $draftId = tplDraft();
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$draftId}/archive", ['reason' => 'Descartar borrador'])
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$draftId}/archive", ['reason' => 'Descartar borrador'])
             ->assertOk()->assertJsonPath('data.status', 'archived');
 
         // The slot is free again for a new draft.
@@ -542,9 +542,9 @@ describe('audit', function () {
 
         $draft = $this->actingAs($admin)->postJson(TPL . "/{$template->id}/versions")->json('data.id');
         $this->actingAs($admin)->patchJson(TPL . "/versions/{$draft}", ['notes' => 'Ajuste'])->assertOk();
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$draft}/publish", ['reason' => 'Sale a producción'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$draft}/publish", ['reason' => 'Sale a producción'])->assertOk();
         $second = $this->actingAs($admin)->postJson(TPL . "/{$template->id}/versions")->json('data.id');
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$second}/archive", ['reason' => 'No hace falta'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$second}/archive", ['reason' => 'No hace falta'])->assertOk();
 
         $log = AdminAuditLog::where('subject_type', 'template_version')->orderBy('id')->get();
 
@@ -565,7 +565,7 @@ describe('audit', function () {
 
         $this->actingAs($admin)->getJson(TPL)->assertOk();
         $this->actingAs($admin)->patchJson(TPL . "/versions/{$published}", ['notes' => 'x'])->assertStatus(409);
-        $this->actingAs($admin)->postJson(TPL . "/versions/{$published}/archive", ['reason' => 'Intento fallido'])->assertUnprocessable();
+        $this->actingAsReauthed($admin)->postJson(TPL . "/versions/{$published}/archive", ['reason' => 'Intento fallido'])->assertUnprocessable();
 
         expect(AdminAuditLog::count())->toBe($before);
     });
@@ -600,13 +600,20 @@ describe('preview', function () {
         $sections = $content['sections'];
         $closing = array_search('closing', array_column($sections, 'type'));
         $sections[$closing]['enabled'] = false;
-        $sections[0]['order'] = 50;
+        $other = array_search('rsvp', array_column($sections, 'type'));
+        $sections[$other]['order'] = 0; // above the cover's order: the cover would no longer come first
 
+        // The cover always comes first (D-15): the content is refused like a save would.
+        $this->actingAs(tplStaff())->postJson(TPL . '/preview', [
+            'sections' => $sections, 'theme' => $content['theme'], 'locale' => 'es', 'eventType' => 'quinceanera',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['sections.0.order']);
+
+        $sections[$other]['order'] = 40;
         $types = $this->actingAs(tplStaff())->postJson(TPL . '/preview', [
             'sections' => $sections, 'theme' => $content['theme'], 'locale' => 'es', 'eventType' => 'quinceanera',
         ])->assertOk()->json('data.sections.*.type');
 
-        expect($types)->not->toContain('closing')->and(end($types))->toBe('cover');
+        expect($types)->not->toContain('closing')->and($types[0])->toBe('cover')->and(end($types))->toBe('rsvp');
 
         $sections[0]['settings']['image'] = 'https://evil.example/a.png';
         $this->actingAs(tplStaff())->postJson(TPL . '/preview', [
