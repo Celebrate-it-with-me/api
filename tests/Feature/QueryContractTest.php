@@ -82,7 +82,7 @@ function contractFixture(): array
 
     // Guests: main guests with and without companions, every answer.
     $gid = 9300;
-    $mk = function (Events $e, string $name, ?string $status, ?int $parent = null) use (&$gid, $stamp) {
+    $mk = function (Events $e, string $name, ?string $status, ?int $parent = null) use (&$gid) {
         return Guest::forceCreate(['id' => ++$gid, 'event_id' => $e->id, 'parent_id' => $parent, 'name' => $name, 'email' => "g{$gid}@example.com", 'phone' => null,
             'code' => $parent ? null : sprintf('CTR%04d', $gid), 'rsvp_status' => $status, 'is_vip' => false, 'tags' => [], 'notes' => null, 'gender' => 'other', 'locale' => 'es']);
     };
@@ -103,7 +103,7 @@ function contractFixture(): array
     // The full event has everything the setup progress looks at.
     $i = fn (string $table, array $row) => DB::table($table)->insert(array_merge($row, $stamp));
     foreach ([$full, $shared] as $e) {
-        $i('save_the_dates', ['event_id' => $e->id, 'message' => 'Save the date for '.$e->id]);
+        $i('save_the_dates', ['event_id' => $e->id, 'message' => 'Save the date for ' . $e->id]);
         $i('sweet_memories_config', ['event_id' => $e->id]);
         $i('suggested_music_configs', ['event_id' => $e->id]);
     }
@@ -126,7 +126,7 @@ function contractFixture(): array
         DB::table('tables')->where('id', $t->id)->update($stamp);
     }
     foreach ([[9601, $mains[0]->id], [9601, $mains[1]->id], [9602, $mains[2]->id], [9602, $mains[3]->id]] as $n => [$table, $guest]) {
-        DB::table('table_assignments')->insert(array_merge(['table_id' => $table, 'guest_id' => $guest, 'seat_number' => 'Seat '.($n + 1), 'assigned_at' => '2027-03-01 12:00:00', 'assigned_by' => $owner->id], $stamp));
+        DB::table('table_assignments')->insert(array_merge(['table_id' => $table, 'guest_id' => $guest, 'seat_number' => 'Seat ' . ($n + 1), 'assigned_at' => '2027-03-01 12:00:00', 'assigned_by' => $owner->id], $stamp));
     }
 
     $owner->forceFill(['last_active_event_id' => $full->id])->save();
@@ -137,7 +137,7 @@ function contractFixture(): array
 function contractSnapshot(string $name, array $actual): void
 {
     $path = base_path("tests/Fixtures/perf-contract/{$name}.json");
-    $json = json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n";
+    $json = json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
 
     if (getenv('UPDATE_SNAPSHOTS') || ! file_exists($path)) {
         file_put_contents($path, $json);
@@ -219,4 +219,33 @@ it('does not hand out the events or tables of someone else', function () {
 
     $owner = User::find(9101);
     $this->actingAs($stranger)->getJson("/api/v1/app/user/hydrate/{$owner->id}")->assertForbidden();
+});
+
+it('does not run more queries for more events or tables', function () {
+    [$owner, , $full] = contractFixture();
+    $count = function (string $url) use ($owner) {
+        $n = 0;
+        DB::listen(function () use (&$n) {
+            $n++;
+        });
+        $this->actingAs($owner)->getJson($url)->assertOk();
+
+        return $n;
+    };
+    $urls = ["/api/v1/app/user/hydrate/{$owner->id}", '/api/v1/app/events', "/api/v1/app/event/{$full->id}/tables"];
+    array_map(fn ($u) => $this->actingAs($owner)->getJson($u)->assertOk(), $urls); // warm the caches
+    $before = array_map($count, $urls);
+
+    // More of everything: events (with roles and a guest each) and tables with seats taken.
+    foreach (range(1, 4) as $i) {
+        $e = Events::factory()->draft()->create(['event_type_id' => $full->event_type_id, 'event_plan_id' => $full->event_plan_id, 'custom_url_slug' => "more-$i"]);
+        EventUserRole::create(['event_id' => $e->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
+        $g = Guest::forceCreate(['event_id' => $e->id, 'name' => "More $i", 'code' => "MORE$i", 'rsvp_status' => 'pending']);
+        $t = Table::forceCreate(['event_id' => $full->id, 'name' => "Extra $i", 'capacity' => 4, 'type' => 'family', 'priority' => 1]);
+        DB::table('table_assignments')->insert(['table_id' => $t->id, 'guest_id' => $g->id, 'seat_number' => '1', 'assigned_at' => now(), 'assigned_by' => $owner->id]);
+    }
+    array_map(fn ($u) => $this->actingAs($owner)->getJson($u)->assertOk(), $urls); // the new events' exceptions get cached
+    $after = array_map($count, $urls);
+
+    expect($after)->toBe($before);
 });
