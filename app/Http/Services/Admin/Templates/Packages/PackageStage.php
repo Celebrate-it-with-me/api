@@ -25,7 +25,7 @@ class PackageStage
     /** Seconds the install lock lives if the process dies before releasing it (W6-06: it used to be 120). */
     public const LOCK_SECONDS = 30;
 
-    public function __construct(private readonly PackageFiles $files, private readonly AdminAudit $audit) {}
+    public function __construct(private readonly PackageFiles $files, private readonly AdminAudit $audit, private readonly PackageThumbnail $thumbnails) {}
 
     /** @return array{valid: bool, stageToken: string, expiresAt: string, report: array} */
     public function validate(UploadedFile $zip): array
@@ -77,6 +77,7 @@ class PackageStage
             return;
         }
         $this->files->delete(PackageFiles::STAGING . "/{$token}");
+        $this->thumbnails->discardStaged($token);
         $this->local()->delete($this->metaPath($token));
     }
 
@@ -155,6 +156,8 @@ class PackageStage
                 'json' => $build['json'],
             ];
             $this->files->write(PackageFiles::STAGING . "/{$token}", $build['public']);
+            // The selector's thumbnail comes from the mobile capture, which is not part of the published files (D-5).
+            $this->thumbnails->stage($token, $result['artifacts']['previewMobile'] ?? null);
             $this->audit->record('template.package_validated', ['template_package', null], [
                 'after' => [
                     'slug' => $build['json']['manifest']['slug'] ?? null,

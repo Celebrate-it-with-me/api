@@ -21,6 +21,7 @@ class PackageLifecycle
         private readonly PackageQuery $query,
         private readonly PackageFiles $files,
         private readonly AdminAudit $audit,
+        private readonly PackageThumbnail $thumbnails,
     ) {}
 
     /** @return array{package: array<string, mixed>, eventsOnPreviousVersion: int} */
@@ -60,6 +61,8 @@ class PackageLifecycle
                 ->update(['status' => TemplatePackage::DEACTIVATED, 'deactivated_at' => now()]);
 
             $package->forceFill(['status' => TemplatePackage::ACTIVE, 'activated_at' => now(), 'deactivated_at' => null])->save();
+            // What the organizer sees in the selector is the package that is live.
+            $this->thumbnails->link($package);
         });
 
         $this->audit->record('template.package_activated', ['template_package', $package->id], [

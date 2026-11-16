@@ -23,6 +23,7 @@ class PackageInstaller
         private readonly PackageFiles $files,
         private readonly PackageQuery $query,
         private readonly AdminAudit $audit,
+        private readonly PackageThumbnail $thumbnails,
     ) {}
 
     /** @return array<string, mixed> the installed package */
@@ -75,8 +76,11 @@ class PackageInstaller
             throw PackageError::conflict('stage_corrupt', 'Los archivos de la subida no coinciden con lo validado: vuelve a subir el paquete.', ['differences' => array_slice($problems, 0, 10)]);
         }
 
+        // The thumbnail of the selector (D-5): written before the rows so a failure can take it back with the folder.
+        $thumbnail = $this->thumbnails->publishStaged($token, $slug, $semver, $build['contentHash']);
+
         try {
-            $package = DB::transaction(function () use ($meta, $build, $manifest, $folder) {
+            $package = DB::transaction(function () use ($meta, $build, $manifest, $folder, $thumbnail) {
                 $package = TemplatePackage::query()->create([
                     'slug' => $manifest['slug'],
                     'semver' => $manifest['version'],
@@ -101,7 +105,7 @@ class PackageInstaller
                 ]);
 
                 foreach ($manifest['eventTypes'] as $type) {
-                    $this->draftFor($package, $type, $build['json']);
+                    $this->draftFor($package, $type, $build['json'], $thumbnail);
                 }
 
                 return $package;
@@ -109,6 +113,7 @@ class PackageInstaller
         } catch (\Throwable $e) {
             // All or nothing: the database rolled back, so the copied files must not stay behind.
             $this->files->delete($folder);
+            $this->thumbnails->delete($thumbnail);
             throw $e;
         }
 
@@ -129,7 +134,7 @@ class PackageInstaller
     }
 
     /** The template of this package for one event type (created inactive when new) and its draft version. */
-    private function draftFor(TemplatePackage $package, string $eventType, array $json): void
+    private function draftFor(TemplatePackage $package, string $eventType, array $json, ?string $thumbnail = null): void
     {
         $manifest = $json['manifest'];
         $slug = "{$package->slug}-{$eventType}";
@@ -144,8 +149,14 @@ class PackageInstaller
                 'tier' => $package->tier,
                 'default_sections' => $sections,
                 'theme_defaults' => $theme,
+                'preview_image' => $thumbnail,
                 'is_active' => false,
             ]);
+        // A template that is not live yet shows the thumbnail of the newest package; a live one keeps the one of its
+        // current version until the newer package is activated (PackageLifecycle).
+        if ($thumbnail !== null && $template->current_version_id === null && $template->preview_image !== $thumbnail) {
+            $template->forceFill(['preview_image' => $thumbnail])->save();
+        }
 
         $draft = $template->versions()->where('status', Version::DRAFT)->first();
         if ($draft) {

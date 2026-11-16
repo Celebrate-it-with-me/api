@@ -15,6 +15,7 @@ use App\Models\Padrino;
 use App\Models\Rsvp;
 use App\Models\SaveTheDate;
 use App\Models\SweetMemoriesImage;
+use App\Models\TemplatePackage;
 use App\Models\Timeline;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -81,12 +82,28 @@ class InvitationService
             ->first();
     }
 
-    public function build(Events $event, Guest $guest, ?string $lang = null): array
+    /**
+     * @param  bool  $preview  the organizer's own preview: the plan does not hide a premium template or a locked field,
+     *                         because looking is allowed (applying is what the plan blocks)
+     */
+    public function build(Events $event, Guest $guest, ?string $lang = null, bool $preview = false): array
     {
         $locale = $this->resolveLocale($lang, $guest, $event);
-        $version = $this->versionContent($event);
+        $version = $this->versionContent($event, $preview);
+        $unlocked = app(PurchaseService::class)->isUnlocked($event);
+        $config = $event->template_config ?? [];
+        // A draft that is not fixed yet and not paid (a refund) does not keep the paid look: free fields only (D-4).
+        // A fixed event keeps what it paid for, and so does a preview.
+        if (! $preview && ! $unlocked && $event->template_version_id === null) {
+            if (($version['package_id'] ?? null) !== null) {
+                $config = app(Invitation\EditableBinding::class)->withoutFullPlan($config, $this->editableFields($version['package_id']));
+            } else {
+                // The engine's own Classic has no manifest: its free tier is photo, texts and palette; free colors and fonts are the full event's.
+                unset($config['theme']['colors'], $config['theme']['fonts']);
+            }
+        }
         // The package pinned by the version, when it can be drawn; otherwise the invitation falls back to Classic.
-        $package = app(PackagePayload::class)->forPackageId($version['package_id'] ?? null, $event->template_config['package']['options'] ?? []);
+        $package = app(PackagePayload::class)->forPackageId($version['package_id'] ?? null, $config['package']['options'] ?? []);
 
         return [
             'event' => [
@@ -100,10 +117,10 @@ class InvitationService
             // Which version of the link this is: the Save the date or the full invitation.
             'stage' => $event->invitation_stage,
             'locale' => $locale,
-            'theme' => $this->themePayload($version['theme'], $event->template_config['theme'] ?? [], $package['package'] ?? null),
-            'sections' => $this->attachPackage($this->resolveSections($event, $guest, $version['sections'], $locale), $package['sections'] ?? []),
+            'theme' => $this->themePayload($version['theme'], $config['theme'] ?? [], $package['package'] ?? null),
+            'sections' => $this->attachPackage($this->resolveSections($event, $guest, $version['sections'], $locale, $config), $package['sections'] ?? []),
             // Basic-plan watermark; the full event (paid, or on the premium plan) removes it. A refund puts the event back on basic.
-            'branding' => ['watermark' => ! app(PurchaseService::class)->isUnlocked($event)],
+            'branding' => ['watermark' => ! $unlocked],
         ];
     }
 
@@ -212,10 +229,19 @@ class InvitationService
         return 'es';
     }
 
-    private function templateFor(Events $event): InvitationTemplate
+    /**
+     * The template this event draws: its own when it is active and allowed, otherwise the free one of its type. A
+     * premium template on an event that is neither fixed nor paid (a refund) is not drawn either (D-4): the free one
+     * is. A fixed event never goes through here for its version, so it keeps what it paid for.
+     *
+     * @param  bool  $ignorePlan  the organizer's preview may look at any template the catalog offers
+     */
+    public function templateFor(Events $event, bool $ignorePlan = false): InvitationTemplate
     {
-        if ($event->template && $event->template->is_active && app(TemplateCatalog::class)->allows($event->template, $event)) {
-            return $event->template;
+        $own = $event->template;
+        if ($own && $own->is_active && app(TemplateCatalog::class)->allows($own, $event)
+            && ($ignorePlan || $this->planAllows($own, $event))) {
+            return $own;
         }
 
         $free = InvitationTemplate::query()
@@ -227,6 +253,13 @@ class InvitationService
             ?? $free->firstOrFail();
     }
 
+    private function planAllows(InvitationTemplate $template, Events $event): bool
+    {
+        return $template->tier !== InvitationTemplate::TIER_PREMIUM
+            || $event->template_version_id !== null
+            || app(PurchaseService::class)->isUnlocked($event);
+    }
+
     /**
      * The sections and theme this event shows: the version fixed when it was first published, or (while it has
      * none) the published version of its template. The JSON of a version never changes once it is out of draft,
@@ -234,23 +267,56 @@ class InvitationService
      *
      * @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>, package_id?: ?int}
      */
-    private function versionContent(Events $event): array
+    public function versionContent(Events $event, bool $ignorePlan = false): array
     {
         if ($event->template_version_id) {
             return $this->cachedVersion($event->template_version_id)
-                ?? $this->templateContent($this->templateFor($event));
+                ?? $this->templateContent($this->templateFor($event, $ignorePlan));
         }
 
-        return $this->templateContent($this->templateFor($event));
+        return $this->templateContent($this->templateFor($event, $ignorePlan));
+    }
+
+    /** The version id the event draws now: the fixed one, or the published version of its template. */
+    public function currentVersionId(Events $event, bool $ignorePlan = false): ?int
+    {
+        if ($event->template_version_id && $this->cachedVersion($event->template_version_id)) {
+            return $event->template_version_id;
+        }
+
+        return $this->templateFor($event, $ignorePlan)->current_version_id;
+    }
+
+    /** `editable.json` fields of a package (empty when it cannot be edited: withdrawn or missing). @return list<array<string, mixed>> */
+    public function editableFields(?int $packageId): array
+    {
+        if ($packageId === null) {
+            return [];
+        }
+        $package = TemplatePackage::query()->whereKey($packageId)->first(['id', 'status', 'editable']);
+
+        return $package === null || $package->isWithdrawn() ? [] : array_values((array) ($package->editable['fields'] ?? []));
+    }
+
+    /** The catalog module that owns a section type, when it has one. */
+    public static function sectionModule(string $type): ?string
+    {
+        return self::SECTION_MODULES[$type] ?? null;
     }
 
     /**
      * Fixes the template version on an event that is being published (the caller saves it): from then on the
      * invitation keeps this look even if the template publishes a new version. Already fixed events keep theirs.
+     *
+     * The Save the date does not fix anything (D-3): the organizer can still change template until the full invitation
+     * goes out, and upgrading from the Save the date fixes the version again, with what she chose in the meantime.
      */
-    public function pinVersion(Events $event): void
+    public function pinVersion(Events $event, string $stage = Events::STAGE_INVITATION, bool $repin = false): void
     {
-        if ($event->template_version_id === null) {
+        if ($stage === Events::STAGE_SAVE_THE_DATE) {
+            return;
+        }
+        if ($event->template_version_id === null || $repin) {
             try {
                 $event->template_version_id = $this->templateFor($event)->current_version_id;
             } catch (ModelNotFoundException) {
@@ -339,7 +405,7 @@ class InvitationService
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function resolveSections(Events $event, Guest $guest, array $templateSections, string $locale): array
+    private function resolveSections(Events $event, Guest $guest, array $templateSections, string $locale, array $config): array
     {
         if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
             // The Save the date is the `save_the_date` module: locked, there is nothing to show yet.
@@ -351,7 +417,7 @@ class InvitationService
         $modules = app(EventModules::class);
 
         $base = collect($templateSections)->keyBy('type');
-        $overrides = collect($event->template_config['sections'] ?? [])->keyBy('type');
+        $overrides = collect($config['sections'] ?? [])->keyBy('type');
 
         return $base->keys()->merge($overrides->keys())->unique()
             ->filter(fn (string $type) => in_array($type, self::SECTION_TYPES, true))
@@ -489,8 +555,8 @@ class InvitationService
             'cover' => [
                 'eventName' => $event->event_name,
                 'description' => $event->event_description,
-                'image' => $section['settings']['image'] ?? null,
-            ],
+                'image' => $this->coverImage($section['settings']['image'] ?? null, $event),
+            ] + $this->coverFocus($section),
             'itinerary' => $this->itineraryData($event),
             'locations' => $this->locationsData($event),
             'dress_code' => $this->dressCodeData($event),
@@ -501,6 +567,31 @@ class InvitationService
             'closing' => [],
             default => null,
         };
+    }
+
+    /**
+     * The cover photo as an address: a photo the app stored (`upload:`) is served only when it belongs to this event,
+     * and a path that starts with `/` (seeders, legacy) is kept as it is.
+     */
+    public function coverImage(mixed $value, Events $event): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+        if (! str_starts_with($value, Invitation\CoverPhoto::PREFIX)) {
+            return $value;
+        }
+        $path = Invitation\CoverPhoto::pathFor($value, $event->id);
+
+        return $path === null ? null : Storage::disk(Invitation\CoverPhoto::DISK)->url($path);
+    }
+
+    /** The point of the photo that must stay visible, only when the organizer chose one. @return array{focus?: string} */
+    private function coverFocus(array $section): array
+    {
+        $focus = $section['settings']['focus'] ?? null;
+
+        return is_string($focus) && preg_match('/^\d{1,3}% \d{1,3}%$/', $focus) === 1 ? ['focus' => $focus] : [];
     }
 
     /**
@@ -737,7 +828,8 @@ class InvitationService
 
         return [
             'guest' => ['id' => $guest->id, 'name' => $guest->name, 'status' => $guest->rsvp_status],
-            'companions' => $guest->companions()->orderBy('id')->get()
+            // A sample guest (the organizer's preview) is not saved: it has no companions, and must not match "no parent".
+            'companions' => ! $guest->exists ? [] : $guest->companions()->orderBy('id')->get()
                 ->map(fn (Guest $companion) => [
                     'id' => $companion->id,
                     'name' => $companion->name,

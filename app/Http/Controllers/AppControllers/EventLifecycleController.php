@@ -16,9 +16,13 @@ class EventLifecycleController extends Controller
 
     public function publish(Request $request, Events $event): EventResource
     {
-        $stage = $request->validate(['stage' => ['nullable', Rule::in([Events::STAGE_SAVE_THE_DATE, Events::STAGE_INVITATION])]])['stage'] ?? Events::STAGE_INVITATION;
+        $data = $request->validate([
+            'stage' => ['nullable', Rule::in([Events::STAGE_SAVE_THE_DATE, Events::STAGE_INVITATION])],
+            // The version of the template the organizer's preview showed (`versionId` of GET invitation): see EventLifecycleService.
+            'expected_version_id' => ['nullable', 'integer'],
+        ]);
 
-        return EventResource::make($this->lifecycle->publish($event, $request->user(), $stage));
+        return EventResource::make($this->lifecycle->publish($event, $request->user(), $data['stage'] ?? Events::STAGE_INVITATION, $data['expected_version_id'] ?? null));
     }
 
     public function unpublish(Request $request, Events $event): EventResource

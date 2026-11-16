@@ -38,6 +38,16 @@ return [
         'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) (env('TEMPLATE_ASSETS_ALLOWED_ORIGINS') ?: env('ALLOWED_SPA_DOMAINS', '')))))),
     ],
 
+    // The photo of the cover (D-8): what the organizer may upload and what is stored (WebP only, the original is not kept).
+    'cover' => [
+        'max_bytes' => 10 * 1024 * 1024,
+        'max_side' => 8000,
+        'max_pixels' => 40_000_000,
+        'width' => 1440,
+        'thumb_width' => 480,
+        'quality' => 82,
+    ],
+
     'limits' => [
         'sections' => 20,
         'text' => 1000,
