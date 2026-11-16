@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\TemplateAssetController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
@@ -99,6 +100,9 @@ class RouteServiceProvider extends ServiceProvider
             ], 429, $headers)));
 
         $this->routes(function () {
+            // Health check for the balancer: outside every group on purpose (no throttle, session or maintenance).
+            Route::get('up', HealthController::class)->name('health');
+
             Route::middleware('api')
                 ->prefix('api/v1/')
                 ->group(base_path('routes/api.php'));
