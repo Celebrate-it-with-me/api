@@ -124,7 +124,8 @@ it('shows one purchase with its timeline, who recorded it and no whole gateway i
         ->assertJsonPath('data.canRefund', false);
 
     expect(collect($res->json('data.timeline'))->pluck('type')->all())->toBe(['created', 'paid', 'refunded']);
-    expect($res->getContent())->not->toContain('pi_3Abc123');
+    // The contract of the Stripe checkout (E3) gives the superadmin the whole payment id (and the dashboard link): only there.
+    expect($res->json('data.gatewayPaymentId'))->toBe('pi_3Abc123SECRETXYZ9');
     $this->actingAs($admin)->getJson('/api/v1/admin/revenue/purchases/999999')->assertNotFound();
 });
 

@@ -377,6 +377,8 @@ return [
         'platformId' => 'identificador de la plataforma',
         'postalCode' => 'código postal',
         'purchase' => 'compra',
+        'disputed' => 'en disputa',
+        'needsReview' => 'requiere revisión',
         'preferences' => 'preferencias',
         'preferences.allergies' => 'alergias',
         'preferences.meal_preference' => 'preferencia de comida',

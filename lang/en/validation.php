@@ -411,6 +411,8 @@ return [
         'platformId' => 'platform ID',
         'postalCode' => 'postal code',
         'purchase' => 'purchase',
+        'disputed' => 'disputed',
+        'needsReview' => 'needs review',
         'preferences' => 'preferences',
         'preferences.allergies' => 'allergies',
         'preferences.meal_preference' => 'meal preference',
