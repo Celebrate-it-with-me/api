@@ -23,9 +23,10 @@ class PublicInvitationController extends Controller
     {
         [$event, $guest] = $this->resolve($slug, $code);
 
+        // Per guest (name, RSVP), so no shared cache may keep it; the browser may, but must revalidate (ETag -> 304).
         return response()->json([
             'data' => $this->invitations->build($event, $guest, $request->query('lang')),
-        ]);
+        ])->header('Cache-Control', 'private, no-cache, must-revalidate');
     }
 
     public function rsvp(InvitationRsvpRequest $request, string $slug, string $code): JsonResponse
