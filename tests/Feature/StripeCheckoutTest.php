@@ -212,7 +212,7 @@ describe('gateway resolution', function () {
 });
 
 describe('webhook', function () {
-    function pendingPurchase($test, ?string $code = null): array
+    function pendingStripePurchase($test, ?string $code = null): array
     {
         [$event, $owner] = stripeEvent();
         $res = startCheckout($test, $event, $owner, $code)->assertCreated();
@@ -222,7 +222,7 @@ describe('webhook', function () {
 
     it('activates the plan once with a valid signature, and a repeated event does nothing', function () {
         Coupon::create(['code' => 'FUND79', 'kind' => 'fixed_price', 'value' => 7900, 'max_uses' => 5]);
-        [$event, $owner, $purchase] = pendingPurchase($this, 'FUND79');
+        [$event, $owner, $purchase] = pendingStripePurchase($this, 'FUND79');
 
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase), 'evt_1')->assertOk();
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase), 'evt_1')->assertOk();
@@ -238,7 +238,7 @@ describe('webhook', function () {
     });
 
     it('rejects a missing, forged, wrongly keyed or stale signature with 400 and processes nothing', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         $session = completedSession($purchase);
 
         stripeWebhook($this, 'checkout.session.completed', $session, header: '')->assertStatus(400);
@@ -250,7 +250,7 @@ describe('webhook', function () {
     });
 
     it('verifies the raw body: a re-encoded body does not pass', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         $raw = json_encode(['id' => 'evt_raw', 'object' => 'event', 'type' => 'checkout.session.completed', 'data' => ['object' => completedSession($purchase)]]);
         $ts = time();
         $sig = "t={$ts},v1=" . hash_hmac('sha256', "{$ts}.{$raw}", WHSEC);
@@ -262,7 +262,7 @@ describe('webhook', function () {
     });
 
     it('answers 503 when there is no webhook secret, and the fake secret signs nothing under stripe', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         $session = completedSession($purchase);
 
         // The local fake signature (X-Signature) is not accepted while the gateway is Stripe.
@@ -275,7 +275,7 @@ describe('webhook', function () {
     });
 
     it('answers 200 and flags the purchase when the amount or currency do not match, activating nothing', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
 
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase, ['amount_total' => 100]), 'evt_amt')->assertOk();
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase, ['currency' => 'eur']), 'evt_cur')->assertOk();
@@ -286,7 +286,7 @@ describe('webhook', function () {
     });
 
     it('flags a reference that is not the purchase it found', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
 
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase, ['client_reference_id' => '99999']))->assertOk();
 
@@ -301,7 +301,7 @@ describe('webhook', function () {
     });
 
     it('does nothing for a session that completed unpaid (delayed method) until it succeeds', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
 
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase, ['payment_status' => 'unpaid']))->assertOk();
         expect($purchase->fresh()->status)->toBe('pending');
@@ -312,7 +312,7 @@ describe('webhook', function () {
 
     it('fails the purchase on expiry or async failure and releases the coupon use', function () {
         Coupon::create(['code' => 'ONE', 'kind' => 'fixed_price', 'value' => 5000, 'max_uses' => 1]);
-        [$event, $owner, $purchase] = pendingPurchase($this, 'ONE');
+        [$event, $owner, $purchase] = pendingStripePurchase($this, 'ONE');
         [$eventB, $ownerB] = stripeEvent();
         startCheckout($this, $eventB, $ownerB, 'ONE')->assertStatus(422);
 
@@ -321,13 +321,13 @@ describe('webhook', function () {
         expect($purchase->fresh())->status->toBe('failed')->failure_code->toBe('expired');
         startCheckout($this, $eventB, $ownerB, 'ONE')->assertCreated();
 
-        [, , $second] = pendingPurchase($this);
+        [, , $second] = pendingStripePurchase($this);
         stripeWebhook($this, 'checkout.session.async_payment_failed', completedSession($second, ['payment_status' => 'unpaid']))->assertOk();
         expect($second->fresh())->status->toBe('failed')->failure_code->toBe('payment_failed');
     });
 
     it('never goes backwards: an old expiry or failure does not undo a payment, and a refund is not paid again', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase))->assertOk();
 
         stripeWebhook($this, 'checkout.session.expired', completedSession($purchase))->assertOk();
@@ -340,7 +340,7 @@ describe('webhook', function () {
     });
 
     it('lets a late payment on an expired session activate the plan (failed -> paid)', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         stripeWebhook($this, 'checkout.session.expired', completedSession($purchase))->assertOk();
         expect($purchase->fresh()->status)->toBe('failed');
 
@@ -350,7 +350,7 @@ describe('webhook', function () {
     });
 
     it('refunds a second payment for an event that is already paid, and flags it', function () {
-        [$event, $owner, $first] = pendingPurchase($this);
+        [$event, $owner, $first] = pendingStripePurchase($this);
         Coupon::create(['code' => 'FUND79', 'kind' => 'fixed_price', 'value' => 7900]);
         $second = EventPurchase::create([
             'event_id' => $event->id, 'user_id' => $owner->id, 'event_plan_id' => $first->event_plan_id, 'gateway' => 'stripe',
@@ -368,7 +368,7 @@ describe('webhook', function () {
     });
 
     it('records a refund made in the Stripe dashboard, and flags it when the event is published', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase))->assertOk();
 
         stripeWebhook($this, 'charge.refunded', ['id' => 'ch_1', 'object' => 'charge', 'payment_intent' => 'pi_test_1', 'amount' => 9900, 'amount_refunded' => 9900, 'currency' => 'usd'])->assertOk();
@@ -376,7 +376,7 @@ describe('webhook', function () {
         expect($purchase->fresh())->status->toBe('refunded')->and($event->fresh()->eventPlan->slug)->toBe('basic')
             ->and(CreditNote::where('purchase_id', $purchase->id)->count())->toBe(1);
 
-        [$event2, , $p2] = pendingPurchase($this);
+        [$event2, , $p2] = pendingStripePurchase($this);
         $event2->update(['status' => 'published']);
         stripeWebhook($this, 'checkout.session.completed', completedSession($p2, ['payment_intent' => 'pi_pub']))->assertOk();
         stripeWebhook($this, 'charge.refunded', ['id' => 'ch_2', 'object' => 'charge', 'payment_intent' => 'pi_pub', 'amount' => 9900, 'amount_refunded' => 9900])->assertOk();
@@ -385,7 +385,7 @@ describe('webhook', function () {
     });
 
     it('marks a dispute without touching the plan, clears it when won and reverses the purchase when lost', function () {
-        [$event, $owner, $purchase] = pendingPurchase($this);
+        [$event, $owner, $purchase] = pendingStripePurchase($this);
         stripeWebhook($this, 'checkout.session.completed', completedSession($purchase))->assertOk();
 
         stripeWebhook($this, 'charge.dispute.created', ['id' => 'dp_1', 'object' => 'dispute', 'payment_intent' => 'pi_test_1', 'status' => 'needs_response'])->assertOk();
