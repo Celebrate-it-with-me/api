@@ -1049,3 +1049,36 @@ describe('selector thumbnails (D-5)', function () {
         $this->artisan('templates:thumbnails', ['--zip' => $other->zip()])->assertFailed();
     });
 });
+
+describe('wave 9 follow-up', function () {
+    it('reports locked-module sections as not enabled and lets them travel back disabled', function () {
+        edInstall(edBuilder());
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival'), 'template_config' => ['sections' => [['type' => 'gallery', 'enabled' => true, 'order' => 6]]]]);
+
+        $sections = $this->actingAs($m['owner'])->getJson(edUrl($event))->assertOk()->json('data.sections');
+        $gallery = collect($sections)->firstWhere('type', 'gallery');
+        expect($gallery)->toMatchArray(['enabled' => false, 'moduleState' => 'locked']);
+
+        // The very state the app got can be sent back (to reorder) without a 422.
+        $body = array_map(fn ($s) => ['type' => $s['type'], 'enabled' => $s['enabled'], 'order' => $s['order']], $sections);
+        $this->patchJson(edUrl($event, 'sections'), ['sections' => $body])->assertOk();
+        $this->patchJson(edUrl($event, 'sections'), ['sections' => [['type' => 'gallery', 'enabled' => true]]])->assertUnprocessable();
+    });
+
+    it('serves the selector thumbnail through /template-assets with the safe headers', function () {
+        edInstall(edBuilder('festival', 'free'));
+        $path = InvitationTemplate::where('slug', 'festival-quinceanera')->value('preview_image');
+
+        $r = $this->get("/template-assets/{$path}", ['Origin' => 'https://evil.example'])->assertOk();
+        expect($r->headers->get('Content-Type'))->toBe('image/webp')
+            ->and($r->headers->get('X-Content-Type-Options'))->toBe('nosniff')
+            ->and($r->headers->get('Content-Security-Policy'))->toContain('sandbox')
+            ->and($r->headers->get('Cross-Origin-Resource-Policy'))->toBe('cross-origin')
+            ->and($r->headers->get('Cache-Control'))->toContain('immutable')
+            ->and($r->headers->get('Access-Control-Allow-Origin'))->toBeNull();
+
+        foreach (['previews/x.webp', 'previews/festival-1.0.0-zzzzzzzzzzzzzzzz.webp', 'previews/../festival-1.0.0-0123456789abcdef.webp', 'previews/festival-1.0.0-0123456789abcdef.png', 'previews//a-1.0.0-0123456789abcdef.webp'] as $bad) {
+            $this->get("/template-assets/{$bad}")->assertNotFound();
+        }
+    });
+});

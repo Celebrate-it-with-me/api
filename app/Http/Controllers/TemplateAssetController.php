@@ -42,6 +42,10 @@ class TemplateAssetController extends Controller
         if (strlen($path) > 300 || str_contains($path, '..') || str_contains($path, '//')) {
             return false;
         }
+        // The selector thumbnail of a package: previews/<slug>-<semver>-<16 hex>.webp
+        if (preg_match('#^previews/[a-z][a-z0-9-]{1,31}-\d{1,5}\.\d{1,5}\.\d{1,5}-[0-9a-f]{16}\.webp$#', $path)) {
+            return true;
+        }
         $tail = '(?:theme\.css|assets\/[a-z0-9][a-z0-9._\/-]*)';
         $ok = preg_match('#^[a-z][a-z0-9-]{1,31}/\d{1,5}\.\d{1,5}\.\d{1,5}-[0-9a-f]{16}/' . $tail . '$#', $path)
             || preg_match('#^' . PackageFiles::STAGING . '/[0-9a-z]{26}/' . $tail . '$#', $path);

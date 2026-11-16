@@ -954,14 +954,19 @@ class InvitationEditor
     {
         return collect($this->effectiveSections($content, $config))
             ->sortBy(fn (array $s) => $s['order'] ?? 99)
-            ->map(fn (array $s, string $type) => [
-                'type' => $type,
-                'enabled' => (bool) ($s['enabled'] ?? false),
-                'order' => (int) ($s['order'] ?? 99),
-                'required' => in_array($type, (array) config('invitation.required_sections'), true),
-                'title' => $this->bothLocales($s['title'] ?? null),
-                'moduleState' => ($module = InvitationService::sectionModule($type)) ? $this->modules->stateOf($event, $module) : null,
-            ])
+            ->map(function (array $s, string $type) use ($event) {
+                $state = ($module = InvitationService::sectionModule($type)) ? $this->modules->stateOf($event, $module) : null;
+
+                return [
+                    'type' => $type,
+                    // Effective: a section whose module is locked is not shown, whatever the template says.
+                    'enabled' => (bool) ($s['enabled'] ?? false) && $state !== EventModules::LOCKED,
+                    'order' => (int) ($s['order'] ?? 99),
+                    'required' => in_array($type, (array) config('invitation.required_sections'), true),
+                    'title' => $this->bothLocales($s['title'] ?? null),
+                    'moduleState' => $state,
+                ];
+            })
             ->values()->all();
     }
 }
