@@ -271,7 +271,9 @@ describe('summary', function () {
             Guest::factory()->create(['event_id' => $big->id]);
             EventActivity::logActivity($big->id, 'guest_created', User::find($big->owner_user_id), null, ['name' => "G$i"]);
         }
+        // Warm up both: the exceptions of an event are cached after its first read (see EventModules).
         $this->actingAs($staff)->getJson("/api/v1/admin/events/{$small->id}")->assertOk();
+        $this->getJson("/api/v1/admin/events/{$big->id}")->assertOk();
         $queries = function (Events $e) {
             DB::flushQueryLog();
             DB::enableQueryLog();

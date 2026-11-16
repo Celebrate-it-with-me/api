@@ -136,7 +136,7 @@ class CatalogService
             $module->plans()->sync($newIds);
         });
 
-        $this->modules->forget();
+        $this->modules->invalidate();
 
         $after = $this->planSlugsByModule(EventPlan::query()->get())[$module->id] ?? [];
 
@@ -262,7 +262,7 @@ class CatalogService
         $before = ['isEnabled' => $module->is_enabled];
 
         $module->update(['is_enabled' => $enabled]);
-        $this->modules->forget();
+        $this->modules->invalidate();
 
         $orphans = EventModuleOverride::query()->current()->where('module_key', $key)->count();
 

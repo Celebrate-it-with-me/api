@@ -1,0 +1,495 @@
+{
+    "message": "Events retrieved successfully.",
+    "data": {
+        "events": [
+            {
+                "id": 9201,
+                "eventName": "Contract contract-full",
+                "eventDescription": "Description contract-full",
+                "eventType": "quinceanera",
+                "startDate": "06/01/2027 18:00",
+                "endDate": "06/02/2027 01:00",
+                "locale": "es",
+                "currency": "USD",
+                "timezone": "America/New_York",
+                "organizer": {
+                    "id": 9101,
+                    "name": "Contract Owner",
+                    "email": "contract9101@cwm.test",
+                    "created_at": "Jan 2, 2027"
+                },
+                "userRole": "owner",
+                "status": "published",
+                "invitationStage": "invitation",
+                "customUrlSlug": "contract-full",
+                "publishedAt": "2027-02-10T09:00:00+00:00",
+                "slugLocked": true,
+                "createdAt": "2027-02-01 09:00:00",
+                "updatedAt": "2027-02-01 09:00:00",
+                "selected": false,
+                "modules": [
+                    {
+                        "key": "guests",
+                        "section": "guests",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "rsvp",
+                        "section": "guests",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "save_the_date",
+                        "section": "guests",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "timeline",
+                        "section": "organization",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "locations",
+                        "section": "organization",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "dress_code",
+                        "section": "organization",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "budget",
+                        "section": "organization",
+                        "order": 40,
+                        "state": "active"
+                    },
+                    {
+                        "key": "padrinos",
+                        "section": "organization",
+                        "order": 50,
+                        "state": "active"
+                    },
+                    {
+                        "key": "collaborators",
+                        "section": "organization",
+                        "order": 60,
+                        "state": "active"
+                    },
+                    {
+                        "key": "menus",
+                        "section": "extras",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "seating",
+                        "section": "extras",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "suggested_music",
+                        "section": "extras",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "memories",
+                        "section": "extras",
+                        "order": 40,
+                        "state": "active"
+                    },
+                    {
+                        "key": "comments",
+                        "section": "extras",
+                        "order": 50,
+                        "state": "active"
+                    },
+                    {
+                        "key": "background_music",
+                        "section": "extras",
+                        "order": 60,
+                        "state": "active"
+                    }
+                ],
+                "guestsCount": 9,
+                "guestLimit": 300,
+                "rsvpResponse": 6,
+                "setupProgress": 0.84
+            },
+            {
+                "id": 9202,
+                "eventName": "Contract contract-bare",
+                "eventDescription": "Description contract-bare",
+                "eventType": "quinceanera",
+                "startDate": "06/01/2027 18:00",
+                "endDate": "06/02/2027 01:00",
+                "locale": "es",
+                "currency": "USD",
+                "timezone": "America/New_York",
+                "organizer": {
+                    "id": 9101,
+                    "name": "Contract Owner",
+                    "email": "contract9101@cwm.test",
+                    "created_at": "Jan 2, 2027"
+                },
+                "userRole": "owner",
+                "status": "draft",
+                "invitationStage": "invitation",
+                "customUrlSlug": "contract-bare",
+                "publishedAt": null,
+                "slugLocked": false,
+                "createdAt": "2027-02-01 09:00:00",
+                "updatedAt": "2027-02-01 09:00:00",
+                "selected": false,
+                "modules": [
+                    {
+                        "key": "guests",
+                        "section": "guests",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "rsvp",
+                        "section": "guests",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "save_the_date",
+                        "section": "guests",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "timeline",
+                        "section": "organization",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "locations",
+                        "section": "organization",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "dress_code",
+                        "section": "organization",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "budget",
+                        "section": "organization",
+                        "order": 40,
+                        "state": "active"
+                    },
+                    {
+                        "key": "padrinos",
+                        "section": "organization",
+                        "order": 50,
+                        "state": "active"
+                    },
+                    {
+                        "key": "collaborators",
+                        "section": "organization",
+                        "order": 60,
+                        "state": "locked"
+                    },
+                    {
+                        "key": "menus",
+                        "section": "extras",
+                        "order": 10,
+                        "state": "locked"
+                    },
+                    {
+                        "key": "seating",
+                        "section": "extras",
+                        "order": 20,
+                        "state": "locked"
+                    },
+                    {
+                        "key": "suggested_music",
+                        "section": "extras",
+                        "order": 30,
+                        "state": "locked"
+                    },
+                    {
+                        "key": "memories",
+                        "section": "extras",
+                        "order": 40,
+                        "state": "locked"
+                    },
+                    {
+                        "key": "comments",
+                        "section": "extras",
+                        "order": 50,
+                        "state": "locked"
+                    },
+                    {
+                        "key": "background_music",
+                        "section": "extras",
+                        "order": 60,
+                        "state": "locked"
+                    }
+                ],
+                "guestsCount": 2,
+                "guestLimit": 30,
+                "rsvpResponse": 1,
+                "setupProgress": 0.44
+            },
+            {
+                "id": 9203,
+                "eventName": "Contract contract-shared",
+                "eventDescription": "Description contract-shared",
+                "eventType": "quinceanera",
+                "startDate": "06/01/2027 18:00",
+                "endDate": "06/02/2027 01:00",
+                "locale": "es",
+                "currency": "USD",
+                "timezone": "America/New_York",
+                "organizer": {
+                    "id": 9102,
+                    "name": "Contract Other",
+                    "email": "contract9102@cwm.test",
+                    "created_at": "Jan 2, 2027"
+                },
+                "userRole": "editor",
+                "status": "draft",
+                "invitationStage": "invitation",
+                "customUrlSlug": "contract-shared",
+                "publishedAt": null,
+                "slugLocked": false,
+                "createdAt": "2027-02-01 09:00:00",
+                "updatedAt": "2027-02-01 09:00:00",
+                "selected": false,
+                "modules": [
+                    {
+                        "key": "guests",
+                        "section": "guests",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "rsvp",
+                        "section": "guests",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "save_the_date",
+                        "section": "guests",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "timeline",
+                        "section": "organization",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "locations",
+                        "section": "organization",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "dress_code",
+                        "section": "organization",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "budget",
+                        "section": "organization",
+                        "order": 40,
+                        "state": "active"
+                    },
+                    {
+                        "key": "padrinos",
+                        "section": "organization",
+                        "order": 50,
+                        "state": "active"
+                    },
+                    {
+                        "key": "collaborators",
+                        "section": "organization",
+                        "order": 60,
+                        "state": "active"
+                    },
+                    {
+                        "key": "menus",
+                        "section": "extras",
+                        "order": 10,
+                        "state": "active"
+                    },
+                    {
+                        "key": "seating",
+                        "section": "extras",
+                        "order": 20,
+                        "state": "active"
+                    },
+                    {
+                        "key": "suggested_music",
+                        "section": "extras",
+                        "order": 30,
+                        "state": "active"
+                    },
+                    {
+                        "key": "memories",
+                        "section": "extras",
+                        "order": 40,
+                        "state": "active"
+                    },
+                    {
+                        "key": "comments",
+                        "section": "extras",
+                        "order": 50,
+                        "state": "active"
+                    },
+                    {
+                        "key": "background_music",
+                        "section": "extras",
+                        "order": 60,
+                        "state": "active"
+                    }
+                ],
+                "guestsCount": 1,
+                "guestLimit": 300,
+                "rsvpResponse": 1,
+                "setupProgress": 0.32
+            }
+        ],
+        "last_active_event": {
+            "id": 9201,
+            "eventName": "Contract contract-full",
+            "eventDescription": "Description contract-full",
+            "eventType": "quinceanera",
+            "startDate": "06/01/2027 18:00",
+            "endDate": "06/02/2027 01:00",
+            "locale": "es",
+            "currency": "USD",
+            "timezone": "America/New_York",
+            "organizer": {
+                "id": 9101,
+                "name": "Contract Owner",
+                "email": "contract9101@cwm.test",
+                "created_at": "Jan 2, 2027"
+            },
+            "userRole": "owner",
+            "status": "published",
+            "invitationStage": "invitation",
+            "customUrlSlug": "contract-full",
+            "publishedAt": "2027-02-10T09:00:00+00:00",
+            "slugLocked": true,
+            "createdAt": "2027-02-01 09:00:00",
+            "updatedAt": "2027-02-01 09:00:00",
+            "selected": false,
+            "modules": [
+                {
+                    "key": "guests",
+                    "section": "guests",
+                    "order": 10,
+                    "state": "active"
+                },
+                {
+                    "key": "rsvp",
+                    "section": "guests",
+                    "order": 20,
+                    "state": "active"
+                },
+                {
+                    "key": "save_the_date",
+                    "section": "guests",
+                    "order": 30,
+                    "state": "active"
+                },
+                {
+                    "key": "timeline",
+                    "section": "organization",
+                    "order": 10,
+                    "state": "active"
+                },
+                {
+                    "key": "locations",
+                    "section": "organization",
+                    "order": 20,
+                    "state": "active"
+                },
+                {
+                    "key": "dress_code",
+                    "section": "organization",
+                    "order": 30,
+                    "state": "active"
+                },
+                {
+                    "key": "budget",
+                    "section": "organization",
+                    "order": 40,
+                    "state": "active"
+                },
+                {
+                    "key": "padrinos",
+                    "section": "organization",
+                    "order": 50,
+                    "state": "active"
+                },
+                {
+                    "key": "collaborators",
+                    "section": "organization",
+                    "order": 60,
+                    "state": "active"
+                },
+                {
+                    "key": "menus",
+                    "section": "extras",
+                    "order": 10,
+                    "state": "active"
+                },
+                {
+                    "key": "seating",
+                    "section": "extras",
+                    "order": 20,
+                    "state": "active"
+                },
+                {
+                    "key": "suggested_music",
+                    "section": "extras",
+                    "order": 30,
+                    "state": "active"
+                },
+                {
+                    "key": "memories",
+                    "section": "extras",
+                    "order": 40,
+                    "state": "active"
+                },
+                {
+                    "key": "comments",
+                    "section": "extras",
+                    "order": 50,
+                    "state": "active"
+                },
+                {
+                    "key": "background_music",
+                    "section": "extras",
+                    "order": 60,
+                    "state": "active"
+                }
+            ],
+            "guestsCount": 9,
+            "guestLimit": 300,
+            "rsvpResponse": 6,
+            "setupProgress": 0.84
+        }
+    }
+}

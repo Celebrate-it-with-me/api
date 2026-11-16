@@ -50,19 +50,16 @@ class EventsServices
             throw new Exception('User not authenticated');
         }
 
-        if ($user->last_active_event_id) {
-            $lastActiveEvent = Events::query()
-                ->with(['userRoles.user', 'userRoles.role'])
-                ->where('id', $user->last_active_event_id)
-                ->whereHas('userRoles', fn ($query) => $query->where('user_id', $user->id))
-                ->first();
-        }
-
         $events = Events::query()
-            ->with(['userRoles.user', 'userRoles.role'])
+            ->withResourceData()
             ->whereHas('userRoles', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->get();
+
+        // The active event is one of the user's own events: no need to read and compute it a second time.
+        $lastActiveEvent = $user->last_active_event_id
+            ? $events->firstWhere('id', $user->last_active_event_id)
+            : null;
 
         return [
             $events,
@@ -76,6 +73,7 @@ class EventsServices
     public function getFilteredEvents(string $query): Collection
     {
         return Events::query()
+            ->withResourceData()
             ->whereHas('userRoles', fn ($roles) => $roles->where('user_id', $this->request()->user()->id))
             ->when($query, function ($subQuery) use ($query) {
                 $subQuery->whereNested(function ($subQuery) use ($query) {

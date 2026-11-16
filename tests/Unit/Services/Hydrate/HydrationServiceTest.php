@@ -46,7 +46,7 @@ describe('HydrationService', function () {
 
         $this->eventRepository->shouldReceive('getActiveEventWithRelations')
             ->once()
-            ->with($user)
+            ->with($user, Mockery::any())
             ->andReturn(null);
 
         $service = new HydrationService(
@@ -175,7 +175,7 @@ describe('HydrationService', function () {
 
         $this->eventRepository->shouldReceive('findWithRelations')
             ->once()
-            ->with($eventId, Mockery::type('array'))
+            ->with($eventId, Mockery::type('array'), Mockery::any())
             ->andReturn($event);
 
         $this->authService->shouldReceive('validateAndGetPermissions')

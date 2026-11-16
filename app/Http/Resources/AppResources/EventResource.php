@@ -50,14 +50,12 @@ class EventResource extends JsonResource
 
     private function getEventGuestsCount(): int
     {
-        return $this->guests()->count();
+        return $this->resource->guestsTotal();
     }
 
     private function rsvpResponse()
     {
-        return $this->guests()
-            ->where('rsvp_status', '!=', 'pending')
-            ->count();
+        return $this->resource->guestsResponded();
     }
 
     private function getUserRole($user): ?string

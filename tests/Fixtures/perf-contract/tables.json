@@ -1,0 +1,104 @@
+{
+    "success": true,
+    "data": [
+        {
+            "id": 9601,
+            "event_id": 9201,
+            "name": "Mesa A",
+            "capacity": 2,
+            "type": "family",
+            "priority": 5,
+            "reserved_for": null,
+            "location": null,
+            "available_seats": 0,
+            "occupancy_percentage": 100,
+            "is_full": true,
+            "assigned_guests": [
+                {
+                    "id": 9301,
+                    "eventId": 9201,
+                    "parentId": null,
+                    "name": "Guest 0",
+                    "email": "g9301@example.com",
+                    "phone": null,
+                    "gender": "other",
+                    "rsvpStatus": "attending",
+                    "notes": null
+                },
+                {
+                    "id": 9302,
+                    "eventId": 9201,
+                    "parentId": null,
+                    "name": "Guest 1",
+                    "email": "g9302@example.com",
+                    "phone": null,
+                    "gender": "other",
+                    "rsvpStatus": "not-attending",
+                    "notes": null
+                }
+            ],
+            "created_at": "2027-03-01T12:00:00.000000Z",
+            "updated_at": "2027-03-01T12:00:00.000000Z"
+        },
+        {
+            "id": 9603,
+            "event_id": 9201,
+            "name": "Mesa C",
+            "capacity": 0,
+            "type": "family",
+            "priority": 3,
+            "reserved_for": null,
+            "location": null,
+            "available_seats": 0,
+            "occupancy_percentage": 0,
+            "is_full": true,
+            "assigned_guests": [],
+            "created_at": "2027-03-01T12:00:00.000000Z",
+            "updated_at": "2027-03-01T12:00:00.000000Z"
+        },
+        {
+            "id": 9602,
+            "event_id": 9201,
+            "name": "Mesa B",
+            "capacity": 6,
+            "type": "family",
+            "priority": 1,
+            "reserved_for": null,
+            "location": null,
+            "available_seats": 4,
+            "occupancy_percentage": 33.33,
+            "is_full": false,
+            "assigned_guests": [
+                {
+                    "id": 9303,
+                    "eventId": 9201,
+                    "parentId": null,
+                    "name": "Guest 2",
+                    "email": "g9303@example.com",
+                    "phone": null,
+                    "gender": "other",
+                    "rsvpStatus": "pending",
+                    "notes": null
+                },
+                {
+                    "id": 9304,
+                    "eventId": 9201,
+                    "parentId": null,
+                    "name": "Guest 3",
+                    "email": "g9304@example.com",
+                    "phone": null,
+                    "gender": "other",
+                    "rsvpStatus": "attending",
+                    "notes": null
+                }
+            ],
+            "created_at": "2027-03-01T12:00:00.000000Z",
+            "updated_at": "2027-03-01T12:00:00.000000Z"
+        }
+    ],
+    "meta": {
+        "total_tables": 3,
+        "total_capacity": 8,
+        "total_assigned": 4
+    }
+}

@@ -14,7 +14,8 @@ class TableServices
     {
         $tables = Table::forEvent($event->id)
             ->byPriority()
-            ->with(['assignedGuests'])
+            // The list shows seats and names only: the relation's own eager load of each guest's assignment is not needed.
+            ->with(['assignedGuests' => fn ($guests) => $guests->withoutEagerLoads()])
             ->withAssignedCount()
             ->get();
 
