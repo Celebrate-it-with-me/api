@@ -3,6 +3,8 @@
 namespace App\Http\Services\Payments;
 
 use App\Http\Services\Invoices\InvoiceService;
+use App\Jobs\DeliverCreditNoteEmail;
+use App\Jobs\DeliverInvoiceEmail;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
@@ -232,7 +234,7 @@ class PurchaseService
             $invoices = app(InvoiceService::class);
             [$invoice, $created] = $invoices->issueForPurchase($purchase);
             if ($created) {
-                $invoices->deliver($invoice);
+                DeliverInvoiceEmail::dispatch($invoice->id);
             }
         } catch (\Throwable $e) {
             Log::error('Invoice issuing or delivery failed', ['purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
@@ -304,7 +306,7 @@ class PurchaseService
 
         // After the commit, so a mail failure can never undo the refund (the service swallows and logs it).
         if ($note) {
-            app(InvoiceService::class)->deliverCreditNote($note);
+            DeliverCreditNoteEmail::dispatch($note->id);
         }
 
         return $refunded;

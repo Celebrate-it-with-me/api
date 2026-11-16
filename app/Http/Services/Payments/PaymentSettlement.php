@@ -3,6 +3,7 @@
 namespace App\Http\Services\Payments;
 
 use App\Http\Services\Invoices\InvoiceService;
+use App\Jobs\DeliverCreditNoteEmail;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\PaymentEvent;
@@ -228,7 +229,7 @@ class PaymentSettlement
 
         $note = app(InvoiceService::class)->creditForRefund($purchase, $reason);
         if ($note) {
-            $after[] = fn () => app(InvoiceService::class)->deliverCreditNote($note);
+            $after[] = fn () => DeliverCreditNoteEmail::dispatch($note->id);
         }
 
         if ($purchase->event->status === 'published') {
