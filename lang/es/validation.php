@@ -419,6 +419,8 @@ return [
         'sort_order' => 'orden',
         'source' => 'origen',
         'stage' => 'etapa',
+        'expected_version_id' => 'versión esperada de la plantilla',
+        'editable' => 'campos editables',
         'startDate' => 'fecha de inicio',
         'startTime' => 'hora de inicio',
         'start_date' => 'fecha',

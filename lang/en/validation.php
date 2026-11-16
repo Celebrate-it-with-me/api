@@ -453,6 +453,8 @@ return [
         'sort_order' => 'order',
         'source' => 'source',
         'stage' => 'stage',
+        'expected_version_id' => 'expected template version',
+        'editable' => 'editable fields',
         'startDate' => 'start date',
         'startTime' => 'start time',
         'start_date' => 'date',
