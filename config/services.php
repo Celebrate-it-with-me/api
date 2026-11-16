@@ -64,6 +64,15 @@ return [
         'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET'),
     ],
 
+    // Stripe Checkout (docs/plans/stripe-checkout-contract-draft.md). Keys only from the environment, never in the repo.
+    // Use a restricted key (rk_) in production. `api_version` is pinned so a dashboard upgrade changes nothing by itself.
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'api_version' => env('STRIPE_API_VERSION', '2026-10-28.endive'),
+        'automatic_tax' => (bool) env('STRIPE_AUTOMATIC_TAX', false),
+    ],
+
     // WhatsApp (Meta Cloud API): `fake` until the Meta account exists (docs/plans/communications.md).
     'whatsapp' => [
         'driver' => env('WHATSAPP_DRIVER', 'fake'),

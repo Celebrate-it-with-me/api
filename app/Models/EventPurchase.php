@@ -11,10 +11,14 @@ class EventPurchase extends Model
     protected $fillable = [
         'event_id', 'user_id', 'event_plan_id', 'coupon_id', 'gateway', 'gateway_session_id', 'gateway_payment_id',
         'list_price_cents', 'amount_cents', 'currency', 'status', 'is_founder', 'receipt_url', 'paid_at',
-        'refunded_at', 'notes', 'created_by',
+        'refunded_at', 'notes', 'created_by', 'gateway_refund_id', 'refund_reason', 'failure_code', 'session_expires_at',
+        'tax_cents', 'dispute_id', 'dispute_status', 'disputed_at', 'needs_review',
     ];
 
-    protected $casts = ['is_founder' => 'boolean', 'paid_at' => 'datetime', 'refunded_at' => 'datetime'];
+    protected $casts = [
+        'is_founder' => 'boolean', 'needs_review' => 'boolean', 'paid_at' => 'datetime', 'refunded_at' => 'datetime',
+        'session_expires_at' => 'datetime', 'disputed_at' => 'datetime',
+    ];
 
     public function event(): BelongsTo
     {

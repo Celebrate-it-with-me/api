@@ -8,6 +8,9 @@ use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\User;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -31,9 +34,12 @@ class PurchaseService
             throw new \RuntimeException('The fake payment gateway cannot be used in production.');
         }
 
+        // An unknown name is a configuration error: it must never fall back to the stand-in in silence.
         return match ($name) {
+            'fake' => new FakeGateway,
             'manual' => new ManualGateway,
-            default => new FakeGateway,
+            'stripe' => StripeGateway::fromConfig(),
+            default => throw new \RuntimeException('Unknown payment gateway "' . (string) $name . '".'),
         };
     }
 
@@ -98,8 +104,14 @@ class PurchaseService
         }
     }
 
-    /** Create the pending purchase and start the payment. */
-    public function checkout(Events $event, User $user, ?string $code, string $successUrl, string $cancelUrl): array
+    /**
+     * Create the pending purchase and start the payment. With a session-based gateway there is one open session per
+     * event: a second call for the same price returns it, a different price or code expires it and starts over.
+     *
+     * @param  array{locale?: string}  $context
+     * @return array{purchase: EventPurchase, url: string|null}
+     */
+    public function checkout(Events $event, User $user, ?string $code, string $successUrl, string $cancelUrl, array $context = []): array
     {
         if ($this->isUnlocked($event)) {
             throw ValidationException::withMessages(['event' => ['already_unlocked']]);
@@ -110,30 +122,95 @@ class PurchaseService
         $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
         $gateway = $this->gateway();
 
-        // The coupon's cap is checked and the use reserved under a lock, so N simultaneous checkouts of a 1-use code
-        // cannot all get through (a use is only counted as consumed when the payment confirms).
-        $purchase = DB::transaction(function () use ($event, $user, $plan, $coupon, $gateway, $amount) {
-            if ($coupon) {
-                $this->reserveCoupon($coupon);
-            }
-
-            return EventPurchase::create([
-                'event_id' => $event->id, 'user_id' => $user->id, 'event_plan_id' => $plan->id, 'coupon_id' => $coupon?->id,
-                'gateway' => $gateway->name(), 'list_price_cents' => $plan->price_cents, 'amount_cents' => $amount,
-                'currency' => $plan->currency, 'status' => 'pending', 'is_founder' => (bool) $coupon?->is_founder,
-            ]);
-        });
-
-        $session = $gateway->createSession($purchase, $successUrl, $cancelUrl);
-        $purchase->update(['gateway_session_id' => $session['id']]);
-
-        // Nothing to charge (a free code), or the stand-in gateway on a developer machine: no one is going to pay
-        // anywhere, so confirm now. In production the webhook is the only thing that activates the plan.
-        if ($amount === 0 || ($gateway instanceof FakeGateway && app()->environment('local'))) {
-            $purchase = $this->markPaid($purchase);
+        // Two simultaneous clicks (or two tabs) must not each open a session.
+        $lock = $gateway->name() === 'stripe' ? Cache::lock("checkout-event-{$event->id}", 30) : null;
+        try {
+            $lock?->block(10);
+        } catch (LockTimeoutException) {
+            throw new HttpResponseException(response()->json(['message' => 'A checkout is already being created.', 'code' => 'checkout_in_progress'], 409));
         }
 
-        return ['purchase' => $purchase, 'url' => $session['url']];
+        try {
+            if ($amount > 0 && $gateway->name() === 'stripe' && ($reused = $this->reuseOpenSession($event, $gateway, $coupon, $amount))) {
+                return $reused;
+            }
+
+            // The coupon's cap is checked and the use reserved under a lock, so N simultaneous checkouts of a 1-use code
+            // cannot all get through (a use is only counted as consumed when the payment confirms).
+            $purchase = DB::transaction(function () use ($event, $user, $plan, $coupon, $gateway, $amount) {
+                if ($coupon) {
+                    $this->reserveCoupon($coupon);
+                }
+
+                return EventPurchase::create([
+                    'event_id' => $event->id, 'user_id' => $user->id, 'event_plan_id' => $plan->id, 'coupon_id' => $coupon?->id,
+                    'gateway' => $gateway->name(), 'list_price_cents' => $plan->price_cents, 'amount_cents' => $amount,
+                    'currency' => $plan->currency, 'status' => 'pending', 'is_founder' => (bool) $coupon?->is_founder,
+                ]);
+            });
+
+            // Nothing to charge: the provider is not involved (it would refuse a zero amount).
+            if ($amount === 0) {
+                $purchase = $this->markPaid($purchase);
+
+                return ['purchase' => $purchase, 'url' => $successUrl];
+            }
+
+            try {
+                $session = $gateway->createSession($purchase, $successUrl, $cancelUrl, $context + ['coupon' => $coupon?->code]);
+            } catch (PaymentGatewayException $e) {
+                // The attempt is over and holds nothing (a failed purchase releases its coupon use).
+                $purchase->update(['status' => 'failed', 'failure_code' => 'gateway_error']);
+                Log::error('Payment session could not be created', ['purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
+                throw $e;
+            }
+
+            $purchase->update(['gateway_session_id' => $session['id'], 'session_expires_at' => $session['expiresAt'] ?? null]);
+
+            // The stand-in gateway on a developer machine: no one is going to pay anywhere, so confirm now.
+            // In production the webhook is the only thing that activates the plan.
+            if ($gateway instanceof FakeGateway && app()->environment('local')) {
+                $purchase = $this->markPaid($purchase);
+            }
+
+            return ['purchase' => $purchase, 'url' => $session['url']];
+        } finally {
+            $lock?->release();
+        }
+    }
+
+    /** The pending session of this event if it is still usable for the same price; any other is closed and marked failed. */
+    private function reuseOpenSession(Events $event, PaymentGateway $gateway, ?Coupon $coupon, int $amount): ?array
+    {
+        $pending = EventPurchase::query()->where('event_id', $event->id)->where('gateway', 'stripe')->where('status', 'pending')
+            ->whereNotNull('gateway_session_id')->orderByDesc('id')->get();
+
+        foreach ($pending as $candidate) {
+            $reusable = (int) $candidate->amount_cents === $amount && $candidate->coupon_id === $coupon?->id
+                && (! $candidate->session_expires_at || $candidate->session_expires_at->isFuture());
+
+            try {
+                if ($reusable) {
+                    $session = $gateway->retrieveSession($candidate->gateway_session_id);
+                    if ($session['state'] === 'open' && $session['url']) {
+                        return ['purchase' => $candidate, 'url' => $session['url']];
+                    }
+                    // Paid or closed meanwhile: the webhook / reconciliation settles it; start a new attempt only if it is dead.
+                    if ($session['state'] === 'complete') {
+                        throw new HttpResponseException(response()->json(['message' => 'A payment is being confirmed.', 'code' => 'payment_in_progress'], 409));
+                    }
+                } else {
+                    $gateway->expireSession($candidate->gateway_session_id);
+                }
+            } catch (PaymentGatewayException $e) {
+                Log::warning('Could not close or read a previous session', ['purchase_id' => $candidate->id, 'error' => $e->getMessage()]);
+            }
+
+            EventPurchase::query()->whereKey($candidate->id)->where('status', 'pending')
+                ->update(['status' => 'failed', 'failure_code' => $reusable ? 'expired' : 'superseded']);
+        }
+
+        return null;
     }
 
     /** Payment confirmed: activate the full plan. Idempotent. */
@@ -149,7 +226,7 @@ class PurchaseService
      * Every confirmed payment gets its invoice (docs/plans/invoices.md), by mail the first time. Issuing is idempotent,
      * and a failure here never undoes a payment that already happened: it is logged and `invoices:backfill` retries.
      */
-    private function invoice(EventPurchase $purchase): void
+    public function invoice(EventPurchase $purchase): void
     {
         try {
             $invoices = app(InvoiceService::class);
@@ -163,7 +240,7 @@ class PurchaseService
         }
     }
 
-    private function activate(EventPurchase $purchase, ?string $paymentId): EventPurchase
+    public function activate(EventPurchase $purchase, ?string $paymentId): EventPurchase
     {
         return DB::transaction(function () use ($purchase, $paymentId) {
             $purchase = EventPurchase::query()->lockForUpdate()->findOrFail($purchase->id);
@@ -172,7 +249,10 @@ class PurchaseService
                 return $purchase;
             }
 
-            $purchase->update(['status' => 'paid', 'paid_at' => now(), 'gateway_payment_id' => $paymentId ?? $purchase->gateway_payment_id]);
+            $purchase->update([
+                'status' => 'paid', 'paid_at' => now(), 'failure_code' => null,
+                'gateway_payment_id' => $paymentId ?? $purchase->gateway_payment_id,
+            ]);
             $purchase->event()->update(['event_plan_id' => $purchase->event_plan_id]);
 
             if ($purchase->coupon_id) {
@@ -212,8 +292,9 @@ class PurchaseService
                 throw ValidationException::withMessages(['purchase' => ['event_published']]);
             }
 
-            $this->gateway($purchase->gateway)->refund($purchase);
-            $purchase->update(['status' => 'refunded', 'refunded_at' => now()]);
+            $purchase->refund_reason = mb_substr((string) $reason, 0, 500) ?: null;
+            $refundId = $this->gateway($purchase->gateway)->refund($purchase);
+            $purchase->update(['status' => 'refunded', 'refunded_at' => now(), 'gateway_refund_id' => $refundId]);
             $note = app(InvoiceService::class)->creditForRefund($purchase, $reason ?: 'Refund');
             $free = EventPlan::query()->where('slug', self::FREE_SLUG)->value('id');
             $purchase->event()->update(['event_plan_id' => $free]);
