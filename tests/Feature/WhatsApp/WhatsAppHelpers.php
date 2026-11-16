@@ -14,6 +14,8 @@ use Spatie\Permission\Models\Role;
 function waEvent(string $plan = 'premium', bool $moduleOn = true): array
 {
     Module::where('key', 'whatsapp')->update(['is_enabled' => $moduleOn]);
+    // A query-builder update skips the model events: tell the module cache (see EventModules).
+    app(App\Http\Services\AppServices\EventModules::class)->invalidate();
     FakeGateway::reset();
     config(['services.whatsapp.driver' => 'fake']);
 
