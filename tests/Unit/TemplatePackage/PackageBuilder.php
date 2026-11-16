@@ -88,7 +88,7 @@ class PackageBuilder
         }
         $css = '';
         for ($i = 0; $i < 1200; $i++) {
-            $css .= ".pkg-b{$i} .pkg-c{$i}:hover{color:#" . dechex(mt_rand(0x100000, 0xFFFFFF)) . ";margin:{$i}px auto;transition:opacity .3s ease-out}\n";
+            $css .= ".pkg-b{$i} .pkg-c{$i}:empty{color:#" . dechex(mt_rand(0x100000, 0xFFFFFF)) . ";margin:{$i}px auto;transition:opacity .3s ease-out}\n";
         }
         $b->files['theme.css'] = $css;
         for ($i = 0; $i < 12; $i++) {

@@ -137,6 +137,34 @@ class CssSanitizer
         'inset-inline', 'inset-block', 'text-indent',
     ];
 
+    /**
+     * Wave 7, rule 4 (N-4): the only declarations a rule may carry when any of its compounds uses a pointer or focus
+     * state (`:hover`, `:focus`, `:focus-visible`, `:focus-within`, `:active`). A state may repaint, never show, move or resize.
+     */
+    private const STATE_SAFE = [
+        'color', 'background-color', 'border-color', 'outline-color', 'text-decoration-color', 'box-shadow', 'fill', 'stroke',
+    ];
+
+    /**
+     * Wave 7, rule 1 (N-1, N-2, N-3): what the container of a system block (a hook `.inv-q--*` / `[data-inv-*]` / `[data-q]`,
+     * or a package element that wraps a `<q-*>`) can never carry: anything that creates a stacking context, clips, masks,
+     * overlaps in a grid, floats or takes the element out of the flow. `opacity` and `position` are judged by value.
+     */
+    private const CONTAINER_FORBIDDEN = [
+        'z-index', 'isolation', 'overflow', 'overflow-x', 'overflow-y', 'clip-path', 'mask', 'mask-image', 'mask-size',
+        'mask-position', 'mask-repeat', 'mask-mode', 'mask-composite', 'mask-origin', 'mask-clip', 'contain', 'filter',
+        'backdrop-filter', 'mix-blend-mode', 'grid-area', 'grid-row', 'grid-column', 'grid-row-start', 'grid-row-end',
+        'grid-column-start', 'grid-column-end', 'order', 'float', 'container-type', 'container-name',
+    ];
+
+    /** A generic selector (`div`, `*`, `[role]`...) can match a container too: the stacking properties are refused there. */
+    private const BARE_FORBIDDEN = ['z-index', 'isolation'];
+
+    /** Fixed sizes of a container below 48 px (wave 7, rule 2) are refused: width/height and their max-* spellings. */
+    private const BOX_SIZE = [
+        'width', 'height', 'max-width', 'max-height', 'inline-size', 'block-size', 'max-inline-size', 'max-block-size',
+    ];
+
     private const KEYFRAME_SAFE = [
         'color', 'background-color', 'background-position', 'border-color', 'border-top-color', 'border-right-color',
         'border-bottom-color', 'border-left-color', 'outline-color', 'box-shadow', 'text-shadow', 'text-decoration-color',
@@ -199,12 +227,33 @@ class CssSanitizer
 
     private int $errorsBefore = 0;
 
+    /** True while the rule being checked uses a pointer / focus pseudo-class in some compound (wave 7, rule 4). */
+    private bool $stateRule = false;
+
+    /** @var list<array{classes: list<string>, prop: string, value: string}> declared color / background / opacity per class-only subject */
+    private array $styles = [];
+
+    private bool $infiniteSeen = false;
+
+    private ?int $shortDurationLine = null;
+
     private SelectorScoper $scoper;
 
     /** @var list<string> */
     private array $warnedKeys = [];
 
     public function __construct(private readonly Limits $limits = new Limits) {}
+
+    /**
+     * What the last stylesheet declared for text color, background and opacity on class-only subjects, and its custom
+     * properties: the input of DeclaredStyleCheck (wave 7, rule 7), which crosses it with the HTML tree.
+     *
+     * @return array{styles: list<array{classes: list<string>, prop: string, value: string}>, customProps: array<string, list<string>>}
+     */
+    public function declaredStyles(): array
+    {
+        return ['styles' => $this->styles, 'customProps' => $this->customProps];
+    }
 
     /** @return list<string> asset paths referenced by the last sanitized stylesheet */
     public function usedAssets(): array
@@ -229,6 +278,10 @@ class CssSanitizer
         $this->rules = 0;
         $this->blendRules = 0;
         $this->warnedKeys = [];
+        $this->styles = [];
+        $this->infiniteSeen = false;
+        $this->shortDurationLine = null;
+        $this->stateRule = false;
         $this->errorsBefore = $report->errorCount();
         $this->scoper = new SelectorScoper($slug, $classKinds);
 
@@ -259,6 +312,9 @@ class CssSanitizer
         $this->collectKeyframes($document);
         $this->walk($document, 0);
         $this->restrictedKeyframeCheck();
+        if ($this->infiniteSeen && $this->shortDurationLine !== null) {
+            $this->report->error($this->file, 'animation_too_fast', 'Hay animaciones infinitas y una animation-duration inferior a 1 s en otra regla: la duración podría aplicarse a la animación infinita.', $this->shortDurationLine);
+        }
 
         if ($this->rules > 1500) {
             $report->error($file, 'css_size', 'Más de 1500 reglas.', null, (string) $this->rules);
@@ -536,6 +592,7 @@ class CssSanitizer
         $frames->setAnimationName($this->keyframes[$name]);
         $this->pendingKeyframes[$name] = ['frames' => $frames, 'line' => $line];
         $this->ruleKinds = ['free'];
+        $this->stateRule = false;
 
         foreach ($frames->getContents() as $step) {
             if (! $step instanceof DeclarationBlock) {
@@ -571,6 +628,8 @@ class CssSanitizer
         $this->rules++;
         $kinds = [];
         $this->pseudoRule = $block->getSelectors() !== [];
+        $this->stateRule = false;
+        $subjects = [];
         foreach ($block->getSelectors() as $selector) {
             $scoped = $this->scoper->scope($selector->getSelector());
             if (isset($scoped['error'])) {
@@ -580,7 +639,15 @@ class CssSanitizer
             }
             $selector->setSelector($scoped['css']);
             $this->pseudoRule = $this->pseudoRule && $scoped['pseudo'];
+            $this->stateRule = $this->stateRule || $scoped['state'];
             $kinds = array_merge($kinds, $scoped['kinds']);
+            if (! $scoped['pseudo'] && ! $scoped['state']) {
+                if ($scoped['subject'] !== null) {
+                    $subjects[] = $scoped['subject'];
+                } elseif ($scoped['subjectRoot'] && in_array('root', $scoped['kinds'], true)) {
+                    $subjects[] = ['inv-root'];
+                }
+            }
         }
         $kinds = array_values(array_unique($kinds));
 
@@ -600,7 +667,13 @@ class CssSanitizer
             if (in_array($name, ['color', 'background-color'], true)) {
                 $colors[$name] = $this->valueText($declaration);
             }
+            if (in_array($name, ['color', 'background-color', 'background', 'opacity'], true)) {
+                foreach ($subjects as $classes) {
+                    $this->styles[] = ['classes' => $classes, 'prop' => $name === 'background-color' ? 'background' : $name, 'value' => $this->valueText($declaration)];
+                }
+            }
         }
+        $this->animationCheck($block, $kinds, $line);
         if (isset($colors['color'], $colors['background-color']) && $colors['color'] === $colors['background-color'] && $this->restricted($kinds) !== []) {
             $this->report->error($this->file, 'css_forbidden_property', 'El color del texto no puede ser igual al del fondo en un bloque del sistema o lo que lo contiene.', $line, $colors['color']);
         }
@@ -631,6 +704,143 @@ class CssSanitizer
         }
     }
 
+    /**
+     * Wave 7, rules 1 and 2. A container of a system block (hook, or package element that wraps a `<q-*>`) cannot create a
+     * stacking context, clip, mask, overlap, float or leave the flow, and cannot be fixed below 48 px. A generic selector
+     * (`div`) can match a container too, so it may not set `z-index` / `isolation`. Returns true when it reported.
+     *
+     * @param  list<string>  $kinds
+     */
+    private function containerCheck(Declaration $d, string $base, array $kinds, ?int $line): bool
+    {
+        if (str_starts_with($base, '--')) {
+            return false;
+        }
+        $container = array_intersect($kinds, ['system', 'wrapper']) !== [];
+        $bare = in_array('bare', $kinds, true);
+        if (! $container && ! $bare) {
+            return false;
+        }
+        $text = $this->valueText($d);
+        $deny = function (string $why, string $code = 'block_container_property') use ($line, $base, $text): bool {
+            $this->report->error($this->file, $code, $why, $line, "{$base}: {$text}");
+
+            return true;
+        };
+
+        if ($bare && ! $container) {
+            return in_array($base, self::BARE_FORBIDDEN, true)
+                ? $deny('Un selector genérico (etiqueta o *) puede alcanzar al contenedor de un bloque del sistema: no puede llevar z-index ni isolation. Usa una clase pkg-* en un elemento que no contenga bloques.')
+                : false;
+        }
+
+        if (in_array($base, self::CONTAINER_FORBIDDEN, true)) {
+            return $deny('El contenedor de un bloque del sistema (el propio bloque, .inv-q--*, [data-inv-section] o un elemento pkg-* que lo contiene) no puede crear contextos de apilamiento ni recortar, enmascarar, solapar o flotar. Pon esta propiedad en un elemento interior que no contenga bloques.');
+        }
+        if ($base === 'opacity' && ! in_array($text, ['1', '1.0', '100%'], true)) {
+            return $deny('El contenedor de un bloque del sistema solo admite opacity: 1; pon la opacidad en un elemento interior que no contenga bloques.');
+        }
+        if ($base === 'position' && ! in_array($text, ['static', 'relative'], true)) {
+            return $deny('El contenedor de un bloque del sistema solo admite position: static o relative (sin desplazamientos).');
+        }
+        if (in_array($base, self::BOX_SIZE, true) && $this->boxTooSmall($d->getValue(), $base)) {
+            return $deny('Un contenedor de bloque del sistema no puede medir menos de 48 px de ancho ni de alto (width, height y max-*); deja que crezca con su contenido.', 'block_container_too_small');
+        }
+
+        return false;
+    }
+
+    /** True when a literal size (or `min()` / `max()` / `clamp()` of literals) is under 48 px (or its relative equivalent). */
+    private function boxTooSmall(mixed $value, string $prop): bool
+    {
+        if ($value instanceof Size) {
+            return $this->tiny($value, $prop, true);
+        }
+        if ($value instanceof CSSFunction) {
+            $name = strtolower($value->getName());
+            $args = array_values(array_filter($value->getListComponents(), fn ($c) => $c !== ','));
+            foreach ($args as $a) {
+                if (! $a instanceof Size) {
+                    return false; // var(), calc()...: judged by restrictedCheck
+                }
+            }
+            $small = array_map(fn (Size $a) => $this->tiny($a, $prop, true), $args);
+
+            return match ($name) {
+                'min' => in_array(true, $small, true),
+                'max' => ! in_array(false, $small, true) && $small !== [],
+                'clamp' => count($small) === 3 && $small[0] && ($small[1] || $small[2]),
+                default => false,
+            };
+        }
+
+        return false;
+    }
+
+    /**
+     * Wave 7, rule 6 (N-6): an `infinite` animation lasts at least 1 s per iteration, states its duration in the same
+     * rule, and never runs on a container of a block, the page root, a generic selector or a full-screen element.
+     *
+     * @param  list<string>  $kinds
+     */
+    private function animationCheck(DeclarationBlock $block, array $kinds, ?int $line): void
+    {
+        $infinite = false;
+        $durations = [];
+        $hasDuration = false;
+        $fullscreen = false;
+        $longhand = [];
+        foreach ($block->getDeclarations() as $d) {
+            $name = preg_replace('/^-(webkit|moz)-/', '', strtolower($d->getPropertyName()));
+            $text = $this->valueText($d);
+            if ($name === 'animation') {
+                foreach (preg_split('/,(?![^()]*\))/', $text) ?: [] as $part) {
+                    if (preg_match('/\binfinite\b/', $part)) {
+                        $infinite = true;
+                    }
+                    if (preg_match('/(?<![\w.-])(\d*\.?\d+)(ms|s)\b/', $part, $m)) {
+                        $durations[] = (float) $m[1] * ($m[2] === 's' ? 1000 : 1);
+                        $hasDuration = true;
+                    }
+                }
+            } elseif ($name === 'animation-iteration-count' && preg_match('/\binfinite\b/', $text)) {
+                $infinite = true;
+            } elseif ($name === 'animation-duration') {
+                foreach (preg_split('/\s*,\s*/', $text) ?: [] as $part) {
+                    if (preg_match('/^(\d*\.?\d+)(ms|s)$/', $part, $m)) {
+                        $ms = (float) $m[1] * ($m[2] === 's' ? 1000 : 1);
+                        $durations[] = $ms;
+                        $longhand[] = $ms;
+                        $hasDuration = true;
+                    }
+                }
+            } elseif (in_array($name, ['width', 'height', 'min-width', 'min-height', 'inline-size', 'block-size'], true)
+                && preg_match('/^(\d*\.?\d+)(vw|vh|svh|dvh|lvh|svw|dvw|lvw|vmin|vmax)$/', $text, $m) && (float) $m[1] >= 90) {
+                $fullscreen = true;
+            }
+        }
+        if ($infinite) {
+            $this->infiniteSeen = true;
+        }
+        foreach ($longhand as $ms) {
+            if ($ms < 1000 && $this->shortDurationLine === null) {
+                $this->shortDurationLine = $line ?? 0;
+            }
+        }
+        if (! $infinite) {
+            return;
+        }
+        $reach = $this->pseudoRule ? array_intersect($kinds, ['system']) : array_intersect($kinds, ['system', 'wrapper', 'root', 'bare', 'photo']);
+        if ($reach !== [] || $fullscreen) {
+            $this->report->error($this->file, 'animation_too_fast', 'Una animación infinita no puede aplicarse a un bloque del sistema, a lo que lo contiene, a la raíz, a un selector genérico ni a un elemento a pantalla completa; úsala en ::before/::after o en un elemento decorativo pkg-* pequeño.', $line);
+
+            return;
+        }
+        if (! $hasDuration || min($durations) < 1000) {
+            $this->report->error($this->file, 'animation_too_fast', 'Una animación infinita dura al menos 1 s por iteración y declara su duración en la misma regla.', $line, $hasDuration ? (string) min($durations) . 'ms' : null);
+        }
+    }
+
     /** @param list<string> $kinds @return list<string> the subjects that can reach a system block or the root */
     private function restricted(array $kinds): array
     {
@@ -654,6 +864,12 @@ class CssSanitizer
             $this->report->error($this->file, 'css_important', '!important está prohibido.', $line, $name);
         }
 
+        if ($this->stateRule && ! in_array(preg_replace('/^-(webkit|moz)-/', '', $name), self::STATE_SAFE, true) && ! $this->colorOnlyBackground($name, $d)) {
+            $this->report->error($this->file, 'state_selector_property', 'Una regla con :hover, :focus, :focus-visible, :focus-within o :active solo puede cambiar colores y sombras (color, background-color, border-color, outline-color, text-decoration-color, box-shadow, fill, stroke).', $line, $name);
+
+            return;
+        }
+
         if (str_starts_with($name, '--')) {
             if (str_starts_with($name, '--inv-')) {
                 $this->report->error($this->file, 'css_inv_var', 'Las variables --inv-* son del motor; usa --pkg-*.', $line, $name);
@@ -666,6 +882,9 @@ class CssSanitizer
         }
 
         $base = (string) preg_replace('/^-(webkit|moz)-/', '', $name);
+        if ($this->containerCheck($d, $base, $kinds, $line)) {
+            return;
+        }
         if (! in_array($base, self::PROPERTIES, true) || (str_starts_with($name, '-') && ! preg_match('/^-(webkit|moz)-/', $name))) {
             $this->report->error($this->file, 'css_forbidden_property', 'Propiedad fuera de la lista blanca.', $line, $name);
 
@@ -702,6 +921,17 @@ class CssSanitizer
         }
         $this->value($d->getValue(), $base, $line);
         $this->specialCases($d, $base, $kinds, $line);
+    }
+
+    /** `background: <one color>` is `background-color` spelled short: allowed in state rules (no image, gradient or position). */
+    private function colorOnlyBackground(string $name, Declaration $d): bool
+    {
+        if ($name !== 'background') {
+            return false;
+        }
+        $text = $this->valueText($d);
+
+        return ! preg_match('/url\(|gradient|\s(?![^(]*\))/', $text);
     }
 
     private function noteKeyframeUse(string $name): void
@@ -965,9 +1195,21 @@ class CssSanitizer
         return true;
     }
 
-    private function tiny(Size $s, string $prop): bool
+    private function tiny(Size $s, string $prop, bool $box = false): bool
     {
         $v = abs($s->getSize());
+        if ($box) {
+            // Wave 7, rule 2: 48 px is the floor of a container (3 em/rem at 16 px; 12 vw of a 390 px phone; 6 vh of a 844 px one).
+            return match (strtolower((string) $s->getUnit())) {
+                '' => $v < 0.0001,
+                'px' => $v < 48,
+                'em', 'rem', 'ex', 'ch' => $v < 3,
+                '%' => $v < 5,
+                'vw', 'vmin', 'vmax', 'svw', 'dvw', 'lvw' => $v < 12,
+                'vh', 'svh', 'dvh', 'lvh' => $v < 6,
+                default => false,
+            };
+        }
         $text = $prop === 'font-size';
         $line = $prop === 'line-height';
 
@@ -1003,8 +1245,8 @@ class CssSanitizer
                 }
                 break;
             case 'z-index':
-                if (! preg_match('/^-?\d{1,2}$/', $text) || abs((int) $text) > 10) {
-                    $this->report->error($this->file, 'css_forbidden_property', 'z-index debe estar entre -10 y 10.', $line, $text);
+                if (! preg_match('/^-?\d{1,2}$/', $text) || (int) $text < -1 || (int) $text > 10) {
+                    $this->report->error($this->file, 'css_forbidden_property', 'z-index debe estar entre -1 y 10.', $line, $text);
                 }
                 break;
             case 'content':
@@ -1020,6 +1262,8 @@ class CssSanitizer
             case 'pointer-events':
                 if ($restricted) {
                     $this->report->error($this->file, 'css_forbidden_property', 'pointer-events no se puede tocar en bloques del sistema.', $line, $text);
+                } elseif ($text !== 'none') {
+                    $this->report->error($this->file, 'css_forbidden_property', 'pointer-events solo admite none, y solo en elementos decorativos que no contengan un bloque del sistema.', $line, $text);
                 }
                 break;
             case 'background':
