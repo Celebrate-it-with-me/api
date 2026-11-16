@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Payments;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\Admin\AdminAudit;
+use App\Http\Services\Payments\PaymentSettlement;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
 use App\Models\EventPurchase;
@@ -16,7 +17,7 @@ use Illuminate\Validation\Rule;
 /** Permissions are on the routes (`admin.can:`); every write here is in the audit log with its reason. */
 class AdminPaymentController extends Controller
 {
-    public function __construct(private readonly PurchaseService $purchases, private readonly AdminAudit $audit) {}
+    public function __construct(private readonly PurchaseService $purchases, private readonly AdminAudit $audit, private readonly PaymentSettlement $settlement) {}
 
     public function index(): JsonResponse
     {
@@ -53,10 +54,49 @@ class AdminPaymentController extends Controller
         $this->audit->record('payment.refund', $refunded, [
             'event_id' => $refunded->event_id, 'user_id' => $refunded->user_id, 'reason' => $data['reason'],
             'before' => ['status' => 'paid', 'amountCents' => $refunded->amount_cents],
-            'after' => ['status' => 'refunded'],
+            'after' => ['status' => 'refunded', 'gatewayRefundId' => $refunded->gateway_refund_id],
         ]);
 
         return response()->json(['data' => $refunded]);
+    }
+
+    /** Ask Stripe about this purchase and apply what is missing (a lost webhook, a refund or dispute made in its dashboard). */
+    public function sync(Request $request, EventPurchase $purchase): JsonResponse
+    {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+
+        if ($purchase->gateway !== 'stripe') {
+            return response()->json(['message' => 'Only Stripe purchases can be synced.', 'code' => 'not_stripe'], 409);
+        }
+
+        $before = $purchase->only(['status', 'needs_review', 'dispute_status']);
+        $synced = $this->settlement->sync($purchase);
+
+        $this->audit->record('payment.sync', $synced, [
+            'event_id' => $synced->event_id, 'user_id' => $synced->user_id, 'reason' => $data['reason'],
+            'before' => $before, 'after' => $synced->only(['status', 'needs_review', 'dispute_status']),
+        ]);
+
+        return response()->json(['data' => ['id' => $synced->id, 'status' => $synced->status, 'needsReview' => (bool) $synced->needs_review, 'disputeStatus' => $synced->dispute_status]]);
+    }
+
+    /** A person looked at what the purchase was flagged for. */
+    public function resolveReview(Request $request, EventPurchase $purchase): JsonResponse
+    {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+
+        if (! $purchase->needs_review) {
+            return response()->json(['message' => 'The purchase is not flagged for review.', 'code' => 'not_needs_review'], 409);
+        }
+
+        $purchase->update(['needs_review' => false]);
+
+        $this->audit->record('payment.review.resolve', $purchase, [
+            'event_id' => $purchase->event_id, 'user_id' => $purchase->user_id, 'reason' => $data['reason'],
+            'before' => ['needsReview' => true], 'after' => ['needsReview' => false],
+        ]);
+
+        return response()->json(['data' => ['id' => $purchase->id, 'needsReview' => false]]);
     }
 
     public function updatePrice(Request $request): JsonResponse

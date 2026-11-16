@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Http\Services\Payments\PaymentGatewayException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
@@ -38,6 +39,11 @@ class Handler extends ExceptionHandler
                     'code' => 'invalid_signed_link',
                 ], 403);
             }
+        });
+
+        // The payment provider failed (D8 of the Stripe contract): the only status outside the 403/404/409/422 convention.
+        $this->renderable(function (PaymentGatewayException $e, Request $request) {
+            return response()->json(['message' => 'The payment provider is not available. Try again in a moment.', 'code' => 'gateway_error'], 502);
         });
 
         // Every 429 of the API (named limiters, services that throw, abort(429)) has the body of the global `api` limiter.

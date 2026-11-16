@@ -16,9 +16,11 @@ class PurchaseIndexRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'in:pending,paid,refunded,failed'],
+            'status' => ['nullable', 'in:pending,paid,refunded,failed,chargeback'],
             'gateway' => ['nullable', 'in:fake,stripe,manual'],
             'founder' => ['nullable', 'boolean'],
+            'disputed' => ['nullable', 'boolean'],
+            'needsReview' => ['nullable', 'boolean'],
             'coupon' => ['nullable', 'string', 'max:64'],
             'paidFrom' => ['nullable', 'date_format:Y-m-d'],
             'paidTo' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:paidFrom'],

@@ -155,6 +155,11 @@ class InvoiceService
         $total = $purchase->amount_cents;
         $rate = max(0, (float) config('invoicing.tax.rate'));
         $tax = $rate > 0 ? (int) round($total * $rate / (100 + $rate)) : 0;
+        // Tax the gateway calculated (Stripe Tax) wins over the configured rate; the total is still what was charged.
+        if ((int) $purchase->tax_cents > 0) {
+            $tax = min((int) $purchase->tax_cents, $total);
+            $rate = $total > $tax ? round($tax * 100 / ($total - $tax), 2) : 0.0;
+        }
         $gross = max($purchase->list_price_cents, $total);
 
         return ['gross' => $gross, 'discount' => $gross - $total, 'rate' => $rate, 'tax' => $tax, 'total' => $total];

@@ -20,7 +20,7 @@ it('flags every development setting that is unsafe in production (S-16)', functi
 
 it('passes a proper production configuration', function () {
     config([
-        'app.debug' => false, 'services.payments.gateway' => 'stripe', 'services.payments.webhook_secret' => 'whsec_x',
+        'app.debug' => false, 'services.payments.gateway' => 'stripe', 'services.stripe.secret' => 'sk_live_x', 'services.stripe.webhook_secret' => 'whsec_x',
         'session.secure' => true, 'sanctum.stateful' => ['app.quinvite.com'],
         'services.whatsapp.driver' => 'meta', 'services.whatsapp.app_secret' => 's', 'services.whatsapp.verify_token' => 'v',
     ]);
@@ -29,7 +29,7 @@ it('passes a proper production configuration', function () {
 });
 
 it('also flags the WhatsApp fake driver, Meta without secrets and an empty stateful list (W-10)', function () {
-    $base = ['app.debug' => false, 'services.payments.gateway' => 'stripe', 'services.payments.webhook_secret' => 'x', 'session.secure' => true];
+    $base = ['app.debug' => false, 'services.payments.gateway' => 'stripe', 'services.stripe.secret' => 'rk_live_x', 'services.stripe.webhook_secret' => 'x', 'session.secure' => true];
 
     config($base + ['sanctum.stateful' => ['app.quinvite.com'], 'services.whatsapp.driver' => 'fake']);
     expect(ProductionSafetyCheck::problems())->toContain('WHATSAPP_DRIVER must not be "fake".');

@@ -34,7 +34,7 @@ function pendingPurchase(array $attrs = [], ?User $buyer = null): EventPurchase
 
     return EventPurchase::create($attrs + [
         'event_id' => $event->id, 'user_id' => $buyer->id, 'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
-        'gateway' => 'stripe', 'list_price_cents' => 9900, 'amount_cents' => 7900, 'status' => 'pending',
+        'gateway' => 'fake', 'list_price_cents' => 9900, 'amount_cents' => 7900, 'status' => 'pending',
     ]);
 }
 

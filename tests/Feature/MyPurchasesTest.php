@@ -28,7 +28,7 @@ function myInvoice(User $buyer, string $name = 'Los XV de Ana'): Invoice
     ]);
     $purchase = EventPurchase::create([
         'event_id' => $event->id, 'user_id' => $buyer->id, 'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
-        'gateway' => 'stripe', 'list_price_cents' => 9900, 'amount_cents' => 9900, 'status' => 'pending',
+        'gateway' => 'fake', 'list_price_cents' => 9900, 'amount_cents' => 9900, 'status' => 'pending',
     ]);
     app(PurchaseService::class)->markPaid($purchase);
 

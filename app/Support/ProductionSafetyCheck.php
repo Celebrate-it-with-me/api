@@ -16,10 +16,24 @@ class ProductionSafetyCheck
         if (config('app.debug')) {
             $problems[] = 'APP_DEBUG must be false.';
         }
-        if (config('services.payments.gateway') === 'fake') {
+        $gateway = config('services.payments.gateway');
+        if ($gateway === 'fake') {
             $problems[] = 'PAYMENTS_GATEWAY must not be "fake".';
+        } elseif (! in_array($gateway, ['stripe', 'manual'], true)) {
+            $problems[] = 'PAYMENTS_GATEWAY must be "stripe" (or "manual").';
         }
-        if (blank(config('services.payments.webhook_secret'))) {
+        if ($gateway === 'stripe') {
+            // Stripe signs with its own secret; the local one can sign nothing.
+            $secret = (string) config('services.stripe.secret');
+            if ($secret === '') {
+                $problems[] = 'STRIPE_SECRET must be set.';
+            } elseif (! preg_match('/^(sk|rk)_live_/', $secret)) {
+                $problems[] = 'STRIPE_SECRET must be a live key (sk_live_ or rk_live_), not a test key.';
+            }
+            if (blank(config('services.stripe.webhook_secret'))) {
+                $problems[] = 'STRIPE_WEBHOOK_SECRET must be set.';
+            }
+        } elseif (blank(config('services.payments.webhook_secret'))) {
             $problems[] = 'PAYMENTS_WEBHOOK_SECRET must be set.';
         }
         if (config('session.secure') !== true) {
