@@ -301,13 +301,13 @@ it('accepts logical properties, text in --pkg-* variables and decoration with ps
     ['.pkg-a{--pkg-script:var(--inv-font-script,"Pinyon Script","Snell Roundhand",cursive)}'],
     ['.pkg-card::before{content:"";position:absolute;inset:-1px;pointer-events:none}'],
     ['.pkg-x .inv-q--cover-photo{width:12rem;height:16rem;display:flex;align-items:center;mask-image:url(assets/m.svg);border-radius:9999px 9999px 0 0}'],
-    ['.pkg-body>*{position:relative;z-index:1}'],
+    ['.pkg-body>*{position:relative}'],
 ]);
 
 it('still refuses to hide or move what the same relaxations touch', function (string $css) {
     $report = new Report;
     $out = (new CssSanitizer)->sanitize($css, 'classic', 'theme.css', $report, ['assets/m.svg'], [], ['pkg-card' => 'wrapper']);
-    expect($out)->toBeNull()->and($report->errorCodes())->toContain('css_forbidden_property');
+    expect($out)->toBeNull()->and(array_intersect($report->errorCodes(), ['css_forbidden_property', 'state_selector_property', 'block_container_property']))->not->toBeEmpty();
 })->with([
     ['.pkg-card{pointer-events:none}'],
     ['.pkg-card:hover{pointer-events:none}'],

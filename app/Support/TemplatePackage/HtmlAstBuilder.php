@@ -76,6 +76,17 @@ class HtmlAstBuilder
     /** @var array<string, true> */
     private array $ids = [];
 
+    /**
+     * The element tree as the contrast check needs it (wave 7, rule 7): classes, parent and whether the element carries
+     * text of its own. A `<q-*>` block is a node with its engine class (`inv-q--<name>`) and counts as text.
+     *
+     * @var list<array{classes: list<string>, parent: int|null, text: bool}>
+     */
+    private array $nodes = [];
+
+    /** @var list<int> indexes into of the open elements */
+    private array $stack = [];
+
     private ?string $sectionType = null;
 
     private int $lastHeading = 0;
@@ -93,7 +104,7 @@ class HtmlAstBuilder
 
     /**
      * @param  list<string>  $assets  asset paths present in the package
-     * @return array{ast: array, blocks: array<string, int>, assets: list<string>, vars: list<string>, behaviors: list<string>, classKinds: array<string, string>, ids: list<string>}|null
+     * @return array{ast: array, blocks: array<string, int>, assets: list<string>, vars: list<string>, behaviors: list<string>, classKinds: array<string, string>, ids: list<string>, nodes: list<array{classes: list<string>, parent: int|null, text: bool}>}|null
      */
     public function build(string $html, string $file, string $kind, ?string $sectionType, array $assets, Report $report): ?array
     {
@@ -109,6 +120,8 @@ class HtmlAstBuilder
         $this->usedBehaviors = [];
         $this->classKinds = [];
         $this->ids = [];
+        $this->nodes = [];
+        $this->stack = [];
         $this->lastHeading = 0;
         $before = $report->errorCount();
 
@@ -180,6 +193,7 @@ class HtmlAstBuilder
             'behaviors' => array_keys($this->usedBehaviors),
             'classKinds' => $this->classKinds,
             'ids' => array_keys($this->ids),
+            'nodes' => $this->nodes,
         ];
     }
 
@@ -381,6 +395,9 @@ class HtmlAstBuilder
                     }
                     $text = ' ';
                 }
+                if (trim($text) !== '' && $this->stack !== []) {
+                    $this->nodes[end($this->stack)]['text'] = true;
+                }
                 foreach ($this->text($text, $parent instanceof Element ? $parent->getLineNo() : null) ?? [] as $piece) {
                     $nodes[] = $piece;
                 }
@@ -428,7 +445,10 @@ class HtmlAstBuilder
         if ($tag === 'a' && $this->containsBlock($el)) {
             $this->report->error($this->file, 'block_scope', 'Un <a> no puede contener bloques <q-*>: un enlace externo no puede envolver los controles del sistema.', $el->getLineNo());
         }
+        $this->nodes[] = ['classes' => $this->classList($attrs), 'parent' => $this->stack === [] ? null : end($this->stack), 'text' => false];
+        $this->stack[] = array_key_last($this->nodes);
         $kids = $this->children($el, $depth, false);
+        array_pop($this->stack);
 
         $this->trackAncestry($el, $attrs);
 
@@ -478,6 +498,7 @@ class HtmlAstBuilder
             $attrs += $one;
         }
 
+        $this->nodes[] = ['classes' => [...$this->classList($attrs), 'inv-q', 'inv-q--' . $name], 'parent' => $this->stack === [] ? null : end($this->stack), 'text' => true];
         $this->trackAncestry($el, $attrs, true);
 
         return ['t' => 'q', 'name' => $name, 'props' => $props ?: new \stdClass, 'attrs' => $attrs ?: new \stdClass, 'children' => []];
@@ -525,6 +546,12 @@ class HtmlAstBuilder
         if (isset($attrs['id']) && is_string($attrs['id'])) {
             $this->classKinds['#' . $attrs['id']] = $this->stricter($this->classKinds['#' . $attrs['id']] ?? null, $kind);
         }
+    }
+
+    /** @return list<string> */
+    private function classList(array $attrs): array
+    {
+        return array_values(array_filter(explode(' ', (string) ($attrs['class'] ?? '')), fn (string $c) => $c !== ''));
     }
 
     /** The more restrictive of two kinds (system > photo > wrapper). */
@@ -727,6 +754,13 @@ class HtmlAstBuilder
         $spec = BlockCatalog::BEHAVIORS[$name];
         if (! in_array($value, $spec['values'], true)) {
             return $this->bad($name, $value, $line);
+        }
+        // Wave 7, rule 5 (N-5): motion behaviors never go on the music block or on anything that contains it, or the
+        // player (position: fixed) would be re-anchored to an animated ancestor.
+        if (in_array($name, ['data-reveal', 'data-parallax', 'data-carousel'], true) && ($tag === 'q-music' || in_array('music', $this->blockNames($el), true))) {
+            $this->report->error($this->file, 'behavior_on_music', "{$name} no puede ir en <q-music> ni en un elemento que lo contenga: el reproductor es fijo y se movería con el contenedor.", $line);
+
+            return null;
         }
         if (isset($spec['tags']) && ! in_array($tag, $spec['tags'], true)) {
             $this->report->error($this->file, 'behavior_scope', "{$name} solo se admite en: " . implode(', ', $spec['tags']) . '.', $line, $tag);

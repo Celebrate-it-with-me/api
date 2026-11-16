@@ -24,6 +24,13 @@ class SelectorScoper
         'first-of-type', 'last-of-type', 'only-of-type', 'empty', 'root',
     ];
 
+    /**
+     * Pseudo-classes that depend on the pointer or the focus (wave 7, N-4): a rule that uses one of them in any compound
+     * may only change colors and shadows (CssSanitizer::STATE_SAFE). `:target`, `:checked` and `:visited` are not in
+     * PSEUDO_CLASSES at all, so they stay refused.
+     */
+    private const STATE_PSEUDO = ['hover', 'focus', 'focus-visible', 'focus-within', 'active', 'target', 'checked', 'visited'];
+
     private const PSEUDO_FUNCTIONS = ['not', 'is', 'where', 'nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type', 'lang'];
 
     private const PSEUDO_ELEMENTS = ['before', 'after', 'first-line', 'first-letter', 'marker', 'selection', 'placeholder'];
@@ -50,7 +57,7 @@ class SelectorScoper
      */
     public function __construct(private readonly string $slug, private readonly array $classKinds = []) {}
 
-    /** @return array{css: string, kind: string, kinds: list<string>, pseudo: bool}|array{error: string} */
+    /** @return array{css: string, kind: string, kinds: list<string>, pseudo: bool, state: bool, subject: list<string>|null, subjectRoot: bool}|array{error: string} */
     public function scope(string $selector): array
     {
         $selector = trim($selector);
@@ -67,6 +74,7 @@ class SelectorScoper
         $count = 0;
         $last = null;
         $firstRootish = false;
+        $state = false;
 
         while (true) {
             $compound = $this->compound($selector, $pos, $count === 0, false);
@@ -81,6 +89,7 @@ class SelectorScoper
                 return ['error' => 'más de ' . self::MAX_COMPOUNDS . ' compuestos'];
             }
             $last = $compound;
+            $state = $state || $compound['state'];
             $out .= $compound['css'];
 
             // Combinator or end.
@@ -108,11 +117,14 @@ class SelectorScoper
             $out = '[data-inv-theme="' . $this->slug . '"] ' . $out;
         }
 
-        return ['css' => $out, 'kind' => $last['kind'], 'kinds' => $last['kinds'], 'pseudo' => $last['pseudo']];
+        return [
+            'css' => $out, 'kind' => $last['kind'], 'kinds' => $last['kinds'], 'pseudo' => $last['pseudo'],
+            'state' => $state, 'subject' => $last['subject'], 'subjectRoot' => $last['rootish'],
+        ];
     }
 
     /**
-     * @return array{css: string, kind: string, kinds: list<string>, rootish: bool, pseudo: bool}|array{error: string}
+     * @return array{css: string, kind: string, kinds: list<string>, rootish: bool, pseudo: bool, state: bool, subject: list<string>|null}|array{error: string}
      */
     private function compound(string $s, int &$pos, bool $first, bool $nested): array
     {
@@ -129,6 +141,8 @@ class SelectorScoper
         $pseudoEl = false;
         $consumed = false;
         $nestedKinds = [];
+        $state = false;
+        $plain = true; // only classes (no ids, attributes, pseudo-classes or pseudo-elements): the subject is "class-only"
 
         if (preg_match('/\G(\*|[a-zA-Z][a-zA-Z0-9-]*)/', $s, $m, 0, $pos)) {
             $type = strtolower($m[1]);
@@ -175,6 +189,7 @@ class SelectorScoper
                 }
                 $pos += strlen($m[0]);
                 $ids[] = $m[1];
+                $plain = false;
                 $hasQualifier = true;
                 $consumed = true;
                 $css .= $m[0];
@@ -190,7 +205,8 @@ class SelectorScoper
                 $css .= $attr;
                 // `data-inv-*` hooks sit on system elements (the section wrappers); any other attribute does not
                 // identify a package element, so a subject made only of those still counts as "bare".
-                if (str_starts_with(strtolower(substr($attr, 1, 9)), 'data-inv-')) {
+                $plain = false;
+                if (str_starts_with(strtolower(substr($attr, 1, 9)), 'data-inv-') || preg_match('/^\[\s*data-q\s*(?:[~|^$*]?=|\])/i', $attr)) {
                     $hasSystemHook = true;
                     $hasQualifier = true;
                 }
@@ -200,6 +216,8 @@ class SelectorScoper
                 if (isset($pseudo['error'])) {
                     return $pseudo;
                 }
+                $plain = false;
+                $state = $state || ($pseudo['state'] ?? false);
                 if ($pseudo['root']) {
                     if ($type !== null && ! in_array($type, ['html', 'body'], true)) {
                         return ['error' => ':root combinado con una etiqueta'];
@@ -266,7 +284,9 @@ class SelectorScoper
             }
         }
 
-        return ['css' => $css, 'kind' => $kind, 'kinds' => $kinds, 'rootish' => $rootish, 'pseudo' => $pseudoEl];
+        $subject = $plain && ! $rootish && $type === null && $classes !== [] ? $classes : null;
+
+        return ['css' => $css, 'kind' => $kind, 'kinds' => $kinds, 'rootish' => $rootish, 'pseudo' => $pseudoEl, 'state' => $state, 'subject' => $subject];
     }
 
     /** @return string|array{error: string} */
@@ -285,7 +305,7 @@ class SelectorScoper
         return $m[0];
     }
 
-    /** @return array{css: string, root: bool, kinds?: list<string>}|array{error: string} */
+    /** @return array{css: string, root: bool, kinds?: list<string>, state?: bool}|array{error: string} */
     private function pseudo(string $s, int &$pos, bool $mayBeRoot): array
     {
         if (! preg_match('/\G(::?)([a-zA-Z-]+)/', $s, $m, 0, $pos)) {
@@ -316,7 +336,7 @@ class SelectorScoper
                 return ['css' => '', 'root' => true];
             }
 
-            return ['css' => ':' . $name, 'root' => false];
+            return ['css' => ':' . $name, 'root' => false, 'state' => in_array($name, self::STATE_PSEUDO, true)];
         }
 
         if (! in_array($name, self::PSEUDO_FUNCTIONS, true)) {
@@ -332,6 +352,7 @@ class SelectorScoper
         if (in_array($name, ['not', 'is', 'where'], true)) {
             $parts = [];
             $kinds = [];
+            $state = false;
             foreach (explode(',', $arg) as $piece) {
                 $p = 0;
                 $piece = trim($piece);
@@ -340,13 +361,14 @@ class SelectorScoper
                     return ['error' => "argumento de :{$name}() fuera del subconjunto permitido"];
                 }
                 $parts[] = $c['css'];
+                $state = $state || $c['state'];
                 // `:not()` matches everything else, so only the positive forms tell what the rule can reach.
                 if ($name !== 'not') {
                     array_push($kinds, ...array_diff($c['kinds'], ['free', 'bare']));
                 }
             }
 
-            return ['css' => ":{$name}(" . implode(',', $parts) . ')', 'root' => false, 'kinds' => $kinds];
+            return ['css' => ":{$name}(" . implode(',', $parts) . ')', 'root' => false, 'kinds' => $kinds, 'state' => $state];
         }
         if ($name === 'lang') {
             if (! preg_match('/^\s*[a-z]{2,3}(-[a-z0-9]{2,8})*\s*$/i', $arg)) {

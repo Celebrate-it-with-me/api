@@ -268,7 +268,7 @@ it('rejects behavior misuse', function (string $html, string $code) {
     'unknown behavior value' => ['<div data-reveal="spin">x</div>', 'html_attr_invalid'],
     'unknown data attribute' => ['<div data-evil="1">x</div>', 'behavior_unknown'],
     'reveal and parallax together' => ['<div data-reveal="fade" data-parallax="soft">x</div>', 'behavior_conflict'],
-    'parallax over a system block' => ['<div data-parallax="soft"><q-music></q-music></div>', 'behavior_scope'],
+    'parallax over a system block' => ['<div data-parallax="soft"><q-music></q-music></div>', 'behavior_on_music'],
     'carousel over a system block' => ['<ul data-carousel="snap"><q-gallery></q-gallery></ul>', 'behavior_scope'],
     'parallax on a paragraph' => ['<p data-parallax="soft">x</p>', 'behavior_scope'],
     'delay without reveal' => ['<div data-reveal-delay="200">x</div>', 'behavior_scope'],
