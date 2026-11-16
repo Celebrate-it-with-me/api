@@ -29,8 +29,8 @@ class AccountDeletionService
 {
     public const ARCHIVE_DAYS = 30;
 
-    /** A checkout younger than this is "in progress" (Stripe's own sessions expire after 24 hours). */
-    public const PENDING_PAYMENT_HOURS = 24;
+    /** A checkout younger than this is "in progress" (Checkout sessions expire after 60 minutes, plus a margin for a late webhook). */
+    public const PENDING_PAYMENT_HOURS = 2;
 
     public function __construct(private readonly EventPurger $purger) {}
 

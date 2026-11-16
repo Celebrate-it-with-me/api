@@ -192,13 +192,14 @@ it('refuses every webhook when no secret is configured and ignores the old publi
     expect($event->fresh()->eventPlan->slug)->toBe('basic');
 });
 
-it('rejects a webhook whose amount does not match the purchase', function () {
+it('answers 200 but activates nothing when the webhook amount does not match the purchase', function () {
     [$event, $owner] = ownedEvent();
     $res = $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout")->assertCreated();
     $purchase = EventPurchase::find($res->json('data.purchaseId'));
 
-    sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => 1])->assertStatus(400);
-    expect($purchase->fresh()->status)->toBe('pending');
+    sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => 1])->assertOk();
+    expect($purchase->fresh())->status->toBe('pending')->needs_review->toBeTrue()->failure_code->toBe('amount_mismatch')
+        ->and($event->fresh()->eventPlan->slug)->toBe('basic');
 
     sendWebhook($this, ['type' => 'payment.succeeded', 'session' => $purchase->gateway_session_id, 'amount' => $purchase->amount_cents, 'currency' => $purchase->currency])->assertOk();
     expect($purchase->fresh()->status)->toBe('paid');

@@ -42,7 +42,7 @@ function paidInvoice(string $eventName = 'Los XV de Ana', ?User $buyer = null, i
     $buyer ??= User::factory()->create();
     $purchase = EventPurchase::create([
         'event_id' => $event->id, 'user_id' => $buyer->id, 'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
-        'gateway' => 'stripe', 'list_price_cents' => 9900, 'amount_cents' => $amount, 'status' => 'pending', 'gateway_payment_id' => 'pi_3Abc123SECRETXYZ9',
+        'gateway' => 'fake', 'list_price_cents' => 9900, 'amount_cents' => $amount, 'status' => 'pending', 'gateway_payment_id' => 'pi_3Abc123SECRETXYZ9',
     ]);
     app(PurchaseService::class)->markPaid($purchase);
 
