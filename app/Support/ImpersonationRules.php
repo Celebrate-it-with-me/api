@@ -56,6 +56,7 @@ final class ImpersonationRules
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/accept',
         'POST api/v1/app/event/{event}/collaborators/invite/{id}/resend',
         'POST api/v1/app/event/{event}/purchase/checkout',
+        'POST api/v1/app/event/{event}/purchase/{purchase}/cancel',
         // Messaging real guests is the organizer's act, never support's.
         'POST api/v1/app/event/{event}/whatsapp/send',
         'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',

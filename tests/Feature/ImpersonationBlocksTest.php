@@ -105,6 +105,7 @@ describe('route classification', function () {
             'POST api/v1/app/user/update-password',
             'DELETE api/v1/app/event/{event}',
             'POST api/v1/app/event/{event}/purchase/checkout',
+            'POST api/v1/app/event/{event}/purchase/{purchase}/cancel',
             'GET api/v1/app/event/{event}/purchase/quote',
             'GET api/v1/app/event/{event}/purchase/status',
             'GET api/v1/app/event/{event}/roster/export',

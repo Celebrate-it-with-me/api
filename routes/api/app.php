@@ -190,9 +190,9 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
             Route::prefix('purchase')->name('purchase.')->middleware('event.access:delete_event')->group(function () {
                 Route::get('quote', [PurchaseController::class, 'quote'])->name('quote');
-                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware('throttle:10,1')->name('checkout');
+                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware('throttle:10,1,purchase-checkout')->name('checkout');
                 Route::get('status', [PurchaseController::class, 'status'])->name('status');
-                Route::post('{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('throttle:10,1')->name('cancel');
+                Route::post('{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('throttle:10,1,purchase-cancel')->name('cancel');
             });
             Route::post('publish', [EventLifecycleController::class, 'publish'])->name('publish');
             Route::post('unpublish', [EventLifecycleController::class, 'unpublish'])->name('unpublish');
