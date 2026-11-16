@@ -36,7 +36,10 @@ return [
             'throw' => false,
         ],
 
-        'public' => env('APP_ENV') === 'production'
+        // The disk of avatars, location photos, dress-code images and the background song. Local files are lost on a PaaS
+        // (ephemeral disk): there it must be S3-compatible. PUBLIC_DISK_DRIVER=s3|local decides; unset keeps the old rule
+        // (s3 in production, local anywhere else). Same AWS_* keys as the other disks; AWS_URL is the public base URL.
+        'public' => env('PUBLIC_DISK_DRIVER', env('APP_ENV') === 'production' ? 's3' : 'local') === 's3'
             ? [
                 'driver' => 's3',
                 'key' => env('AWS_ACCESS_KEY_ID'),

@@ -68,7 +68,8 @@ return [
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => 90,
             'block_for' => null,
-            'after_commit' => false,
+            // Jobs dispatched inside a transaction wait for the commit (a rolled-back request enqueues nothing).
+            'after_commit' => (bool) env('QUEUE_AFTER_COMMIT', true),
         ],
 
     ],

@@ -28,7 +28,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Lines of the `mail` lang group can be overridden by the admin (message editor); everything else is untouched.
-        $this->app->singleton(MessageOverrides::class);
+        // scoped, not singleton: it carries per-request state (preview, re-entrancy guard) that must not outlive a request or a queue job (Octane, queue:work).
+        $this->app->scoped(MessageOverrides::class);
         $this->app->extend('translator', function (Translator $translator) {
             $custom = new OverridableTranslator($translator->getLoader(), $translator->getLocale());
             $custom->setFallback($translator->getFallback());
