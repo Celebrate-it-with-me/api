@@ -9,6 +9,7 @@ use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\Admin\Invoices\InvoiceDirectory;
 use App\Http\Services\Invoices\InvoicePdf;
 use App\Http\Services\Invoices\InvoiceService;
+use App\Jobs\DeliverInvoiceEmail;
 use App\Models\CreditNote;
 use App\Models\Invoice;
 use Illuminate\Http\JsonResponse;
@@ -48,7 +49,7 @@ class InvoiceController extends Controller
     {
         $data = $request->validated();
         $to = $data['email'] ?? $invoice->recipient['email'];
-        $this->invoices->deliver($invoice, $to);
+        DeliverInvoiceEmail::dispatch($invoice->id, $to, resend: true);
 
         $this->audit->record('invoice.resend', ['invoice', $invoice->id], [
             'event_id' => $invoice->event_id, 'user_id' => $invoice->user_id, 'reason' => $data['reason'],

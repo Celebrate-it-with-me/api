@@ -28,6 +28,13 @@ class EventAuthorizationService
      */
     public function getUserPermissions(User $user, Events $event): ?array
     {
+        // The event comes with its roles when it was loaded for the resources: the user's own row is already there.
+        if ($event->relationLoaded('userRoles')) {
+            $role = $event->userRoles->firstWhere('user_id', $user->id)?->role;
+
+            return $role ? $role->permissions->pluck('name')->toArray() : [];
+        }
+
         return $user->getEventPermissions($event);
     }
 
@@ -40,10 +47,13 @@ class EventAuthorizationService
      */
     public function validateAndGetPermissions(User $user, Events $event): ?array
     {
-        if (! $this->canViewEvent($user, $event)) {
+        // One read of the user's role and its permissions answers both questions: `view_event` is one of them.
+        $permissions = $this->getUserPermissions($user, $event);
+
+        if (! in_array('view_event', $permissions ?? [], true)) {
             return null;
         }
 
-        return $this->getUserPermissions($user, $event);
+        return $permissions;
     }
 }

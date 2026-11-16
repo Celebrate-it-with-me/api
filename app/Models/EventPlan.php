@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Services\AppServices\EventModules;
 use Database\Factories\MenuFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,13 @@ class EventPlan extends Model
     use HasFactory;
 
     protected $table = 'event_plans';
+
+    /** A change here changes what every event's menu shows: drop the cached module reads (see EventModules). */
+    protected static function booted(): void
+    {
+        static::saved(fn () => app(EventModules::class)->invalidate());
+        static::deleted(fn () => app(EventModules::class)->invalidate());
+    }
 
     protected $fillable = [
         'name', 'description', 'max_guests', 'price_cents', 'currency', 'slug', 'has_gallery', 'has_music', 'has_custom_design',

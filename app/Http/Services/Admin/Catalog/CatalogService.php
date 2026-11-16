@@ -10,6 +10,7 @@ use App\Models\EventModuleOverride;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\Module;
+use App\Support\InvitationCache;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -136,7 +137,7 @@ class CatalogService
             $module->plans()->sync($newIds);
         });
 
-        $this->modules->forget();
+        $this->modules->invalidate();
 
         $after = $this->planSlugsByModule(EventPlan::query()->get())[$module->id] ?? [];
 
@@ -262,7 +263,7 @@ class CatalogService
         $before = ['isEnabled' => $module->is_enabled];
 
         $module->update(['is_enabled' => $enabled]);
-        $this->modules->forget();
+        $this->modules->invalidate();
 
         $orphans = EventModuleOverride::query()->current()->where('module_key', $key)->count();
 
@@ -295,6 +296,11 @@ class CatalogService
 
                 if ($expiredIds) {
                     EventModuleOverride::query()->whereIn('id', $expiredIds)->delete();
+                }
+
+                // Query-builder writes below fire no model events: renew the cached public invitations of these events.
+                foreach ($ids as $eventId) {
+                    InvitationCache::flushEvent((int) $eventId);
                 }
 
                 $rows = collect($ids)->diff($current)->map(fn (int $id) => [

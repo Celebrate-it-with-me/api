@@ -9,10 +9,10 @@ use App\Models\EventCollaborationInvite;
 use App\Models\Events;
 use App\Models\EventUserRole;
 use App\Models\User;
+use App\Support\Mail\Outbox;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Throwable;
@@ -85,12 +85,12 @@ class InviteCollaboratorController extends Controller
                 'user_id' => $existingUser->id,
                 'role_id' => Role::query()->where('name', $data['role'])->value('id'),
             ]);
-            Mail::to($existingUser->email)->send(new InviteRegisteredUserMail($invite));
+            Outbox::send($existingUser->email, new InviteRegisteredUserMail($invite));
 
             return response()->json(['message' => 'User has been added as a collaborator.', 'data' => $this->memberRow($member->load(['user', 'role']))]);
         }
 
-        Mail::to($invite->email)->send(new InviteUnregisteredUserMail($invite));
+        Outbox::send($invite->email, new InviteUnregisteredUserMail($invite));
 
         return response()->json(['message' => 'Invitation sent successfully.', 'data' => $this->inviteRow($invite)]);
     }
@@ -141,7 +141,7 @@ class InviteCollaboratorController extends Controller
         $invite->forceFill(['status' => 'pending', 'expires_at' => now()->addDays(7), 'sent_at' => now(), 'resend_count' => ($invite->resend_count ?? 0) + 1])->save();
 
         $registered = User::query()->whereRaw('lower(email) = ?', [strtolower($invite->email)])->exists();
-        Mail::to($invite->email)->send($registered ? new InviteRegisteredUserMail($invite) : new InviteUnregisteredUserMail($invite));
+        Outbox::send($invite->email, $registered ? new InviteRegisteredUserMail($invite) : new InviteUnregisteredUserMail($invite));
 
         return response()->json(['message' => 'Invitation resent.', 'data' => $this->inviteRow($invite->refresh())]);
     }

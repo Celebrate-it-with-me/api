@@ -4,7 +4,7 @@ namespace App\Listeners;
 
 use App\Events\ResetPasswordEvent;
 use App\Mail\ResetPasswordEmail;
-use Illuminate\Support\Facades\Mail;
+use App\Support\Mail\Outbox;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 
@@ -34,6 +34,6 @@ class SendResetPasswordLink
 
         $completedUrl = config('app.frontend_app.url') . '/confirm-reset?confirm=' . urlencode($confirmUrl);
 
-        Mail::to($user->email)->send(new ResetPasswordEmail($user, $completedUrl));
+        Outbox::send($user->email, new ResetPasswordEmail($user, $completedUrl));
     }
 }

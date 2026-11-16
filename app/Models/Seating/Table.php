@@ -91,11 +91,22 @@ class Table extends Model
     }
 
     /**
+     * Seats taken. A table loaded with withAssignedCount() already carries the number (one aggregate for the whole
+     * list); any other table asks the database, which is what the single-table actions need to see fresh data.
+     */
+    private function assignedCount(): int
+    {
+        return array_key_exists('assigned_guests_count', $this->attributes)
+            ? (int) $this->attributes['assigned_guests_count']
+            : $this->assignments()->count();
+    }
+
+    /**
      * Check if table has available seats
      */
     public function hasAvailableSeats(): bool
     {
-        return $this->assignments()->count() < $this->capacity;
+        return $this->assignedCount() < $this->capacity;
     }
 
     /**
@@ -103,7 +114,7 @@ class Table extends Model
      */
     public function getAvailableSeatsAttribute(): int
     {
-        return $this->capacity - $this->assignments()->count();
+        return $this->capacity - $this->assignedCount();
     }
 
     /**
@@ -115,7 +126,7 @@ class Table extends Model
             return 0;
         }
 
-        $assigned = $this->assignments()->count();
+        $assigned = $this->assignedCount();
 
         return round(($assigned / $this->capacity) * 100, 2);
     }
@@ -125,7 +136,7 @@ class Table extends Model
      */
     public function isFull(): bool
     {
-        return $this->assignments()->count() >= $this->capacity;
+        return $this->assignedCount() >= $this->capacity;
     }
 
     /**

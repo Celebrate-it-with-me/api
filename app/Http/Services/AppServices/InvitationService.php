@@ -17,6 +17,7 @@ use App\Models\SaveTheDate;
 use App\Models\SweetMemoriesImage;
 use App\Models\TemplatePackage;
 use App\Models\Timeline;
+use App\Support\InvitationCache;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
@@ -89,6 +90,23 @@ class InvitationService
     public function build(Events $event, Guest $guest, ?string $lang = null, bool $preview = false): array
     {
         $locale = $this->resolveLocale($lang, $guest, $event);
+
+        // The organizer's preview reads her unsaved choices: never from, nor into, the shared cache.
+        $shared = $preview
+            ? $this->sharedPayload($event, $locale, true)
+            : InvitationCache::remember($event->id, $locale, fn () => $this->sharedPayload($event, $locale, false));
+
+        return $this->forGuest($shared, $event, $guest);
+    }
+
+    /**
+     * Everything of the invitation that is the same for every guest of the event in this locale (and so is cached):
+     * the guest's own parts are left as a placeholder and filled by forGuest.
+     *
+     * @return array<string, mixed>
+     */
+    private function sharedPayload(Events $event, string $locale, bool $preview): array
+    {
         $version = $this->versionContent($event, $preview);
         $unlocked = app(PurchaseService::class)->isUnlocked($event);
         $config = $event->template_config ?? [];
@@ -113,15 +131,33 @@ class InvitationService
                 'startsAt' => $event->start_date->format('Y-m-d\TH:i:s'),
                 'timezone' => $event->timezone,
             ],
-            'guest' => ['name' => $guest->name],
+            'guest' => null,
             // Which version of the link this is: the Save the date or the full invitation.
             'stage' => $event->invitation_stage,
             'locale' => $locale,
             'theme' => $this->themePayload($version['theme'], $config['theme'] ?? [], $package['package'] ?? null),
-            'sections' => $this->attachPackage($this->resolveSections($event, $guest, $version['sections'], $locale, $config), $package['sections'] ?? []),
+            'sections' => $this->attachPackage($this->resolveSections($event, null, $version['sections'], $locale, $config), $package['sections'] ?? []),
             // Basic-plan watermark; the full event (paid, or on the premium plan) removes it. A refund puts the event back on basic.
             'branding' => ['watermark' => ! $unlocked],
         ];
+    }
+
+    /**
+     * The shared payload plus what is only this guest's: her name and the RSVP section (answers, companions, note, and
+     * the deadline state, which is read live because it changes with time).
+     *
+     * @param  array<string, mixed>  $shared
+     * @return array<string, mixed>
+     */
+    private function forGuest(array $shared, Events $event, Guest $guest): array
+    {
+        $shared['guest'] = ['name' => $guest->name];
+        $shared['sections'] = array_map(
+            fn (array $section) => $section['type'] === 'rsvp' ? array_replace($section, ['data' => $this->rsvpData($event, $guest)]) : $section,
+            $shared['sections'],
+        );
+
+        return $shared;
     }
 
     /**
@@ -405,7 +441,7 @@ class InvitationService
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function resolveSections(Events $event, Guest $guest, array $templateSections, string $locale, array $config): array
+    private function resolveSections(Events $event, ?Guest $guest, array $templateSections, string $locale, array $config): array
     {
         if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
             // The Save the date is the `save_the_date` module: locked, there is nothing to show yet.
@@ -549,7 +585,7 @@ class InvitationService
     }
 
     /** @return array<string, mixed>|null */
-    private function sectionData(string $type, Events $event, Guest $guest, array $section, string $locale): ?array
+    private function sectionData(string $type, Events $event, ?Guest $guest, array $section, string $locale): ?array
     {
         return match ($type) {
             'cover' => [
@@ -563,7 +599,8 @@ class InvitationService
             'padrinos' => $this->padrinosData($event),
             'gallery' => $this->galleryData($event, $this->gallerySettings($section)),
             'music' => $this->musicData($event, $section, $locale),
-            'rsvp' => $this->rsvpData($event, $guest),
+            // Filled per guest by forGuest (null here: the shared payload has no guest).
+            'rsvp' => $guest === null ? ['pending' => true] : $this->rsvpData($event, $guest),
             'closing' => [],
             default => null,
         };

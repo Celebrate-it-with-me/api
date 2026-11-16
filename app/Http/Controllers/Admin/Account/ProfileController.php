@@ -12,10 +12,10 @@ use App\Models\UserPreference;
 use App\Support\AdminPermissions;
 use App\Support\Mail\MailLinks;
 use App\Support\Mail\MailLocale;
+use App\Support\Mail\Outbox;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -93,7 +93,7 @@ class ProfileController extends Controller
             'expires_at' => now()->addMinutes($minutes),
         ]);
 
-        $this->security->mailSafely(fn () => Mail::to($email)->send(
+        $this->security->mailSafely(fn () => Outbox::send($email,
             new AdminEmailConfirmMail($user, MailLinks::admin('dashboard/account/confirm-email?token=' . $token), $minutes)
         ), $user);
         $this->audit->record('account.email_change_requested', $user, ['after' => ['newEmail' => $email]]);

@@ -2,7 +2,10 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\ApiCacheControl;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\CompressResponse;
+use App\Http\Middleware\ConditionalEtag;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureAdminPermission;
@@ -57,6 +60,8 @@ class Kernel extends HttpKernel
     }
 
     protected $middleware = [
+        // Outermost: it compresses what everything inside produced.
+        CompressResponse::class,
         TrustProxies::class,
         HandleCors::class,
         PreventRequestsDuringMaintenance::class,
@@ -81,6 +86,7 @@ class Kernel extends HttpKernel
 
         'api' => [
             SetRequestLocale::class,
+            ApiCacheControl::class,
             StatelessForImpersonation::class,
             ThrottleRequests::class . ':api',
             SubstituteBindings::class,
@@ -92,6 +98,7 @@ class Kernel extends HttpKernel
         'auth.basic' => AuthenticateWithBasicAuth::class,
         'auth.session' => AuthenticateSession::class,
         'cache.headers' => SetCacheHeaders::class,
+        'etag' => ConditionalEtag::class,
         'can' => Authorize::class,
         'guest' => RedirectIfAuthenticated::class,
         'password.confirm' => RequirePassword::class,

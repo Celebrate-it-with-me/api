@@ -18,6 +18,7 @@ use App\Observers\GuestRsvpObserver;
 use App\Observers\SaveTheDateObserver;
 use App\Observers\SuggestedMusicObserver;
 use App\Observers\SuggestedMusicVoteObserver;
+use App\Support\InvitationCache;
 use Illuminate\Support\ServiceProvider;
 
 class ObserversServiceProvider extends ServiceProvider
@@ -43,5 +44,7 @@ class ObserversServiceProvider extends ServiceProvider
         EventComment::observe(EventCommentObserver::class);
         BudgetItem::observe(BudgetItemObserver::class);
         SaveTheDate::observe(SaveTheDateObserver::class);
+        // Renews the cached public invitation when a model that feeds it changes.
+        InvitationCache::register();
     }
 }

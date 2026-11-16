@@ -3,9 +3,11 @@
 namespace App\Http\Services\Payments;
 
 use App\Http\Services\Invoices\InvoiceService;
+use App\Jobs\DeliverCreditNoteEmail;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\PaymentEvent;
+use App\Support\InvitationCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -227,13 +229,15 @@ class PaymentSettlement
 
         $note = app(InvoiceService::class)->creditForRefund($purchase, $reason);
         if ($note) {
-            $after[] = fn () => app(InvoiceService::class)->deliverCreditNote($note);
+            $after[] = fn () => DeliverCreditNoteEmail::dispatch($note->id);
         }
 
         if ($purchase->event->status === 'published') {
             $purchase->update(['needs_review' => true]);
         } else {
             $purchase->event()->update(['event_plan_id' => EventPlan::query()->where('slug', PurchaseService::FREE_SLUG)->value('id')]);
+            // A query-builder write: no model event, so the public invitation is renewed by hand.
+            InvitationCache::flushEvent($purchase->event_id);
         }
     }
 

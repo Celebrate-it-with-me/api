@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Services\Admin\Account\TokenLifetime;
+use App\Http\Services\AppServices\EventModules;
 use App\Models\Guest;
 use App\Models\User;
 use App\Support\Mail\MessageOverrides;
@@ -28,7 +29,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Lines of the `mail` lang group can be overridden by the admin (message editor); everything else is untouched.
-        $this->app->singleton(MessageOverrides::class);
+        // scoped, not singleton: it carries per-request state (preview, re-entrancy guard) that must not outlive a request or a queue job (Octane, queue:work).
+        $this->app->scoped(MessageOverrides::class);
+
+        // One module resolver per request (and per queue job under Octane): the resources, the setup progress and the
+        // hydration all ask it, and a new instance each time repeated its three queries for every event.
+        $this->app->scoped(EventModules::class);
         $this->app->extend('translator', function (Translator $translator) {
             $custom = new OverridableTranslator($translator->getLoader(), $translator->getLocale());
             $custom->setFallback($translator->getFallback());

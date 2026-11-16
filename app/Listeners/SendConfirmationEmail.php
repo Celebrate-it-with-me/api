@@ -4,7 +4,7 @@ namespace App\Listeners;
 
 use App\Events\UserRegistered;
 use App\Mail\ConfirmAccountEmail;
-use Illuminate\Support\Facades\Mail;
+use App\Support\Mail\Outbox;
 use Illuminate\Support\Facades\URL;
 
 class SendConfirmationEmail
@@ -32,6 +32,6 @@ class SendConfirmationEmail
 
         $completedUrl = config('app.frontend_app.url') . '/confirm-email?confirm=' . urlencode($confirmUrl);
 
-        Mail::to($user->email)->send(new ConfirmAccountEmail($user, $completedUrl));
+        Outbox::send($user->email, new ConfirmAccountEmail($user, $completedUrl));
     }
 }

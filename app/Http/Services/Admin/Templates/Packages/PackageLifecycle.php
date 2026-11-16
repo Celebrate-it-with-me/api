@@ -7,6 +7,7 @@ use App\Http\Services\Admin\Templates\TemplateService;
 use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion as Version;
 use App\Models\TemplatePackage;
+use App\Support\InvitationCache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -54,6 +55,7 @@ class PackageLifecycle
                 }
             }
             InvitationTemplate::query()->whereIn('id', $versions->pluck('template_id'))->update(['is_active' => true]);
+            InvitationCache::flushAll();
 
             // Only the newest version of a slug is on; the older ones keep serving the events fixed to them.
             TemplatePackage::query()->where('slug', $package->slug)->where('id', '!=', $package->id)
@@ -92,6 +94,7 @@ class PackageLifecycle
         $impact = $this->query->impact($id);
         DB::transaction(function () use ($package) {
             InvitationTemplate::query()->whereIn('id', Version::query()->where('package_id', $package->id)->pluck('template_id'))->update(['is_active' => false]);
+            InvitationCache::flushAll();
             $package->forceFill(['status' => TemplatePackage::DEACTIVATED, 'deactivated_at' => now()])->save();
         });
 
@@ -118,6 +121,7 @@ class PackageLifecycle
         DB::transaction(function () use ($package) {
             $versions = Version::query()->where('package_id', $package->id)->get();
             InvitationTemplate::query()->whereIn('id', $versions->pluck('template_id'))->update(['is_active' => false]);
+            InvitationCache::flushAll();
             foreach ($versions as $version) {
                 // Rows stay as a record (only drafts can be deleted by the model's rule); they are archived.
                 if ($version->status !== Version::ARCHIVED) {
