@@ -40,7 +40,7 @@ class HealthController extends Controller
 
             return 'ok';
         } catch (Throwable $e) {
-            Log::warning('Health check failed', ['exception' => $e::class, 'message' => $e->getMessage()]);
+            Log::warning('Health check failed', ['exception' => $e::class, 'reason' => $e->getMessage()]);
 
             return 'fail';
         }
