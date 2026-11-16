@@ -4,6 +4,7 @@ namespace App\Http\Services\AppServices;
 
 use App\Models\BackgroundMusic;
 use App\Models\Events;
+use App\Support\InvitationCache;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -66,6 +67,7 @@ class BackgroundMusicServices
         if ($music) {
             $music->forceFill($attributes)->save();
             BackgroundMusic::query()->whereIn('id', $existing->skip(1)->pluck('id'))->delete();
+            InvitationCache::flushEvent($event->id);
         } else {
             $music = BackgroundMusic::query()->create($attributes + ['event_id' => $event->id]);
         }
@@ -86,6 +88,7 @@ class BackgroundMusicServices
         }
 
         BackgroundMusic::query()->whereIn('id', $rows->pluck('id'))->delete();
+        InvitationCache::flushEvent($event->id);
         Storage::disk(self::DISK)->delete($rows->pluck('song_url')->filter()->all());
 
         return true;

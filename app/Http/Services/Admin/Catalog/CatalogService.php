@@ -10,6 +10,7 @@ use App\Models\EventModuleOverride;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\Module;
+use App\Support\InvitationCache;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -295,6 +296,11 @@ class CatalogService
 
                 if ($expiredIds) {
                     EventModuleOverride::query()->whereIn('id', $expiredIds)->delete();
+                }
+
+                // Query-builder writes below fire no model events: renew the cached public invitations of these events.
+                foreach ($ids as $eventId) {
+                    InvitationCache::flushEvent((int) $eventId);
                 }
 
                 $rows = collect($ids)->diff($current)->map(fn (int $id) => [
