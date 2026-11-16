@@ -26,7 +26,9 @@ use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Server-side cache of the part of the public invitation that is the same for every guest of an event (theme,
@@ -136,12 +138,22 @@ class InvitationCache
     /** After the commit, so a request cannot re-read the old rows and store them under the new token. */
     public static function flushEvent(int $eventId): void
     {
-        DB::afterCommit(fn () => Cache::forever(self::eventKey($eventId), (string) Str::uuid()));
+        DB::afterCommit(fn () => self::bump(self::eventKey($eventId)));
     }
 
     public static function flushAll(): void
     {
-        DB::afterCommit(fn () => Cache::forever(self::GLOBAL, (string) Str::uuid()));
+        DB::afterCommit(fn () => self::bump(self::GLOBAL));
+    }
+
+    /** Moves an epoch. A broken cache store must not break the write that triggered it (same policy as EventModules). */
+    private static function bump(string $key): void
+    {
+        try {
+            Cache::forever($key, (string) Str::uuid());
+        } catch (Throwable $e) {
+            Log::warning('The invitation cache is not available: ' . $e->getMessage());
+        }
     }
 
     private static function eventKey(int $eventId): string
