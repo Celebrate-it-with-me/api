@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Payments;
 
 use App\Http\Controllers\Controller;
-use App\Http\Services\Payments\FakeGateway;
+use App\Http\Services\Payments\InvalidWebhookException;
+use App\Http\Services\Payments\PaymentSettlement;
 use App\Http\Services\Payments\PurchaseService;
+use App\Http\Services\Payments\WebhookNotConfiguredException;
 use App\Models\EventPurchase;
 use App\Models\Events;
+use App\Models\Invoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
-    public function __construct(private readonly PurchaseService $purchases) {}
+    public function __construct(private readonly PurchaseService $purchases, private readonly PaymentSettlement $settlement) {}
 
     /** Price (with an optional code) and whether the event is already unlocked. */
     public function quote(Request $request, Events $event): JsonResponse
@@ -26,46 +29,79 @@ class PurchaseController extends Controller
     {
         $data = $request->validate(['code' => ['nullable', 'string', 'max:64']]);
         $front = rtrim((string) config('app.frontend_app.url'), '/') . "/dashboard/events/{$event->id}/unlock";
+        $locale = $request->getPreferredLanguage(['es', 'en']) ?? 'es';
 
-        $result = $this->purchases->checkout($event, $request->user(), $data['code'] ?? null, $front . '?paid=1', $front . '?cancelled=1');
+        $result = $this->purchases->checkout(
+            $event, $request->user(), $data['code'] ?? null, $front . '?paid=1', $front . '?cancelled=1', ['locale' => $locale],
+        );
 
         return response()->json(['data' => ['purchaseId' => $result['purchase']->id, 'url' => $result['url']]], 201);
     }
 
-    /** The screen polls this while it waits for the webhook. */
-    public function status(Events $event): JsonResponse
+    /**
+     * The screen polls this while it waits for the webhook. `?purchase=` asks about one purchase of this event; a pending
+     * Stripe purchase older than 20 s is reconciled with the provider (at most once every 15 s).
+     */
+    public function status(Request $request, Events $event): JsonResponse
     {
-        $last = EventPurchase::query()->where('event_id', $event->id)->latest('id')->first();
+        $request->validate(['purchase' => ['nullable', 'integer']]);
+
+        $query = EventPurchase::query()->where('event_id', $event->id);
+        $purchase = $request->filled('purchase') ? $query->findOrFail((int) $request->query('purchase')) : $query->latest('id')->first();
+
+        if ($purchase && $purchase->status === 'pending' && $purchase->created_at->lte(now()->subSeconds(20))) {
+            $purchase = $this->settlement->reconcile($purchase);
+        }
+
+        $invoice = $purchase ? Invoice::query()->where('purchase_id', $purchase->id)->where('status', 'issued')->value('id') : null;
 
         return response()->json(['data' => [
-            'unlocked' => $this->purchases->isUnlocked($event),
-            'status' => $last?->status,
+            'unlocked' => $this->purchases->isUnlocked($event->refresh()),
+            'status' => $purchase?->status,
+            'purchaseId' => $purchase?->id,
+            'failureCode' => $purchase?->failure_code,
+            'amountCents' => $purchase?->amount_cents,
+            'currency' => $purchase?->currency,
+            'invoiceId' => $invoice,
         ]]);
     }
 
-    /** Called by the payment provider. Signed; idempotent. (Stripe's own signature check replaces this one.) */
+    /** The buyer came back from the payment page without paying. */
+    public function cancel(Events $event, int $purchase): JsonResponse
+    {
+        // Looked up inside this event (after the owner check), so another event's purchase is a plain 404.
+        $purchase = EventPurchase::query()->where('event_id', $event->id)->findOrFail($purchase);
+
+        if ($purchase->status !== 'pending') {
+            return response()->json(['message' => 'The purchase is no longer pending.', 'code' => 'not_pending'], 409);
+        }
+
+        $purchase = $this->settlement->cancel($purchase);
+
+        // Paid while she was closing the page: that is not a cancellation.
+        if ($purchase->status !== 'failed') {
+            return response()->json(['message' => 'The purchase is no longer pending.', 'code' => 'not_pending'], 409);
+        }
+
+        return response()->json(['data' => ['status' => $purchase->status, 'failureCode' => $purchase->failure_code]]);
+    }
+
+    /** Called by the payment provider: verified by the active gateway over the raw body, idempotent by event id. */
     public function webhook(Request $request): JsonResponse
     {
-        $payload = $request->getContent();
+        $gateway = $this->purchases->gateway();
 
-        if (! hash_equals(FakeGateway::sign($payload), (string) $request->header('X-Signature'))) {
+        try {
+            $event = $gateway->parseWebhook($request);
+        } catch (WebhookNotConfiguredException) {
+            return response()->json(['message' => 'Webhook is not configured.'], 503);
+        } catch (InvalidWebhookException) {
             return response()->json(['message' => 'Invalid signature.'], 400);
         }
 
-        $data = json_decode($payload, true) ?: [];
-        $purchase = EventPurchase::query()->where('gateway_session_id', $data['session'] ?? '')->first();
-
-        // A real gateway reports what was charged: it must match what was asked for.
-        if ($purchase && (
-            (isset($data['amount']) && (int) $data['amount'] !== (int) $purchase->amount_cents)
-            || (isset($data['currency']) && strtolower((string) $data['currency']) !== strtolower((string) $purchase->currency))
-        )) {
-            return response()->json(['message' => 'Amount mismatch.'], 400);
-        }
-
-        if ($purchase && ($data['type'] ?? null) === 'payment.succeeded') {
-            $this->purchases->markPaid($purchase, $data['payment'] ?? null);
-        }
+        // 200 for everything we understood, even an amount that does not match (flagged, not retried); a 5xx only
+        // when something of ours failed, so the provider tries again.
+        $this->settlement->handle($gateway->name(), $event);
 
         return response()->json(['received' => true]);
     }
