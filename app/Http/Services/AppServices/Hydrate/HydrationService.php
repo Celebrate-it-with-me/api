@@ -22,7 +22,7 @@ readonly class HydrationService
     public function hydrate(User $user): JsonResponse
     {
         $events = $this->eventRepository->getAccessibleEvents($user);
-        $activeEvent = $this->eventRepository->getActiveEventWithRelations($user);
+        $activeEvent = $this->eventRepository->getActiveEventWithRelations($user, $events);
 
         return $this->buildResponse($activeEvent, $events, $user);
     }
@@ -30,13 +30,8 @@ readonly class HydrationService
     public function hydrateForEvent(User $user, int $eventId): JsonResponse
     {
         $events = $this->eventRepository->getAccessibleEvents($user);
-        $event = $this->eventRepository->findWithRelations($eventId, [
-            'menus',
-            'guests',
-            'rsvp',
-            'saveTheDate',
-            'comments',
-        ]);
+        // `guests`, `rsvp` and `comments` are not loaded: the response leaves them out (see EventDataLoader).
+        $event = $this->eventRepository->findWithRelations($eventId, ['menus', 'saveTheDate'], $events);
 
         return $this->buildResponse($event, $events, $user);
     }

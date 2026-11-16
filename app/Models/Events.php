@@ -323,6 +323,51 @@ class Events extends Model
     }
 
     /**
+     * Everything EventResource shows about an event (owner, role, plan, guest counts, setup progress), in a fixed number
+     * of queries however many events there are: relations eager loaded and the counts as columns of the same select.
+     * The model reads them back through its count helpers; an event loaded without this scope asks the database instead.
+     */
+    public function scopeWithResourceData(Builder $query): Builder
+    {
+        $guests = 'select count(*) from guests where guests.event_id = events.id and guests.deleted_at is null';
+
+        return $query
+            ->select('events.*')
+            ->selectRaw("({$guests}) as guests_count")
+            ->selectRaw("({$guests} and guests.rsvp_status != 'pending') as guests_responded_count")
+            ->selectRaw("({$guests} and guests.rsvp_status in ('attending', 'not-attending')) as guests_confirmed_count")
+            ->selectRaw('(select count(*) from menus where menus.event_id = events.id) as menus_count')
+            // `menus()->first()` is the menu with the lowest id.
+            ->selectRaw('(select count(*) from menu_items where menu_items.menu_id = (select min(m.id) from menus m where m.event_id = events.id)) as first_menu_items_count')
+            ->selectRaw('(select count(*) from sweet_memories_images where sweet_memories_images.event_id = events.id and sweet_memories_images.hidden_at is null) as sweet_memories_images_count')
+            ->selectRaw('(select count(*) from suggested_music where suggested_music.event_id = events.id) as music_suggestions_count')
+            ->selectRaw('(select count(*) from budget_items inner join event_budgets on event_budgets.id = budget_items.event_budget_id where event_budgets.event_id = events.id) as budget_items_count')
+            ->selectRaw("case when exists(select 1 from save_the_dates where save_the_dates.event_id = events.id and save_the_dates.message is not null and save_the_dates.message not in ('', '0')) then 1 else 0 end as save_the_date_message_set")
+            ->selectRaw('case when exists(select 1 from sweet_memories_config where sweet_memories_config.event_id = events.id) then 1 else 0 end as sweet_memories_config_set')
+            ->selectRaw('case when exists(select 1 from suggested_music_configs where suggested_music_configs.event_id = events.id) then 1 else 0 end as suggested_music_config_set')
+            ->selectRaw('case when exists(select 1 from event_config_comment where event_config_comment.event_id = events.id) then 1 else 0 end as comment_config_set')
+            ->with(['userRoles.role', 'userRoles.user', 'eventPlan', 'locations']);
+    }
+
+    /** A count that the query already computed (see scopeWithResourceData), or null when the event was loaded without it. */
+    private function preloaded(string $attribute): ?int
+    {
+        return array_key_exists($attribute, $this->attributes) ? (int) $this->attributes[$attribute] : null;
+    }
+
+    /** People in the event: main guests and companions. */
+    public function guestsTotal(): int
+    {
+        return $this->preloaded('guests_count') ?? $this->guests()->count();
+    }
+
+    /** People who already answered (anything but pending). */
+    public function guestsResponded(): int
+    {
+        return $this->preloaded('guests_responded_count') ?? $this->guests()->where('rsvp_status', '!=', 'pending')->count();
+    }
+
+    /**
      * Calculates the progress of the setup based on active and completed features.
      *
      * @return float The setup progress as a proportion (0.0 to 1.0), rounded to two decimal places.
@@ -382,21 +427,29 @@ class Events extends Model
      */
     private function isFeatureCompleted(string $feature): bool
     {
+        $pre = fn (string $attribute): ?bool => $this->preloaded($attribute) === null ? null : $this->preloaded($attribute) > 0;
+
         return match ($feature) {
-            'save_the_date' => $this->saveTheDate !== null &&
-                ! empty($this->saveTheDate->message),
+            'save_the_date' => $pre('save_the_date_message_set') ?? ($this->saveTheDate !== null &&
+                ! empty($this->saveTheDate->message)),
             'rsvp' => $this->isRsvpCompleted(),
-            'menus' => $this->menus()->count() > 0 &&
-                $this->menus()->first()?->menuItems()->count() > 0,
-            'memories' => $this->sweetMemoriesConfig !== null &&
-                $this->sweetMemoriesImages()->count() > 0,
-            'suggested_music' => $this->suggestedMusicConfig !== null &&
-                $this->musicSuggestions()->count() > 0,
-            'comments' => $this->eventConfigComment !== null,
+            'menus' => $pre('first_menu_items_count') !== null
+                ? $this->preloaded('menus_count') > 0 && $pre('first_menu_items_count')
+                : $this->menus()->count() > 0 &&
+                    $this->menus()->first()?->menuItems()->count() > 0,
+            'memories' => $pre('sweet_memories_config_set') !== null
+                ? $pre('sweet_memories_config_set') && $pre('sweet_memories_images_count')
+                : $this->sweetMemoriesConfig !== null &&
+                    $this->sweetMemoriesImages()->count() > 0,
+            'suggested_music' => $pre('suggested_music_config_set') !== null
+                ? $pre('suggested_music_config_set') && $pre('music_suggestions_count')
+                : $this->suggestedMusicConfig !== null &&
+                    $this->musicSuggestions()->count() > 0,
+            'comments' => $pre('comment_config_set') ?? $this->eventConfigComment !== null,
             'seating' => $this->locations !== null &&
                 ! empty($this->locations->capacity),
-            'budget' => $this->budget !== null &&
-                $this->budget->items()->count() > 0,
+            'budget' => $pre('budget_items_count') ?? ($this->budget !== null &&
+                $this->budget->items()->count() > 0),
             'locations' => $this->locations !== null &&
                 ! empty($this->locations->address),
             default => false,
@@ -405,13 +458,13 @@ class Events extends Model
 
     private function isRsvpCompleted(): bool
     {
-        $totalGuestCount = $this->guests()->count();
+        $totalGuestCount = $this->guestsTotal();
 
         if ($totalGuestCount === 0) {
             return false;
         }
 
-        $confirmedGuests = $this->guests()
+        $confirmedGuests = $this->preloaded('guests_confirmed_count') ?? $this->guests()
             ->whereIn('rsvp_status', ['attending', 'not-attending'])
             ->count();
 
