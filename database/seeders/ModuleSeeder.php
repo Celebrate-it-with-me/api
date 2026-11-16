@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Http\Services\AppServices\EventModules;
 use App\Models\EventPlan;
 use App\Models\Module;
 use Illuminate\Database\Seeder;
@@ -61,5 +62,8 @@ class ModuleSeeder extends Seeder
             $included = $premium ? $plans->where('id', '!=', $entryPlan?->id) : $plans;
             $module->plans()->syncWithoutDetaching($included->pluck('id')->all());
         }
+
+        // The pivot is written without model events: tell the module cache (see EventModules).
+        app(EventModules::class)->invalidate();
     }
 }

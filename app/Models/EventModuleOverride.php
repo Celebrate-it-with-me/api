@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Services\AppServices\EventModules;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EventModuleOverride extends Model
 {
     protected $fillable = ['event_id', 'module_key', 'state', 'expires_at', 'reason', 'created_by'];
+
+    /** A change here changes what every event's menu shows: drop the cached module reads (see EventModules). */
+    protected static function booted(): void
+    {
+        static::saved(fn () => app(EventModules::class)->invalidate());
+        static::deleted(fn () => app(EventModules::class)->invalidate());
+    }
 
     protected function casts(): array
     {

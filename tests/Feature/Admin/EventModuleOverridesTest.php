@@ -96,7 +96,9 @@ describe('listing', function () {
         foreach (['menus', 'seating', 'comments', 'memories', 'budget'] as $key) {
             EventModuleOverride::create(['event_id' => $busy->id, 'module_key' => $key, 'state' => 'active', 'reason' => 'Prueba larga', 'created_by' => $staff->id]);
         }
+        // Warm up both: the exceptions of an event are cached after its first read (see EventModules).
         $this->actingAs($staff)->getJson("/api/v1/admin/events/{$plain->id}/modules")->assertOk();
+        $this->getJson("/api/v1/admin/events/{$busy->id}/modules")->assertOk();
         $queries = function (Events $e) {
             DB::flushQueryLog();
             DB::enableQueryLog();

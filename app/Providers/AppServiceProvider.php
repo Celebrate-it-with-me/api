@@ -3,9 +3,9 @@
 namespace App\Providers;
 
 use App\Http\Services\Admin\Account\TokenLifetime;
+use App\Http\Services\AppServices\EventModules;
 use App\Models\Guest;
 use App\Models\User;
-use App\Http\Services\AppServices\EventModules;
 use App\Support\Mail\MessageOverrides;
 use App\Support\Mail\OverridableTranslator;
 use App\Support\ProductionSafetyCheck;
