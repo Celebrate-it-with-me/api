@@ -37,6 +37,7 @@ class Events extends Model
         'template_id',
         'template_version_id',
         'template_config',
+        'template_config_stash',
         'locale',
         'currency',
         'timezone',
@@ -51,6 +52,7 @@ class Events extends Model
         'archived_at' => 'datetime',
         'purge_after' => 'datetime',
         'template_config' => 'array',
+        'template_config_stash' => 'array',
     ];
 
     /**
