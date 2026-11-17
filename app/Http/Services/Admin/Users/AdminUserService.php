@@ -67,7 +67,7 @@ class AdminUserService
 
     public function profile(User $user): array
     {
-        $user->load('roles:id,name');
+        $user->load(['roles:id,name', 'socialAccounts:id,user_id,provider']);
 
         $events = EventUserRole::query()
             ->where('user_id', $user->id)
@@ -93,6 +93,7 @@ class AdminUserService
             'phone' => $user->phone,
             'avatarUrl' => $user->avatar_url ?: null,
             'emailVerified' => $user->email_verified_at !== null,
+            'signInMethods' => $this->signInMethods($user),
             'staffRoles' => $user->roles->pluck('name')->intersect(AdminPermissions::STAFF_ROLES)->values(),
             'createdAt' => $user->created_at?->toIso8601String(),
             'anonymizedAt' => $user->anonymized_at?->toIso8601String(),
@@ -118,6 +119,14 @@ class AdminUserService
                     'location' => $s->location,
                 ])->values(),
         ];
+    }
+
+    /** @return list<string> `password` and one entry per linked social provider; never tokens or provider ids. */
+    private function signInMethods(User $user): array
+    {
+        $methods = $user->has_password ? ['password'] : [];
+
+        return array_values(array_unique([...$methods, ...$user->socialAccounts->pluck('provider')->all()]));
     }
 
     public function suspend(User $user, User $actor, string $reason): void

@@ -5,7 +5,7 @@ namespace App\Http\Services\Admin\EventActions;
 use App\Exceptions\PlanLimitExceeded;
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\AppServices\EventLifecycleService;
-use App\Mail\ConfirmAccountEmail;
+use App\Http\Services\Auth\EmailVerificationService;
 use App\Mail\InviteRegisteredUserMail;
 use App\Mail\InviteUnregisteredUserMail;
 use App\Mail\OwnershipTransferredMail;
@@ -17,7 +17,6 @@ use App\Models\EventUserRole;
 use App\Models\User;
 use App\Support\Mail\Outbox;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
@@ -63,8 +62,7 @@ class StaffEventActions
         }
 
         if ($owner->email_verified_at === null) {
-            $signed = URL::temporarySignedRoute('auth.confirm.email', now()->addDay(), ['user' => $owner->id]);
-            Outbox::send($owner->email, new ConfirmAccountEmail($owner, config('app.frontend_app.url') . '/confirm-email?confirm=' . urlencode($signed)));
+            app(EmailVerificationService::class)->send($owner);
             $kind = 'confirm_account';
         } else {
             Outbox::send($owner->email, new WelcomeEmail($owner));
