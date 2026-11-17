@@ -71,6 +71,11 @@ class SocialAuthService
             return $this->redirectToSpa('error', $provider, 'account_suspended');
         }
 
+        // The provider already verified the address.
+        if (! $user->email_verified_at) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
         SocialAccount::query()->create([
             'user_id' => $user->id,
             'provider' => $provider,

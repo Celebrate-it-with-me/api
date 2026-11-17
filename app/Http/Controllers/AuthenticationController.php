@@ -208,7 +208,6 @@ class AuthenticationController extends Controller
         $user = User::query()
             ->with(['lastLoginSession', 'activeEvent'])
             ->where('email', $request->input('email'))
-            ->whereNotNull('email_verified_at')
             ->first();
 
         // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.

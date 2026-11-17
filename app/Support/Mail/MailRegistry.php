@@ -55,8 +55,8 @@ class MailRegistry
         $both = MailLocale::SUPPORTED;
         $definitions = [
             new MailDefinition('confirm-account', 'Confirmar correo', ConfirmAccountEmail::class, $both, ['mail'],
-                fn (string $lang) => new ConfirmAccountEmail(self::user($lang), MailLinks::app('confirm-email?confirm=sample-signed-token')),
-                'Al registrarse, o cuando el equipo crea el evento de una dueña.'),
+                fn (string $lang) => new ConfirmAccountEmail(self::user($lang), MailLinks::app('sample-signed-verification-link')),
+                'Al registrarse y al pulsar "Reenviar correo"; el enlace es de un toque y vence en 60 minutos.'),
             new MailDefinition('welcome', 'Bienvenida', WelcomeEmail::class, $both, ['mail'],
                 fn (string $lang) => new WelcomeEmail(self::user($lang)),
                 'Cuando el equipo crea el evento de una dueña ya confirmada.'),
