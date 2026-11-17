@@ -23,6 +23,11 @@ class PublicInvitationController extends Controller
     {
         [$event, $guest] = $this->resolve($slug, $code);
 
+        // Free for every visit but the first one of a guest: the check reads a column of the row already loaded.
+        if ($guest->invitation_opened_at === null && $request->isMethod('GET')) {
+            $this->invitations->markOpened($event, $guest);
+        }
+
         // Per guest (name, RSVP), so no shared cache may keep it; the browser may, but must revalidate (ETag -> 304).
         return response()->json([
             'data' => $this->invitations->build($event, $guest, $request->query('lang')),

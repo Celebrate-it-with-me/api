@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\SuggestedMusic;
@@ -102,7 +103,7 @@ class SuggestedMusicServices
         // Check for duplicate
         $this->checkDuplicateSong($event->id, $this->request->get('platformId'));
 
-        return DB::transaction(function () use ($event, $guest) {
+        $music = DB::transaction(function () use ($event, $guest) {
             return SuggestedMusic::create([
                 'event_id' => $event->id,
                 'title' => $this->request->get('title'),
@@ -116,6 +117,11 @@ class SuggestedMusicServices
                 'suggested_by_id' => $guest->id,
             ]);
         });
+
+        // Every suggestion is a different song, so each one is news; only an exact repeat in seconds is collapsed.
+        EventActivityLogger::logOnce($event->id, 'music_suggested', $guest, $music, ['name' => $guest->name, 'song' => $music->title], 10);
+
+        return $music;
     }
 
     /**
