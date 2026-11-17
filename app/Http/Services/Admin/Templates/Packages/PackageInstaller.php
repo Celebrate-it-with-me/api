@@ -3,6 +3,7 @@
 namespace App\Http\Services\Admin\Templates\Packages;
 
 use App\Http\Services\Admin\AdminAudit;
+use App\Http\Services\AppServices\ModuleSupport;
 use App\Models\EventType;
 use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion as Version;
@@ -96,6 +97,7 @@ class PackageInstaller
                     'ast' => $build['ast'],
                     'files' => $build['files'],
                     'report' => $meta['report'],
+                    'supported_modules' => ModuleSupport::fromAst($build['ast']),
                     'content_hash' => $build['contentHash'],
                     'zip_sha256' => $meta['zipSha256'],
                     'storage_path' => $folder,

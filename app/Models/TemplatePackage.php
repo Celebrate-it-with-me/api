@@ -26,7 +26,7 @@ class TemplatePackage extends Model
 
     protected $fillable = [
         'slug', 'semver', 'level', 'visibility', 'tier', 'status', 'engine_min', 'manifest', 'tokens', 'editable',
-        'strings', 'ast', 'files', 'report', 'content_hash', 'zip_sha256', 'storage_path', 'size_bytes',
+        'strings', 'ast', 'files', 'report', 'supported_modules', 'content_hash', 'zip_sha256', 'storage_path', 'size_bytes',
         'installed_by', 'installed_at', 'activated_at', 'deactivated_at', 'withdrawn_at',
     ];
 
@@ -38,6 +38,7 @@ class TemplatePackage extends Model
         'ast' => 'array',
         'files' => 'array',
         'report' => 'array',
+        'supported_modules' => 'array',
         'installed_at' => 'datetime',
         'activated_at' => 'datetime',
         'deactivated_at' => 'datetime',

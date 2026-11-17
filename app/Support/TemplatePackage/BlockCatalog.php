@@ -27,6 +27,12 @@ class BlockCatalog
     public const MODULE_BLOCKS = ['comments', 'tables'];
 
     /**
+     * Module (catalog key) => block that draws it, for the modules a template can fail to support. A template whose
+     * package lacks the block cannot show the module (see ModuleSupport). Keep `MODULE_BLOCKS` equal to its values.
+     */
+    public const MODULE_BLOCK_BY_MODULE = ['comments' => 'comments', 'seating' => 'tables'];
+
+    /**
      * The 21 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
      * occurrences per package file; `scope` = where it may appear (`any`, `layout`, `section:<type>`). All blocks are
      * leaves in v1 (no children). `frame` is shared by the blocks that draw a section: `full` = heading, ornament and
