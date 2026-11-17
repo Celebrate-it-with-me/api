@@ -21,6 +21,12 @@ class BlockCatalog
     public const SECTION_BLOCKS = ['comments' => 'comments', 'tables' => 'tables'];
 
     /**
+     * Blocks of premium modules (the organizer can switch the module on). A package whose HTML carries none of a
+     * block gets a `module_block_missing` warning, once per block (never an error). Extend here (e.g. `suggested-music`).
+     */
+    public const MODULE_BLOCKS = ['comments', 'tables'];
+
+    /**
      * The 21 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
      * occurrences per package file; `scope` = where it may appear (`any`, `layout`, `section:<type>`). All blocks are
      * leaves in v1 (no children). `frame` is shared by the blocks that draw a section: `full` = heading, ornament and
