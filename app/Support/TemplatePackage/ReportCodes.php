@@ -44,7 +44,7 @@ final class ReportCodes
     public const WARNINGS = [
         'unused_file', 'budget_exceeded', 'first_fold_budget', 'field_removed', 'variant_removed', 'ignored_file',
         'empty_css', 'third_party_marks_declared', 'css_costly_property', 'contrast_low', 'img_size_missing', 'heading_order',
-        'section_without_block',
+        'section_without_block', 'module_block_missing',
     ];
 
     public static function isError(string $code): bool

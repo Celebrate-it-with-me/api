@@ -130,6 +130,8 @@ class TemplatePackageValidator
         $htmlNodes = [];
         $usedAssets = [];
         $seenIds = [];
+        $presentBlocks = [];
+        $warnedSectionBlocks = [];
         $firstFold = [];
         foreach ($files as $path => $bytes) {
             if (! str_ends_with($path, '.html')) {
@@ -154,8 +156,10 @@ class TemplatePackageValidator
             if ($built !== null) {
                 // The block carries the logic of these sections: a file that designs one without it is a design with no function.
                 if ($kind === 'section' && isset(BlockCatalog::SECTION_BLOCKS[$type]) && ! isset($built['blocks'][BlockCatalog::SECTION_BLOCKS[$type]])) {
+                    $warnedSectionBlocks[BlockCatalog::SECTION_BLOCKS[$type]] = true;
                     $report->warning($path, 'section_without_block', 'Esta sección no incluye su bloque <q-' . BlockCatalog::SECTION_BLOCKS[$type] . '>: sin él no hay funcionalidad.');
                 }
+                $presentBlocks += array_fill_keys(array_keys($built['blocks']), true);
                 $artifacts['ast'][$path] = $built['ast'];
                 $classKinds = $this->mergeKinds($classKinds, $built['classKinds']);
                 $offset = count($htmlNodes);
@@ -173,6 +177,12 @@ class TemplatePackageValidator
                     }
                     $seenIds[$id] = true;
                 }
+            }
+        }
+
+        foreach (BlockCatalog::MODULE_BLOCKS as $block) {
+            if (! isset($presentBlocks[$block]) && ! isset($warnedSectionBlocks[$block])) {
+                $report->warning('layout.html', 'module_block_missing', "El paquete no incluye <q-{$block}>: si la organizadora activa ese módulo no se verá con tu diseño.", null, $block);
             }
         }
 
