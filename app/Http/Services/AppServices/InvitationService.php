@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\BackgroundMusic;
 use App\Models\DressCode;
@@ -190,6 +191,7 @@ class InvitationService
         }
 
         $mainStatus = $payload['guest']['rsvpStatus'];
+        $previousStatus = $guest->rsvp_status;
 
         DB::transaction(function () use ($guest, $companions, $requested, $mainStatus, $payload) {
             $this->setStatus($guest, $mainStatus);
@@ -221,7 +223,49 @@ class InvitationService
 
         Cache::forget("event.{$event->id}.rsvp.stats");
 
+        $this->logRsvp($event, $guest, $previousStatus, $mainStatus);
+
         return $this->rsvpData($event, $guest->fresh());
+    }
+
+    /**
+     * First time a guest opens the link: stamps it and tells the feed, once. The conditional update is the lock, so two
+     * simultaneous first visits log a single entry. Later visits (and 304s) never reach here.
+     */
+    public function markOpened(Events $event, Guest $guest): void
+    {
+        $stamped = Guest::query()->whereKey($guest->id)->whereNull('invitation_opened_at')
+            ->update(['invitation_opened_at' => now()]);
+
+        if ($stamped === 1 && $event->status === 'published') {
+            EventActivityLogger::log($event->id, 'invitation_opened', $guest, $guest, ['name' => $guest->name]);
+        }
+    }
+
+    /**
+     * The feed hears about the main guest's answer: confirmed or declined the first time, "changed" afterwards.
+     * Nothing is logged when the status did not move; bursts from the same guest collapse into one entry.
+     */
+    private function logRsvp(Events $event, Guest $guest, ?string $from, string $to): void
+    {
+        if ($from === $to) {
+            return;
+        }
+
+        $payload = ['name' => $guest->name];
+
+        if ($from === null || $from === self::STATUS_PENDING) {
+            $type = $to === self::STATUS_ATTENDING ? 'guest_confirmed' : 'guest_declined';
+        } else {
+            $type = 'guest_rsvp_changed';
+            $payload += ['from' => $from, 'to' => $to];
+        }
+
+        if ($to === self::STATUS_ATTENDING) {
+            $payload['companions'] = $guest->companions()->where('rsvp_status', self::STATUS_ATTENDING)->count();
+        }
+
+        EventActivityLogger::logOnce($event->id, $type, $guest, $guest, $payload);
     }
 
     /** A missing note is not this method's business; an empty one clears the note. */

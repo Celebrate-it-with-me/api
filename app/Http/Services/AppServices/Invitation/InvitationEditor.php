@@ -205,7 +205,7 @@ class InvitationEditor
 
         $event->refresh()->unsetRelation('template');
         if ($changed) {
-            EventActivityLogger::log($event->id, $undo ? 'invitation_template_undone' : 'invitation_template_changed', $actor, $event, ['from' => $fromId, 'to' => $target->id]);
+            EventActivityLogger::log($event->id, $undo ? 'invitation_template_undone' : 'invitation_template_changed', $actor, $event, ['from' => $fromId, 'to' => $target->id, 'template' => $target->name]);
         }
 
         return $this->state($event, $actor) + ['undo' => $changed ? ['until' => now()->addMinutes(self::UNDO_MINUTES)->toIso8601String(), 'templateId' => $fromId] : null];
