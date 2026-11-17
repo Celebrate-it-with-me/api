@@ -7,6 +7,7 @@ use App\Models\BudgetItem;
 use App\Models\DressCode;
 use App\Models\DressCodeImage;
 use App\Models\EventBudget;
+use App\Models\EventConfigComment;
 use App\Models\EventLocation;
 use App\Models\EventLocationImages;
 use App\Models\EventModuleOverride;
@@ -68,6 +69,7 @@ class InvitationCache
             SweetMemoriesImage::class => fn (SweetMemoriesImage $m) => $m->event_id,
             BackgroundMusic::class => fn (BackgroundMusic $m) => $m->event_id,
             SaveTheDate::class => fn (SaveTheDate $m) => $m->event_id,
+            EventConfigComment::class => fn (EventConfigComment $m) => $m->event_id,
             EventModuleOverride::class => fn (EventModuleOverride $m) => $m->event_id,
         ];
     }

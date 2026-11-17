@@ -89,6 +89,8 @@ class TemplatePreview
             'gallery' => ['photos' => $sample['photos']],
             // No real song in a preview: the player is drawn disabled.
             'music' => ['url' => '', 'title' => 'Nuestra canción', 'mimeType' => 'audio/mpeg', 'loop' => true],
+            'comments' => ['heading' => null, 'subHeading' => null, 'buttonText' => null, 'maxLength' => 500, 'canWrite' => false],
+            'tables' => ['tables' => [['personId' => 1, 'name' => 'Rosa Fernández', 'table' => 'Familia', 'seat' => null]], 'sameTable' => true],
             'rsvp' => [
                 'guest' => ['id' => 1, 'name' => 'Rosa Fernández', 'status' => 'pending'],
                 'companions' => [['id' => 2, 'name' => 'Luis Fernández', 'status' => 'pending']],

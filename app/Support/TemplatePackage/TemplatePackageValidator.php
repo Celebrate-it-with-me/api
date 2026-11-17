@@ -152,6 +152,10 @@ class TemplatePackageValidator
             }
             $built = (new HtmlAstBuilder)->withStrings($stringKeys)->build($bytes, $path, $kind, $type, $assets, $report);
             if ($built !== null) {
+                // The block carries the logic of these sections: a file that designs one without it is a design with no function.
+                if ($kind === 'section' && isset(BlockCatalog::SECTION_BLOCKS[$type]) && ! isset($built['blocks'][BlockCatalog::SECTION_BLOCKS[$type]])) {
+                    $report->warning($path, 'section_without_block', 'Esta sección no incluye su bloque <q-' . BlockCatalog::SECTION_BLOCKS[$type] . '>: sin él no hay funcionalidad.');
+                }
                 $artifacts['ast'][$path] = $built['ast'];
                 $classKinds = $this->mergeKinds($classKinds, $built['classKinds']);
                 $offset = count($htmlNodes);
