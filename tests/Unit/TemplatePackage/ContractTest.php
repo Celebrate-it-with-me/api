@@ -76,10 +76,10 @@ it('uses the unified filter names of the server', function (string $expr, bool $
     ['event.date|weekdayShort', false], ['event.name|reverse', false], ['rsvp.seats|upper', false],
 ]);
 
-// --- the 19 blocks -------------------------------------------------------------------------------------------------------
+// --- the 21 blocks -------------------------------------------------------------------------------------------------------
 
-it('has the 19 blocks of the catalog, including closing and save-the-date', function () {
-    expect(array_keys(BlockCatalog::BLOCKS))->toHaveCount(19)->toContain('closing', 'save-the-date');
+it('has the 21 blocks of the catalog, including closing, save-the-date, comments and tables', function () {
+    expect(array_keys(BlockCatalog::BLOCKS))->toHaveCount(21)->toContain('closing', 'save-the-date', 'comments', 'tables');
 });
 
 it('accepts the frame prop on the blocks that draw a section', function () {
