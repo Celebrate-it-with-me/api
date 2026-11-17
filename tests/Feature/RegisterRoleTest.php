@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Services\Auth\SocialAuthService;
 use App\Models\Events;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Socialite\Facades\Socialite;
 
 uses(RefreshDatabase::class);
 
@@ -45,8 +47,8 @@ it('gives appUser to an account created by social sign-in, and leaves an existin
     $existing = User::factory()->create(['email' => 'vieja@cwm.test']);
 
     foreach (['g-new' => 'social@cwm.test', 'g-old' => 'vieja@cwm.test'] as $id => $email) {
-        Laravel\Socialite\Facades\Socialite::shouldReceive('driver->user')->once()->andReturn($socialUser($id, $email));
-        app(App\Http\Services\Auth\SocialAuthService::class)->callback('google');
+        Socialite::shouldReceive('driver->user')->once()->andReturn($socialUser($id, $email));
+        app(SocialAuthService::class)->callback('google');
     }
 
     expect(User::where('email', 'social@cwm.test')->firstOrFail()->hasRole('appUser'))->toBeTrue()
