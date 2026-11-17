@@ -90,9 +90,9 @@ it('lists missingModules in the template selector', function () {
 
     $list = collect($this->actingAs($owner)->getJson("$api/invitation/templates")->assertOk()->json('data'));
 
-    expect($list->firstWhere('slug', 'desnuda-quinceanera')['missingModules'])->toBe(['comments', 'seating'])
-        ->and($list->firstWhere('slug', 'completa-quinceanera')['missingModules'])->toBe([])
-        ->and($list->firstWhere('slug', 'media-quinceanera')['missingModules'])->toBe(['comments'])
+    expect($list->firstWhere('slug', 'desnuda-quinceanera')['missingModules'])->toBe(['comments', 'seating', 'suggested_music'])
+        ->and($list->firstWhere('slug', 'completa-quinceanera')['missingModules'])->toBe(['suggested_music'])
+        ->and($list->firstWhere('slug', 'media-quinceanera')['missingModules'])->toBe(['comments', 'suggested_music'])
         ->and($list->every(fn ($t) => is_array($t['missingModules'])))->toBeTrue()
         ->and($list->filter(fn ($t) => str_starts_with($t['slug'], 'classic') || str_starts_with($t['slug'], 'botanical'))->every(fn ($t) => $t['missingModules'] === []))->toBeTrue();
 });
@@ -164,4 +164,46 @@ it('backfills supported_modules idempotently for installed packages', function (
         ->and(json_decode($once[$bare['id']], true))->toBe([])
         ->and(DB::table('template_packages')->orderBy('id')->pluck('supported_modules', 'id')->all())->toBe($once)
         ->and(DB::table('events')->count())->toBe($eventsBefore);
+});
+
+function mcMusicConfig(): array
+{
+    return ['title' => 't', 'subTitle' => 's', 'mainColor' => '#000', 'secondaryColor' => '#fff', 'usePreview' => true, 'useVoteSystem' => true, 'searchLimit' => 5];
+}
+
+it('reports suggested_music in missingModules and in the stored support of a package', function () {
+    $bare = mcInstall(mcBuilder('sinmusica', '<q-comments></q-comments><q-tables></q-tables>'));
+    $full = mcInstall(mcBuilder('conmusica', '<q-suggested-music></q-suggested-music>'));
+    [, $owner, $api] = mcEvent();
+
+    $list = collect($this->actingAs($owner)->getJson("$api/invitation/templates")->assertOk()->json('data'));
+
+    expect(TemplatePackage::find($bare['id'])->supported_modules)->toBe(['comments', 'seating'])
+        ->and(TemplatePackage::find($full['id'])->supported_modules)->toBe(['suggested_music'])
+        ->and($list->firstWhere('slug', 'sinmusica-quinceanera')['missingModules'])->toBe(['suggested_music'])
+        ->and($list->firstWhere('slug', 'conmusica-quinceanera')['missingModules'])->toBe(['comments', 'seating']);
+});
+
+it('answers 409 template_missing_module on the first suggested music configuration of a package without the block', function () {
+    mcInstall(mcBuilder('sinmusica'));
+    [$event, $owner, $api] = mcEvent('sinmusica');
+
+    $this->actingAs($owner)->postJson("$api/suggest-music-config", mcMusicConfig())
+        ->assertStatus(409)
+        ->assertExactJson([
+            'code' => 'template_missing_module',
+            'message' => 'La plantilla de tu invitación no incluye este módulo. Cambia de plantilla para activarlo.',
+            'module' => 'suggested_music',
+            'template' => ['slug' => 'sinmusica-quinceanera', 'name' => 'Fiesta sinmusica'],
+        ]);
+    expect($event->suggestedMusicConfig()->exists())->toBeFalse();
+});
+
+it('allows suggested music when the package carries the block, and never blocks a native template', function () {
+    mcInstall(mcBuilder('conmusica', '<q-suggested-music></q-suggested-music>'));
+    [, $owner, $api] = mcEvent('conmusica');
+    [, $nativeOwner, $nativeApi] = mcEvent();
+
+    $this->actingAs($owner)->postJson("$api/suggest-music-config", mcMusicConfig())->assertSuccessful();
+    $this->actingAs($nativeOwner)->postJson("$nativeApi/suggest-music-config", mcMusicConfig())->assertSuccessful();
 });

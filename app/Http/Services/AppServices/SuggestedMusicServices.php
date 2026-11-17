@@ -142,16 +142,25 @@ class SuggestedMusicServices
     }
 
     /**
+     * Songs this guest suggested. The column stores the morph alias (`guest`), not the class: counting `Guest::class`
+     * matched nothing, so the cap never applied. The class name is still counted for rows written before the morph map.
+     */
+    public static function countByGuest(Guest $guest, int $eventId): int
+    {
+        return SuggestedMusic::where('event_id', $eventId)
+            ->whereIn('suggested_by_entity', [$guest->getMorphClass(), Guest::class])
+            ->where('suggested_by_id', $guest->id)
+            ->count();
+    }
+
+    /**
      * Check if guest has reached suggestion limit
      */
     protected function checkSuggestionLimit(Guest $guest, int $eventId): void
     {
         $maxSuggestions = config('music.max_suggestions_per_guest', 5);
 
-        $currentCount = SuggestedMusic::where('event_id', $eventId)
-            ->where('suggested_by_entity', Guest::class)
-            ->where('suggested_by_id', $guest->id)
-            ->count();
+        $currentCount = self::countByGuest($guest, $eventId);
 
         if ($currentCount >= $maxSuggestions) {
             throw ValidationException::withMessages([

@@ -52,6 +52,10 @@ class InvitationTemplateSeeder extends Seeder
                 'title' => ['es' => 'Tu mesa', 'en' => 'Your table'],
                 'text' => ['es' => null, 'en' => null],
             ],
+            'suggested_music' => [
+                'title' => ['es' => 'Tu música', 'en' => 'Your music'],
+                'text' => ['es' => 'Sugiere las canciones que no pueden faltar.', 'en' => 'Suggest the songs we can’t miss.'],
+            ],
             'comments' => [
                 'title' => ['es' => 'Deja un mensaje', 'en' => 'Leave a message'],
                 'text' => ['es' => null, 'en' => null],
@@ -98,6 +102,10 @@ class InvitationTemplateSeeder extends Seeder
             'tables' => [
                 'title' => ['es' => 'Tu mesa', 'en' => 'Your table'],
                 'text' => ['es' => null, 'en' => null],
+            ],
+            'suggested_music' => [
+                'title' => ['es' => 'Tu música', 'en' => 'Your music'],
+                'text' => ['es' => 'Sugiere las canciones que no pueden faltar.', 'en' => 'Suggest the songs we can’t miss.'],
             ],
             'comments' => [
                 'title' => ['es' => 'Deja un mensaje', 'en' => 'Leave a message'],

@@ -11,29 +11,29 @@ class BlockCatalog
 {
     public const SECTION_TYPES = [
         'cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing', 'countdown', 'save_the_date',
-        'comments', 'tables',
+        'comments', 'tables', 'suggested_music',
     ];
 
     /**
      * Sections whose behavior lives in a system block: a package that designs `sections/<type>.html` without the block
      * gets a `section_without_block` warning (the file would be a design without functionality). Section type => block.
      */
-    public const SECTION_BLOCKS = ['comments' => 'comments', 'tables' => 'tables'];
+    public const SECTION_BLOCKS = ['comments' => 'comments', 'tables' => 'tables', 'suggested_music' => 'suggested-music'];
 
     /**
      * Blocks of premium modules (the organizer can switch the module on). A package whose HTML carries none of a
-     * block gets a `module_block_missing` warning, once per block (never an error). Extend here (e.g. `suggested-music`).
+     * block gets a `module_block_missing` warning, once per block (never an error). Extend here.
      */
-    public const MODULE_BLOCKS = ['comments', 'tables'];
+    public const MODULE_BLOCKS = ['comments', 'tables', 'suggested-music'];
 
     /**
      * Module (catalog key) => block that draws it, for the modules a template can fail to support. A template whose
      * package lacks the block cannot show the module (see ModuleSupport). Keep `MODULE_BLOCKS` equal to its values.
      */
-    public const MODULE_BLOCK_BY_MODULE = ['comments' => 'comments', 'seating' => 'tables'];
+    public const MODULE_BLOCK_BY_MODULE = ['comments' => 'comments', 'seating' => 'tables', 'suggested_music' => 'suggested-music'];
 
     /**
-     * The 21 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
+     * The 22 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
      * occurrences per package file; `scope` = where it may appear (`any`, `layout`, `section:<type>`). All blocks are
      * leaves in v1 (no children). `frame` is shared by the blocks that draw a section: `full` = heading, ornament and
      * panel of the engine, `no-title` = without the heading (the package writes its own), `bare` = only the content.
@@ -59,6 +59,7 @@ class BlockCatalog
         'save-the-date' => ['props' => ['frame' => self::FRAME, 'calendar' => ['bool']], 'max' => 1, 'scope' => 'any'],
         'comments' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['list', 'cards']], 'max' => ['int', 1, 20]], 'max' => 1, 'scope' => 'any'],
         'tables' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['inline', 'card']]], 'max' => 1, 'scope' => 'any'],
+        'suggested-music' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['list', 'cards']]], 'max' => 1, 'scope' => 'any'],
         'sections' => ['props' => [], 'max' => 1, 'scope' => 'layout'],
     ];
 

@@ -20,6 +20,7 @@ use App\Models\Module;
 use App\Models\Padrino;
 use App\Models\PadrinoCommitment;
 use App\Models\SaveTheDate;
+use App\Models\SuggestedMusicConfig;
 use App\Models\SweetMemoriesImage;
 use App\Models\TemplatePackage;
 use App\Models\Timeline;
@@ -70,6 +71,7 @@ class InvitationCache
             BackgroundMusic::class => fn (BackgroundMusic $m) => $m->event_id,
             SaveTheDate::class => fn (SaveTheDate $m) => $m->event_id,
             EventConfigComment::class => fn (EventConfigComment $m) => $m->event_id,
+            SuggestedMusicConfig::class => fn (SuggestedMusicConfig $m) => $m->event_id,
             EventModuleOverride::class => fn (EventModuleOverride $m) => $m->event_id,
         ];
     }
