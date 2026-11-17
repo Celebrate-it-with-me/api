@@ -60,7 +60,7 @@ it('starts new events with the section on, through the seeder', function () {
     }
 });
 
-it('publishes the next version with the section off, between tables and comments', function () {
+it('publishes the next version with the section on, between tables and comments', function () {
     $template = stripSuggestedMusic();
     $old = $template->current_version_id;
 
@@ -74,7 +74,7 @@ it('publishes the next version with the section off, between tables and comments
     expect($template->current_version_id)->not->toBe($old)
         ->and($new->status)->toBe('published')
         ->and(DB::table('invitation_template_versions')->find($old)->status)->toBe('archived')
-        ->and($sections->firstWhere('type', 'suggested_music')['enabled'])->toBeFalse()
+        ->and($sections->firstWhere('type', 'suggested_music')['enabled'])->toBeTrue()
         ->and($sections->pluck('order')->all())->toBe(range(1, $sections->count()))
         ->and(array_search('suggested_music', $types))->toBeGreaterThan(array_search('tables', $types))
         ->and(array_search('suggested_music', $types))->toBeLessThan(array_search('comments', $types));

@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * The invitation gains the `suggested_music` section (docs/plans/invitation-premium-modules-contract.md, section 5). A
  * published version never changes, so for every template that lacks it this publishes its next version with the
- * section added before `comments`/`closing`, OFF: nothing changes on screen for anyone until the organizer turns it on
- * from the editor (new events of the Classic seeder start with it on). The events already fixed to the previous
- * version move to the new one with the section also OFF in their own template_config.
+ * section added before `comments`/`closing`, ON: new events (drafts, which follow the current version) start with it. The
+ * events already fixed to the previous version move to the new one with the section OFF in their own template_config:
+ * their invitations were already sent, and the organizer turns it on from the editor.
  *
  * Versions managed by a template package are left alone: the package decides which sections it draws.
  * "If missing": a template that already has the type keeps it as it is; running it twice changes nothing.
@@ -40,7 +40,7 @@ return new class extends Migration
 
             $extra = [
                 'type' => self::TYPE,
-                'enabled' => false,
+                'enabled' => true,
                 'title' => ['es' => 'Tu música', 'en' => 'Your music'],
                 'text' => ['es' => 'Sugiere las canciones que no pueden faltar.', 'en' => 'Suggest the songs we can’t miss.'],
                 'settings' => (object) [],
@@ -80,7 +80,7 @@ return new class extends Migration
                 'sections' => $json,
                 'theme' => $themeJson,
                 'schema_version' => $current->schema_version ?? 1,
-                'notes' => 'Adds the suggested music section (off).',
+                'notes' => 'Adds the suggested music section.',
                 'published_at' => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
