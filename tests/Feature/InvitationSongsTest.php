@@ -50,7 +50,7 @@ function spotifyId(int $n): string
     return str_pad((string) $n, 22, 'x', STR_PAD_LEFT);
 }
 
-function addSong(Events $event, ?Guest $by, int $n, array $attributes = []): SuggestedMusic
+function addSuggestedSong(Events $event, ?Guest $by, int $n, array $attributes = []): SuggestedMusic
 {
     return SuggestedMusic::create(array_merge([
         'event_id' => $event->id, 'title' => "Canción {$n}", 'artist' => "Artista {$n}", 'album' => 'Álbum', 'platform' => 'spotify',
@@ -80,7 +80,7 @@ function fakeSpotifyCatalogue(): void
 describe('the suggested music section in the invitation', function () {
     it('carries only configuration, never the list', function () {
         [$event, $main] = songsEvent();
-        addSong($event, $main, 1);
+        addSuggestedSong($event, $main, 1);
 
         $section = collect($this->getJson(IS_URL)->assertOk()->json('data.sections'))->firstWhere('type', 'suggested_music');
 
@@ -91,9 +91,9 @@ describe('the suggested music section in the invitation', function () {
     it('counts mySuggestions per guest and keeps the shared payload free of it', function () {
         [$event, $main] = songsEvent();
         $other = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'code' => 'OTH999']);
-        addSong($event, $main, 1);
-        addSong($event, $main, 2);
-        addSong($event, $other, 3);
+        addSuggestedSong($event, $main, 1);
+        addSuggestedSong($event, $main, 2);
+        addSuggestedSong($event, $other, 3);
 
         $mine = fn (string $code) => collect($this->getJson("/api/v1/app/invitation/xv-musica/{$code}")->json('data.sections'))->firstWhere('type', 'suggested_music')['data']['mySuggestions'];
 
@@ -135,8 +135,8 @@ describe('GET invitation songs', function () {
     it('lists with the public shape only and the guest-relative flags', function () {
         [$event, $main, $companion] = songsEvent();
         $other = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'name' => 'Tía Marta', 'code' => 'OTH999']);
-        $mine = addSong($event, $main, 1);
-        $theirs = addSong($event, $other, 2);
+        $mine = addSuggestedSong($event, $main, 1);
+        $theirs = addSuggestedSong($event, $other, 2);
         SuggestedMusicVote::create(['suggested_music_id' => $theirs->id, 'guest_id' => $main->id, 'vote_type' => 'up']);
         SuggestedMusicVote::create(['suggested_music_id' => $theirs->id, 'guest_id' => $other->id, 'vote_type' => 'up']);
 
@@ -153,11 +153,11 @@ describe('GET invitation songs', function () {
 
     it('orders by recent when asked and rejects an unknown order', function () {
         [$event, $main] = songsEvent();
-        $old = addSong($event, $main, 1);
+        $old = addSuggestedSong($event, $main, 1);
         $old->forceFill(['created_at' => now()->subDay()])->save();
-        $voted = addSong($event, $main, 2);
+        $voted = addSuggestedSong($event, $main, 2);
         $voted->forceFill(['created_at' => now()->subHour()])->save();
-        $new = addSong($event, $main, 3);
+        $new = addSuggestedSong($event, $main, 3);
         SuggestedMusicVote::create(['suggested_music_id' => $old->id, 'guest_id' => $main->id, 'vote_type' => 'up']);
 
         expect(collect($this->getJson(IS_URL . '/songs?orderBy=recent')->json('data'))->pluck('id')->all())->toBe([$new->id, $voted->id, $old->id])
@@ -168,7 +168,7 @@ describe('GET invitation songs', function () {
 
     it('shows the preview only when the organizer allows it', function () {
         [$event, $main] = songsEvent('premium', [], ['use_preview' => false, 'use_vote_system' => true]);
-        addSong($event, $main, 1);
+        addSuggestedSong($event, $main, 1);
 
         expect($this->getJson(IS_URL . '/songs')->json('data.0.previewUrl'))->toBeNull();
 
@@ -179,7 +179,7 @@ describe('GET invitation songs', function () {
     it('pages by twenty', function () {
         [$event, $main] = songsEvent();
         foreach (range(1, 22) as $i) {
-            addSong($event, $main, $i);
+            addSuggestedSong($event, $main, $i);
         }
 
         expect($this->getJson(IS_URL . '/songs')->json('data'))->toHaveCount(20)
@@ -189,7 +189,7 @@ describe('GET invitation songs', function () {
     it('does not mix the songs of another event', function () {
         songsEvent();
         $foreign = Events::factory()->create(['status' => 'published', 'custom_url_slug' => 'otro-evento']);
-        addSong($foreign, null, 1);
+        addSuggestedSong($foreign, null, 1);
 
         expect($this->getJson(IS_URL . '/songs')->assertOk()->json('data'))->toBe([]);
     });
@@ -218,7 +218,7 @@ describe('GET invitation songs', function () {
 
     it('is still readable on an archived account event', function () {
         [$event, $main] = songsEvent('premium', ['status' => 'archived', 'purge_after' => now()->addDays(30)]);
-        addSong($event, $main, 1);
+        addSuggestedSong($event, $main, 1);
 
         $this->getJson(IS_URL . '/songs')->assertOk()->assertJsonPath('data.0.title', 'Canción 1');
     });
@@ -393,7 +393,7 @@ describe('POST invitation songs', function () {
     it('answers 422 duplicate when the song was already suggested, by anyone', function () {
         [$event, $main] = songsEvent();
         $other = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'code' => 'OTH999']);
-        addSong($event, $other, 1);
+        addSuggestedSong($event, $other, 1);
 
         $this->postJson(IS_URL . '/songs', songBody(1))->assertStatus(422)->assertJsonPath('errors.duplicate.0', 'duplicate')->assertJsonPath('code', 'duplicate');
         expect(SuggestedMusic::count())->toBe(1);
@@ -402,7 +402,7 @@ describe('POST invitation songs', function () {
     it('allows the same song in another event', function () {
         songsEvent();
         $foreign = Events::factory()->create(['status' => 'published', 'custom_url_slug' => 'otro-evento']);
-        addSong($foreign, null, 1);
+        addSuggestedSong($foreign, null, 1);
 
         $this->postJson(IS_URL . '/songs', songBody(1))->assertCreated();
     });
@@ -410,7 +410,7 @@ describe('POST invitation songs', function () {
     it('caps the suggestions at five per guest (the stored alias is what counts)', function () {
         [$event, $main] = songsEvent();
         $other = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'code' => 'OTH999']);
-        addSong($event, $other, 90);
+        addSuggestedSong($event, $other, 90);
 
         foreach (range(1, 5) as $i) {
             $this->postJson(IS_URL . '/songs', songBody($i))->assertCreated();
@@ -474,7 +474,7 @@ describe('POST invitation songs', function () {
 describe('DELETE invitation songs/{id}', function () {
     it('removes her own suggestion with its votes', function () {
         [$event, $main] = songsEvent();
-        $song = addSong($event, $main, 1);
+        $song = addSuggestedSong($event, $main, 1);
         SuggestedMusicVote::create(['suggested_music_id' => $song->id, 'guest_id' => $main->id, 'vote_type' => 'up']);
 
         $this->deleteJson(IS_URL . '/songs/' . $song->id)->assertNoContent();
@@ -486,7 +486,7 @@ describe('DELETE invitation songs/{id}', function () {
         [$event, $main] = songsEvent();
         $other = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'code' => 'OTH999']);
         $foreign = Events::factory()->create(['status' => 'published', 'custom_url_slug' => 'otro-evento']);
-        $ids = [addSong($event, $other, 1)->id, addSong($event, null, 2)->id, addSong($foreign, null, 3)->id, 99999];
+        $ids = [addSuggestedSong($event, $other, 1)->id, addSuggestedSong($event, null, 2)->id, addSuggestedSong($foreign, null, 3)->id, 99999];
 
         foreach ($ids as $id) {
             $this->deleteJson(IS_URL . '/songs/' . $id)->assertNotFound();
@@ -496,7 +496,7 @@ describe('DELETE invitation songs/{id}', function () {
 
     it('is refused as read only once the owner deleted her account', function () {
         [$event, $main] = songsEvent('premium', ['status' => 'archived', 'purge_after' => now()->addDays(30)]);
-        $song = addSong($event, $main, 1);
+        $song = addSuggestedSong($event, $main, 1);
 
         $this->deleteJson(IS_URL . '/songs/' . $song->id)->assertForbidden()->assertJsonPath('code', 'read_only');
         expect(SuggestedMusic::count())->toBe(1);
@@ -506,7 +506,7 @@ describe('DELETE invitation songs/{id}', function () {
 describe('POST invitation songs/{id}/vote', function () {
     it('votes once per song, is idempotent, and removes the vote', function () {
         [$event, $main] = songsEvent();
-        $song = addSong($event, null, 1);
+        $song = addSuggestedSong($event, null, 1);
 
         $first = $this->postJson(IS_URL . "/songs/{$song->id}/vote", ['vote' => true])->assertOk();
         expect($first->json('data'))->toMatchArray(['id' => $song->id, 'votes' => 1, 'votedByMe' => true])
@@ -524,7 +524,7 @@ describe('POST invitation songs/{id}/vote', function () {
 
     it('turns a legacy downvote into an upvote', function () {
         [$event, $main] = songsEvent();
-        $song = addSong($event, null, 1);
+        $song = addSuggestedSong($event, null, 1);
         SuggestedMusicVote::create(['suggested_music_id' => $song->id, 'guest_id' => $main->id, 'vote_type' => 'down']);
 
         $this->postJson(IS_URL . "/songs/{$song->id}/vote", ['vote' => true])->assertOk()->assertJsonPath('data.votes', 1);
@@ -533,7 +533,7 @@ describe('POST invitation songs/{id}/vote', function () {
 
     it('spends a budget of one vote per person of the link (guest plus companions)', function () {
         [$event, $main] = songsEvent();
-        $songs = collect(range(1, 3))->map(fn ($i) => addSong($event, null, $i));
+        $songs = collect(range(1, 3))->map(fn ($i) => addSuggestedSong($event, null, $i));
 
         $this->postJson(IS_URL . "/songs/{$songs[0]->id}/vote", ['vote' => true])->assertOk();
         $this->postJson(IS_URL . "/songs/{$songs[1]->id}/vote", ['vote' => true])->assertOk()->assertJsonPath('meta.votesRemaining', 0);
@@ -550,7 +550,7 @@ describe('POST invitation songs/{id}/vote', function () {
 
     it('answers 403 votes_disabled when the organizer has no voting', function () {
         [$event] = songsEvent('premium', [], ['use_preview' => true, 'use_vote_system' => false]);
-        $song = addSong($event, null, 1);
+        $song = addSuggestedSong($event, null, 1);
 
         $this->postJson(IS_URL . "/songs/{$song->id}/vote", ['vote' => true])->assertForbidden()->assertJsonPath('code', 'votes_disabled');
         expect(SuggestedMusicVote::count())->toBe(0);
@@ -559,7 +559,7 @@ describe('POST invitation songs/{id}/vote', function () {
     it('answers 404 for a song of another event or missing', function () {
         songsEvent();
         $foreign = Events::factory()->create(['status' => 'published', 'custom_url_slug' => 'otro-evento']);
-        $song = addSong($foreign, null, 1);
+        $song = addSuggestedSong($foreign, null, 1);
 
         $this->postJson(IS_URL . "/songs/{$song->id}/vote", ['vote' => true])->assertNotFound();
         $this->postJson(IS_URL . '/songs/99999/vote', ['vote' => true])->assertNotFound();
@@ -567,7 +567,7 @@ describe('POST invitation songs/{id}/vote', function () {
 
     it('validates the vote flag', function (mixed $body, string $code) {
         [$event] = songsEvent();
-        $song = addSong($event, null, 1);
+        $song = addSuggestedSong($event, null, 1);
 
         $this->postJson(IS_URL . "/songs/{$song->id}/vote", $body)->assertStatus(422)->assertJsonPath('errors.vote.0', $code);
     })->with([
@@ -578,14 +578,14 @@ describe('POST invitation songs/{id}/vote', function () {
 
     it('is refused as read only once the owner deleted her account', function () {
         [$event] = songsEvent('premium', ['status' => 'archived', 'purge_after' => now()->addDays(30)]);
-        $song = addSong($event, null, 1);
+        $song = addSuggestedSong($event, null, 1);
 
         $this->postJson(IS_URL . "/songs/{$song->id}/vote", ['vote' => true])->assertForbidden()->assertJsonPath('code', 'read_only');
     });
 
     it('limits the votes of one link to 30 per 10 minutes', function () {
         [$event] = songsEvent();
-        $song = addSong($event, null, 1);
+        $song = addSuggestedSong($event, null, 1);
 
         foreach (range(1, 30) as $i) {
             $this->postJson(IS_URL . "/songs/{$song->id}/vote", ['vote' => $i % 2 === 0])->assertOk();
