@@ -815,7 +815,7 @@ class HtmlAstBuilder
 
     private function href(string $value, ?int $line): mixed
     {
-        if (preg_match('/^#(pkg-[a-z0-9-]{1,40}|cover|itinerary|locations|dress_code|padrinos|gallery|rsvp|music|closing|countdown|save_the_date|comments|tables)$/', $value)) {
+        if (preg_match('/^#(pkg-[a-z0-9-]{1,40}|cover|itinerary|locations|dress_code|padrinos|gallery|rsvp|music|closing|countdown|save_the_date|comments|tables|suggested_music|suggested-music)$/', $value)) {
             return $value;
         }
         if (UrlGuard::isHttps($value) && preg_match('/^https:\/\/[a-z0-9]([a-z0-9.-]{0,120}[a-z0-9])?(:\d{1,5})?(\/[A-Za-z0-9._~!$&()*+,;=:@%\/?#\[\]-]{0,400})?$/i', $value)) {

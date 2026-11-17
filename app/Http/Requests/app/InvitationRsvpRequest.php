@@ -16,7 +16,7 @@ class InvitationRsvpRequest extends FormRequest
     private const BIDI = '\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}\x{2066}-\x{2069}\x{FEFF}';
 
     /** A name: no control characters at all (not even a line break), no direction controls. */
-    private const NAME_PATTERN = '/^[^\p{Cc}' . self::BIDI . ']+$/u';
+    public const NAME_PATTERN = '/^[^\p{Cc}' . self::BIDI . ']+$/u';
 
     /** A note: plain text where only line breaks (LF, CR) are allowed among the control characters. */
     public const NOTE_PATTERN = '/^[^\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F' . self::BIDI . ']*$/u';

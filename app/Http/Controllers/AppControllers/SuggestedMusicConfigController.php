@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\app\StoreSuggestedMusicConfigRequest;
 use App\Http\Requests\app\UpdateSuggestedMusicConfigRequest;
 use App\Http\Resources\AppResources\SuggestedMusicConfigResource;
+use App\Http\Services\AppServices\ModuleSupport;
 use App\Http\Services\AppServices\SuggestedMusicConfigServices;
 use App\Models\Events;
 use App\Models\SuggestedMusicConfig;
@@ -49,6 +50,9 @@ class SuggestedMusicConfigController extends Controller
      */
     public function store(StoreSuggestedMusicConfigRequest $request, Events $event): JsonResponse|SuggestedMusicConfigResource
     {
+        // The first configuration is what switches the module on: the template must carry its block.
+        app(ModuleSupport::class)->assertCanActivate($event, 'suggested_music');
+
         try {
             return SuggestedMusicConfigResource::make($this->suggestedMusicConfigServices->create($event));
         } catch (Throwable $th) {

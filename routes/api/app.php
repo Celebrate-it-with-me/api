@@ -27,6 +27,7 @@ use App\Http\Controllers\AppControllers\OrganizerRsvpController;
 use App\Http\Controllers\AppControllers\PadrinoController;
 use App\Http\Controllers\AppControllers\PublicInvitationCommentController;
 use App\Http\Controllers\AppControllers\PublicInvitationController;
+use App\Http\Controllers\AppControllers\PublicInvitationSongController;
 use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
@@ -57,6 +58,15 @@ Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function (
     Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
     Route::get('comments', [PublicInvitationCommentController::class, 'index'])->middleware(['throttle:invitation-comments-read', 'module.access:comments'])->name('comments.index');
     Route::post('comments', [PublicInvitationCommentController::class, 'store'])->middleware(['throttle:invitation-comments-write', 'throttle:invitation-comments-code', 'module.access:comments'])->name('comments.store');
+
+    // Suggested music: list, search the catalogue, suggest, remove one's own, vote (docs/plans/invitation-premium-modules-contract.md, section 5).
+    Route::prefix('songs')->name('songs.')->middleware('module.access:suggested_music')->group(function () {
+        Route::get('', [PublicInvitationSongController::class, 'index'])->middleware('throttle:invitation-songs-read')->name('index');
+        Route::get('search', [PublicInvitationSongController::class, 'search'])->middleware(['throttle:invitation-songs-search', 'throttle:invitation-songs-search-code'])->name('search');
+        Route::post('', [PublicInvitationSongController::class, 'store'])->middleware(['throttle:invitation-songs-write', 'throttle:invitation-songs-write-code'])->name('store');
+        Route::delete('{song}', [PublicInvitationSongController::class, 'destroy'])->whereNumber('song')->middleware(['throttle:invitation-songs-write', 'throttle:invitation-songs-write-code'])->name('destroy');
+        Route::post('{song}/vote', [PublicInvitationSongController::class, 'vote'])->whereNumber('song')->middleware(['throttle:invitation-songs-vote', 'throttle:invitation-songs-vote-code'])->name('vote');
+    });
 });
 
 // Public Event Template Routes

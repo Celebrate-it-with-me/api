@@ -42,7 +42,7 @@ class InvitationService
     public const STATUS_PENDING = 'pending';
 
     /** Section types the renderer understands in this release. */
-    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing', 'comments', 'tables'];
+    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing', 'comments', 'tables', 'suggested_music'];
 
     /** Hard cap of photos in the gallery, whatever the section says. */
     public const GALLERY_MAX_PHOTOS = 40;
@@ -62,6 +62,7 @@ class InvitationService
         'rsvp' => 'rsvp',
         'comments' => 'comments',
         'tables' => 'seating',
+        'suggested_music' => 'suggested_music',
     ];
 
     /**
@@ -169,6 +170,9 @@ class InvitationService
                 }
 
                 $section = array_replace($section, ['data' => $tables]);
+            } elseif ($section['type'] === 'suggested_music') {
+                // How many of her five suggestions this guest has used; the rest of the data is shared.
+                $section['data']['mySuggestions'] = app(Invitation\InvitationSongs::class)->mySuggestions($event, $guest);
             }
 
             $sections[] = $section;
@@ -666,6 +670,7 @@ class InvitationService
             'closing' => [],
             'comments' => app(Invitation\InvitationComments::class)->sectionData($event),
             // Filled per guest by forGuest (and dropped there when she has no table): the shared payload has no guest.
+            'suggested_music' => app(Invitation\InvitationSongs::class)->sectionData($event),
             'tables' => $guest === null ? ['pending' => true] : app(Invitation\InvitationTables::class)->forGuest($guest),
             default => null,
         };

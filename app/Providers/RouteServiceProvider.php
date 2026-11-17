@@ -31,6 +31,10 @@ class RouteServiceProvider extends ServiceProvider
         'invitation-calendar' => [30, 1],
         'invitation-comments-read' => [60, 1],
         'invitation-comments-write' => [10, 1],
+        'invitation-songs-read' => [60, 1],
+        'invitation-songs-search' => [20, 1],
+        'invitation-songs-write' => [10, 1],
+        'invitation-songs-vote' => [30, 1],
         'invitation-edit' => [60, 1],
         'invitation-preview' => [30, 1],
         'invitation-cover-upload' => [10, 1],
@@ -123,6 +127,17 @@ class RouteServiceProvider extends ServiceProvider
                 'message' => __('errors.too_many_attempts'),
                 'code' => 'too_many_attempts',
             ], 429, $headers)));
+
+        // Songs of one invitation (search, suggest/remove, vote): besides the per-IP limits, a budget per link (slug + code)
+        // in 10 minutes, so one family cannot be hammered from many addresses nor spend our Spotify quota.
+        foreach (['search' => 20, 'write' => 10, 'vote' => 30] as $kind => $attempts) {
+            RateLimiter::for("invitation-songs-{$kind}-code", fn (Request $request) => Limit::perMinutes(10, $attempts)
+                ->by("invitation-songs-{$kind}-code|" . $request->route('slug') . '|' . $request->route('code'))
+                ->response(fn (Request $request, array $headers) => response()->json([
+                    'message' => __('errors.too_many_attempts'),
+                    'code' => 'too_many_attempts',
+                ], 429, $headers)));
+        }
 
         $this->routes(function () {
             // Health check for the balancer: outside every group on purpose (no throttle, session or maintenance).
