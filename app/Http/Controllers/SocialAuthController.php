@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Services\Auth\SocialAuthService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class SocialAuthController extends Controller
 {
@@ -11,13 +12,13 @@ class SocialAuthController extends Controller
         protected SocialAuthService $socialAuthService
     ) {}
 
-    public function redirect(string $provider): RedirectResponse
+    public function redirect(Request $request, string $provider): RedirectResponse
     {
-        return $this->socialAuthService->redirect($provider);
+        return $this->socialAuthService->redirect($request, $provider);
     }
 
-    public function callback(string $provider): RedirectResponse
+    public function callback(Request $request, string $provider): RedirectResponse
     {
-        return $this->socialAuthService->callback($provider);
+        return $this->socialAuthService->callback($request, $provider);
     }
 }
