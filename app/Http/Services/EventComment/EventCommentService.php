@@ -3,6 +3,7 @@
 namespace App\Http\Services\EventComment;
 
 use App\Enums\EventCommentStatus;
+use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\EventComment;
 use App\Models\Events;
 use App\Models\Guest;
@@ -93,15 +94,19 @@ class EventCommentService
             ? EventCommentStatus::PENDING_REVIEW
             : EventCommentStatus::VISIBLE;
 
-        return EventComment::create([
+        $comment = EventComment::create([
             'event_id' => $event->id,
-            'authorable_type' => $guest::class,
+            'authorable_type' => $guest->getMorphClass(),
             'authorable_id' => $guest->id,
             'comment' => $commentText,
             'status' => $status->value,
             'is_pinned' => false,
             'is_favorite' => false,
         ]);
+
+        EventActivityLogger::logOnce($event->id, 'comment_added', $guest, $comment, ['name' => $guest->name]);
+
+        return $comment;
     }
 
     /**
@@ -116,7 +121,7 @@ class EventCommentService
     {
         return EventComment::create([
             'event_id' => $event->id,
-            'authorable_type' => $user::class,
+            'authorable_type' => $user->getMorphClass(),
             'authorable_id' => $user->id,
             'comment' => $commentText,
             'status' => EventCommentStatus::VISIBLE->value,
