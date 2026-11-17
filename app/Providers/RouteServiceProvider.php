@@ -38,6 +38,7 @@ class RouteServiceProvider extends ServiceProvider
         'guest-event' => [60, 1],
         'payments-webhook' => [120, 1],
         'reset-password' => [5, 1],
+        'oauth' => [20, 1],
         'collaborator-token' => [30, 1],
         'collaborator-resend' => [10, 1],
         'support-request' => [5, 1],

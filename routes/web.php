@@ -23,7 +23,7 @@ Route::get('/', function () {
 
 Route::get('/status', StatusController::class);
 
-Route::prefix('oauth')->group(function () {
+Route::prefix('oauth')->middleware('throttle:oauth')->group(function () {
     Route::get('{provider}/redirect', [SocialAuthController::class, 'redirect'])
         ->whereIn('provider', ['google', 'facebook']);
 

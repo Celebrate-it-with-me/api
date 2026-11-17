@@ -215,7 +215,7 @@ return [
         'password' => env('DEFAULT_ADMIN_PASSWORD'),
     ],
 
-    'spa_url' => env('SPA_URL', 'https://celebrateitwithme.com'),
+    'spa_url' => env('SPA_URL', env('APP_FRONT_URL', 'https://app.celebrateitwithme.com')),
 
     // Global `api` limiter (per user, or per IP when anonymous). Route-specific limits live in RouteServiceProvider::ROUTE_LIMITS.
     'api_rate_limit_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 120),
