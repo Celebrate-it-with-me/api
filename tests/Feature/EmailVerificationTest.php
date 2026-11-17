@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -203,13 +204,13 @@ describe('guard', function () {
 
 describe('social and backfill', function () {
     it('marks a user who comes in through a social provider as verified', function () {
-        $socialUser = (new Laravel\Socialite\Two\User)->map(['id' => 'g-1', 'name' => 'Sofia', 'email' => 'sofia@example.com']);
+        $socialUser = (new Laravel\Socialite\Two\User)->setRaw(['email_verified' => true])->map(['id' => 'g-1', 'name' => 'Sofia', 'email' => 'sofia@example.com']);
         $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->andReturn($socialUser);
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 
         $existing = User::factory()->unverified()->create(['email' => 'sofia@example.com']);
-        app(SocialAuthService::class)->callback('google');
+        app(SocialAuthService::class)->callback(Request::create('/oauth/google/callback'), 'google');
 
         expect($existing->fresh()->email_verified_at)->not->toBeNull()
             ->and(SocialAccount::query()->where('user_id', $existing->id)->exists())->toBeTrue();

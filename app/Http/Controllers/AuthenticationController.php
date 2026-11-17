@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Events\ResetPasswordEvent;
-use App\Events\UserLoggedInEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
 use App\Http\Middleware\EnsureNotSuspended;
@@ -14,6 +13,7 @@ use App\Http\Requests\Auth\AppLoginRequest;
 use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Services\Admin\Account\AdminLoginService;
+use App\Http\Services\Auth\PostLoginService;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Client\ConnectionException;
@@ -229,20 +229,7 @@ class AuthenticationController extends Controller
             return EnsureNotSuspended::response();
         }
 
-        $remember = $request->input('remember', false);
-        Auth::login($user, $remember);
-
-        // A new session id after signing in: a session id planted before the login must not survive it.
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
-
-        if ($user->is_first_login) {
-            $user->is_first_login = false;
-            $user->save();
-        }
-
-        UserLoggedInEvent::dispatch($user, $request);
+        app(PostLoginService::class)->complete($user, $request, (bool) $request->input('remember', false));
 
         return response()->json([
             'message' => 'Logged in successfully!',

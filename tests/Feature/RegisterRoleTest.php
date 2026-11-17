@@ -5,6 +5,7 @@ use App\Models\Events;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
 
 uses(RefreshDatabase::class);
@@ -40,6 +41,7 @@ it('gives appUser to an account created by social sign-in, and leaves an existin
         $m->shouldReceive('getName')->andReturn('Social User');
         $m->shouldReceive('getNickname')->andReturn(null);
         $m->shouldReceive('getAvatar')->andReturn(null);
+        $m->shouldReceive('getRaw')->andReturn(['email_verified' => true]);
         $m->token = 't';
         $m->refreshToken = null;
         $m->expiresIn = null;
@@ -48,7 +50,7 @@ it('gives appUser to an account created by social sign-in, and leaves an existin
 
     foreach (['g-new' => 'social@cwm.test', 'g-old' => 'vieja@cwm.test'] as $id => $email) {
         Socialite::shouldReceive('driver->user')->once()->andReturn($socialUser($id, $email));
-        app(SocialAuthService::class)->callback('google');
+        app(SocialAuthService::class)->callback(Request::create('/oauth/google/callback'), 'google');
     }
 
     expect(User::where('email', 'social@cwm.test')->firstOrFail()->hasRole('appUser'))->toBeTrue()
