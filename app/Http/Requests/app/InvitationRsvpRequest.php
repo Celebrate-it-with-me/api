@@ -19,7 +19,7 @@ class InvitationRsvpRequest extends FormRequest
     private const NAME_PATTERN = '/^[^\p{Cc}' . self::BIDI . ']+$/u';
 
     /** A note: plain text where only line breaks (LF, CR) are allowed among the control characters. */
-    private const NOTE_PATTERN = '/^[^\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F' . self::BIDI . ']*$/u';
+    public const NOTE_PATTERN = '/^[^\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F' . self::BIDI . ']*$/u';
 
     public function authorize(): bool
     {

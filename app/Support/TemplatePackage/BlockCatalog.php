@@ -11,10 +11,17 @@ class BlockCatalog
 {
     public const SECTION_TYPES = [
         'cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing', 'countdown', 'save_the_date',
+        'comments', 'tables',
     ];
 
     /**
-     * The 19 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
+     * Sections whose behavior lives in a system block: a package that designs `sections/<type>.html` without the block
+     * gets a `section_without_block` warning (the file would be a design without functionality). Section type => block.
+     */
+    public const SECTION_BLOCKS = ['comments' => 'comments', 'tables' => 'tables'];
+
+    /**
+     * The 21 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
      * occurrences per package file; `scope` = where it may appear (`any`, `layout`, `section:<type>`). All blocks are
      * leaves in v1 (no children). `frame` is shared by the blocks that draw a section: `full` = heading, ornament and
      * panel of the engine, `no-title` = without the heading (the package writes its own), `bare` = only the content.
@@ -38,6 +45,8 @@ class BlockCatalog
         'guest' => ['props' => ['greeting' => ['bool']], 'max' => 1, 'scope' => 'any'],
         'closing' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['band', 'plain']]], 'max' => 1, 'scope' => 'any'],
         'save-the-date' => ['props' => ['frame' => self::FRAME, 'calendar' => ['bool']], 'max' => 1, 'scope' => 'any'],
+        'comments' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['list', 'cards']], 'max' => ['int', 1, 20]], 'max' => 1, 'scope' => 'any'],
+        'tables' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['inline', 'card']]], 'max' => 1, 'scope' => 'any'],
         'sections' => ['props' => [], 'max' => 1, 'scope' => 'layout'],
     ];
 

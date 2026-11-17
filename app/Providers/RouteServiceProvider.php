@@ -29,6 +29,8 @@ class RouteServiceProvider extends ServiceProvider
         'invitation-show' => [60, 1],
         'invitation-rsvp' => [20, 1],
         'invitation-calendar' => [30, 1],
+        'invitation-comments-read' => [60, 1],
+        'invitation-comments-write' => [10, 1],
         'invitation-edit' => [60, 1],
         'invitation-preview' => [30, 1],
         'invitation-cover-upload' => [10, 1],
@@ -94,6 +96,14 @@ class RouteServiceProvider extends ServiceProvider
         // hammered from many addresses. 10 per 10 minutes.
         RateLimiter::for('invitation-rsvp-code', fn (Request $request) => Limit::perMinutes(10, 10)
             ->by('invitation-rsvp-code|' . $request->route('slug') . '|' . $request->route('code'))
+            ->response(fn (Request $request, array $headers) => response()->json([
+                'message' => __('errors.too_many_attempts'),
+                'code' => 'too_many_attempts',
+            ], 429, $headers)));
+
+        // Comments written from one invitation: 6 per 10 minutes by link (slug + code), besides the per-IP limit.
+        RateLimiter::for('invitation-comments-code', fn (Request $request) => Limit::perMinutes(10, 6)
+            ->by('invitation-comments-code|' . $request->route('slug') . '|' . $request->route('code'))
             ->response(fn (Request $request, array $headers) => response()->json([
                 'message' => __('errors.too_many_attempts'),
                 'code' => 'too_many_attempts',
