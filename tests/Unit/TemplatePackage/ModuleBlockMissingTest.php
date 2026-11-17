@@ -20,7 +20,7 @@ function layoutWith(string $blocks): string
 }
 
 it('lists the module blocks in one constant', function () {
-    expect(BlockCatalog::MODULE_BLOCKS)->toBe(['comments', 'tables']);
+    expect(BlockCatalog::MODULE_BLOCKS)->toBe(['comments', 'tables', 'suggested-music']);
 });
 
 it('warns once per missing module block and stays valid', function () {
@@ -28,14 +28,14 @@ it('warns once per missing module block and stays valid', function () {
 
     expect($r['valid'])->toBeTrue()
         ->and(PackageBuilder::errors($r))->toBe([])
-        ->and(moduleWarnings($r))->toBe(['comments', 'tables'])
+        ->and(moduleWarnings($r))->toBe(['comments', 'tables', 'suggested-music'])
         ->and(collect($r['report']['warnings'])->firstWhere('code', 'module_block_missing')['message'])
         ->toContain('<q-comments>')->toContain('no se verá con tu diseño');
 });
 
-it('does not warn when both module blocks are present', function () {
+it('does not warn when every module block is present', function () {
     $r = PackageBuilder::good()
-        ->with('layout.html', layoutWith('<q-comments></q-comments><q-tables></q-tables>'))
+        ->with('layout.html', layoutWith('<q-comments></q-comments><q-tables></q-tables><q-suggested-music></q-suggested-music>'))
         ->validate();
 
     expect($r['valid'])->toBeTrue()->and(moduleWarnings($r))->toBe([]);
@@ -46,7 +46,7 @@ it('warns only for the block that is missing', function () {
         ->with('layout.html', layoutWith('<q-comments></q-comments>'))
         ->validate();
 
-    expect($r['valid'])->toBeTrue()->and(moduleWarnings($r))->toBe(['tables']);
+    expect($r['valid'])->toBeTrue()->and(moduleWarnings($r))->toBe(['tables', 'suggested-music']);
 });
 
 it('leaves a section file without its block to section_without_block alone', function () {
@@ -64,7 +64,7 @@ it('leaves a section file without its block to section_without_block alone', fun
 
     expect($r['valid'])->toBeTrue()
         ->and(moduleWarnings($r, 'section_without_block'))->toHaveCount(1)
-        ->and(moduleWarnings($r))->toBe(['tables']);
+        ->and(moduleWarnings($r))->toBe(['tables', 'suggested-music']);
 });
 
 it('keeps the module map and the block list in sync', function () {

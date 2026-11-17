@@ -41,7 +41,7 @@ class SelectorScoper
      * The closed list of system hooks a package stylesheet may target (visual properties only): the root, one class per
      * block (`inv-q--<block>`) and the parts of the cover photo (`inv-q-photo__*`). Any other `inv-*` class stays forbidden.
      */
-    private const SYSTEM_CLASS = '/^inv-(root|q--(rsvp|gallery|music|countdown|locations|itinerary|dress-code|padrinos|date|names|cover-photo|language-switch|cta|seats|address|guest|closing|save-the-date|comments|tables|sections)|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
+    private const SYSTEM_CLASS = '/^inv-(root|q--(rsvp|gallery|music|countdown|locations|itinerary|dress-code|padrinos|date|names|cover-photo|language-switch|cta|seats|address|guest|closing|save-the-date|comments|tables|suggested-music|sections)|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
 
     /** The cover photo and its parts: decoration, so their size, layout and mask can be designed. */
     private const PHOTO_CLASS = '/^inv-(q--cover-photo|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
