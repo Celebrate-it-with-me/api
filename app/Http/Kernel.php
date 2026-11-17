@@ -9,6 +9,7 @@ use App\Http\Middleware\ConditionalEtag;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureAdminPermission;
+use App\Http\Middleware\EnsureEmailVerified;
 use App\Http\Middleware\EnsureEventAccess;
 use App\Http\Middleware\EnsureGuestEventAccess;
 use App\Http\Middleware\EnsureModuleAccess;
@@ -106,6 +107,7 @@ class Kernel extends HttpKernel
         'signed' => ValidateSignature::class,
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,
+        'email.verified' => EnsureEmailVerified::class,
         'not.suspended' => EnsureNotSuspended::class,
         'refresh.token' => RefreshTokenExpirationIfActive::class,
         'impersonation.guard' => ImpersonationGuard::class,

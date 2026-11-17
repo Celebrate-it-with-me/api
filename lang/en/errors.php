@@ -32,6 +32,7 @@ return [
         'captcha_invalid' => 'We could not verify you are human. Try again.',
         'invalid_signature' => 'The link is not valid or has expired.',
         'invalid_reset_token' => 'The password reset link is not valid or has expired.',
+        'email_not_verified' => 'Verify your email to continue.',
         'unauthenticated' => 'Sign in to continue.',
         'confirm_password' => 'Confirm your password to continue.',
         'reauth_token_required' => 'Sign in again to confirm your identity.',

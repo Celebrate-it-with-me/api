@@ -21,7 +21,7 @@ return [
         'title' => 'Hi, :name!',
         'intro' => 'So glad to have you on **Quinvite**. You are one step away from planning your quinceañera or your wedding: confirm your email and your account is ready.',
         'action' => 'Confirm my email',
-        'outro' => 'If you did not create this account, you can ignore this message; nothing will happen.',
+        'outro' => 'The link works for 60 minutes; if it expires, ask for a new one from your dashboard. If you did not create this account, you can ignore this message; nothing will happen.',
     ],
 
     'invoice' => [

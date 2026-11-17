@@ -22,7 +22,7 @@ return [
         'title' => '¡Hola, :name!',
         'intro' => 'Qué alegría tenerte en **Quinvite**. Estás a un paso de empezar a planear tu quinceañera o tu boda: confirma tu correo y tu cuenta queda lista.',
         'action' => 'Confirmar mi correo',
-        'outro' => 'Si no creaste esta cuenta, puedes ignorar este mensaje; no pasará nada.',
+        'outro' => 'El enlace vale 60 minutos; si vence, pide otro desde tu panel. Si no creaste esta cuenta, puedes ignorar este mensaje; no pasará nada.',
     ],
 
     'invoice' => [

@@ -67,6 +67,8 @@ final class ImpersonationRules
         'POST api/v1/app/event/{event}/invitation/cover-photo',
         'DELETE api/v1/app/event/{event}/invitation/cover-photo',
         'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
+        // Verification mail goes to the owner, not to a support session.
+        'POST api/v1/app/email/resend',
         'POST api/v1/app/logout',
         'POST api/v1/app/support',
         'POST api/v1/app/user/2fa/disable',

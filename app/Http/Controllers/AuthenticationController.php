@@ -78,8 +78,8 @@ class AuthenticationController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Assign the appUser role to give access to frontend routes
-        $user->assignRole('owner');
+        // appUser is the global role of every non-staff account; event access comes from event_user_roles
+        $user->assignRole('appUser');
 
         event(new UserRegistered($user));
 
@@ -208,7 +208,6 @@ class AuthenticationController extends Controller
         $user = User::query()
             ->with(['lastLoginSession', 'activeEvent'])
             ->where('email', $request->input('email'))
-            ->whereNotNull('email_verified_at')
             ->first();
 
         // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.
