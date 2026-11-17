@@ -24,6 +24,7 @@ use App\Http\Controllers\AppControllers\MenuItemController;
 use App\Http\Controllers\AppControllers\OnboardingController;
 use App\Http\Controllers\AppControllers\OrganizerRsvpController;
 use App\Http\Controllers\AppControllers\PadrinoController;
+use App\Http\Controllers\AppControllers\PublicInvitationCommentController;
 use App\Http\Controllers\AppControllers\PublicInvitationController;
 use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
 use App\Http\Controllers\AppControllers\RsvpController;
@@ -53,6 +54,8 @@ Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function (
     Route::get('', [PublicInvitationController::class, 'show'])->middleware(['throttle:invitation-show', 'etag'])->name('show');
     Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'throttle:invitation-rsvp-code', 'module.access:rsvp'])->name('rsvp');
     Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
+    Route::get('comments', [PublicInvitationCommentController::class, 'index'])->middleware(['throttle:invitation-comments-read', 'module.access:comments'])->name('comments.index');
+    Route::post('comments', [PublicInvitationCommentController::class, 'store'])->middleware(['throttle:invitation-comments-write', 'throttle:invitation-comments-code', 'module.access:comments'])->name('comments.store');
 });
 
 // Public Event Template Routes

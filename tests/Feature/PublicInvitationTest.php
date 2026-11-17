@@ -59,7 +59,7 @@ describe('GET invitation', function () {
             ->and($response->json('data.theme.preset'))->toBe('rose')
             ->and($response->json('data.branding.watermark'))->toBeFalse() // the fixture event is on the premium plan
             ->and(collect($response->json('data.sections'))->pluck('type')->all())
-            ->toBe(['cover', 'rsvp', 'closing']); // no venue and no dress code yet
+            ->toBe(['cover', 'rsvp', 'comments', 'closing']); // no venue, dress code or table yet
 
         expect($response->getContent())
             ->not->toContain('Persona Ajena')
@@ -100,7 +100,7 @@ describe('GET invitation', function () {
 
         $sections = collect($this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data.sections'))->keyBy('type');
 
-        expect($sections->keys()->all())->toBe(['cover', 'locations', 'dress_code', 'rsvp', 'closing'])
+        expect($sections->keys()->all())->toBe(['cover', 'locations', 'dress_code', 'rsvp', 'comments', 'closing'])
             ->and($sections['locations']['data']['items'][0]['name'])->toBe('Salón Jardín')
             ->and($sections['locations']['data']['items'][0]['links']['google'])->toStartWith('https://www.google.com/maps/search/?api=1&query=')
             ->and($sections['dress_code']['data']['reservedColors'])->toBe(['#ffffff'])
@@ -120,7 +120,7 @@ describe('GET invitation', function () {
 
         $data = $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data');
 
-        expect(collect($data['sections'])->pluck('type')->all())->toBe(['closing', 'cover'])
+        expect(collect($data['sections'])->pluck('type')->all())->toBe(['closing', 'cover', 'comments'])
             ->and($data['sections'][0]['title'])->toBe('Hasta pronto')
             ->and($data['theme']['preset'])->toBe('sage')
             ->and($data['theme']['colors']['primary'])->toBe('#5f7a5b');

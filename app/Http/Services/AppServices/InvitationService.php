@@ -42,7 +42,7 @@ class InvitationService
     public const STATUS_PENDING = 'pending';
 
     /** Section types the renderer understands in this release. */
-    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing'];
+    private const SECTION_TYPES = ['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'music', 'closing', 'comments', 'tables'];
 
     /** Hard cap of photos in the gallery, whatever the section says. */
     public const GALLERY_MAX_PHOTOS = 40;
@@ -60,6 +60,8 @@ class InvitationService
         'gallery' => 'memories',
         'music' => 'background_music',
         'rsvp' => 'rsvp',
+        'comments' => 'comments',
+        'tables' => 'seating',
     ];
 
     /**
@@ -153,10 +155,26 @@ class InvitationService
     private function forGuest(array $shared, Events $event, Guest $guest): array
     {
         $shared['guest'] = ['name' => $guest->name];
-        $shared['sections'] = array_map(
-            fn (array $section) => $section['type'] === 'rsvp' ? array_replace($section, ['data' => $this->rsvpData($event, $guest)]) : $section,
-            $shared['sections'],
-        );
+        $sections = [];
+
+        foreach ($shared['sections'] as $section) {
+            if ($section['type'] === 'rsvp') {
+                $section = array_replace($section, ['data' => $this->rsvpData($event, $guest)]);
+            } elseif ($section['type'] === 'tables') {
+                // Only this guest's own table; with none assigned the section is left out, as any empty section.
+                $tables = app(Invitation\InvitationTables::class)->forGuest($guest);
+
+                if ($tables === null) {
+                    continue;
+                }
+
+                $section = array_replace($section, ['data' => $tables]);
+            }
+
+            $sections[] = $section;
+        }
+
+        $shared['sections'] = $sections;
 
         return $shared;
     }
@@ -646,6 +664,9 @@ class InvitationService
             // Filled per guest by forGuest (null here: the shared payload has no guest).
             'rsvp' => $guest === null ? ['pending' => true] : $this->rsvpData($event, $guest),
             'closing' => [],
+            'comments' => app(Invitation\InvitationComments::class)->sectionData($event),
+            // Filled per guest by forGuest (and dropped there when she has no table): the shared payload has no guest.
+            'tables' => $guest === null ? ['pending' => true] : app(Invitation\InvitationTables::class)->forGuest($guest),
             default => null,
         };
     }

@@ -48,6 +48,14 @@ class InvitationTemplateSeeder extends Seeder
                 'title' => ['es' => '¿Me acompañas?', 'en' => 'Will you join me?'],
                 'text' => ['es' => 'Confirma tu asistencia para que todo salga perfecto.', 'en' => 'Let me know if you can make it so everything is perfect.'],
             ],
+            'tables' => [
+                'title' => ['es' => 'Tu mesa', 'en' => 'Your table'],
+                'text' => ['es' => null, 'en' => null],
+            ],
+            'comments' => [
+                'title' => ['es' => 'Deja un mensaje', 'en' => 'Leave a message'],
+                'text' => ['es' => null, 'en' => null],
+            ],
             'closing' => [
                 'title' => ['es' => 'Gracias por ser parte de mi día', 'en' => 'Thank you for being part of my day'],
                 'text' => ['es' => 'Te espero con mucho cariño.', 'en' => 'I can’t wait to see you.'],
@@ -86,6 +94,14 @@ class InvitationTemplateSeeder extends Seeder
             'rsvp' => [
                 'title' => ['es' => '¿Nos acompañas?', 'en' => 'Will you join us?'],
                 'text' => ['es' => 'Confirma tu asistencia para que todo salga perfecto.', 'en' => 'Let us know if you can make it so everything is perfect.'],
+            ],
+            'tables' => [
+                'title' => ['es' => 'Tu mesa', 'en' => 'Your table'],
+                'text' => ['es' => null, 'en' => null],
+            ],
+            'comments' => [
+                'title' => ['es' => 'Deja un mensaje', 'en' => 'Leave a message'],
+                'text' => ['es' => null, 'en' => null],
             ],
             'closing' => [
                 'title' => ['es' => 'Gracias por acompañarnos', 'en' => 'Thank you for celebrating with us'],
