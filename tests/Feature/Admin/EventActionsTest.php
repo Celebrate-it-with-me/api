@@ -137,7 +137,8 @@ describe('emails', function () {
         $url = "/api/v1/admin/events/{$event->id}/resend-owner-email";
 
         $this->actingAs($admin)->postJson($url, ['reason' => 'No le llegó'])->assertOk()->assertJsonPath('data.sent', 'confirm_account');
-        Mail::assertSent(ConfirmAccountEmail::class, fn ($m) => $m->hasTo($owner->email));
+        Mail::assertSent(ConfirmAccountEmail::class, fn ($m) => $m->hasTo($owner->email)
+            && str_contains($m->confirmUrl ?? '', '/email/verify/' . $owner->id . '/' . sha1($owner->email)) && str_contains($m->confirmUrl, 'signature='));
 
         $owner->forceFill(['email_verified_at' => now()])->save();
         $this->actingAs($admin)->postJson($url, ['reason' => 'No le llegó'])->assertOk()->assertJsonPath('data.sent', 'welcome');

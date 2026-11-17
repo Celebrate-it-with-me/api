@@ -8,6 +8,7 @@ use App\Models\Events;
 use App\Models\EventType;
 use App\Models\EventUserRole;
 use App\Models\Guest;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\UserLoginSession;
 use App\Support\AdminPermissions;
@@ -173,6 +174,25 @@ describe('listing and profile', function () {
             ->and($d['recentSessions'][0]['ip'])->toBe('1.2.3.4')
             ->and($d['suspension']['reason'])->toBe('Spam invitations')
             ->and($d['suspension']['by']['id'])->toBe($admin->id);
+    });
+
+    it('lists sign-in methods in the profile only, without tokens or provider ids', function () {
+        $admin = usersStaff('superadmin');
+        $pw = User::factory()->create(['has_password' => true]);
+        $social = User::factory()->create(['has_password' => false]);
+        $mixed = User::factory()->create(['has_password' => true]);
+        $link = fn (User $u, string $p) => SocialAccount::create(['user_id' => $u->id, 'provider' => $p, 'provider_user_id' => "{$p}-{$u->id}-secret", 'access_token' => 'tok-secret']);
+        $link($social, 'google');
+        $link($mixed, 'google');
+        $link($mixed, 'facebook');
+        $get = fn (User $u) => $this->actingAs($admin)->getJson(ADMIN_USERS . "/{$u->id}")->assertOk();
+
+        expect($get($pw)->json('data.signInMethods'))->toBe(['password'])
+            ->and($get($social)->json('data.signInMethods'))->toBe(['google'])
+            ->and($get($mixed)->json('data.signInMethods'))->toEqualCanonicalizing(['password', 'google', 'facebook']);
+        expect($get($mixed)->getContent())->not->toContain('secret');
+
+        $this->actingAs($admin)->getJson(ADMIN_USERS)->assertOk()->assertJsonMissingPath('data.0.signInMethods');
     });
 });
 
