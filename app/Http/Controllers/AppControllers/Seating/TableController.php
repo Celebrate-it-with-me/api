@@ -8,6 +8,7 @@ use App\Http\Requests\app\Seating\StoreTableRequest;
 use App\Http\Requests\app\Seating\UpdateTableRequest;
 use App\Http\Resources\AppResources\Seating\SeatGuestResource;
 use App\Http\Resources\AppResources\Seating\TableResource;
+use App\Http\Services\AppServices\ModuleSupport;
 use App\Http\Services\AppServices\Seating\TableServices;
 use App\Models\Events;
 use App\Models\Guest;
@@ -48,6 +49,11 @@ class TableController extends Controller
      */
     public function store(StoreTableRequest $request, Events $event): JsonResponse
     {
+        // The first table is what switches seating on: later ones are never blocked (a template change does not block).
+        if (! Table::query()->where('event_id', $event->id)->exists()) {
+            app(ModuleSupport::class)->assertCanActivate($event, 'seating');
+        }
+
         $table = $this->tableServices->createTable($request->validated());
 
         return response()->json([

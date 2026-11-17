@@ -66,3 +66,7 @@ it('leaves a section file without its block to section_without_block alone', fun
         ->and(moduleWarnings($r, 'section_without_block'))->toHaveCount(1)
         ->and(moduleWarnings($r))->toBe(['tables']);
 });
+
+it('keeps the module map and the block list in sync', function () {
+    expect(array_values(BlockCatalog::MODULE_BLOCK_BY_MODULE))->toBe(BlockCatalog::MODULE_BLOCKS);
+});

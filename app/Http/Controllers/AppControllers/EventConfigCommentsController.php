@@ -7,6 +7,7 @@ use App\Http\Requests\app\StoreEventConfigCommentRequest;
 use App\Http\Resources\AppResources\EventConfigCommentResource;
 use App\Http\Resources\AppResources\EventResource;
 use App\Http\Services\AppServices\EventConfigCommentsServices;
+use App\Http\Services\AppServices\ModuleSupport;
 use App\Models\EventConfigComment;
 use App\Models\Events;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,8 @@ class EventConfigCommentsController extends Controller
      */
     public function store(StoreEventConfigCommentRequest $request, Events $event): JsonResponse|EventConfigCommentResource
     {
+        app(ModuleSupport::class)->assertCanActivate($event, 'comments');
+
         try {
             return EventConfigCommentResource::make($this->eventConfigCommentsServices->createEventConfigComment($event));
         } catch (Throwable $th) {

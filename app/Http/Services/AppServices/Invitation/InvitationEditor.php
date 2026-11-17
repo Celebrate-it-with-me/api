@@ -8,6 +8,7 @@ use App\Http\Services\Admin\Templates\Packages\PackageFiles;
 use App\Http\Services\AppServices\EventModules;
 use App\Http\Services\AppServices\EventTemplateConfigValidator;
 use App\Http\Services\AppServices\InvitationService;
+use App\Http\Services\AppServices\ModuleSupport;
 use App\Http\Services\AppServices\PackagePayload;
 use App\Http\Services\AppServices\TemplateCatalog;
 use App\Http\Services\Logger\EventActivityLogger;
@@ -101,6 +102,7 @@ class InvitationEditor
                     'current' => $t->id === $current,
                     'previewImage' => $this->previewUrl($t->preview_image),
                     'eventTypes' => $manifest['eventTypes'] ?? array_values(array_filter([$t->eventType?->slug])),
+                    'missingModules' => ModuleSupport::missingFor($package),
                     'hasPresets' => $package !== null && count((array) ($package->tokens['presets'] ?? [])) > 1,
                     'presets' => $this->presets($package),
                 ];
