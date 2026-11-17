@@ -10,6 +10,7 @@ use App\Models\SuggestedMusicVote;
 use App\Providers\RouteServiceProvider;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -297,7 +298,7 @@ describe('GET invitation songs/search', function () {
         songsEvent();
         $this->getJson(IS_URL . '/songs/search?q=abc')->assertStatus(503);
 
-        app()->forgetInstance(Illuminate\Http\Client\Factory::class);
+        app()->forgetInstance(Factory::class);
         Http::clearResolvedInstances();
         fakeSpotifyCatalogue();
         $this->getJson(IS_URL . '/songs/search?q=abc')->assertOk();
