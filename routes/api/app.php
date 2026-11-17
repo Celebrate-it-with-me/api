@@ -3,6 +3,7 @@
 use App\Http\Controllers\AppControllers\BackgroundMusicController;
 use App\Http\Controllers\AppControllers\Budget\BudgetController;
 use App\Http\Controllers\AppControllers\Collaborators\InviteCollaboratorController;
+use App\Http\Controllers\AppControllers\EmailVerificationController;
 use App\Http\Controllers\AppControllers\EventActivity\EventActivityController;
 use App\Http\Controllers\AppControllers\EventComment\OrganizerEventCommentController;
 use App\Http\Controllers\AppControllers\EventComment\PublicEventCommentController;
@@ -98,6 +99,11 @@ Route::prefix('')->name('auth.')->group(function () {
     Route::post('confirm-email', [AuthenticationController::class, 'confirmEmail'])
         ->name('confirm.email')
         ->middleware('signed');
+    // The link in the verification mail: public and signed (checked by hand so a bad link redirects with a status).
+    Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->whereNumber('id')
+        ->middleware('throttle:email-verify')
+        ->name('verify.email');
     Route::post('forgot-password', [AuthenticationController::class, 'forgotPassword'])
         ->name('forgot.password');
     Route::post('check-password-link', [AuthenticationController::class, 'checkPasswordLink'])
@@ -125,6 +131,9 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     // =========================================
     // CHECK IF AUTH IS READY
     // =========================================
+    Route::post('email/resend', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:email-resend')->name('email.resend');
+
     Route::get('/auth/ready', [AuthenticationController::class, 'checkAuthReady'])
         ->name('auth.ready');
 
@@ -194,7 +203,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
             Route::prefix('purchase')->name('purchase.')->middleware('event.access:delete_event')->group(function () {
                 Route::get('quote', [PurchaseController::class, 'quote'])->name('quote');
-                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware('throttle:10,1,purchase-checkout')->name('checkout');
+                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware(['email.verified', 'throttle:10,1,purchase-checkout'])->name('checkout');
                 Route::get('status', [PurchaseController::class, 'status'])->name('status');
                 Route::post('{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('throttle:10,1,purchase-cancel')->name('cancel');
             });
@@ -214,7 +223,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                     Route::delete('cover-photo', [InvitationEditorController::class, 'destroyCover'])->name('cover.destroy');
                 });
             });
-            Route::post('publish', [EventLifecycleController::class, 'publish'])->name('publish');
+            Route::post('publish', [EventLifecycleController::class, 'publish'])->middleware('email.verified')->name('publish');
             Route::post('unpublish', [EventLifecycleController::class, 'unpublish'])->name('unpublish');
             Route::post('archive', [EventLifecycleController::class, 'archive'])->name('archive');
             Route::post('restore', [EventLifecycleController::class, 'restore'])->name('restore');

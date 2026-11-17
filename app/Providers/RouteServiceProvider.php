@@ -82,6 +82,20 @@ class RouteServiceProvider extends ServiceProvider
                 ->by($name . '|' . ($request->user()?->id ? 'user:' . $request->user()->id : 'ip:' . $request->ip())));
         }
 
+        // "Reenviar correo" of the email verification: 3 per 10 minutes per user and per IP.
+        RateLimiter::for('email-resend', function (Request $request) {
+            $tooMany = fn (Request $request, array $headers) => response()->json([
+                'message' => __('errors.too_many_attempts'),
+                'code' => 'too_many_attempts',
+            ], 429, $headers);
+
+            return [
+                Limit::perMinutes(10, 3)->by('email-resend-user|' . $request->user()?->id)->response($tooMany),
+                Limit::perMinutes(10, 3)->by('email-resend-ip|' . $request->ip())->response($tooMany),
+            ];
+        });
+        RateLimiter::for('email-verify', fn (Request $request) => Limit::perMinute(20)->by('email-verify|' . $request->ip()));
+
         // Inviting collaborators sends mail from our domain and tells whether an account exists (audit W-03).
         RateLimiter::for('collaborator-invites', function (Request $request) {
             $event = $request->route('event');

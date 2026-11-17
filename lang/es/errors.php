@@ -32,6 +32,7 @@ return [
         'captcha_invalid' => 'No pudimos verificar que eres una persona. Inténtalo de nuevo.',
         'invalid_signature' => 'El enlace no es válido o ya venció.',
         'invalid_reset_token' => 'El enlace para restablecer la contraseña no es válido o ya venció.',
+        'email_not_verified' => 'Verifica tu correo para continuar.',
         'unauthenticated' => 'Inicia sesión para continuar.',
         'confirm_password' => 'Confirma tu contraseña para continuar.',
         'reauth_token_required' => 'Inicia sesión de nuevo para confirmar tu identidad.',

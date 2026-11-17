@@ -104,7 +104,19 @@ class User extends Authenticatable implements HasLocalePreference
 
     protected $appends = [
         'avatar_url',
+        'emailVerified',
     ];
+
+    public function hasVerifiedEmail(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    /** Whether the address was verified (the app shows a notice while it is not). */
+    public function getEmailVerifiedAttribute(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
 
     /** Two-factor enrolment of a staff member (admin panel); null when she never started it. */
     public function adminTwoFactor(): HasOne
