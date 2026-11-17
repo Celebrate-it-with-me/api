@@ -28,7 +28,7 @@ function unverifiedUser(): User
     return User::factory()->unverified()->create();
 }
 
-function ownedEvent(User $owner): Events
+function verificationOwnedEvent(User $owner): Events
 {
     $event = Events::factory()->draft()->create([
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
@@ -176,7 +176,7 @@ describe('payload', function () {
 describe('guard', function () {
     it('answers 403 email_not_verified when publishing or buying unverified', function () {
         $user = unverifiedUser();
-        $event = ownedEvent($user);
+        $event = verificationOwnedEvent($user);
         Sanctum::actingAs($user);
 
         $this->postJson("/api/v1/app/event/{$event->id}/publish")
@@ -187,7 +187,7 @@ describe('guard', function () {
 
     it('does not block anything else, nor a verified user', function () {
         $user = unverifiedUser();
-        $event = ownedEvent($user);
+        $event = verificationOwnedEvent($user);
         Sanctum::actingAs($user);
 
         $this->getJson("/api/v1/app/event/{$event->id}/purchase/quote")->assertOk();
