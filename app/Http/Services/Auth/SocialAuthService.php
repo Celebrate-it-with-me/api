@@ -65,6 +65,8 @@ class SocialAuthService
             ]);
             // Nobody knows this password: deleting the account will not ask for one.
             $user->forceFill(['has_password' => false])->save();
+            // Same global role as the normal registration; an existing account keeps the roles it has.
+            $user->assignRole('appUser');
         }
 
         if ($user->suspended_at) {

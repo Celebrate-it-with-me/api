@@ -222,7 +222,6 @@ describe('onboarding summary', function () {
 
 it('tells a new event creator they are its owner in the create answer', function () {
     $user = User::factory()->create();
-    $user->assignRole('owner');
 
     $response = $this->actingAs($user)->postJson('/api/v1/app/event', [
         'eventType' => EventType::where('slug', 'quinceanera')->value('id'),
