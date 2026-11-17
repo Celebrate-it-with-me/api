@@ -237,7 +237,7 @@ describe('the catalog and the Classic templates', function () {
         $sections = DB::table('invitation_templates')->where('slug', 'classic-quinceanera')->value('default_sections');
         $types = array_column(json_decode($sections, true), 'type');
 
-        expect($types)->toBe(['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'tables', 'comments', 'closing', 'music']);
+        expect($types)->toBe(['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'tables', 'suggested_music', 'comments', 'closing', 'music']);
     });
 
     it('publishes a next version for old Classic templates and moves their events to it', function () {
