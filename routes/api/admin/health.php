@@ -10,6 +10,7 @@
 use App\Http\Controllers\Admin\Health\HealthController;
 use App\Http\Controllers\Admin\System\MaintenanceController;
 use App\Http\Controllers\Admin\System\SecurityController;
+use App\Http\Controllers\Admin\System\VersionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('health')->group(function () {
@@ -29,6 +30,7 @@ Route::prefix('health')->group(function () {
 });
 
 Route::prefix('system')->group(function () {
+    Route::get('version', [VersionController::class, 'show'])->middleware('admin.can:admin.system.health');
     Route::get('maintenance', [MaintenanceController::class, 'show'])->middleware('admin.can:admin.system.health');
     Route::put('maintenance', [MaintenanceController::class, 'update'])->middleware('admin.can:admin.system.manage');
 
