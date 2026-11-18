@@ -159,7 +159,7 @@ class DemoEventSeeder extends Seeder
 
         $this->padrinos($event);
 
-        $this->music($event, $guestIds);
+        $this->music($event);
         $this->seating($event, $owner, $guestIds);
 
         DB::table('sweet_memories_config')->insert($this->row([
@@ -565,7 +565,7 @@ class DemoEventSeeder extends Seeder
         }
     }
 
-    private function music(int $event, array $guests): void
+    private function music(int $event): void
     {
         DB::table('suggested_music_configs')->insert($this->row([
             'event_id' => $event,
@@ -578,30 +578,7 @@ class DemoEventSeeder extends Seeder
             'search_limit' => 10,
         ]));
 
-        $attending = collect($guests)->where('status', 'attending')->where('parent', null)->values();
-
-        $songs = [
-            ['Bailando', 'Enrique Iglesias', 'Sex and Love'],
-            ['Danza Kuduro', 'Don Omar', 'Meet the Orphans'],
-            ['Vivir mi vida', 'Marc Anthony', '3.0'],
-            ['La Camisa Negra', 'Juanes', 'Mi Sangre'],
-            ['Hips Don\'t Lie', 'Shakira', 'Oral Fixation, Vol. 2'],
-            ['La Bamba', 'Ritchie Valens', 'Ritchie Valens'],
-        ];
-
-        foreach ($songs as $i => [$title, $artist, $album]) {
-            DB::table('suggested_music')->insert($this->row([
-                'event_id' => $event,
-                'title' => $title,
-                'artist' => $artist,
-                'album' => $album,
-                'platform' => 'spotify',
-                'platformId' => sprintf('demo-%d-track-%02d', $event, $i + 1),
-                'thumbnailUrl' => 'https://placehold.co/300x300?text=' . rawurlencode($title),
-                'suggested_by_entity' => 'guest',
-                'suggested_by_id' => $attending[$i % $attending->count()]['id'],
-            ]));
-        }
+        // No sample songs: real ones come from the Spotify search, so every row has a valid platformId and preview.
     }
 
     /** Four tables and the attending guests seated by affinity. */
