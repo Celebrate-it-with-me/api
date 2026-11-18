@@ -69,7 +69,7 @@ it('sets the long-lived recaller cookie only when remember is true', function ()
 
     $session = rmSessionCookie($with['cookies']);
     expect($session->isHttpOnly())->toBeTrue()
-        ->and($session->getExpiresTime())->toBeLessThan(now()->addMinutes(125)->timestamp);
+        ->and($session->getExpiresTime())->toBe(0); // browser-session cookie: ends when the browser closes
 
     $other = User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => now()]);
     $without = rmLogin($other, ['remember' => false]);
@@ -175,4 +175,26 @@ it('gives the recaller cookie the same Secure flag and domain as the session coo
 
 it('does not use two factor on the app login, so remember has nothing to bypass', function () {
     expect(file_get_contents(app_path('Http/Controllers/AuthenticationController.php')))->not->toContain('two_factor');
+});
+
+it('ends the session with the browser by default and keeps remember working', function () {
+    expect(config('session.expire_on_close'))->toBeTrue();
+
+    $user = User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => now()]);
+    $plain = rmLogin($user, ['remember' => false])['cookies'];
+    expect(rmSessionCookie($plain)->getExpiresTime())->toBe(0)
+        ->and(rmRecaller($plain))->toBeNull();
+
+    $remembered = rmLogin(User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => now()]), ['remember' => true])['cookies'];
+    expect(rmSessionCookie($remembered)->getExpiresTime())->toBe(0)
+        ->and(rmRecaller($remembered)->getExpiresTime())->toBeGreaterThan(now()->addDays(300)->timestamp);
+    // Browser restarted: only the recaller survives and it rebuilds the session.
+    rmAsBrowser([rmRecaller($remembered)])->assertOk();
+});
+
+it('gives a long session cookie when expire_on_close is turned off', function () {
+    config(['session.expire_on_close' => false]);
+    $user = User::factory()->create(['password' => 'OriginalPass1', 'email_verified_at' => now()]);
+
+    expect(rmSessionCookie(rmLogin($user)['cookies'])->getExpiresTime())->toBeGreaterThan(now()->addMinutes(100)->timestamp);
 });
