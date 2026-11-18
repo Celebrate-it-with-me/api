@@ -828,7 +828,7 @@ class InvitationService
             // Uploads come with their URL; bank picks are shown by the app from its own photo bank.
             'images' => $dressCode->dressCodeImages()->orderBy('id')->get()->map(fn ($image) => [
                 'source' => $image->source,
-                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk('public')->url($image->image_path) : null,
+                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk(config('filesystems.media_disk'))->url($image->image_path) : null,
                 'bankKey' => $image->bank_key,
             ])->all(),
         ];
@@ -914,14 +914,14 @@ class InvitationService
     private function musicData(Events $event, array $section, string $locale): ?array
     {
         $music = BackgroundMusic::query()->where('event_id', $event->id)->orderByDesc('id')->first();
-        $disk = Storage::disk('public');
+        $disk = Storage::disk(config('filesystems.media_disk'));
 
         if (! $music || ! $music->song_url || ! $disk->exists($music->song_url)) {
             return null;
         }
 
         return [
-            'url' => url(Storage::url($music->song_url)),
+            'url' => url($disk->url($music->song_url)),
             'title' => $this->musicTitle($section['settings']['title'] ?? null, $locale) ?? $music->title,
             'mimeType' => BackgroundMusicServices::mimeTypeOf($music->song_url),
             'loop' => true,

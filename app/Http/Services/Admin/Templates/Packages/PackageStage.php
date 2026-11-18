@@ -211,7 +211,7 @@ class PackageStage
 
     private function local(): Filesystem
     {
-        return Storage::disk('local');
+        return Storage::disk(config('invitation.packages.staging_disk'));
     }
 
     private function metaPath(string $token): string

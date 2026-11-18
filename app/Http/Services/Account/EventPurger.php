@@ -106,7 +106,9 @@ class EventPurger
 
         foreach ($files as $disk => $paths) {
             try {
-                $storage = Storage::disk($disk === 'default' ? config('filesystems.default') : $disk);
+                $storage = Storage::disk(match ($disk) {
+                    'default' => config('filesystems.default'), 'public' => config('filesystems.media_disk'), default => $disk
+                });
                 $prefix = rtrim($storage->url(''), '/') . '/';
 
                 // Some columns hold the public URL instead of the path: strip the disk's own prefix, ignore foreign URLs.

@@ -110,7 +110,7 @@ class DressCodeService
     private function storeUpload(UploadedFile $file, int $dressCodeId): void
     {
         // The extension comes from the detected content, never from the client's file name (x.html would be served as HTML).
-        $path = $file->storeAs('dress-code-images', Str::uuid() . '.' . $file->extension(), 'public');
+        $path = $file->storeAs('dress-code-images', Str::uuid() . '.' . $file->extension(), config('filesystems.media_disk'));
 
         DressCodeImage::query()->create([
             'dress_code_id' => $dressCodeId,
@@ -125,7 +125,7 @@ class DressCodeService
     private function deleteFile(DressCodeImage $image): void
     {
         if ($image->source === 'upload' && $image->image_path) {
-            Storage::disk('public')->delete($image->image_path);
+            Storage::disk(config('filesystems.media_disk'))->delete($image->image_path);
         }
     }
 
@@ -150,7 +150,7 @@ class DressCodeService
             ->map(fn (DressCodeImage $image) => [
                 'id' => $image->id,
                 'source' => $image->source,
-                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk('public')->url($image->image_path) : null,
+                'url' => $image->source === 'upload' && $image->image_path ? Storage::disk(config('filesystems.media_disk'))->url($image->image_path) : null,
                 'bankKey' => $image->bank_key,
                 'originalName' => $image->original_name,
             ])

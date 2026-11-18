@@ -15,8 +15,6 @@ use Illuminate\Support\Str;
  */
 class BackgroundMusicServices
 {
-    private const DISK = 'public';
-
     /** Extension of the stored file => the type the player is told. */
     private const MIME_BY_EXTENSION = [
         'mp3' => 'audio/mpeg',
@@ -46,7 +44,7 @@ class BackgroundMusicServices
         // the content (an Android m4a sniffs as video/mp4 and would be stored as .mp4).
         $extension = strtolower($file->getClientOriginalExtension());
         $extension = in_array($extension, self::ALLOWED_EXTENSIONS, true) ? $extension : 'mp3';
-        $path = $file->storeAs("sound/background-music/{$event->id}", Str::random(40) . '.' . $extension, self::DISK);
+        $path = $file->storeAs("sound/background-music/{$event->id}", Str::random(40) . '.' . $extension, config('filesystems.media_disk'));
 
         $existing = BackgroundMusic::query()->where('event_id', $event->id)->orderByDesc('id')->get();
         $music = $existing->first();
@@ -73,7 +71,7 @@ class BackgroundMusicServices
         }
 
         // The row points at the new file before the old ones go: a failure in between leaves a stray file, never a dead link.
-        Storage::disk(self::DISK)->delete($oldFiles);
+        Storage::disk(config('filesystems.media_disk'))->delete($oldFiles);
 
         return [$music->refresh(), $existing->isEmpty()];
     }
@@ -89,7 +87,7 @@ class BackgroundMusicServices
 
         BackgroundMusic::query()->whereIn('id', $rows->pluck('id'))->delete();
         InvitationCache::flushEvent($event->id);
-        Storage::disk(self::DISK)->delete($rows->pluck('song_url')->filter()->all());
+        Storage::disk(config('filesystems.media_disk'))->delete($rows->pluck('song_url')->filter()->all());
 
         return true;
     }
@@ -113,7 +111,7 @@ class BackgroundMusicServices
     public static function sizeOf(?string $path): ?int
     {
         try {
-            return $path && Storage::disk(self::DISK)->exists($path) ? Storage::disk(self::DISK)->size($path) : null;
+            return $path && Storage::disk(config('filesystems.media_disk'))->exists($path) ? Storage::disk(config('filesystems.media_disk'))->size($path) : null;
         } catch (\Throwable) {
             return null;
         }

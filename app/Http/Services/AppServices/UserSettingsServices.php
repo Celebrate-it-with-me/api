@@ -38,7 +38,7 @@ class UserSettingsServices
             $user->phone = $request->input('phone');
 
             if ($request->hasFile('avatar')) {
-                $user->avatar = $request->file('avatar')->store('avatars', 'public');
+                $user->avatar = $request->file('avatar')->store('avatars', config('filesystems.media_disk'));
             }
 
             $user->save();

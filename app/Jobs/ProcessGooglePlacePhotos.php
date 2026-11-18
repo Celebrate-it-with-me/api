@@ -40,10 +40,10 @@ class ProcessGooglePlacePhotos implements ShouldQueue
 
             if ($response->successful()) {
                 $filename = 'locations/google/' . $this->eventLocation->id . '/' . uniqid('photo_') . '.jpg';
-                Storage::disk('public')->put($filename, $response->body(), 'public');
+                Storage::disk(config('filesystems.media_disk'))->put($filename, $response->body());
 
                 $this->eventLocation->eventLocationImages()->create([
-                    'path' => Storage::disk('public')->url($filename),
+                    'path' => Storage::disk(config('filesystems.media_disk'))->url($filename),
                     'caption' => null,
                     'order' => 0,
                     'source' => 'google',

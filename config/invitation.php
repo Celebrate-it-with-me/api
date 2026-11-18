@@ -31,6 +31,9 @@ return [
     // validated upload waits to be installed.
     'packages' => [
         'disk' => 'template-packages',
+        // Private disk where the uploaded zip and its staged thumbnail wait to be installed (never public). Must be shared
+        // and persistent on a PaaS (several instances, redeploys): PACKAGES_STAGING_DISK=r2_private.
+        'staging_disk' => env('PACKAGES_STAGING_DISK', 'local'),
         'stage_hours' => 2,
         // Valid uploads an admin may keep waiting to be installed (the oldest ones are discarded; W6-14).
         'max_stages_per_admin' => 5,

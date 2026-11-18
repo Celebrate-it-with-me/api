@@ -1,5 +1,22 @@
 <?php
 
+/*
+ * Cloudflare R2 is S3-compatible. A disk whose DRIVER env is `r2` is built with the s3 driver and the R2_* keys; `s3`
+ * keeps using AWS_*; `local` stays on disk. R2 ignores object ACLs, so no `visibility` is sent to a remote disk
+ * (public reads come from the custom domain of the bucket, R2_URL / TEMPLATE_PACKAGES_URL).
+ */
+$remoteDisk = fn (string $bucketEnv, string $urlEnv): array => [
+    'driver' => 's3',
+    'key' => env('R2_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+    'secret' => env('R2_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+    'region' => env('R2_REGION', env('AWS_DEFAULT_REGION')),
+    'bucket' => env($bucketEnv, env('AWS_BUCKET')),
+    'url' => env($urlEnv, env('AWS_URL')),
+    'endpoint' => env('R2_ENDPOINT', env('AWS_ENDPOINT')),
+    'use_path_style_endpoint' => env('R2_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
+    'throw' => true,
+];
+
 return [
 
     /*
@@ -14,6 +31,13 @@ return [
     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
+
+    /*
+    | Disk of the public media written by the app (avatars, location photos, dress-code images, background song).
+    | `public` locally; `r2` on staging/production (MEDIA_DISK=r2) with no further code change. Always build URLs with
+    | Storage::disk(config('filesystems.media_disk'))->url(), never with asset('storage/...').
+    */
+    'media_disk' => env('MEDIA_DISK', 'public'),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,26 +63,15 @@ return [
         // The disk of avatars, location photos, dress-code images and the background song. Local files are lost on a PaaS
         // (ephemeral disk): there it must be S3-compatible. PUBLIC_DISK_DRIVER=s3|local decides; unset keeps the old rule
         // (s3 in production, local anywhere else). Same AWS_* keys as the other disks; AWS_URL is the public base URL.
-        'public' => env('PUBLIC_DISK_DRIVER', env('APP_ENV') === 'production' ? 's3' : 'local') === 's3'
+        'public' => (fn (string $driver) => $driver === 'local'
             ? [
-                'driver' => 's3',
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
-                'region' => env('AWS_DEFAULT_REGION'),
-                'bucket' => env('AWS_BUCKET'),
-                'url' => env('AWS_URL'),
-                'endpoint' => env('AWS_ENDPOINT'),
-                'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-                'throw' => true,
-            ]
-
-            : [
                 'driver' => 'local',
                 'root' => storage_path('app/public'),
                 'url' => env('APP_URL') . '/storage',
                 'visibility' => 'public',
                 'throw' => false,
-            ],
+            ]
+            : $remoteDisk('R2_BUCKET', 'R2_URL'))(env('PUBLIC_DISK_DRIVER', env('APP_ENV') === 'production' ? 's3' : 'local')),
 
         's3' => [
             'driver' => 's3',
@@ -72,59 +85,50 @@ return [
             'throw' => true,
         ],
 
-        'sweet-memories' => [
-            'driver' => env('SWEET_MEMORIES_DRIVER', 'local'),
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'root' => env('SWEET_MEMORIES_DRIVER') === 'local'
-                ? env('SWEET_MEMORIES_ROOT', storage_path('app/public/sweet-memories'))
-                : null,
-            'url' => (env('SWEET_MEMORIES_DRIVER') === 'local')
-                ? env('APP_URL') . '/storage/sweet-memories'
-                : env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
-            'throw' => true,
-        ],
+        // Public media bucket on Cloudflare R2 (R2_URL = custom domain, ideally cookie-free, e.g. https://cdn.quinvite.com).
+        'r2' => $remoteDisk('R2_BUCKET', 'R2_URL'),
+
+        // Private bucket on R2 (invoices, exports): never has a public URL; serve through the API (stream) or
+        // temporaryUrl(). INVOICING_DISK=r2_private. Falls back to R2_BUCKET with another prefix if unset.
+        'r2_private' => $remoteDisk('R2_PRIVATE_BUCKET', 'R2_PRIVATE_URL'),
+
+        // Sweet memories gallery (images + thumbnails). SWEET_MEMORIES_DRIVER=local|s3|r2.
+        'sweet-memories' => env('SWEET_MEMORIES_DRIVER', 'local') === 'local'
+            ? [
+                'driver' => 'local',
+                'root' => env('SWEET_MEMORIES_ROOT', storage_path('app/public/sweet-memories')),
+                'url' => env('APP_URL') . '/storage/sweet-memories',
+                'throw' => true,
+            ]
+            : $remoteDisk('R2_BUCKET', 'R2_URL'),
 
         // Photos the organizers upload for their invitation (cover): WebP under images/event/<id>/cover/, public and
-        // immutable by name. Local in development (served through the storage link), S3 in production (D-6).
-        'event-media' => [
-            'driver' => env('EVENT_MEDIA_DRIVER', 'local'),
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'root' => env('EVENT_MEDIA_DRIVER', 'local') === 'local'
-                ? env('EVENT_MEDIA_ROOT', storage_path('app/public/event-media'))
-                : null,
-            'url' => env('EVENT_MEDIA_URL') ?: (env('EVENT_MEDIA_DRIVER', 'local') === 'local'
-                ? env('APP_URL') . '/storage/event-media'
-                : env('AWS_URL')),
-            'visibility' => 'public',
-            'endpoint' => env('AWS_ENDPOINT'),
-            'throw' => true,
-        ],
+        // immutable by name. Local in development (served through the storage link), s3/r2 on staging and production (D-6).
+        // EVENT_MEDIA_DRIVER=local|s3|r2; EVENT_MEDIA_URL overrides the public base URL.
+        'event-media' => env('EVENT_MEDIA_DRIVER', 'local') === 'local'
+            ? [
+                'driver' => 'local',
+                'root' => env('EVENT_MEDIA_ROOT', storage_path('app/public/event-media')),
+                'url' => env('EVENT_MEDIA_URL') ?: env('APP_URL') . '/storage/event-media',
+                'visibility' => 'public',
+                'throw' => true,
+            ]
+            : ['url' => env('EVENT_MEDIA_URL', env('R2_URL', env('AWS_URL')))] + $remoteDisk('R2_BUCKET', 'R2_URL'),
 
         // Sanitized files of the installed template packages (theme.css and assets/). Public, immutable by path
         // (<slug>/<version>-<hash8>/...) and meant to be served from an origin without cookies: TEMPLATE_PACKAGES_URL.
-        'template-packages' => [
-            'driver' => env('TEMPLATE_PACKAGES_DRIVER', 'local'),
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'root' => env('TEMPLATE_PACKAGES_DRIVER', 'local') === 'local'
-                ? env('TEMPLATE_PACKAGES_ROOT', storage_path('app/public/template-packages'))
-                : null,
-            // Outside local/testing there is NO fallback: the files must come from an origin without cookies (W6-08).
-            // Locally the API serves them itself, with the right headers, at /template-assets.
-            'url' => env('TEMPLATE_PACKAGES_URL') ?: (in_array(env('APP_ENV', 'production'), ['local', 'testing'], true) ? rtrim((string) env('APP_URL'), '/') . '/template-assets' : null),
-            'visibility' => 'public',
-            'endpoint' => env('AWS_ENDPOINT'),
-            'throw' => true,
-        ],
+        // TEMPLATE_PACKAGES_DRIVER=local|s3|r2; on r2 they live in their own bucket (R2_PACKAGES_BUCKET).
+        'template-packages' => env('TEMPLATE_PACKAGES_DRIVER', 'local') === 'local'
+            ? [
+                'driver' => 'local',
+                'root' => env('TEMPLATE_PACKAGES_ROOT', storage_path('app/public/template-packages')),
+                // Outside local/testing there is NO fallback: the files must come from an origin without cookies (W6-08).
+                // Locally the API serves them itself, with the right headers, at /template-assets.
+                'url' => env('TEMPLATE_PACKAGES_URL') ?: (in_array(env('APP_ENV', 'production'), ['local', 'testing'], true) ? rtrim((string) env('APP_URL'), '/') . '/template-assets' : null),
+                'visibility' => 'public',
+                'throw' => true,
+            ]
+            : ['url' => env('TEMPLATE_PACKAGES_URL') ?: null] + $remoteDisk('R2_PACKAGES_BUCKET', 'TEMPLATE_PACKAGES_URL'),
     ],
 
     /*
