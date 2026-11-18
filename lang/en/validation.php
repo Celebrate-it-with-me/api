@@ -194,6 +194,7 @@ return [
     */
 
     'attributes' => [
+        'q' => 'search',
         'checklist' => 'checklist',
         'ack_third_party_marks' => 'third-party marks acknowledgement',
         'package' => 'package',
