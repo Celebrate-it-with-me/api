@@ -125,7 +125,7 @@ class AccountDeletionService
 
         if ($avatar && ! str_starts_with($avatar, 'http')) {
             try {
-                Storage::disk('public')->delete($avatar);
+                Storage::disk(config('filesystems.media_disk'))->delete($avatar);
             } catch (Throwable) {
                 // Nothing personal is left in the database; a stray file is not worth failing the request.
             }

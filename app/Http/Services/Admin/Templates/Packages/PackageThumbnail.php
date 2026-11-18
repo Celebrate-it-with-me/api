@@ -58,19 +58,19 @@ class PackageThumbnail
     {
         $webp = $png === null ? null : $this->encode($png);
         if ($webp !== null) {
-            Storage::disk('local')->put(self::STAGING . "/{$token}.webp", $webp);
+            Storage::disk(config('invitation.packages.staging_disk'))->put(self::STAGING . "/{$token}.webp", $webp);
         }
     }
 
     public function discardStaged(string $token): void
     {
-        Storage::disk('local')->delete(self::STAGING . "/{$token}.webp");
+        Storage::disk(config('invitation.packages.staging_disk'))->delete(self::STAGING . "/{$token}.webp");
     }
 
     /** Publishes the staged thumbnail of an install. @return string|null its path on the package disk, null when there is none */
     public function publishStaged(string $token, string $slug, string $semver, string $contentHash): ?string
     {
-        $local = Storage::disk('local');
+        $local = Storage::disk(config('invitation.packages.staging_disk'));
         $staged = self::STAGING . "/{$token}.webp";
         if (! $local->exists($staged)) {
             return null;

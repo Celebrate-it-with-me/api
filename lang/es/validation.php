@@ -160,6 +160,7 @@ return [
     'custom' => [],
 
     'attributes' => [
+        'q' => 'búsqueda',
         'checklist' => 'lista de comprobación',
         'ack_third_party_marks' => 'confirmación de marcas de terceros',
         'package' => 'paquete',

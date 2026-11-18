@@ -34,7 +34,9 @@ class HydrationServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if ($this->app->environment('production')) {
+        // Not in console: `migrate` / `migrate:fresh --seed` boot the app before the tables exist, and a warm-up there would
+        // also cache empty lists. Web requests (and the first one after a deploy) still warm the cache.
+        if ($this->app->environment('production') && ! $this->app->runningInConsole()) {
             $this->app->make(EventCacheService::class)->warmUp();
         }
     }
