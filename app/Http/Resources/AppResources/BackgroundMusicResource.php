@@ -21,7 +21,7 @@ class BackgroundMusicResource extends JsonResource
         return [
             'id' => $this->id,
             'eventId' => $this->event_id,
-            'songUrl' => $this->song_url ? url(Storage::url($this->song_url)) : null,
+            'songUrl' => $this->song_url ? url(Storage::disk(config('filesystems.media_disk'))->url($this->song_url)) : null,
             'title' => $this->title,
             'mimeType' => BackgroundMusicServices::mimeTypeOf($this->song_url),
             'sizeBytes' => BackgroundMusicServices::sizeOf($this->song_url),

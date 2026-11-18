@@ -15,6 +15,7 @@ use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Traits\HasRoles;
@@ -187,7 +188,7 @@ class User extends Authenticatable implements HasLocalePreference
     public function getAvatarUrlAttribute(): string
     {
         return $this->avatar
-            ? asset('storage/' . $this->avatar)
+            ? Storage::disk(config('filesystems.media_disk'))->url($this->avatar)
             : '';
     }
 

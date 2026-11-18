@@ -108,13 +108,13 @@ class EventLocationController extends Controller
 
             if ($imageResponse->successful()) {
                 $filename = 'locations/google/' . $event->id . '/' . $placeId . '/' . uniqid('photo_') . '.jpg';
-                Storage::disk('public')->put($filename, $imageResponse->body(), [
+                Storage::disk(config('filesystems.media_disk'))->put($filename, $imageResponse->body(), [
                     'ContentType' => 'image/jpeg',
                 ]);
 
                 $placePhoto = PlacePhoto::query()->create([
                     'place_id' => $placeId,
-                    'path' => Storage::disk('public')->url($filename),
+                    'path' => Storage::disk(config('filesystems.media_disk'))->url($filename),
                     'source' => 'google',
                 ]);
 
@@ -146,12 +146,12 @@ class EventLocationController extends Controller
         }
 
         foreach ($uploads as $file) {
-            $path = $file->store('locations/images', 'public');
-            $location->eventLocationImages()->create(['path' => Storage::disk('public')->url($path), 'order' => 0, 'source' => 'uploaded']);
+            $path = $file->store('locations/images', config('filesystems.media_disk'));
+            $location->eventLocationImages()->create(['path' => Storage::disk(config('filesystems.media_disk'))->url($path), 'order' => 0, 'source' => 'uploaded']);
         }
 
         // Only photos this event fetched itself (stored under its own folder) can be attached.
-        $own = Storage::disk('public')->url('locations/google/' . $event->id . '/');
+        $own = Storage::disk(config('filesystems.media_disk'))->url('locations/google/' . $event->id . '/');
         foreach ($google->filter(fn (string $url) => str_starts_with($url, $own)) as $url) {
             $location->eventLocationImages()->create(['path' => $url, 'order' => 0, 'source' => 'google']);
         }
@@ -175,7 +175,7 @@ class EventLocationController extends Controller
             return;
         }
 
-        $relative = ltrim(str_replace(Storage::disk('public')->url(''), '', $image->path), '/');
-        Storage::disk('public')->delete($relative);
+        $relative = ltrim(str_replace(Storage::disk(config('filesystems.media_disk'))->url(''), '', $image->path), '/');
+        Storage::disk(config('filesystems.media_disk'))->delete($relative);
     }
 }
