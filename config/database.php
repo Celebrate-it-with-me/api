@@ -18,6 +18,12 @@ return [
     'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
+    | Databases that migrate:fresh, migrate:refresh, migrate:reset and db:wipe refuse to touch
+    | (App\Support\Database\DestructiveCommandGuard). Comma separated. Override: ALLOW_DESTRUCTIVE_DB=1.
+    */
+    'protected_names' => array_values(array_filter(array_map('trim', explode(',', (string) env('PROTECTED_DB_NAMES', 'celebrateitwithme'))))),
+
+    /*
     |--------------------------------------------------------------------------
     | Database Connections
     |--------------------------------------------------------------------------

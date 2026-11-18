@@ -6,10 +6,13 @@ use App\Http\Services\Admin\Account\TokenLifetime;
 use App\Http\Services\AppServices\EventModules;
 use App\Models\Guest;
 use App\Models\User;
+use App\Support\Database\DestructiveCommandGuard;
 use App\Support\Mail\MessageOverrides;
 use App\Support\Mail\OverridableTranslator;
 use App\Support\ProductionSafetyCheck;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Translation\Translator;
@@ -53,6 +56,11 @@ class AppServiceProvider extends ServiceProvider
             'guest' => Guest::class,
             'user' => User::class,
         ]);
+
+        // migrate:fresh/refresh/reset and db:wipe: always blocked in production by Laravel, and blocked in any
+        // environment for the databases listed in PROTECTED_DB_NAMES unless ALLOW_DESTRUCTIVE_DB=1 (see the guard).
+        DB::prohibitDestructiveCommands($this->app->isProduction());
+        Event::listen(CommandStarting::class, [DestructiveCommandGuard::class, 'handle']);
 
         // A production server must not run with a development configuration (see ProductionSafetyCheck).
         if ($this->app->environment('production') && ! $this->app->runningInConsole() && ($problems = ProductionSafetyCheck::problems())) {
