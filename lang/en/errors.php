@@ -83,6 +83,8 @@ return [
     ],
     'padrino' => [
         'has_payments' => 'This padrino has payments.',
+        'commitment_item_paid' => 'This item already has payments without a padrino. Say whether the padrinos covered them.',
+        'commitment_exceeds_remaining' => 'The additional commitment exceeds what is left to pay on the item.',
     ],
     'budget' => [
         'category_not_empty' => 'The category still has items.',

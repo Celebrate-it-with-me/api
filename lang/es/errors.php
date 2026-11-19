@@ -83,6 +83,8 @@ return [
     ],
     'padrino' => [
         'has_payments' => 'Este padrino tiene pagos registrados.',
+        'commitment_item_paid' => 'Este rubro ya tiene pagos sin padrino. Indica si los cubrieron los padrinos.',
+        'commitment_exceeds_remaining' => 'El compromiso adicional supera lo que falta por pagar del rubro.',
     ],
     'budget' => [
         'category_not_empty' => 'La categoría todavía tiene partidas.',
