@@ -301,7 +301,7 @@ it('removes the share image together with the photo', function () {
     expect($disk->exists(CoverPhoto::sharePath($path)))->toBeFalse()->and($disk->exists($path))->toBeFalse();
     expect(app(CoverPhoto::class)->makeShare('images/not-a-cover.webp'))->toBeFalse();
 
-    $empty = "images/event/{$event->id}/cover/" . strtolower((string) \Illuminate\Support\Str::ulid()) . '-100x100.webp';
+    $empty = "images/event/{$event->id}/cover/" . strtolower((string) Str::ulid()) . '-100x100.webp';
     $disk->put($empty, '');
     expect(app(CoverPhoto::class)->makeShare($empty))->toBeFalse();
 });
