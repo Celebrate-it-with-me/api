@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\WhatsApp;
 
+use App\Http\Services\AppServices\InvitationService;
 use App\Jobs\SendWhatsAppMessage;
 use App\Models\Events;
 use App\Models\Guest;
@@ -22,15 +23,12 @@ class WhatsAppBroadcaster
 {
     public const MAX_BATCH = 500;
 
-    public function __construct(private readonly WhatsAppService $whatsapp, private readonly MessageComposer $composer, private readonly DailyLimit $limits) {}
+    public function __construct(private readonly WhatsAppService $whatsapp, private readonly MessageComposer $composer, private readonly DailyLimit $limits, private readonly InvitationService $invitations) {}
 
     /** @return array{batchId?: string, queued: int, skipped: list<array{guestId: int, guestName: string, reason: string}>} */
     public function send(Events $event, string $template, string $audience, ?array $guestIds = null, bool $force = false, bool $dryRun = false): array
     {
-        // The owner deleted her account: the invitation is kept to be read, not to message guests.
-        if ($event->isAccountArchived()) {
-            $this->conflict('event_archived', __('errors.whatsapp.event_archived'));
-        }
+        $this->assertEventCanSend($event, $template);
 
         if (! $this->whatsapp->isAvailable()) {
             $this->conflict('whatsapp_unavailable', __('errors.whatsapp.unavailable'));
@@ -57,17 +55,14 @@ class WhatsAppBroadcaster
             }
         }
 
-        $recent = $force ? [] : Message::query()
-            ->where('event_id', $event->id)->where('template_key', $template)->where('type', 'template')
-            ->whereIn('guest_id', $guests->pluck('id'))->where('status', '!=', 'failed')
-            ->where('queued_at', '>=', now()->subDay())->pluck('guest_id')->flip()->all();
+        $recent = $force ? [] : $this->recentlySent($event, $template, $guests->pluck('id')->all());
 
         // Daily cap (audit W-01): nothing left today is a 429; a partial budget queues the first guests and skips the rest.
         $budget = $this->limits->remaining($event);
         if ($budget <= 0 && ! $dryRun) {
             throw new HttpResponseException(response()->json(['message' => __('errors.whatsapp.daily_limit'), 'code' => 'whatsapp_daily_limit'], 429));
         }
-        $optedOut = OptOut::among($guests->map(fn (Guest $g) => PhoneNumber::e164($g->phone))->filter()->all());
+        $optedOut = $this->optedOutPhones($guests);
 
         $batch = (string) Str::uuid();
         $skipped = [];
@@ -76,15 +71,7 @@ class WhatsAppBroadcaster
         DB::transaction(function () use ($event, $template, $guests, $recent, $batch, $dryRun, $optedOut, &$budget, &$skipped, &$created) {
             foreach ($guests as $guest) {
                 $phone = PhoneNumber::e164($guest->phone);
-                $reason = match (true) {
-                    $guest->whatsapp_opted_out_at !== null || ($phone !== null && isset($optedOut[$phone])) => 'opted_out',
-                    trim((string) $guest->phone) === '' => 'no_phone',
-                    $phone === null => 'invalid_phone',
-                    $template === 'reminder_pending' && $guest->rsvp_status !== 'pending' => 'already_responded',
-                    isset($recent[$guest->id]) => 'recently_sent',
-                    $budget <= 0 => 'daily_limit',
-                    default => null,
-                };
+                $reason = $this->skipReason($guest, $template, $optedOut, $recent) ?? ($budget <= 0 ? 'daily_limit' : null);
 
                 if ($reason) {
                     $skipped[] = ['guestId' => $guest->id, 'guestName' => $guest->name, 'reason' => $reason];
@@ -116,6 +103,65 @@ class WhatsAppBroadcaster
         }
 
         return ['batchId' => $batch, 'queued' => count($created), 'skipped' => $skipped];
+    }
+
+    /**
+     * Why a main guest would not get this template (null = eligible), in this order. The daily budget is not here: it is
+     * decided while queueing. Shared by `send`, the audience and the recipients list so they never diverge.
+     *
+     * @param  array<string, true>  $optedOut  E.164 numbers that asked to stop, see `optedOutPhones`
+     * @param  array<int, int>  $recent  guest ids (as keys) that got this template in the last 24 h, see `recentlySent`
+     */
+    public function skipReason(Guest $guest, string $template, array $optedOut, array $recent): ?string
+    {
+        $phone = PhoneNumber::e164($guest->phone);
+
+        return match (true) {
+            $guest->whatsapp_opted_out_at !== null || ($phone !== null && isset($optedOut[$phone])) => 'opted_out',
+            trim((string) $guest->phone) === '' => 'no_phone',
+            $phone === null => 'invalid_phone',
+            $template === 'reminder_pending' && $guest->rsvp_status !== 'pending' => 'already_responded',
+            isset($recent[$guest->id]) => 'recently_sent',
+            default => null,
+        };
+    }
+
+    /** @param iterable<Guest> $guests @return array<string, true> */
+    public function optedOutPhones(iterable $guests): array
+    {
+        return OptOut::among(collect($guests)->map(fn (Guest $g) => PhoneNumber::e164($g->phone))->filter()->all());
+    }
+
+    /** Guests (ids as keys) that already got this template in the last 24 h, failed ones excluded. @param list<int> $guestIds @return array<int, int> */
+    public function recentlySent(Events $event, string $template, array $guestIds): array
+    {
+        if ($guestIds === []) {
+            return [];
+        }
+
+        return Message::query()
+            ->where('event_id', $event->id)->where('template_key', $template)->where('type', 'template')
+            ->whereIn('guest_id', $guestIds)->where('status', '!=', 'failed')
+            ->where('queued_at', '>=', now()->subDay())->pluck('guest_id')->flip()->all();
+    }
+
+    /** What stops the event from sending a template at all (409 with a code). */
+    public function assertEventCanSend(Events $event, string $template): void
+    {
+        // The owner deleted her account: the invitation is kept to be read, not to message guests.
+        if ($event->isAccountArchived()) {
+            $this->conflict('event_archived', __('errors.whatsapp.event_archived'));
+        }
+
+        // The links only open once the event is published.
+        if ($event->status !== 'published') {
+            $this->conflict('event_not_published', __('errors.whatsapp.event_not_published'));
+        }
+
+        // Nobody could answer an invitation or a reminder after the RSVP deadline; the save the date has no answer.
+        if (in_array($template, ['invitation', 'reminder_pending'], true) && ! $this->invitations->rsvpWindow($event)['isOpen']) {
+            $this->conflict('rsvp_closed', __('errors.whatsapp.rsvp_closed'));
+        }
     }
 
     private function candidates(Events $event, string $template, string $audience, ?array $guestIds)

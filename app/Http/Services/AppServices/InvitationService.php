@@ -951,7 +951,7 @@ class InvitationService
     }
 
     /** @return array{deadline: ?string, isOpen: bool} */
-    private function rsvpWindow(Events $event): array
+    public function rsvpWindow(Events $event): array
     {
         // An invitation kept after its owner deleted her account is read only: nobody can answer it any more.
         if ($event->isAccountArchived()) {

@@ -68,6 +68,8 @@ return [
         'template_not_approved' => 'The WhatsApp template is not approved yet.',
         'event_archived' => 'This event is archived.',
         'unavailable' => 'WhatsApp is not connected.',
+        'event_not_published' => 'This event is not published yet.',
+        'rsvp_closed' => 'The RSVP deadline has passed.',
     ],
     'collaborators' => [
         'already_member' => 'This person is already a collaborator.',
