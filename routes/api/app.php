@@ -31,6 +31,7 @@ use App\Http\Controllers\AppControllers\PublicInvitationSongController;
 use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
+use App\Http\Controllers\AppControllers\Seating\CateringExportController;
 use App\Http\Controllers\AppControllers\Seating\TableController;
 use App\Http\Controllers\AppControllers\SpotifySearchController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
@@ -357,6 +358,9 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::post('{table}/assign', [TableController::class, 'assignGuest'])->name('assign-guests');
                 Route::delete('{table}/guest/{guest}', [TableController::class, 'removeGuest'])->name('remove-guest');
             });
+
+            // Catering list: outside the seating module gate on purpose (without Tables it still gives the dish summary).
+            Route::get('seating/export/catering', CateringExportController::class)->middleware('throttle:guest-export')->name('seating.export.catering');
 
             // Seating
             Route::prefix('seating')->name('seating.')->middleware('module.access:seating')->group(function () {

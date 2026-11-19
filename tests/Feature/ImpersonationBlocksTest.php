@@ -110,6 +110,7 @@ describe('route classification', function () {
             'GET api/v1/app/event/{event}/purchase/status',
             'GET api/v1/app/event/{event}/roster/export',
             'GET api/v1/app/event/{event}/roster/export/venue',
+            'GET api/v1/app/event/{event}/seating/export/catering',
             'GET api/v1/app/account/purchases', 'GET api/v1/app/account/invoices/{invoice}/pdf', 'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
             'GET api/v1/app/account/billing-profile', 'PUT api/v1/app/account/billing-profile',
             'POST api/v1/app/account/invoices/{invoice}/resend', 'POST api/v1/app/account/credit-notes/{creditNote}/resend',
