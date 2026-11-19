@@ -2,6 +2,7 @@
 
 namespace App\Http\Services\WhatsApp;
 
+use App\Http\Services\AppServices\InvitationShare;
 use App\Models\Events;
 use App\Models\Guest;
 use App\Models\WhatsApp\Template;
@@ -13,7 +14,7 @@ use Carbon\Carbon;
  */
 class SendPreview
 {
-    public function __construct(private readonly MessageComposer $composer, private readonly WhatsAppService $whatsapp, private readonly WhatsAppBroadcaster $broadcaster) {}
+    public function __construct(private readonly MessageComposer $composer, private readonly WhatsAppService $whatsapp, private readonly WhatsAppBroadcaster $broadcaster, private readonly InvitationShare $share) {}
 
     /**
      * @return array<string, mixed> the `data` of POST preview
@@ -47,8 +48,8 @@ class SendPreview
                 'id' => $event->id, 'name' => $event->event_name, 'startDate' => $event->start_date ? Carbon::parse($event->start_date)->utc()->toIso8601String() : null,
                 'timezone' => $event->timezone, 'published' => $event->status === 'published',
             ],
-            // Filled by the Open Graph phase (F4b): the card WhatsApp will draw for the link. Null until then.
-            'linkPreview' => null,
+            // The card WhatsApp will draw for the link (same data `/og/...` prints), in the preview locale. Null for the sample guest.
+            'linkPreview' => $first ? $this->share->linkPreview($first, $locale) : null,
         ];
     }
 

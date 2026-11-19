@@ -41,7 +41,9 @@ describe('preview', function () {
             ->and($d['body'])->toContain('Ana López')->toContain('Los XV de Valentina')->toContain($d['link'])->not->toContain('{{')
             ->and($d['link'])->toContain('/i/' . $event->custom_url_slug . '/' . $ana->code)
             ->and($d['buttons'])->toBe([['id' => 'yes', 'text' => 'Sí, asistiré'], ['id' => 'no', 'text' => 'No podré asistir']])
-            ->and($d['sendable'])->toBeTrue()->and($d['linkPreview'])->toBeNull()
+            ->and($d['sendable'])->toBeTrue()
+            ->and($d['linkPreview'])->toBe(['title' => 'Ana López, estás invitado/a a Los XV de Valentina', 'description' => $d['linkPreview']['description'], 'image' => config('app.frontend_app.url') . '/og-default.png', 'alt' => 'Quinvite', 'imageWidth' => 1200, 'imageHeight' => 630])
+            ->and($d['linkPreview']['description'])->toEndWith('Abre tu invitación.')
             ->and($d['event']['id'])->toBe($event->id)->and($d['event']['name'])->toBe('Los XV de Valentina')->and($d['event']['published'])->toBeTrue()
             ->and($d['event']['startDate'])->toBeString()
             ->and($d)->not->toHaveKey('to')->and(json_encode($d))->not->toContain('305');
@@ -65,11 +67,30 @@ describe('preview', function () {
         [$event, $u, $api] = waEvent();
 
         $d = $this->actingAs($u['owner'])->postJson("$api/preview", ['template' => 'invitation'])->assertOk()->json('data');
-        expect($d['guest'])->toBeNull()->and($d['sample'])->toBeTrue()->and($d['body'])->toContain('Invitado');
+        expect($d['guest'])->toBeNull()->and($d['sample'])->toBeTrue()->and($d['body'])->toContain('Invitado')->and($d['linkPreview'])->toBeNull();
 
         $event->update(['locale' => 'en']);
         $d = $this->actingAs($u['owner'])->postJson("$api/preview", ['template' => 'invitation'])->assertOk()->json('data');
         expect($d['body'])->toContain('Guest');
+    });
+
+    it('draws the link card in the preview language, for a draft event too, without touching the rest of the response', function () {
+        [$event, $u, $api] = waEvent();
+        $peter = waGuest($event, ['name' => 'Peter', 'locale' => 'en']);
+
+        $d = $this->actingAs($u['owner'])->postJson("$api/preview", ['template' => 'invitation', 'guest_id' => $peter->id])->assertOk()->json('data');
+        expect($d['locale'])->toBe('en')->and($d['linkPreview']['title'])->toBe('Peter, you are invited to Los XV de Valentina')
+            ->and($d['linkPreview']['description'])->toEndWith('Open your invitation.')
+            ->and(array_keys($d['linkPreview']))->toBe(['title', 'description', 'image', 'alt', 'imageWidth', 'imageHeight']);
+
+        $d = $this->actingAs($u['owner'])->postJson("$api/preview", ['template' => 'invitation', 'guest_id' => $peter->id, 'locale' => 'es'])->assertOk()->json('data');
+        expect($d['locale'])->toBe('es')->and($d['linkPreview']['title'])->toBe('Peter, estás invitado/a a Los XV de Valentina');
+
+        $event->update(['status' => 'draft']);
+        $d = $this->actingAs($u['owner'])->postJson("$api/preview", ['template' => 'invitation', 'guest_id' => $peter->id])->assertOk()->json('data');
+        expect($d['linkPreview']['title'])->toContain('Peter')->and($d['event']['published'])->toBeFalse()
+            ->and(array_keys($d))->toBe(['template', 'locale', 'category', 'guest', 'sample', 'body', 'buttons', 'link', 'sendable', 'event', 'linkPreview'])
+            ->and(json_encode($d['linkPreview']))->not->toContain($peter->code)->not->toContain('305');
     });
 
     it('answers 404 for a guest of another event or a companion, 422 for bad input, 409 without an approved template', function () {
