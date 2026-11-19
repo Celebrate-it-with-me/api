@@ -24,7 +24,7 @@ class RouteServiceProvider extends ServiceProvider
     /** Named rate limiters, one per route (or deliberate group of routes): name => [attempts, window in minutes]. */
     public const ROUTE_LIMITS = [
         'system-status' => [60, 1],
-        'og-share' => [60, 1],
+        'og-share' => [300, 1],
         'template-assets' => [600, 1],
         'invitation-show' => [60, 1],
         'invitation-access' => [60, 1],

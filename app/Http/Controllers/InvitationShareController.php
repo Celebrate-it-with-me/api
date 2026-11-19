@@ -18,6 +18,10 @@ class InvitationShareController extends Controller
 
         abort_if($meta === null, 404);
 
-        return response()->view('share', $meta)->header('X-Robots-Tag', 'noindex, nofollow');
+        // The address carries the guest's code and the page her name: no shared cache may keep it. It never marks the
+        // invitation as opened (a crawler is not the guest): that only happens when the app itself asks for the invitation.
+        return response()->view('share', $meta)
+            ->header('X-Robots-Tag', 'noindex, nofollow')
+            ->header('Cache-Control', 'private, max-age=300');
     }
 }

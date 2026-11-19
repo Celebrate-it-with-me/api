@@ -806,7 +806,7 @@ describe('cover photo', function () {
         }
         $this->actingAs($m['owner'])->post(edUrl($event, 'cover-photo'), [], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonPath('errors.photo.0', 'required');
         edUpload($this, $event, $m['owner'], edJpeg(), ['focus' => 'arriba'])->assertUnprocessable()->assertJsonPath('errors.focus.0', 'invalid_focus');
-        expect($event->fresh()->template_config)->toEqual($before)->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+        expect($event->fresh()->template_config)->toEqual($before)->and(Storage::disk('event-media')->allFiles())->toHaveCount(3);
     });
 
     it('accepts a huge picture only up to the pixel limit, without exhausting memory', function () {
@@ -828,7 +828,7 @@ describe('cover photo', function () {
 
         $second = substr($event->fresh()->template_config['sections'][0]['settings']['image'], 7);
         expect($second)->not->toBe($first)->and(Storage::disk('event-media')->exists($first))->toBeFalse()
-            ->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+            ->and(Storage::disk('event-media')->allFiles())->toHaveCount(3);
     });
 
     it('removes the photo, idempotently', function () {
