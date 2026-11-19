@@ -55,7 +55,7 @@ class Table extends Model
             'id',            // Foreign key on guests table
             'id',            // Local key on tables table
             'guest_id'       // Local key on table_assignments table
-        )->with('tableAssignment');
+        )->with(['tableAssignment', 'parent:id,name']);
     }
 
     /**
@@ -94,7 +94,7 @@ class Table extends Model
      * Seats taken. A table loaded with withAssignedCount() already carries the number (one aggregate for the whole
      * list); any other table asks the database, which is what the single-table actions need to see fresh data.
      */
-    private function assignedCount(): int
+    public function assignedCount(): int
     {
         return array_key_exists('assigned_guests_count', $this->attributes)
             ? (int) $this->attributes['assigned_guests_count']
@@ -147,13 +147,13 @@ class Table extends Model
         return $this->hasAvailableSeats();
     }
 
-    /**
-     * Get next available seat number
-     */
+    /** Next seat number at this table: just the number (the screens and the export write "Seat 3" in the reader's language). */
     public function getNextSeatNumber(): string
     {
-        $count = $this->assignments()->count();
+        $highest = $this->assignments()->pluck('seat_number')
+            ->map(fn ($seat) => preg_match('/(\d+)\s*$/', (string) $seat, $m) ? (int) $m[1] : 0)
+            ->max() ?? 0;
 
-        return "{$this->name} - Seat " . ($count + 1);
+        return (string) ($highest + 1);
     }
 }

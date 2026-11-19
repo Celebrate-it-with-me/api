@@ -80,7 +80,8 @@ class GuestRosterController extends Controller
         $main = $this->main($guest);
         EventActivityLogger::log($event->id, 'guest_deleted', Auth::user(), $guest, ['name' => $guest->name, 'email' => $guest->email, 'phone' => $guest->phone, 'code' => $guest->code]);
         if ($guest->parent_id === null) {
-            $guest->companions()->delete();
+            // One by one, so each deletion fires the model events (it frees the companion's seat).
+            $guest->companions()->get()->each->delete();
         }
         $guest->delete();
         $this->roster->forgetStats($event);
