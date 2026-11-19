@@ -23,10 +23,16 @@ class WhatsAppBroadcaster
 {
     public const MAX_BATCH = 500;
 
+    /** An automatic batch that would queue more families than this needs the organizer's explicit confirmation (P7). */
+    public const CONFIRM_ABOVE = 100;
+
+    /** A family gets at most this many reminders (P6). */
+    public const MAX_REMINDERS = 3;
+
     public function __construct(private readonly WhatsAppService $whatsapp, private readonly MessageComposer $composer, private readonly DailyLimit $limits, private readonly InvitationService $invitations) {}
 
     /** @return array{batchId?: string, queued: int, skipped: list<array{guestId: int, guestName: string, reason: string}>} */
-    public function send(Events $event, string $template, string $audience, ?array $guestIds = null, bool $force = false, bool $dryRun = false): array
+    public function send(Events $event, string $template, string $audience, ?array $guestIds = null, bool $force = false, bool $dryRun = false, bool $confirmed = false): array
     {
         $this->assertEventCanSend($event, $template);
 
@@ -56,6 +62,8 @@ class WhatsAppBroadcaster
         }
 
         $recent = $force ? [] : $this->recentlySent($event, $template, $guests->pluck('id')->all());
+        // Reminders have a ceiling that `force` does not lift.
+        $reminders = $this->reminderCounts($event, $template, $guests->pluck('id')->all());
 
         // Daily cap (audit W-01): nothing left today is a 429; a partial budget queues the first guests and skips the rest.
         $budget = $this->limits->remaining($event);
@@ -68,10 +76,10 @@ class WhatsAppBroadcaster
         $skipped = [];
         $created = [];
 
-        DB::transaction(function () use ($event, $template, $guests, $recent, $batch, $dryRun, $optedOut, &$budget, &$skipped, &$created) {
+        DB::transaction(function () use ($event, $template, $guests, $recent, $reminders, $batch, $dryRun, $confirmed, $optedOut, &$budget, &$skipped, &$created) {
             foreach ($guests as $guest) {
                 $phone = PhoneNumber::e164($guest->phone);
-                $reason = $this->skipReason($guest, $template, $optedOut, $recent) ?? ($budget <= 0 ? 'daily_limit' : null);
+                $reason = $this->skipReason($guest, $template, $optedOut, $recent, $reminders) ?? ($budget <= 0 ? 'daily_limit' : null);
 
                 if ($reason) {
                     $skipped[] = ['guestId' => $guest->id, 'guestName' => $guest->name, 'reason' => $reason];
@@ -92,10 +100,17 @@ class WhatsAppBroadcaster
                     'status' => 'queued', 'queued_at' => now(),
                 ]);
             }
+
+            // A big batch is a deliberate act: nothing stays queued (the transaction rolls back) until the caller confirms.
+            if (! $dryRun && ! $confirmed && count($created) > self::CONFIRM_ABOVE) {
+                throw new HttpResponseException(response()->json([
+                    'message' => __('errors.whatsapp.confirmation_required'), 'code' => 'confirmation_required', 'count' => count($created), 'threshold' => self::CONFIRM_ABOVE,
+                ], 409));
+            }
         });
 
         if ($dryRun) {
-            return ['queued' => count($created), 'skipped' => $skipped];
+            return ['queued' => count($created), 'skipped' => $skipped, 'requiresConfirmation' => count($created) > self::CONFIRM_ABOVE];
         }
 
         foreach ($created as $message) {
@@ -111,8 +126,9 @@ class WhatsAppBroadcaster
      *
      * @param  array<string, true>  $optedOut  E.164 numbers that asked to stop, see `optedOutPhones`
      * @param  array<int, int>  $recent  guest ids (as keys) that got this template in the last 24 h, see `recentlySent`
+     * @param  array<int, int>  $reminders  reminders already sent per guest id, see `reminderCounts` (only read for `reminder_pending`)
      */
-    public function skipReason(Guest $guest, string $template, array $optedOut, array $recent): ?string
+    public function skipReason(Guest $guest, string $template, array $optedOut, array $recent, array $reminders = []): ?string
     {
         $phone = PhoneNumber::e164($guest->phone);
 
@@ -121,6 +137,7 @@ class WhatsAppBroadcaster
             trim((string) $guest->phone) === '' => 'no_phone',
             $phone === null => 'invalid_phone',
             $template === 'reminder_pending' && $guest->rsvp_status !== 'pending' => 'already_responded',
+            $template === 'reminder_pending' && ($reminders[$guest->id] ?? 0) >= self::MAX_REMINDERS => 'reminder_limit',
             isset($recent[$guest->id]) => 'recently_sent',
             default => null,
         };
@@ -143,6 +160,23 @@ class WhatsAppBroadcaster
             ->where('event_id', $event->id)->where('template_key', $template)->where('type', 'template')
             ->whereIn('guest_id', $guestIds)->where('status', '!=', 'failed')
             ->where('queued_at', '>=', now()->subDay())->pluck('guest_id')->flip()->all();
+    }
+
+    /**
+     * Reminders already queued per guest (failed ones do not count), only for the reminder template.
+     *
+     * @param  list<int>  $guestIds
+     * @return array<int, int> guest id => count
+     */
+    public function reminderCounts(Events $event, string $template, array $guestIds): array
+    {
+        if ($template !== 'reminder_pending' || $guestIds === []) {
+            return [];
+        }
+
+        return Message::query()->where('event_id', $event->id)->where('template_key', 'reminder_pending')->where('type', 'template')
+            ->whereIn('guest_id', $guestIds)->where('status', '!=', 'failed')
+            ->selectRaw('guest_id, count(*) as n')->groupBy('guest_id')->pluck('n', 'guest_id')->map(fn ($n) => (int) $n)->all();
     }
 
     /** What stops the event from sending a template at all (409 with a code). */

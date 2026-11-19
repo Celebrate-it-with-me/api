@@ -92,6 +92,10 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/whatsapp/messages',
         'GET api/v1/app/event/{event}/whatsapp/audience',
         'GET api/v1/app/event/{event}/whatsapp/recipients',
+        // Renders a message and queues nothing, like the invitation preview above.
+        'POST api/v1/app/event/{event}/whatsapp/preview',
+        'GET api/v1/app/event/{event}/whatsapp/batches/active',
+        'GET api/v1/app/event/{event}/whatsapp/batches/{batch}',
         'GET api/v1/app/event/{event}/whatsapp/summary',
         'DELETE api/v1/app/event/{event}/budget/categories/{category}',
         'DELETE api/v1/app/event/{event}/budget/items/{item}',

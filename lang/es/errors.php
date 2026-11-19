@@ -73,6 +73,7 @@ return [
         'unavailable' => 'WhatsApp no está conectado.',
         'event_not_published' => 'Este evento todavía no está publicado.',
         'rsvp_closed' => 'Ya pasó la fecha límite para confirmar.',
+        'confirmation_required' => 'El lote es grande: confírmalo para enviarlo.',
     ],
     'collaborators' => [
         'already_member' => 'Esa persona ya colabora en este evento.',
