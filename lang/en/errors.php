@@ -68,6 +68,8 @@ return [
         'template_not_approved' => 'The WhatsApp template is not approved yet.',
         'event_archived' => 'This event is archived.',
         'unavailable' => 'WhatsApp is not connected.',
+        'event_not_published' => 'This event is not published yet.',
+        'rsvp_closed' => 'The RSVP deadline has passed.',
     ],
     'collaborators' => [
         'already_member' => 'This person is already a collaborator.',
@@ -81,6 +83,8 @@ return [
     ],
     'padrino' => [
         'has_payments' => 'This padrino has payments.',
+        'commitment_item_paid' => 'This item already has payments without a padrino. Say whether the padrinos covered them.',
+        'commitment_exceeds_remaining' => 'The additional commitment exceeds what is left to pay on the item.',
     ],
     'budget' => [
         'category_not_empty' => 'The category still has items.',

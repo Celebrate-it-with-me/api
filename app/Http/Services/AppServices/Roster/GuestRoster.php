@@ -3,6 +3,7 @@
 namespace App\Http\Services\AppServices\Roster;
 
 use App\Http\Services\AppServices\GuestLimit;
+use App\Http\Services\WhatsApp\DeliveryTracker;
 use App\Models\Events;
 use App\Models\Guest;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -17,21 +18,46 @@ class GuestRoster
 {
     public const STATUSES = ['attending', 'pending', 'not-attending'];
 
-    public function __construct(private readonly GuestLimit $limit) {}
+    public function __construct(private readonly GuestLimit $limit, private readonly DeliveryTracker $delivery) {}
 
-    public function page(Events $event, ?string $status, ?string $search, int $perPage): LengthAwarePaginator
+    /** @param list<int>|null $onlyIds restrict to these families (the send-state chips) */
+    public function page(Events $event, ?string $status, ?string $search, int $perPage, ?array $onlyIds = null): LengthAwarePaginator
     {
-        return $this->query($event, $status, $search)->paginate(min(max($perPage, 1), 100));
+        return $this->query($event, $status, $search, $onlyIds)->paginate(min(max($perPage, 1), 100));
+    }
+
+    /** Send state of every family of the event, read once per request. @return array<int, array<string, mixed>> */
+    public function deliveryMap(Events $event): array
+    {
+        return $this->delivery->forEvent($event);
+    }
+
+    /** @param array<int, array<string, mixed>> $map @return array<string, int> */
+    public function deliveryCounts(array $map): array
+    {
+        return $this->delivery->counts($map);
+    }
+
+    /** @param array<int, array<string, mixed>> $map @return list<int> */
+    public function deliveryIds(array $map, string $filter): array
+    {
+        return $this->delivery->idsFor($map, $filter);
     }
 
     /** Main guests (families) of the event for a tab and a search term, in the order the screen shows them. */
-    public function query(Events $event, ?string $status, ?string $search): Builder
+    public function query(Events $event, ?string $status, ?string $search, ?array $onlyIds = null): Builder
     {
         return Guest::query()
             ->with('companions')
             ->where('event_id', $event->id)
             ->whereNull('parent_id')
-            ->when($status && in_array($status, self::STATUSES, true), function (Builder $q) use ($status) {
+            ->when($onlyIds !== null, fn (Builder $q) => $q->whereIn('id', $onlyIds))
+            ->when($status === 'pending', function (Builder $q) {
+                // "Pending" is the main guest who has not answered (the same rule the send uses); companions
+                // without an answer show on the row.
+                $q->where('rsvp_status', 'pending');
+            })
+            ->when($status && $status !== 'pending' && in_array($status, self::STATUSES, true), function (Builder $q) use ($status) {
                 // A family shows up under a status when the main guest or any of their companions has it.
                 $q->where(fn (Builder $inner) => $inner
                     ->where('rsvp_status', $status)
@@ -71,9 +97,11 @@ class GuestRoster
         ];
     }
 
-    /** The row the screen shows. @return array<string, mixed> */
-    public function row(Events $event, Guest $guest): array
+    /** The row the screen shows. @param array<string, mixed>|null $delivery the family's send state; read here when not given @return array<string, mixed> */
+    public function row(Events $event, Guest $guest, ?array $delivery = null): array
     {
+        $delivery ??= $this->delivery->forGuests($event, collect([$guest->parent_id ? $guest->parent : $guest]))[$guest->parent_id ?: $guest->id];
+
         $link = $guest->code && $event->custom_url_slug
             ? rtrim((string) config('app.frontend_app.url'), '/') . "/i/{$event->custom_url_slug}/{$guest->code}"
             : null;
@@ -96,6 +124,8 @@ class GuestRoster
             'effectiveLocale' => $guest->locale ?: ($event->locale ?: 'es'),
             'code' => $guest->code,
             'link' => $link,
+            // Where the family stands with the invitation (WhatsApp message or marked as shared by hand).
+            'delivery' => $delivery,
             'companions' => $guest->companions->map(fn (Guest $c) => [
                 'id' => $c->id,
                 'name' => $c->name,

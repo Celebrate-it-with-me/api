@@ -24,7 +24,8 @@ class TableResource extends JsonResource
             'reserved_for' => $this->reserved_for,
             'location' => $this->location,
 
-            // Computed attributes
+            // Computed attributes: all from the same count of seated guests who are still alive
+            'assigned_count' => $this->assignedCount(),
             'available_seats' => $this->available_seats,
             'occupancy_percentage' => $this->occupancy_percentage,
             'is_full' => $this->isFull(),

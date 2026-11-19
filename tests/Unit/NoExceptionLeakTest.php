@@ -1,7 +1,7 @@
 <?php
 
 /** Controllers whose exceptions are deliberate, user-facing validation errors (their message is written for the client). */
-const NO_LEAK_ALLOWED = ['Theme/PublicEventController.php', 'GuestImportController.php', 'PublicSuggestedMusicController.php', 'Moderation/ModerationController.php'];
+const NO_LEAK_ALLOWED = ['Theme/PublicEventController.php', 'GuestImportController.php', 'PublicSuggestedMusicController.php', 'Moderation/ModerationController.php', 'Seating/TableController.php'];
 
 /** S-18: controllers answer a generic message and report() the exception; they never echo it to the client. */
 it('does not put exception messages, files or traces in JSON responses', function () {

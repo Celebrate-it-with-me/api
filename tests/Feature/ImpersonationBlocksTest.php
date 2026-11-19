@@ -110,6 +110,7 @@ describe('route classification', function () {
             'GET api/v1/app/event/{event}/purchase/status',
             'GET api/v1/app/event/{event}/roster/export',
             'GET api/v1/app/event/{event}/roster/export/venue',
+            'GET api/v1/app/event/{event}/seating/export/catering',
             'GET api/v1/app/account/purchases', 'GET api/v1/app/account/invoices/{invoice}/pdf', 'GET api/v1/app/account/credit-notes/{creditNote}/pdf',
             'GET api/v1/app/account/billing-profile', 'PUT api/v1/app/account/billing-profile',
             'POST api/v1/app/account/invoices/{invoice}/resend', 'POST api/v1/app/account/credit-notes/{creditNote}/resend',
@@ -136,6 +137,7 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/assistant/custom-tasks',
             'PATCH api/v1/app/event/{event}/assistant/custom-tasks/{id}', 'DELETE api/v1/app/event/{event}/assistant/custom-tasks/{id}',
             'DELETE api/v1/app/account', 'GET api/v1/app/account/deletion-preview',
+            'DELETE api/v1/app/event/{event}/seating/clear-all', 'DELETE api/v1/app/event/{event}/tables/{table}',
         ];
 
         // Exactly the blocked list: moving any blocked route to ALLOWED (or adding one) has to be a decision made here too.

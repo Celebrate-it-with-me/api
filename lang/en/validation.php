@@ -194,10 +194,18 @@ return [
     */
 
     'attributes' => [
+        'commitments.*.resolution' => 'commitment resolution',
+        'companions.*.menuItemIds' => 'companion dishes',
+        'companions.*.menuItemIds.*' => 'companion dish',
+        'format' => 'format',
+        'guest.menuItemIds' => 'guest dishes',
+        'guest.menuItemIds.*' => 'guest dish',
+        'include_pending' => 'include pending',
         'q' => 'search',
         'checklist' => 'checklist',
         'ack_third_party_marks' => 'third-party marks acknowledgement',
         'package' => 'package',
+        'remember' => 'remember me',
         'visibility' => 'visibility',
         'preset' => 'preset',
         'package_id' => 'package',

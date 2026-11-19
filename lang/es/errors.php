@@ -68,6 +68,8 @@ return [
         'template_not_approved' => 'La plantilla de WhatsApp todavía no está aprobada.',
         'event_archived' => 'Este evento está archivado.',
         'unavailable' => 'WhatsApp no está conectado.',
+        'event_not_published' => 'Este evento todavía no está publicado.',
+        'rsvp_closed' => 'Ya pasó la fecha límite para confirmar.',
     ],
     'collaborators' => [
         'already_member' => 'Esa persona ya colabora en este evento.',
@@ -81,6 +83,8 @@ return [
     ],
     'padrino' => [
         'has_payments' => 'Este padrino tiene pagos registrados.',
+        'commitment_item_paid' => 'Este rubro ya tiene pagos sin padrino. Indica si los cubrieron los padrinos.',
+        'commitment_exceeds_remaining' => 'El compromiso adicional supera lo que falta por pagar del rubro.',
     ],
     'budget' => [
         'category_not_empty' => 'La categoría todavía tiene partidas.',

@@ -55,7 +55,9 @@ class PadrinoController extends Controller
     {
         $this->own($event, $padrino);
 
-        return response()->json(['data' => $this->padrinos->row($this->padrinos->setCommitments($padrino, $request->validated('commitments')))]);
+        $result = $this->padrinos->setCommitments($padrino, $request->validated('commitments'));
+
+        return response()->json(['data' => $this->padrinos->row($result['padrino']), 'warnings' => $result['warnings']]);
     }
 
     private function own(Events $event, Padrino $padrino): void

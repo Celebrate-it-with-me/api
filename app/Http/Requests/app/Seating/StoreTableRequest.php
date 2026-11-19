@@ -3,19 +3,10 @@
 namespace App\Http\Requests\app\Seating;
 
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreTableRequest extends FormRequest
+class StoreTableRequest extends SeatingRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -39,18 +30,21 @@ class StoreTableRequest extends FormRequest
      */
     public function messages(): array
     {
+        $m = fn (string $key) => __("seating.validation.$key");
+
         return [
-            'name.required' => 'Table name is required.',
-            'name.max' => 'Table name cannot exceed 50 characters.',
-            'capacity.required' => 'Table capacity is required.',
-            'capacity.min' => 'Table must have at least 1 seat.',
-            'capacity.max' => 'Table cannot have more than 50 seats.',
-            'type.required' => 'Table type is required.',
-            'type.in' => 'Invalid table type. Must be: vip, family, friends, or general.',
-            'priority.required' => 'Table priority is required.',
-            'priority.min' => 'Priority must be at least 1.',
-            'priority.max' => 'Priority cannot exceed 10.',
-            'location.in' => 'Invalid location. Must be: front, center, back, side, or entrance.',
+            'name.required' => $m('name_required'),
+            'name.max' => $m('name_max'),
+            'capacity.required' => $m('capacity_required'),
+            'capacity.min' => $m('capacity_min'),
+            'capacity.max' => $m('capacity_max'),
+            'type.required' => $m('type_required'),
+            'type.in' => $m('type_in'),
+            'priority.required' => $m('priority_required'),
+            'priority.min' => $m('priority_min'),
+            'priority.max' => $m('priority_max'),
+            'reserved_for.max' => $m('reserved_for_max'),
+            'location.in' => $m('location_in'),
         ];
     }
 

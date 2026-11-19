@@ -39,6 +39,7 @@ class Guest extends Model
         'rsvp_status_date' => 'datetime',
         'rsvp_note_at' => 'datetime',
         'invitation_opened_at' => 'datetime',
+        'invitation_shared_at' => 'datetime',
         'whatsapp_opted_out_at' => 'datetime',
         'tags' => 'array',
     ];
@@ -49,6 +50,9 @@ class Guest extends Model
      */
     protected static function booted(): void
     {
+        // A deleted guest frees the seat (the foreign key cascade only fires on a real delete, not a soft delete).
+        static::deleted(fn (Guest $guest) => TableAssignment::withoutGlobalScopes()->where('guest_id', $guest->id)->delete());
+
         static::saving(function (Guest $guest) {
             if (! $guest->exists || $guest->isDirty('phone')) {
                 $opted = OptOut::has($guest->phone);

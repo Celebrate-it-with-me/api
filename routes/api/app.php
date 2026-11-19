@@ -31,6 +31,7 @@ use App\Http\Controllers\AppControllers\PublicInvitationSongController;
 use App\Http\Controllers\AppControllers\PublicSuggestedMusicController;
 use App\Http\Controllers\AppControllers\RsvpController;
 use App\Http\Controllers\AppControllers\SaveTheDate\SaveTheDateController;
+use App\Http\Controllers\AppControllers\Seating\CateringExportController;
 use App\Http\Controllers\AppControllers\Seating\TableController;
 use App\Http\Controllers\AppControllers\SpotifySearchController;
 use App\Http\Controllers\AppControllers\SuggestedMusicConfigController;
@@ -281,6 +282,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('export/venue', [GuestExportController::class, 'venue'])->middleware('throttle:guest-export')->name('export.venue');
                 Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
                 Route::patch('{guest}/locale', [GuestRosterController::class, 'updateLocale'])->name('locale');
+                Route::post('{guest}/shared', [GuestRosterController::class, 'markShared'])->name('shared');
+                Route::delete('{guest}/shared', [GuestRosterController::class, 'unmarkShared'])->name('unshared');
                 Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');
                 Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');
             });
@@ -358,9 +361,13 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::delete('{table}/guest/{guest}', [TableController::class, 'removeGuest'])->name('remove-guest');
             });
 
+            // Catering list: outside the seating module gate on purpose (without Tables it still gives the dish summary).
+            Route::get('seating/export/catering', CateringExportController::class)->middleware('throttle:guest-export')->name('seating.export.catering');
+
             // Seating
             Route::prefix('seating')->name('seating.')->middleware('module.access:seating')->group(function () {
                 Route::get('unassigned', [TableController::class, 'unassignedGuests'])->name('unassigned-guests');
+                Route::post('move', [TableController::class, 'moveGuest'])->name('move-guest');
                 Route::post('bulk-assign', [TableController::class, 'bulkAssign'])->name('bulk-assign');
                 Route::delete('clear-all', [TableController::class, 'clearAll'])->name('clear-all');
             });
