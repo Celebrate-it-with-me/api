@@ -160,10 +160,18 @@ return [
     'custom' => [],
 
     'attributes' => [
+        'commitments.*.resolution' => 'resolución del compromiso',
+        'companions.*.menuItemIds' => 'platos del acompañante',
+        'companions.*.menuItemIds.*' => 'plato del acompañante',
+        'format' => 'formato',
+        'guest.menuItemIds' => 'platos del invitado',
+        'guest.menuItemIds.*' => 'plato del invitado',
+        'include_pending' => 'incluir pendientes',
         'q' => 'búsqueda',
         'checklist' => 'lista de comprobación',
         'ack_third_party_marks' => 'confirmación de marcas de terceros',
         'package' => 'paquete',
+        'remember' => 'recordarme',
         'visibility' => 'visibilidad',
         'preset' => 'preajuste',
         'package_id' => 'paquete',
