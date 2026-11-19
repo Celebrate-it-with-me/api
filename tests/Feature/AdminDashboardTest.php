@@ -83,7 +83,7 @@ it('follows the accounts of the period down the funnel', function () {
 
 it('lists what needs attention', function () {
     [$soon] = customerEvent('a@example.com', ['start_date' => now()->addDays(5)]);
-    [$big] = customerEvent('b@example.com');
+    [$big] = customerEvent('b@example.com', ['start_date' => now()->addMonths(3)]); // the factory picks a random date, which may fall in the 14-day window
     Guest::factory()->count(31)->create(['event_id' => $big->id]);
     $stuck = EventPurchase::create(['event_id' => $big->id, 'user_id' => User::where('email', 'b@example.com')->value('id'), 'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'),
         'gateway' => 'fake', 'list_price_cents' => 9900, 'amount_cents' => 9900, 'status' => 'pending']);
@@ -94,6 +94,16 @@ it('lists what needs attention', function () {
 
     expect($types->keys()->all())->toEqualCanonicalizing(['stuck_purchases', 'over_free_limit', 'upcoming_draft', 'coupons_ending'])
         ->and($types['upcoming_draft']['examples'][0]['eventId'])->toBe($soon->id);
+});
+
+it('lists the upcoming drafts nearest first', function () {
+    [$later] = customerEvent('a@example.com', ['start_date' => now()->addDays(10)]);
+    [$nearest] = customerEvent('b@example.com', ['start_date' => now()->addDays(2)]);
+    [$middle] = customerEvent('c@example.com', ['start_date' => now()->addDays(6)]);
+
+    $examples = collect($this->actingAs(staff())->getJson('/api/v1/admin/dashboard')->json('data.attention'))->firstWhere('type', 'upcoming_draft')['examples'];
+
+    expect(collect($examples)->pluck('eventId')->all())->toBe([$nearest->id, $middle->id, $later->id]);
 });
 
 it('rejects a period it does not know', function () {

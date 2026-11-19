@@ -215,7 +215,7 @@ class DashboardMetrics
             ->whereRaw('(select count(*) from guests where guests.event_id = events.id and guests.deleted_at is null) > ?', [$limit]);
         $push('over_free_limit', $over, $event);
 
-        $push('upcoming_draft', $this->events()->where('status', 'draft')->whereBetween('start_date', [$now, $now->addDays(14)]), $event);
+        $push('upcoming_draft', $this->events()->where('status', 'draft')->whereBetween('start_date', [$now, $now->addDays(14)])->orderBy('start_date')->orderBy('events.id'), $event);
 
         $push('coupons_ending', Coupon::query()->where('is_active', true)->where(function ($q) use ($now) {
             $q->whereBetween('expires_at', [$now, $now->addDays(7)])
