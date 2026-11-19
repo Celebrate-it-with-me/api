@@ -23,17 +23,23 @@ class GuestRosterController extends Controller
 
     public function index(Request $request, Events $event): JsonResponse
     {
+        // One read of the send state of every family: rows, chip filter and counters share it.
+        $delivery = $this->roster->deliveryMap($event);
+        $filter = $request->query('delivery');
+        $onlyIds = in_array($filter, ['unsent', 'sent', 'problem'], true) ? $this->roster->deliveryIds($delivery, $filter) : null;
+
         $page = $this->roster->page(
             $event,
             $request->query('status'),
             $request->query('search'),
             (int) $request->query('perPage', 15),
+            $onlyIds,
         );
 
         return response()->json([
-            'data' => collect($page->items())->map(fn (Guest $guest) => $this->roster->row($event, $guest))->all(),
+            'data' => collect($page->items())->map(fn (Guest $guest) => $this->roster->row($event, $guest, $delivery[$guest->id]))->all(),
             'meta' => ['currentPage' => $page->currentPage(), 'lastPage' => $page->lastPage(), 'perPage' => $page->perPage(), 'total' => $page->total()],
-            'counts' => $this->roster->counts($event),
+            'counts' => $this->roster->counts($event) + ['delivery' => $this->roster->deliveryCounts($delivery)],
             'eventLocale' => $event->locale ?: 'es',
         ]);
     }
@@ -45,6 +51,30 @@ class GuestRosterController extends Controller
 
         $data = $request->validate(['locale' => ['present', 'nullable', 'string', 'in:es,en']]);
         $guest->update(['locale' => $data['locale']]);
+
+        return response()->json(['data' => $this->roster->row($event, $guest->load('companions'))]);
+    }
+
+    /** Mark a family's invitation as shared by hand (manual WhatsApp). Idempotent: the first moment is kept. */
+    public function markShared(Events $event, Guest $guest): JsonResponse
+    {
+        abort_unless($guest->parent_id === null, 422, 'The invitation belongs to a main guest.');
+
+        if ($guest->invitation_shared_at === null) {
+            $guest->forceFill(['invitation_shared_at' => now()])->save();
+        }
+
+        return response()->json(['data' => $this->roster->row($event, $guest->load('companions'))]);
+    }
+
+    /** Undo the mark. Idempotent. */
+    public function unmarkShared(Events $event, Guest $guest): JsonResponse
+    {
+        abort_unless($guest->parent_id === null, 422, 'The invitation belongs to a main guest.');
+
+        if ($guest->invitation_shared_at !== null) {
+            $guest->forceFill(['invitation_shared_at' => null])->save();
+        }
 
         return response()->json(['data' => $this->roster->row($event, $guest->load('companions'))]);
     }

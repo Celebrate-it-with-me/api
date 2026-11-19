@@ -39,6 +39,7 @@ class Guest extends Model
         'rsvp_status_date' => 'datetime',
         'rsvp_note_at' => 'datetime',
         'invitation_opened_at' => 'datetime',
+        'invitation_shared_at' => 'datetime',
         'whatsapp_opted_out_at' => 'datetime',
         'tags' => 'array',
     ];
