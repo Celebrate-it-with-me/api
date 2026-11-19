@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppControllers\Seating\CateringExportController;
 use App\Http\Services\AppServices\Seating\CateringReport;
 use App\Models\EventModuleOverride;
 use App\Models\EventPlan;
@@ -318,4 +319,57 @@ it('the PDF footer shows the page numbers', function () {
     // dompdf writes the footer as text drawn on each page: its label survives in the (uncompressed) font subset only as glyph ids,
     // so check the document has the expected page structure instead.
     expect(preg_match_all('#/Type\s*/Page[^s]#', $pdf))->toBeGreaterThanOrEqual(1);
+});
+
+it('prints the generation time on the clock of the event, not in UTC', function () {
+    [$event] = cateringEvent();
+    $controller = app(CateringExportController::class);
+    $this->travelTo(Carbon\Carbon::parse('2027-01-10 03:30:00', 'UTC'));
+
+    $event->timezone = 'America/New_York';
+    expect($controller->generatedAt($event, 'es'))->toBe('9 de enero de 2027, 22:30 EST')
+        ->and($controller->generatedAt($event, 'en'))->toBe('January 9, 2027, 22:30 EST');
+
+    $event->timezone = 'Europe/Madrid';
+    expect($controller->generatedAt($event, 'es'))->toBe('10 de enero de 2027, 04:30 CET');
+
+    // A broken zone falls back to the app's, instead of failing the download.
+    $event->timezone = 'Mars/Olympus';
+    expect($controller->generatedAt($event, 'en'))->toBe('January 10, 2027, 03:30 UTC');
+});
+
+it('lines every table up on the same columns and leaves out the dishes nobody picked or skipped', function () {
+    [$event, $u] = cateringEvent();
+    catWorld($event, $u['owner']);
+    $report = app(CateringReport::class)->build($event, false, 'es');
+    // Everybody at the first table chose everything: nothing "Sin elegir" there; and the summary of a type nobody chose is gone.
+    $report['summary']['main']['unchosen'] = 0;
+    $report['summary']['dessert'] = ['items' => [], 'unchosen' => 0];
+    foreach ($report['tables'] as $i => $table) {
+        foreach ($table['dishes'] as $type => $block) {
+            $report['tables'][$i]['dishes'][$type]['unchosen'] = 0;
+        }
+    }
+
+    $html = view('exports.catering', ['r' => $report])->render();
+
+    // The same <colgroup> opens each guest list (and every dish grid), so the columns do not move between tables.
+    preg_match_all('#<colgroup>.*?</colgroup>#s', $html, $m);
+    $grids = array_count_values($m[0]);
+    expect(count($report['tables']))->toBeGreaterThan(1)
+        ->and(max($grids))->toBeGreaterThanOrEqual(count($report['tables']) * 2)
+        ->and($html)->toContain('table-layout: fixed')
+        ->and($html)->not->toContain('page-break-before: always')
+        ->and($html)->not->toMatch('#Sin elegir</td><td></td><td class="r">0#')
+        ->and($html)->not->toContain('&times; Sin elegir')
+        ->and($html)->not->toContain('Postre</h3>');
+});
+
+it('writes a light PDF: fonts are subset, not embedded whole', function () {
+    [$event, $u, $url] = cateringEvent();
+    catWorld($event, $u['owner']);
+
+    $pdf = $this->actingAs($u['owner'])->get("$url?format=pdf")->assertOk()->baseResponse->getContent();
+
+    expect(strlen($pdf))->toBeLessThan(300_000);
 });
