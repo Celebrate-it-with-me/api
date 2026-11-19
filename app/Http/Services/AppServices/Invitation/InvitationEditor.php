@@ -515,7 +515,7 @@ class InvitationEditor
             throw ValidationException::withMessages(['focus' => ['invalid_focus']]);
         }
 
-        $stored = $this->cover->store($event->id, $file, (int) ($field['minWidth'] ?? 0));
+        $stored = $this->cover->store($event->id, $file, (int) ($field['minWidth'] ?? 0), $focus);
         $previous = null;
         try {
             DB::transaction(function () use ($event, $field, $stored, $focus, &$previous) {

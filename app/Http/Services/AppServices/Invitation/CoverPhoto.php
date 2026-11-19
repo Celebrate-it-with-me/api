@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 
@@ -20,6 +21,12 @@ final class CoverPhoto
     public const PREFIX = 'upload:';
 
     public const DISK = 'event-media';
+
+    public const SHARE_WIDTH = 1200;
+
+    public const SHARE_HEIGHT = 630;
+
+    private const SHARE_MAX_BYTES = 300_000;
 
     private const PATH = '#^images/event/(\d+)/cover/([0-9a-z]{26})-(\d{2,5})x(\d{2,5})\.webp$#';
 
@@ -43,6 +50,12 @@ final class CoverPhoto
         return substr($path, 0, -strlen('.webp')) . '-thumb.webp';
     }
 
+    /** The 1200x630 JPEG a link preview (WhatsApp, Facebook) shows; derived from the stored WebP. */
+    public static function sharePath(string $path): string
+    {
+        return substr($path, 0, -strlen('.webp')) . '-share.jpg';
+    }
+
     /** @return array{width: int, height: int}|null the size of the stored photo, kept in its name */
     public static function dimensions(string $path): ?array
     {
@@ -54,7 +67,7 @@ final class CoverPhoto
      *
      * @throws ValidationException `errors.photo[0]` = required | not_an_image | unsupported_type | too_large | too_small | too_many_pixels | corrupt
      */
-    public function store(int $eventId, ?UploadedFile $file, int $minWidth = 0): array
+    public function store(int $eventId, ?UploadedFile $file, int $minWidth = 0, ?string $focus = null): array
     {
         $max = (int) config('invitation.cover.max_bytes');
 
@@ -124,6 +137,8 @@ final class CoverPhoto
             $disk->delete($path);
             throw $e;
         }
+        // The preview image is a convenience: when it cannot be made now, it is made on the first request that needs it.
+        $this->makeShare($path, $focus);
 
         return ['path' => $path, 'width' => $width, 'height' => $height, 'bytes' => strlen($coverBytes)];
     }
@@ -134,7 +149,66 @@ final class CoverPhoto
         if ($path === null || preg_match(self::PATH, $path) !== 1) {
             return;
         }
-        Storage::disk(self::DISK)->delete([$path, self::thumbPath($path)]);
+        Storage::disk(self::DISK)->delete([$path, self::thumbPath($path), self::sharePath($path)]);
+    }
+
+    /**
+     * Makes the link-preview image of a stored photo: 1200x630 (1.91:1) JPEG, cropped around `$focus` ("50% 30%", the
+     * centre when none), well under 300 KB, with no metadata. Idempotent: an existing one is kept unless `$force`.
+     *
+     * @return bool whether the derived image exists afterwards
+     */
+    public function makeShare(string $path, ?string $focus = null, bool $force = false): bool
+    {
+        if (preg_match(self::PATH, $path) !== 1) {
+            return false;
+        }
+        $disk = Storage::disk(self::DISK);
+        $target = self::sharePath($path);
+
+        try {
+            if (! $force && $disk->exists($target)) {
+                return true;
+            }
+            $source = $disk->get($path);
+            if (! is_string($source) || $source === '') {
+                return false;
+            }
+            $w = self::SHARE_WIDTH;
+            $h = self::SHARE_HEIGHT;
+            $image = $this->images->decodeBinary($source)->fillTransparentAreas('ffffff');
+            $factor = max($w / $image->width(), $h / $image->height());
+            $scaledW = max($w, (int) ceil($image->width() * $factor));
+            $scaledH = max($h, (int) ceil($image->height() * $factor));
+            [$fx, $fy] = $this->focusPoint($focus);
+            $image->resize($scaledW, $scaledH)->crop(
+                $w,
+                $h,
+                (int) max(0, min($scaledW - $w, round($fx * $scaledW - $w / 2))),
+                (int) max(0, min($scaledH - $h, round($fy * $scaledH - $h / 2))),
+            );
+            $quality = 82;
+            do {
+                $jpeg = (string) $image->encode(new JpegEncoder(quality: $quality));
+                $quality -= 10;
+            } while (strlen($jpeg) > self::SHARE_MAX_BYTES && $quality >= 40);
+
+            $disk->put($target, $jpeg, ['visibility' => 'public', 'ContentType' => 'image/jpeg', 'CacheControl' => 'public, max-age=31536000, immutable']);
+
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** @return array{0: float, 1: float} the focus as fractions of the photo */
+    private function focusPoint(?string $focus): array
+    {
+        if ($focus !== null && preg_match('/^(\d{1,3})% (\d{1,3})%$/', $focus, $m) === 1) {
+            return [min(100, (int) $m[1]) / 100, min(100, (int) $m[2]) / 100];
+        }
+
+        return [0.5, 0.5];
     }
 
     /** @return array{url: string, thumbUrl: string} */
