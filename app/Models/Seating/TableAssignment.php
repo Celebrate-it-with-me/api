@@ -4,6 +4,7 @@ namespace App\Models\Seating;
 
 use App\Models\Guest;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -77,6 +78,13 @@ class TableAssignment extends Model
      */
     protected static function booted(): void
     {
+        // An assignment only counts while its guest is alive. Deleting a guest also removes the assignment (Guest::booted),
+        // but a bulk delete fires no model events, so every read here ignores the ones whose guest is gone.
+        static::addGlobalScope('liveGuest', function (Builder $query) {
+            $query->whereExists(fn ($guests) => $guests->selectRaw('1')->from('guests')
+                ->whereColumn('guests.id', 'table_assignments.guest_id')->whereNull('guests.deleted_at'));
+        });
+
         static::creating(function ($assignment) {
             if (empty($assignment->assigned_at)) {
                 $assignment->assigned_at = now();
