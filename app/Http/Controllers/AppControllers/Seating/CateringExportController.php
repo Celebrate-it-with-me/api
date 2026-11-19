@@ -35,9 +35,10 @@ class CateringExportController extends Controller
         $name = 'catering-' . (Str::slug($event->custom_url_slug ?: (string) $event->event_name) ?: 'event-' . $event->id) . '-' . now()->format('Y-m-d') . ".$format";
 
         if ($format === 'pdf') {
-            $generated = now()->locale($locale)->translatedFormat($locale === 'es' ? 'j \d\e F \d\e Y, H:i' : 'F j, Y, H:i');
+            $generated = $this->generatedAt($event, $locale);
 
-            $pdf = Pdf::loadView('exports.catering', ['r' => $report])->setPaper('a4');
+            // Subsetting embeds only the glyphs used instead of the whole DejaVu files (about 1.3 MB per file).
+            $pdf = Pdf::loadView('exports.catering', ['r' => $report])->setPaper('a4')->setOption('enable_font_subsetting', true);
             $pdf->render();
 
             // Footer on every page ("generated on ... | page x of y"), drawn on the canvas after the layout is known.
@@ -50,5 +51,13 @@ class CateringExportController extends Controller
         }
 
         return Excel::download(new CateringExport($report), $name);
+    }
+
+    /** When the list was made, on the clock of the event (not the server's UTC), with the zone abbreviation. */
+    public function generatedAt(Events $event, string $locale): string
+    {
+        $zone = in_array($event->timezone, timezone_identifiers_list(), true) ? $event->timezone : config('app.timezone');
+
+        return now($zone)->locale($locale)->translatedFormat($locale === 'es' ? 'j \d\e F \d\e Y, H:i T' : 'F j, Y, H:i T');
     }
 }
