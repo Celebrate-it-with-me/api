@@ -22,7 +22,7 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => $this->seed(DatabaseSeeder::class));
 
 /** @return array{0: Events, 1: array<string, User>, 2: string} */
-function catEvent(string $plan = 'premium', string $locale = 'es'): array
+function cateringEvent(string $plan = 'premium', string $locale = 'es'): array
 {
     $event = Events::factory()->create([
         'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
@@ -106,7 +106,7 @@ function catRows($book, int $i): array
 }
 
 it('summarizes the dishes per course and the people without a choice', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
 
     $response = $this->actingAs($u['owner'])->get($url)->assertOk();
@@ -130,7 +130,7 @@ it('summarizes the dishes per course and the people without a choice', function 
 });
 
 it('counts dishes per table, lists the people by seat and leaves contact data out', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
 
     $book = catBook($this->actingAs($u['owner'])->get($url));
@@ -151,7 +151,7 @@ it('counts dishes per table, lists the people by seat and leaves contact data ou
 });
 
 it('adds the pending people only when asked, with their status', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
 
     $book = catBook($this->actingAs($u['owner'])->get("$url?include_pending=1"));
@@ -165,13 +165,13 @@ it('adds the pending people only when asked, with their status', function () {
 });
 
 it('speaks English when asked and takes the event language by default', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
 
     $en = catRows(catBook($this->actingAs($u['owner'])->get("$url?locale=en")), 0);
     expect($en[0])->toBe(['Type', 'Dish', 'Diet', 'Count'])->and($en[1][0])->toBe('Starter');
 
-    [$event2, $u2, $url2] = catEvent('premium', 'en');
+    [$event2, $u2, $url2] = cateringEvent('premium', 'en');
     catWorld($event2, $u2['owner']);
     expect(catRows(catBook($this->actingAs($u2['owner'])->get($url2)), 0)[0][0])->toBe('Type');
 });
@@ -182,7 +182,7 @@ function catLock(Events $event, string $key): void
 }
 
 it('leaves the dishes out, and says so, when the menu module is off', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
     catLock($event, 'menus');
 
@@ -198,7 +198,7 @@ it('leaves the dishes out, and says so, when the menu module is off', function (
 });
 
 it('gives only the dish summary when the tables module is off', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
     catLock($event, 'seating');
 
@@ -210,7 +210,7 @@ it('gives only the dish summary when the tables module is off', function () {
 });
 
 it('still answers with both modules off (only the headcount)', function () {
-    [$event, $u, $url] = catEvent('basic');
+    [$event, $u, $url] = cateringEvent('basic');
     catGuest($event, 'Ana Núñez');
 
     $rows = catRows(catBook($this->actingAs($u['owner'])->get($url)->assertOk()), 0);
@@ -219,7 +219,7 @@ it('still answers with both modules off (only the headcount)', function () {
 });
 
 it('treats the same dishes with a table that has nobody confirmed and with no guests at all', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catMenu($event);
 
     $book = catBook($this->actingAs($u['owner'])->get($url)->assertOk());
@@ -229,7 +229,7 @@ it('treats the same dishes with a table that has nobody confirmed and with no gu
 });
 
 it('lists only the courses the menu has, in serving order', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     $menu = Menu::create(['event_id' => $event->id, 'title' => 'M']);
     MenuItem::create(['menu_id' => $menu->id, 'name' => 'Flan', 'type' => 'dessert']);
     MenuItem::create(['menu_id' => $menu->id, 'name' => 'Sopa', 'type' => 'starter']);
@@ -242,7 +242,7 @@ it('lists only the courses the menu has, in serving order', function () {
 });
 
 it('writes formula-looking names and dishes as text', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     $menu = Menu::create(['event_id' => $event->id, 'title' => 'M']);
     $evil = MenuItem::create(['menu_id' => $menu->id, 'name' => '=HYPERLINK("http://x")', 'type' => 'main', 'diet_type' => '@cmd']);
     $guest = catGuest($event, '+SUM(1+1)', 'attending', null, ['allergies' => '-2+3']);
@@ -258,8 +258,8 @@ it('writes formula-looking names and dishes as text', function () {
 });
 
 it('is a download of members only, and a stranger or another event gets 404', function () {
-    [$event, $u, $url] = catEvent();
-    [, $u2, $url2] = catEvent();
+    [$event, $u, $url] = cateringEvent();
+    [, $u2, $url2] = cateringEvent();
 
     $this->getJson($url)->assertUnauthorized();
     $this->actingAs($u['stranger'])->getJson($url)->assertNotFound();
@@ -271,7 +271,7 @@ it('is a download of members only, and a stranger or another event gets 404', fu
 });
 
 it('is limited to 10 downloads a minute', function () {
-    [, $u, $url] = catEvent();
+    [, $u, $url] = cateringEvent();
     for ($i = 0; $i < 10; $i++) {
         $this->actingAs($u['owner'])->get($url)->assertOk();
     }
@@ -279,7 +279,7 @@ it('is limited to 10 downloads a minute', function () {
 });
 
 it('builds a PDF with the accents, the header and the dishes', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
 
     $response = $this->actingAs($u['owner'])->get("$url?format=pdf")->assertOk();
@@ -292,7 +292,7 @@ it('builds a PDF with the accents, the header and the dishes', function () {
 });
 
 it('prints the PDF layout with accents, tables, notes and the footer data', function () {
-    [$event, $u] = catEvent();
+    [$event, $u] = cateringEvent();
     catWorld($event, $u['owner']);
     $report = app(CateringReport::class);
 
@@ -310,7 +310,7 @@ it('prints the PDF layout with accents, tables, notes and the footer data', func
 });
 
 it('the PDF footer shows the page numbers', function () {
-    [$event, $u, $url] = catEvent();
+    [$event, $u, $url] = cateringEvent();
     catWorld($event, $u['owner']);
 
     $pdf = $this->actingAs($u['owner'])->get("$url?format=pdf&locale=en")->assertOk()->baseResponse->getContent();
