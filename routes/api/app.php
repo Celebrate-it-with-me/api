@@ -25,6 +25,7 @@ use App\Http\Controllers\AppControllers\MenuItemController;
 use App\Http\Controllers\AppControllers\OnboardingController;
 use App\Http\Controllers\AppControllers\OrganizerRsvpController;
 use App\Http\Controllers\AppControllers\PadrinoController;
+use App\Http\Controllers\AppControllers\PublicInvitationAccessController;
 use App\Http\Controllers\AppControllers\PublicInvitationCommentController;
 use App\Http\Controllers\AppControllers\PublicInvitationController;
 use App\Http\Controllers\AppControllers\PublicInvitationSongController;
@@ -51,6 +52,12 @@ use App\Http\Controllers\Payments\PurchaseController;
 // ========================================
 // PUBLIC ROUTES (No Authentication)
 // ========================================
+
+// Code gate of a link without guest code (/i/:slug). Registered BEFORE the {code} group: "access" would otherwise be read as a code.
+Route::prefix('invitation/{slug}/access')->name('invitation.access.')->group(function () {
+    Route::get('', [PublicInvitationAccessController::class, 'show'])->middleware('throttle:invitation-access')->name('show');
+    Route::post('verify', [PublicInvitationAccessController::class, 'verify'])->middleware('throttle:invitation-access-verify')->name('verify');
+});
 
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {

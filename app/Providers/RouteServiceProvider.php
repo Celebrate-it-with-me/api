@@ -27,6 +27,7 @@ class RouteServiceProvider extends ServiceProvider
         'og-share' => [60, 1],
         'template-assets' => [600, 1],
         'invitation-show' => [60, 1],
+        'invitation-access' => [60, 1],
         'invitation-rsvp' => [20, 1],
         'invitation-calendar' => [30, 1],
         'invitation-comments-read' => [60, 1],
@@ -119,6 +120,21 @@ class RouteServiceProvider extends ServiceProvider
                 'message' => __('errors.too_many_attempts'),
                 'code' => 'too_many_attempts',
             ], 429, $headers)));
+
+        // The code gate (docs/plans/invitation-code-gate-contract.md): trying codes is what an attacker does, so the POST
+        // is limited per IP (5 per minute, 30 per hour) and per slug (10 per minute, whoever asks). Same 429 body as the rest.
+        RateLimiter::for('invitation-access-verify', function (Request $request) {
+            $tooMany = fn (Request $request, array $headers) => response()->json([
+                'message' => __('errors.too_many_attempts'),
+                'code' => 'too_many_attempts',
+            ], 429, $headers);
+
+            return [
+                Limit::perMinute(5)->by('invitation-access-ip-min|' . $request->ip())->response($tooMany),
+                Limit::perHour(30)->by('invitation-access-ip-hour|' . $request->ip())->response($tooMany),
+                Limit::perMinute(10)->by('invitation-access-slug|' . mb_strtolower((string) $request->route('slug')))->response($tooMany),
+            ];
+        });
 
         // Comments written from one invitation: 6 per 10 minutes by link (slug + code), besides the per-IP limit.
         RateLimiter::for('invitation-comments-code', fn (Request $request) => Limit::perMinutes(10, 6)
