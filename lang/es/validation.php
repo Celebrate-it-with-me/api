@@ -234,6 +234,7 @@ return [
         'companions.*.rsvp_status' => 'respuesta del acompañante',
         'confirmEmail' => 'correo de confirmación',
         'confirmationDeadline' => 'fecha límite de confirmación',
+        'confirm_large' => 'confirmación de envío grande',
         'context' => 'contexto',
         'context.*' => 'contexto',
         'country' => 'país',
