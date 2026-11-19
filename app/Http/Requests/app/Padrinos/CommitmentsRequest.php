@@ -22,6 +22,7 @@ class CommitmentsRequest extends FormRequest
         return [
             'commitments' => ['present', 'array', 'max:60'],
             'commitments.*.budgetItemId' => ['required', 'integer', 'distinct', Rule::exists(BudgetItem::class, 'id')->where('event_budget_id', $budgetId)],
+            'commitments.*.resolution' => ['nullable', 'string', Rule::in(['attribute_payments', 'additional'])],
             'commitments.*.amount' => ['required', 'numeric', 'gt:0', 'max:99999999'],
         ];
     }
