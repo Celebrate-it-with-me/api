@@ -27,6 +27,9 @@ return [
         'code_mismatch' => 'The code is not correct. Check your phone\'s clock and try again.',
     ],
     'too_many_attempts' => 'Too many attempts. Try again later.',
+    'invitation_access' => [
+        'invalid_code' => 'That code is not valid. Check it or contact the person who invited you.',
+    ],
     'auth' => [
         'invalid_credentials' => 'The email or password is incorrect.',
         'captcha_invalid' => 'We could not verify you are human. Try again.',
