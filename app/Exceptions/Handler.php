@@ -2,8 +2,10 @@
 
 namespace App\Exceptions;
 
+use App\Http\Services\Auth\SocialAuthService;
 use App\Http\Services\Payments\PaymentGatewayException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -58,6 +60,16 @@ class Handler extends ExceptionHandler
         // The payment provider failed (D8 of the Stripe contract): the only status outside the 403/404/409/422 convention.
         $this->renderable(function (PaymentGatewayException $e, Request $request) {
             return response()->json(['message' => 'The payment provider is not available. Try again in a moment.', 'code' => 'gateway_error'], 502);
+        });
+
+        // The OAuth routes are browser navigations on the API domain: a throttled one goes back to the SPA, not to a raw 429 page.
+        $this->renderable(function (ThrottleRequestsException $e, Request $request) {
+            $provider = $request->route('provider');
+            if ($request->expectsJson() || ! $request->is('oauth/*') || ! in_array($provider, ['google', 'facebook'], true)) {
+                return null;
+            }
+
+            return app(SocialAuthService::class)->rateLimitedRedirect($request, $provider);
         });
 
         // Every 429 of the API (named limiters, services that throw, abort(429)) has the body of the global `api` limiter.

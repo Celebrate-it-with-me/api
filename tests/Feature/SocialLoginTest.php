@@ -242,12 +242,57 @@ it('ignores redirects that are not internal paths', function (string $bad) {
     'too long' => ['/' . str_repeat('a', 200)],
 ]);
 
-it('throttles the oauth routes per IP', function () {
+function exhaustOauthThrottle(): void
+{
     for ($i = 0; $i < 20; $i++) {
-        $this->get('/oauth/google/callback?error=access_denied')->assertRedirect();
+        test()->get('/oauth/google/callback?error=access_denied')->assertRedirect();
     }
+}
 
-    $this->get('/oauth/google/callback?error=access_denied')->assertStatus(429);
+it('sends a throttled browser back to the SPA with reason=rate_limited', function () {
+    exhaustOauthThrottle();
+
+    $response = $this->get('/oauth/google/callback?error=access_denied')->assertRedirect();
+
+    expect($response->headers->get('Location'))->toStartWith('http://spa.test/auth/social/callback?');
+    expect(callbackQuery($response))->toBe(['status' => 'error', 'provider' => 'google', 'reason' => 'rate_limited']);
+});
+
+it('throttles the redirect route and keeps the internal redirect of the query', function () {
+    exhaustOauthThrottle();
+
+    $response = $this->get('/oauth/facebook/redirect?redirect=/dashboard')->assertRedirect();
+
+    expect(callbackQuery($response))->toBe(['status' => 'error', 'provider' => 'facebook', 'reason' => 'rate_limited', 'redirect' => '/dashboard']);
+});
+
+it('keeps the internal redirect stored in the session when the callback is throttled', function () {
+    exhaustOauthThrottle();
+
+    $response = $this->withSession(['oauth.redirect' => '/events/1'])->get('/oauth/google/callback')->assertRedirect();
+
+    expect(callbackQuery($response)['redirect'])->toBe('/events/1');
+});
+
+it('ignores an external redirect when the callback is throttled', function () {
+    exhaustOauthThrottle();
+
+    $response = $this->withSession(['oauth.redirect' => 'https://evil.test'])->get('/oauth/google/callback?redirect=//evil.test')->assertRedirect();
+
+    expect(callbackQuery($response))->not->toHaveKey('redirect');
+    expect($response->headers->get('Location'))->toStartWith('http://spa.test/');
+});
+
+it('keeps the JSON 429 for clients that ask for JSON', function () {
+    exhaustOauthThrottle();
+
+    $this->getJson('/oauth/google/callback')->assertStatus(429)->assertJson(['code' => 'too_many_attempts']);
+});
+
+it('answers 404 for an unknown provider, throttled or not', function () {
+    exhaustOauthThrottle();
+
+    $this->get('/oauth/github/callback')->assertNotFound();
 });
 
 it('shares the post-login behaviour with the password login', function () {
