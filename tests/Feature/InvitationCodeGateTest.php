@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Services\AppServices\InvitationService;
 use App\Models\Events;
 use App\Models\EventUserRole;
 use App\Models\Guest;
@@ -56,6 +57,15 @@ describe('GET invitation/{slug}/access', function () {
         }
     });
 
+    it('treats an account-archived event exactly as a missing one, unlike the published one', function () {
+        [$archived] = gateEvent('archivado', 'archived');
+        $archived->forceFill(['purge_after' => now()->addDays(10)])->save();
+        gateEvent('publicado');
+
+        $this->getJson(GATE_URL . '/archivado/access')->assertOk()->assertExactJson(['data' => ['organizer_name' => null]]);
+        $this->getJson(GATE_URL . '/publicado/access')->assertOk()->assertExactJson(['data' => ['organizer_name' => 'Marisol']]);
+    });
+
     it('is not shadowed by the invitation route: "access" is not read as a guest code', function () {
         gateEvent();
 
@@ -70,6 +80,23 @@ describe('GET invitation/{slug}/access', function () {
 });
 
 describe('POST invitation/{slug}/access/verify', function () {
+    it('rejects the code of an account-archived event with the same 422 as a missing event, and accepts the published one', function () {
+        [$archived] = gateEvent('archivado', 'archived', 'Ana', 'AR0001');
+        $archived->forceFill(['purge_after' => now()->addDays(10)])->save();
+        gateEvent('publicado', 'published', 'Ana', 'PU0001');
+
+        $missing = $this->postJson(GATE_URL . '/no-existe/access/verify', ['code' => 'AR0001'])->assertStatus(422);
+        gateForget('invitation-access-ip-min|127.0.0.1');
+        $response = $this->postJson(GATE_URL . '/archivado/access/verify', ['code' => 'AR0001'])->assertStatus(422);
+        gateForget('invitation-access-ip-min|127.0.0.1');
+
+        expect($response->getContent())->toBe($missing->getContent())
+            ->and($response->json('code'))->toBe('invalid_code');
+        $this->postJson(GATE_URL . '/publicado/access/verify', ['code' => 'PU0001'])->assertOk()->assertJsonPath('data.valid', true);
+        // The invitation itself (findEvent) still serves the archived event read-only.
+        expect(app(InvitationService::class)->findEvent('archivado')?->id)->toBe($archived->id);
+    });
+
     it('accepts the code of a guest of that event and returns the canonical code', function () {
         gateEvent();
 

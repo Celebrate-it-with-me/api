@@ -183,6 +183,18 @@ class SocialAuthService
         return $this->redirectToSpa('error', $provider, $reason, $redirect);
     }
 
+    /**
+     * The "oauth" throttle answers a browser navigation, so it must land in the SPA like every other OAuth failure.
+     * The wanted route is read (not pulled) from the session or the query and only if it is an internal path.
+     */
+    public function rateLimitedRedirect(Request $request, string $provider): RedirectResponse
+    {
+        $redirect = $this->safeRedirect($request->query('redirect'))
+            ?? ($request->hasSession() ? $this->safeRedirect($request->session()->get(self::SESSION_REDIRECT_KEY)) : null);
+
+        return $this->redirectToSpa('error', $provider, 'rate_limited', $redirect);
+    }
+
     /** Internal path only: starts with a single "/", no scheme, host, backslash or control characters. */
     private function safeRedirect(mixed $value): ?string
     {
