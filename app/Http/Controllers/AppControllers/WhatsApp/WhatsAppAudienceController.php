@@ -11,6 +11,7 @@ use App\Models\Guest;
 use App\Support\WhatsApp\TemplateCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -62,6 +63,8 @@ class WhatsAppAudienceController extends Controller
     public function batch(Request $request, Events $event, string $batch): JsonResponse
     {
         $f = $request->validate(['page' => ['nullable', 'integer', 'min:1'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        // Checked here, not in the route, so an anonymous caller still gets 401 first.
+        abort_unless(Str::isUuid($batch), 404);
         $data = $this->batches->show($event, $batch, (int) ($f['page'] ?? 1), (int) ($f['per_page'] ?? 100));
         abort_if($data === null, 404);
 
