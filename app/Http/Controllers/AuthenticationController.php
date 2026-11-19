@@ -229,7 +229,7 @@ class AuthenticationController extends Controller
             return EnsureNotSuspended::response();
         }
 
-        app(PostLoginService::class)->complete($user, $request, (bool) $request->input('remember', false));
+        app(PostLoginService::class)->complete($user, $request, $request->boolean('remember'));
 
         return response()->json([
             'message' => 'Logged in successfully!',

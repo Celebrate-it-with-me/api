@@ -17,6 +17,8 @@ class AppLoginRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
             'device' => 'required|string',
+            // "Remember me": a real boolean (the SPA sends true/false); a string like "false" must not turn it on.
+            'remember' => ['nullable', 'boolean'],
         ];
     }
 }
