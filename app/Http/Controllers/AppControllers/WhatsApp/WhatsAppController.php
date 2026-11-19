@@ -23,7 +23,7 @@ class WhatsAppController extends Controller
     public function send(SendWhatsAppRequest $request, Events $event): JsonResponse
     {
         $data = $request->validated();
-        $result = $this->broadcaster->send($event, $data['template'], $data['audience'], $data['guest_ids'] ?? null, (bool) ($data['force'] ?? false), (bool) ($data['dry_run'] ?? false));
+        $result = $this->broadcaster->send($event, $data['template'], $data['audience'], $data['guest_ids'] ?? null, (bool) ($data['force'] ?? false), (bool) ($data['dry_run'] ?? false), (bool) ($data['confirm_large'] ?? false));
 
         // A dry run only counts: nothing was queued.
         return response()->json(['data' => $result], ($data['dry_run'] ?? false) ? 200 : 202);

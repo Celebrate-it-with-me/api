@@ -23,6 +23,7 @@ class SendWhatsAppRequest extends FormRequest
             'guest_ids.*' => ['integer'],
             'force' => ['nullable', 'boolean'],
             'dry_run' => ['nullable', 'boolean'],
+            'confirm_large' => ['nullable', 'boolean'],
         ];
     }
 
