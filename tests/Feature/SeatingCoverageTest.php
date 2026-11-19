@@ -220,3 +220,13 @@ it('writes a lean tables sheet when the menu module is off and keeps hostile tex
     $cell = $book->getSheet(1)->getCell('C2');
     expect($cell->getDataType())->toBe('s')->and((string) $cell->getValue())->toContain('HYPERLINK');
 });
+
+it('orders the seats as zero-padded text on databases without regexp_replace', function () {
+    $sheet = new VenueTablesSheet(scvEvent(), true, 'es', false);
+    $order = new ReflectionMethod($sheet, 'seatOrder');
+
+    expect($order->invoke($sheet))->toContain('regexp_replace')->toContain('NULLS LAST');
+
+    DB::shouldReceive('connection->getDriverName')->andReturn('mysql');
+    expect($order->invoke($sheet))->toBe("LPAD(table_assignments.seat_number, 6, '0')");
+});
