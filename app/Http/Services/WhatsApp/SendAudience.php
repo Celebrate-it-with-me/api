@@ -93,7 +93,7 @@ class SendAudience
         $total = $rows->count();
         $data = $rows->slice(($page - 1) * $perPage, $perPage)->values()->map(fn (array $f) => [
             'id' => $f['id'], 'name' => $f['name'], 'people' => $f['people'], 'phone' => $f['phone'], 'locale' => $f['locale'],
-            'status' => $f['status'], 'eligible' => $f['reason'] === null, 'reason' => $f['reason'], 'delivery' => $f['delivery'],
+            'status' => $f['status'], 'link' => $f['link'], 'eligible' => $f['reason'] === null, 'reason' => $f['reason'], 'delivery' => $f['delivery'],
         ])->all();
 
         return ['data' => $data, 'meta' => ['page' => $page, 'perPage' => $perPage, 'total' => $total]];
@@ -153,6 +153,8 @@ class SendAudience
         return $guests->map(fn (Guest $g) => [
             'id' => $g->id, 'name' => $g->name, 'email' => $g->email, 'phone' => $g->phone, 'status' => $g->rsvp_status,
             'people' => 1 + (int) $g->companions_count,
+            // Same public URL the roster shows; null while the guest has no code or the event no slug.
+            'link' => $g->code && $event->custom_url_slug ? rtrim((string) config('app.frontend_app.url'), '/') . "/i/{$event->custom_url_slug}/{$g->code}" : null,
             'locale' => $this->composer->localeFor($event, $g),
             'reason' => $this->broadcaster->skipReason($g, $template, $optedOut, $recent),
             'reminderReason' => $this->broadcaster->skipReason($g, 'reminder_pending', $optedOut, $recentReminder),

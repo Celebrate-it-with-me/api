@@ -176,6 +176,19 @@ describe('recipients', function () {
         expect($page2)->toHaveCount(1)->and($page2[0]['name'])->toBe('Carla');
     });
 
+    it('gives each family its public invitation link, the same one the roster shows', function () {
+        [$event, $u, $api] = waEvent();
+        $ana = waGuest($event, ['name' => 'Ana', 'code' => 'ANA123']);
+        $beto = waGuest($event, ['name' => 'Beto']);
+        $beto->forceFill(['code' => null])->saveQuietly();
+
+        $rows = collect($this->actingAs($u['owner'])->getJson("$api/recipients")->assertOk()->json('data'))->keyBy('name');
+        $expected = rtrim((string) config('app.frontend_app.url'), '/') . "/i/{$event->custom_url_slug}/ANA123";
+
+        expect($rows['Ana']['link'])->toBe($expected)->and($rows['Beto']['link'])->toBeNull();
+        $this->actingAs($u['viewer'])->getJson("$api/recipients")->assertOk()->assertJsonPath('data.0.link', $expected);
+    });
+
     it('filters by category: unsent, pending, problem and all', function () {
         [$event, $u, $api] = waEvent();
         $sent = waGuest($event, ['name' => 'Enviada']);
