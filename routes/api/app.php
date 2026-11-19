@@ -107,9 +107,6 @@ require __DIR__ . '/app/assistant.php';
 Route::prefix('')->name('auth.')->group(function () {
     Route::post('register', [AuthenticationController::class, 'appRegister']);
     Route::post('login', [AuthenticationController::class, 'appLogin']);
-    Route::post('confirm-email', [AuthenticationController::class, 'confirmEmail'])
-        ->name('confirm.email')
-        ->middleware('signed');
     // The link in the verification mail: public and signed (checked by hand so a bad link redirects with a status).
     Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
         ->whereNumber('id')
