@@ -8,6 +8,7 @@ use App\Models\Guest;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -51,12 +52,12 @@ it('counts people by status for the whole event, not for the page', function () 
 
     $response = $this->actingAs($u['owner'])->getJson("$url?perPage=1")->assertOk();
 
-    expect($response->json('counts'))->toBe(['all' => 6, 'attending' => 2, 'pending' => 2, 'notAttending' => 2, 'families' => 3, 'limit' => 30])
+    expect(Arr::except($response->json('counts'), 'delivery'))->toBe(['all' => 6, 'attending' => 2, 'pending' => 2, 'notAttending' => 2, 'families' => 3, 'limit' => 30])
         ->and($response->json('data'))->toHaveCount(1)
         ->and($response->json('meta.total'))->toBe(3);
 });
 
-it('filters families by the status of the main guest or any companion', function () {
+it('filters families by the status of the main guest or any companion, except pending that is the main guest only', function () {
     [$event, $u, $url] = rosterEvent();
     family($event, 'Ana', 'attending', ['pending']);
     family($event, 'Beto', 'attending');
@@ -64,7 +65,8 @@ it('filters families by the status of the main guest or any companion', function
 
     $names = fn (string $status) => collect($this->actingAs($u['owner'])->getJson("$url?status=$status")->json('data'))->pluck('name')->all();
 
-    expect($names('pending'))->toBe(['Ana'])
+    // P5: "pending" is the main guest who has not answered, like the send; Ana's pending companion shows on her row.
+    expect($names('pending'))->toBe([])
         ->and($names('attending'))->toBe(['Ana', 'Beto'])
         ->and($names('not-attending'))->toBe(['Carla'])
         ->and(count($this->actingAs($u['owner'])->getJson("$url?status=nonsense")->json('data')))->toBe(3);

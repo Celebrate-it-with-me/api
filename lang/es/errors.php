@@ -68,6 +68,8 @@ return [
         'template_not_approved' => 'La plantilla de WhatsApp todavía no está aprobada.',
         'event_archived' => 'Este evento está archivado.',
         'unavailable' => 'WhatsApp no está conectado.',
+        'event_not_published' => 'Este evento todavía no está publicado.',
+        'rsvp_closed' => 'Ya pasó la fecha límite para confirmar.',
     ],
     'collaborators' => [
         'already_member' => 'Esa persona ya colabora en este evento.',

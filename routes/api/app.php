@@ -282,6 +282,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('export/venue', [GuestExportController::class, 'venue'])->middleware('throttle:guest-export')->name('export.venue');
                 Route::put('{guest}', [GuestRosterController::class, 'update'])->name('update');
                 Route::patch('{guest}/locale', [GuestRosterController::class, 'updateLocale'])->name('locale');
+                Route::post('{guest}/shared', [GuestRosterController::class, 'markShared'])->name('shared');
+                Route::delete('{guest}/shared', [GuestRosterController::class, 'unmarkShared'])->name('unshared');
                 Route::post('{guest}/companions', [GuestRosterController::class, 'storeCompanion'])->name('companions.store');
                 Route::delete('{guest}', [GuestRosterController::class, 'destroy'])->name('destroy');
             });
