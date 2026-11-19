@@ -38,4 +38,17 @@ class WhatsAppService
 
         return $template?->isApproved() ? $template : null;
     }
+
+    /** Like `sendable`, but only answers: it never approves the draft (for read-only endpoints). */
+    public function canSend(string $key, string $locale): bool
+    {
+        $template = Template::query()->where('key', $key)->where('locale', $locale)->first();
+
+        if (! $template) {
+            return false;
+        }
+
+        return $template->isApproved()
+            || ($this->driverName() === 'fake' && $template->status === 'draft' && in_array($key, TemplateCatalog::SENDABLE_KEYS, true));
+    }
 }

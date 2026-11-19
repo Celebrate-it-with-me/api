@@ -6,6 +6,7 @@ use App\Models\Events;
 use App\Models\EventUserRole;
 use App\Models\Guest;
 use App\Models\WhatsApp\Message;
+use Illuminate\Support\Carbon;
 
 /**
  * Daily cap of WhatsApp messages (audit W-01), per event and per account (the owner of the event), over a rolling 24 h.
@@ -45,5 +46,14 @@ class DailyLimit
         $forAccount = $count(Message::query()->whereIn('event_id', $eventIds)->where('type', 'template'))->count();
 
         return max(0, min($this->eventLimit($event) - $forEvent, $this->accountLimit() - $forAccount));
+    }
+
+    /** When the oldest message of the last 24 h of this event leaves the rolling window and frees one slot (null: none counted). */
+    public function resetsAt(Events $event): ?Carbon
+    {
+        $oldest = Message::query()->where('event_id', $event->id)->where('type', 'template')
+            ->where('queued_at', '>=', now()->subDay())->min('queued_at');
+
+        return $oldest ? Carbon::parse($oldest, 'UTC')->addDay() : null;
     }
 }
