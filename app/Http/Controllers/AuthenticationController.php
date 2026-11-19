@@ -90,25 +90,6 @@ class AuthenticationController extends Controller
     }
 
     /**
-     * Confirm the user's email address.
-     */
-    public function confirmEmail(Request $request, User $user): JsonResponse
-    {
-        if (! $request->hasValidSignature() || ! $request->user) {
-            return response()->json(['message' => __('errors.auth.invalid_signature')], 401);
-        }
-
-        $user = User::query()->find($request->user);
-
-        if (! $user || ! $user->hasVerifiedEmail()) {
-            $user->email_verified_at = now();
-            $user->save();
-        }
-
-        return response()->json(['message' => 'Email verified successfully!']);
-    }
-
-    /**
      * Forgot Password functionality.
      */
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse

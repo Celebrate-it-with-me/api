@@ -90,9 +90,6 @@ it('answers 403 invalid_signed_link for an expired or tampered signed link, and 
     $this->postJson(str_replace('token=abc', 'token=other', $valid))->assertStatus(403)->assertJsonPath('code', 'invalid_signed_link');
 
     $this->postJson($valid)->assertOk()->assertJsonPath('token', 'abc');
-
-    $confirm = URL::temporarySignedRoute('auth.confirm.email', now()->subMinute(), ['user' => $user->id]);
-    $this->postJson($confirm)->assertStatus(403)->assertJsonPath('code', 'invalid_signed_link');
 });
 
 it('translates the invalid signed link message', function () {
