@@ -2,12 +2,13 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Models\Events;
 use App\Models\Guest;
 use Illuminate\Support\Str;
 
 /**
- * Lookups behind the invitation code gate. Everything goes through InvitationService::findEvent/findGuest so the gate
- * agrees with the invitation itself about what "a live event" and "a guest code" are.
+ * Lookups behind the invitation code gate. The guest code comes from InvitationService::findGuest, but the event must be strictly published: the account-archived
+ * events that findEvent still serves read-only are treated here as non-existent (owner decision, 2026-11-19).
  */
 class InvitationAccessService
 {
@@ -19,7 +20,7 @@ class InvitationAccessService
      */
     public function organizerFirstName(string $slug): ?string
     {
-        $owner = $this->invitations->findEvent($slug)?->owner_user;
+        $owner = $this->findPublishedEvent($slug)?->owner_user;
         $first = $owner ? Str::before(trim((string) preg_replace('/\s+/u', ' ', (string) $owner->name)), ' ') : '';
 
         return $first === '' ? null : $first;
@@ -38,8 +39,15 @@ class InvitationAccessService
     /** The main guest holding this code in this live event, or null (same null for every reason). */
     public function verify(string $slug, string $code): ?Guest
     {
-        $event = $this->invitations->findEvent($slug);
+        $event = $this->findPublishedEvent($slug);
 
         return ($event && $code !== '') ? $this->invitations->findGuest($event, $code) : null;
+    }
+
+    private function findPublishedEvent(string $slug): ?Events
+    {
+        $event = $this->invitations->findEvent($slug);
+
+        return $event?->status === 'published' ? $event : null;
     }
 }
