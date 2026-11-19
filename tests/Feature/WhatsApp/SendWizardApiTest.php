@@ -103,6 +103,14 @@ describe('audience', function () {
             ->assertJsonPath('data.mode.reason', 'template_not_approved')->assertJsonPath('data.templates.es.sendable', false);
     });
 
+    it('says a locale is not sendable when its template does not exist', function () {
+        [$event, $u, $api] = waEvent();
+        Template::where('key', 'invitation')->where('locale', 'en')->delete();
+
+        $this->actingAs($u['owner'])->getJson("$api/audience")->assertOk()
+            ->assertJsonPath('data.templates.en.sendable', false)->assertJsonPath('data.templates.es.sendable', true);
+    });
+
     it('reports an unpublished event and a closed RSVP window', function () {
         [$event, $u, $api] = waEvent();
         $event->update(['status' => 'draft']);

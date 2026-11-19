@@ -44,19 +44,14 @@ class DeliveryTracker
         ];
     }
 
-    /** Ids of the families in a chip filter. @param array<int, array<string, mixed>> $map @return list<int> */
+    /** Ids of the families in a chip filter (`unsent`, `sent` or `problem`; the caller validates it). @param array<int, array<string, mixed>> $map @return list<int> */
     public function idsFor(array $map, string $filter): array
     {
         $states = match ($filter) {
             'unsent' => ['none'],
             'sent' => ['manual', 'queued', 'sent', 'delivered', 'read'],
-            'problem' => ['failed', 'opted_out', 'no_phone'],
-            default => null,
+            default => ['failed', 'opted_out', 'no_phone'],
         };
-
-        if ($states === null) {
-            return array_map('intval', array_keys($map));
-        }
 
         return array_map('intval', array_keys(array_filter($map, fn (array $d) => in_array($d['state'], $states, true))));
     }
