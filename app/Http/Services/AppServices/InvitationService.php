@@ -186,7 +186,7 @@ class InvitationService
     /**
      * Save the guest's answer for themselves and their companions.
      *
-     * @param  array{guest: array{rsvpStatus: string}, companions?: array<int, array{id: int, rsvpStatus: string, name?: string}>, note?: ?string}  $payload
+     * @param  array{guest: array{rsvpStatus: string, menuItemIds?: list<int>}, companions?: array<int, array{id: int, rsvpStatus: string, name?: string, menuItemIds?: list<int>}>, note?: ?string}  $payload
      * @return array<string, mixed> The refreshed rsvp section data
      *
      * @throws ValidationException
@@ -212,10 +212,13 @@ class InvitationService
             throw ValidationException::withMessages(['companions' => 'invalid']);
         }
 
+        // Menu dishes are checked before anything is written; null when the event has no menu step.
+        $menuPicks = app(Invitation\InvitationMenu::class)->validated($event, $guest, $payload);
+
         $mainStatus = $payload['guest']['rsvpStatus'];
         $previousStatus = $guest->rsvp_status;
 
-        DB::transaction(function () use ($guest, $companions, $requested, $mainStatus, $payload) {
+        DB::transaction(function () use ($guest, $companions, $requested, $mainStatus, $payload, $menuPicks) {
             $this->setStatus($guest, $mainStatus);
 
             // Naming the places the organizer assigned never adds or removes people and leaves no status record.
@@ -240,6 +243,14 @@ class InvitationService
                 if ($status !== null) {
                     $this->setStatus($companion, $status);
                 }
+
+                if ($menuPicks !== null) {
+                    app(Invitation\InvitationMenu::class)->save($companion, $status ?? $companion->rsvp_status, $menuPicks[(string) $id] ?? null);
+                }
+            }
+
+            if ($menuPicks !== null) {
+                app(Invitation\InvitationMenu::class)->save($guest, $mainStatus, $menuPicks['guest'] ?? null);
             }
         });
 
@@ -932,22 +943,25 @@ class InvitationService
     private function rsvpData(Events $event, Guest $guest): array
     {
         $window = $this->rsvpWindow($event);
+        // A sample guest (the organizer's preview) is not saved: it has no companions, and must not match "no parent".
+        $companions = ! $guest->exists ? collect() : $guest->companions()->orderBy('id')->get();
+        $menu = app(Invitation\InvitationMenu::class)->forPeople($event, $guest, [$guest, ...$companions->all()], $window['isOpen']);
+        $chosen = $menu['chosen'] ?? [];
 
         return [
-            'guest' => ['id' => $guest->id, 'name' => $guest->name, 'status' => $guest->rsvp_status],
-            // A sample guest (the organizer's preview) is not saved: it has no companions, and must not match "no parent".
-            'companions' => ! $guest->exists ? [] : $guest->companions()->orderBy('id')->get()
-                ->map(fn (Guest $companion) => [
-                    'id' => $companion->id,
-                    'name' => $companion->name,
-                    'status' => $companion->rsvp_status,
-                ])->all(),
+            'guest' => ['id' => $guest->id, 'name' => $guest->name, 'status' => $guest->rsvp_status]
+                + ($menu ? ['menuItemIds' => $chosen[$guest->id] ?? []] : []),
+            'companions' => $companions->map(fn (Guest $companion) => [
+                'id' => $companion->id,
+                'name' => $companion->name,
+                'status' => $companion->rsvp_status,
+            ] + ($menu ? ['menuItemIds' => $chosen[$companion->id] ?? []] : []))->all(),
             // Only this guest's own message, never another family's nor the organizer's note.
             'note' => $guest->rsvp_note,
             'canEditNames' => $window['isOpen'],
             'deadline' => $window['deadline'],
             'isOpen' => $window['isOpen'],
-        ];
+        ] + ($menu ? ['menu' => $menu['menu']] : []);
     }
 
     /** @return array{deadline: ?string, isOpen: bool} */

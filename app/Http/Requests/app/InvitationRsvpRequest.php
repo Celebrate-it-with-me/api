@@ -35,10 +35,15 @@ class InvitationRsvpRequest extends FormRequest
         return [
             'guest' => ['required', 'array'],
             'guest.rsvpStatus' => ['required', 'string', $status],
+            // Optional dishes (the menu step): ids are checked against the event's menu by the service.
+            'guest.menuItemIds' => ['sometimes', 'array', 'max:10'],
+            'guest.menuItemIds.*' => ['integer', 'distinct'],
             'companions' => ['sometimes', 'array', 'max:50'],
             'companions.*.id' => ['required', 'integer', 'distinct'],
             'companions.*.rsvpStatus' => ['required', 'string', $status],
             // Optional: a missing key leaves things as they are; a null/empty note clears it.
+            'companions.*.menuItemIds' => ['sometimes', 'array', 'max:10'],
+            'companions.*.menuItemIds.*' => ['integer', 'distinct'],
             'companions.*.name' => ['sometimes', 'bail', 'required', 'string', 'min:2', 'max:120', 'regex:' . self::NAME_PATTERN],
             'note' => ['sometimes', 'nullable', 'string', 'max:500', 'regex:' . self::NOTE_PATTERN],
         ];
@@ -52,6 +57,14 @@ class InvitationRsvpRequest extends FormRequest
             'note.string' => 'invalid_characters',
             'note.regex' => 'invalid_characters',
             'companions.max' => 'invalid',
+            'guest.menuItemIds.array' => 'invalid',
+            'guest.menuItemIds.max' => 'invalid',
+            'guest.menuItemIds.*.integer' => 'invalid',
+            'guest.menuItemIds.*.distinct' => 'invalid',
+            'companions.*.menuItemIds.array' => 'invalid',
+            'companions.*.menuItemIds.max' => 'invalid',
+            'companions.*.menuItemIds.*.integer' => 'invalid',
+            'companions.*.menuItemIds.*.distinct' => 'invalid',
             'companions.array' => 'invalid',
             'companions.*.id.required' => 'invalid',
             'companions.*.id.integer' => 'invalid',
