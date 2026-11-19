@@ -1,0 +1,52 @@
+<?php
+
+// Texts of the seating screens. The `code` values the app reads (table_full, guest_already_seated...) are a
+// contract and never go through here.
+return [
+    'table_full' => 'Table :table is full.',
+    'table_full_generic' => 'This table is full.',
+    'guest_already_seated' => 'This person already has a table.',
+    'guest_not_found' => 'Person not found.',
+    'guest_not_in_event' => 'This person does not belong to this event.',
+    'guest_not_seated' => 'This person is not seated at any table.',
+    'guest_not_at_table' => 'This person is not seated at this table.',
+    'same_table' => 'This person is already at that table.',
+    'table_not_in_event' => 'Table :table does not belong to this event.',
+    'guest_declined' => 'This person said they will not attend.',
+
+    'assigned' => 'Guest seated.',
+    'moved' => 'Guest moved to another table.',
+    'removed' => 'Guest removed from the table.',
+    'bulk_done' => 'Bulk assignment finished.',
+    'cleared' => 'All tables were emptied.',
+    'table_created' => 'Table created.',
+    'table_updated' => 'Table updated.',
+    'table_deleted' => 'Table deleted.',
+    'assign_failed' => 'The guest could not be seated.',
+    'remove_failed' => 'The guest could not be removed.',
+    'move_failed' => 'The guest could not be moved.',
+    'bulk_failed' => 'The bulk assignment could not be completed.',
+    'clear_failed' => 'The tables could not be emptied.',
+    'list_failed' => 'The tables could not be loaded.',
+
+    'validation' => [
+        'guest_id_required' => 'Say who to seat.',
+        'guest_id_integer' => 'The guest is not valid.',
+        'guest_id_exists' => 'Person not found.',
+        'to_table_id_required' => 'Choose the destination table.',
+        'to_table_id_exists' => 'The destination table does not exist in this event.',
+        'name_required' => 'The table name is required.',
+        'name_max' => 'The table name cannot exceed 50 characters.',
+        'capacity_required' => 'The table capacity is required.',
+        'capacity_min' => 'The table needs at least 1 seat.',
+        'capacity_max' => 'The table cannot have more than 50 seats.',
+        'capacity_below_assigned' => 'You cannot lower the capacity below the people already seated (:count).',
+        'type_required' => 'The table type is required.',
+        'type_in' => 'Invalid table type.',
+        'priority_required' => 'The priority is required.',
+        'priority_min' => 'The minimum priority is 1.',
+        'priority_max' => 'The maximum priority is 10.',
+        'reserved_for_max' => 'The "reserved for" text cannot exceed 100 characters.',
+        'location_in' => 'Invalid location.',
+    ],
+];

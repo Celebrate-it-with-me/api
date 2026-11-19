@@ -361,6 +361,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // Seating
             Route::prefix('seating')->name('seating.')->middleware('module.access:seating')->group(function () {
                 Route::get('unassigned', [TableController::class, 'unassignedGuests'])->name('unassigned-guests');
+                Route::post('move', [TableController::class, 'moveGuest'])->name('move-guest');
                 Route::post('bulk-assign', [TableController::class, 'bulkAssign'])->name('bulk-assign');
                 Route::delete('clear-all', [TableController::class, 'clearAll'])->name('clear-all');
             });

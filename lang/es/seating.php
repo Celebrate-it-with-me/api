@@ -1,0 +1,52 @@
+<?php
+
+// Texts of the seating screens. The `code` values the app reads (table_full, guest_already_seated...) are a
+// contract and never go through here.
+return [
+    'table_full' => 'La mesa :table está llena.',
+    'table_full_generic' => 'Esta mesa está llena.',
+    'guest_already_seated' => 'Esta persona ya tiene mesa.',
+    'guest_not_found' => 'No se encontró a la persona.',
+    'guest_not_in_event' => 'Esta persona no pertenece a este evento.',
+    'guest_not_seated' => 'Esta persona no está sentada en ninguna mesa.',
+    'guest_not_at_table' => 'Esta persona no está sentada en esta mesa.',
+    'same_table' => 'Esta persona ya está en esa mesa.',
+    'table_not_in_event' => 'La mesa :table no pertenece a este evento.',
+    'guest_declined' => 'Esta persona respondió que no asistirá.',
+
+    'assigned' => 'Invitado sentado.',
+    'moved' => 'Invitado movido de mesa.',
+    'removed' => 'Invitado quitado de la mesa.',
+    'bulk_done' => 'Asignación en bloque terminada.',
+    'cleared' => 'Se vaciaron todas las mesas.',
+    'table_created' => 'Mesa creada.',
+    'table_updated' => 'Mesa actualizada.',
+    'table_deleted' => 'Mesa eliminada.',
+    'assign_failed' => 'No se pudo sentar al invitado.',
+    'remove_failed' => 'No se pudo quitar al invitado.',
+    'move_failed' => 'No se pudo mover al invitado.',
+    'bulk_failed' => 'No se pudo completar la asignación en bloque.',
+    'clear_failed' => 'No se pudieron vaciar las mesas.',
+    'list_failed' => 'No se pudieron cargar las mesas.',
+
+    'validation' => [
+        'guest_id_required' => 'Indica a quién sentar.',
+        'guest_id_integer' => 'El invitado no es válido.',
+        'guest_id_exists' => 'No se encontró a la persona.',
+        'to_table_id_required' => 'Indica la mesa de destino.',
+        'to_table_id_exists' => 'La mesa de destino no existe en este evento.',
+        'name_required' => 'El nombre de la mesa es obligatorio.',
+        'name_max' => 'El nombre de la mesa no puede pasar de 50 caracteres.',
+        'capacity_required' => 'La capacidad de la mesa es obligatoria.',
+        'capacity_min' => 'La mesa necesita al menos 1 lugar.',
+        'capacity_max' => 'La mesa no puede tener más de 50 lugares.',
+        'capacity_below_assigned' => 'No puedes bajar la capacidad por debajo de las personas ya sentadas (:count).',
+        'type_required' => 'El tipo de mesa es obligatorio.',
+        'type_in' => 'Tipo de mesa no válido.',
+        'priority_required' => 'La prioridad es obligatoria.',
+        'priority_min' => 'La prioridad mínima es 1.',
+        'priority_max' => 'La prioridad máxima es 10.',
+        'reserved_for_max' => 'El texto de "reservada para" no puede pasar de 100 caracteres.',
+        'location_in' => 'Ubicación no válida.',
+    ],
+];

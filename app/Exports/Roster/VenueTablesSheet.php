@@ -5,6 +5,7 @@ namespace App\Exports\Roster;
 use App\Models\Events;
 use App\Models\Seating\TableAssignment;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
@@ -50,8 +51,18 @@ class VenueTablesSheet implements FromQuery, ShouldAutoSize, WithCustomChunkSize
             ->when(! $this->everyone, fn (Builder $q) => $q->where('guests.rsvp_status', 'attending'))
             ->orderBy('tables.name')
             ->orderBy('tables.id')
-            ->orderByRaw("LPAD(table_assignments.seat_number, 6, '0')")
+            ->orderByRaw($this->seatOrder())
             ->orderBy('table_assignments.id');
+    }
+
+    /** Seats are bare numbers; ordered as numbers (so 10 comes after 2). Anything without digits goes last. */
+    private function seatOrder(): string
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            return "CAST(NULLIF(regexp_replace(table_assignments.seat_number, '[^0-9]', '', 'g'), '') AS INTEGER) ASC NULLS LAST";
+        }
+
+        return "LPAD(table_assignments.seat_number, 6, '0')";
     }
 
     public function chunkSize(): int
