@@ -64,7 +64,8 @@ class EventLocationController extends Controller
      */
     public function getLocationImages(Events $event, string $placeId): JsonResponse
     {
-        if (! $placeId) {
+        // A Google place id is URL-safe base64-like text; anything else never reaches the DB or Google.
+        if (! preg_match('/^[A-Za-z0-9_-]{10,300}$/', $placeId)) {
             return response()->json([
                 'error' => 'Place ID is required.',
             ], 422);
@@ -91,8 +92,6 @@ class EventLocationController extends Controller
                 'fields' => 'photos',
                 'key' => config('services.google.map_key'),
             ]);
-
-        Log::info('Google API response', [$response->json()]);
 
         $photos = $response->json('result.photos');
         $saved = collect();

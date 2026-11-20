@@ -12,6 +12,7 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\InvitationTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
@@ -143,4 +144,37 @@ it('gives the invitation the places with their time from the program and route b
         ->and($items[0]['links']['waze'])->toStartWith('https://waze.com/ul?ll=')
         ->and($items[0]['links']['apple'])->toStartWith('https://maps.apple.com/?')
         ->and($items[1]['links']['google'])->toContain('Sal%C3%B3n%20Jard%C3%ADn');
+});
+
+it('keeps viewers and strangers away from the place photos lookup, which writes and calls Google', function () {
+    Http::fake();
+    [, $u, $url] = placeEvent();
+    $placeId = 'ChIJ' . str_repeat('a', 20);
+
+    $this->actingAs($u['viewer'])->getJson("$url/$placeId/images")->assertForbidden();
+    $this->actingAs($u['stranger'])->getJson("$url/$placeId/images")->assertNotFound();
+    Http::assertNothingSent();
+});
+
+it('lets the owner fetch place photos, and refuses malformed place ids', function () {
+    Http::fake(['*' => Http::response(['result' => ['photos' => []]])]);
+    [, $u, $url] = placeEvent();
+
+    $this->actingAs($u['owner'])->getJson("$url/ChIJ" . str_repeat('a', 20) . '/images')->assertOk();
+    Http::assertSentCount(1);
+
+    foreach (['short', str_repeat('a', 301), 'ChIJ%20bad%20id%20here', 'ChIJ.bad.id.here..'] as $bad) {
+        $this->actingAs($u['owner'])->getJson("$url/$bad/images")->assertStatus(422);
+    }
+    Http::assertSentCount(1);
+});
+
+it('throttles the place photos lookup per user', function () {
+    Http::fake(['*' => Http::response(['result' => ['photos' => []]])]);
+    [, $u, $url] = placeEvent();
+
+    foreach (range(1, 10) as $_) {
+        $this->actingAs($u['owner'])->getJson("$url/ChIJ" . str_repeat('a', 20) . '/images')->assertOk();
+    }
+    $this->actingAs($u['owner'])->getJson("$url/ChIJ" . str_repeat('a', 20) . '/images')->assertStatus(429);
 });

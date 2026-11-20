@@ -388,7 +388,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('{location}', [EventLocationController::class, 'show'])->name('show');
                 Route::put('{location}', [EventLocationController::class, 'update'])->name('update');
                 Route::delete('{location}', [EventLocationController::class, 'destroy'])->name('destroy');
-                Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
+                // Writes photos to the DB and disk and calls Google Places: editors only, with its own throttle.
+                Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->middleware(['event.access:edit_event', 'throttle:location-place-images'])->name('images.show');
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
                 Route::delete('{location}/images/{image}', [EventLocationController::class, 'destroyImage'])->name('images.destroy');
             });
