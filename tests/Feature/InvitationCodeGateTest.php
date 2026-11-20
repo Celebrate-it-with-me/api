@@ -180,7 +180,9 @@ describe('POST invitation/{slug}/access/verify', function () {
         Log::shouldHaveReceived('info')->withArgs(function ($message, $context) {
             return $message === 'invitation access: wrong code'
                 && $context['slug'] === 'xv-de-valentina'
-                && $context['code_hint'] === 'QQ***'
+                && ! array_key_exists('code_hint', $context)
+                && $context['code_length'] === 6
+                && ! str_contains(json_encode($context), 'QQ')
                 && ! str_contains(json_encode($context), 'QQ9876')
                 && ! str_contains(json_encode($context), '9876');
         })->once();
