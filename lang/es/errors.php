@@ -66,6 +66,7 @@ return [
     ],
     'whatsapp' => [
         'daily_limit' => 'Se alcanzó el límite diario de WhatsApp.',
+        'send_in_progress' => 'Hay otro envío en curso para este evento. Inténtalo de nuevo en un momento.',
         'only_failed_retry' => 'Solo se pueden reintentar los mensajes que fallaron.',
         'retry_limit' => 'Este mensaje ya se reintentó demasiadas veces.',
         'template_not_approved' => 'La plantilla de WhatsApp todavía no está aprobada.',

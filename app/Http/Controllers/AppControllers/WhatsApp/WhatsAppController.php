@@ -61,21 +61,33 @@ class WhatsAppController extends Controller
         // Looked up inside the event (404 for anyone else's message); not route-bound so the impersonation guard answers first.
         $message = Message::query()->where('event_id', $event->id)->findOrFail($message);
 
-        if ($message->status !== 'failed') {
-            return response()->json(['message' => __('errors.whatsapp.only_failed_retry'), 'code' => 'not_failed'], 409);
+        $refused = $this->limits->exclusive($event, function () use ($message) {
+            // Re-read under the lock: a second click (or another tab) may have retried it already.
+            $message->refresh();
+
+            if ($message->status !== 'failed') {
+                return response()->json(['message' => __('errors.whatsapp.only_failed_retry'), 'code' => 'not_failed'], 409);
+            }
+            if ($message->retry_count >= self::MAX_RETRIES) {
+                return response()->json(['message' => __('errors.whatsapp.retry_limit'), 'code' => 'retry_limit'], 409);
+            }
+            if ($message->type === 'template' && $this->limits->remaining(Events::query()->findOrFail($message->event_id), $message->id) <= 0) {
+                return response()->json(['message' => __('errors.whatsapp.daily_limit'), 'code' => 'whatsapp_daily_limit'], 429);
+            }
+
+            // Only a message still `failed` (with the count we read) is taken: the update is the atomic guard.
+            $taken = Message::query()->whereKey($message->id)->where('status', 'failed')->where('retry_count', $message->retry_count)->update([
+                'retry_count' => $message->retry_count + 1, 'send_started_at' => null, 'status' => 'queued', 'error_code' => null, 'error_message' => null, 'failed_at' => null, 'queued_at' => now(),
+                'sent_at' => null, 'delivered_at' => null, 'read_at' => null, 'wa_message_id' => null,
+            ]);
+
+            return $taken === 1 ? null : response()->json(['message' => __('errors.whatsapp.only_failed_retry'), 'code' => 'not_failed'], 409);
+        });
+
+        if ($refused !== null) {
+            return $refused;
         }
 
-        if ($message->retry_count >= self::MAX_RETRIES) {
-            return response()->json(['message' => __('errors.whatsapp.retry_limit'), 'code' => 'retry_limit'], 409);
-        }
-        if ($message->type === 'template' && $this->limits->remaining($event, $message->id) <= 0) {
-            return response()->json(['message' => __('errors.whatsapp.daily_limit'), 'code' => 'whatsapp_daily_limit'], 429);
-        }
-
-        $message->forceFill([
-            'retry_count' => $message->retry_count + 1, 'send_started_at' => null, 'status' => 'queued', 'error_code' => null, 'error_message' => null, 'failed_at' => null, 'queued_at' => now(),
-            'sent_at' => null, 'delivered_at' => null, 'read_at' => null, 'wa_message_id' => null,
-        ])->save();
         SendWhatsAppMessage::dispatch($message->id);
 
         return response()->json(['data' => Presenter::message($message->refresh()->load(['guest:id,name']))], 202);

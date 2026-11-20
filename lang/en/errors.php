@@ -66,6 +66,7 @@ return [
     ],
     'whatsapp' => [
         'daily_limit' => 'The daily WhatsApp limit was reached.',
+        'send_in_progress' => 'Another send is in progress for this event. Try again in a moment.',
         'only_failed_retry' => 'Only failed messages can be retried.',
         'retry_limit' => 'This message was already retried too many times.',
         'template_not_approved' => 'The WhatsApp template is not approved yet.',
