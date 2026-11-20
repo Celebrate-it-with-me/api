@@ -18,7 +18,7 @@ class SendAudience
 {
     public const CATEGORIES = ['unsent', 'pending', 'all', 'problem'];
 
-    public const BLOCKED = ['no_phone', 'invalid_phone', 'opted_out', 'recently_sent', 'already_responded'];
+    public const BLOCKED = ['no_phone', 'invalid_phone', 'opted_out', 'recently_sent', 'already_responded', 'reminder_limit'];
 
     public function __construct(
         private readonly WhatsAppBroadcaster $broadcaster,
@@ -143,6 +143,7 @@ class SendAudience
         $optedOut = $this->broadcaster->optedOutPhones($guests);
         $recent = $this->broadcaster->recentlySent($event, $template, $ids);
         $recentReminder = $this->broadcaster->recentlySent($event, 'reminder_pending', $ids);
+        $reminders = $this->broadcaster->reminderCounts($event, 'reminder_pending', $ids);
         $delivery = $this->tracker->forGuests($event, $guests);
 
         $messages = $ids === [] ? collect() : Message::query()->where('event_id', $event->id)->where('type', 'template')
@@ -156,8 +157,8 @@ class SendAudience
             // Same public URL the roster shows; null while the guest has no code or the event no slug.
             'link' => $g->code && $event->custom_url_slug ? rtrim((string) config('app.frontend_app.url'), '/') . "/i/{$event->custom_url_slug}/{$g->code}" : null,
             'locale' => $this->composer->localeFor($event, $g),
-            'reason' => $this->broadcaster->skipReason($g, $template, $optedOut, $recent),
-            'reminderReason' => $this->broadcaster->skipReason($g, 'reminder_pending', $optedOut, $recentReminder),
+            'reason' => $this->broadcaster->skipReason($g, $template, $optedOut, $recent, $reminders),
+            'reminderReason' => $this->broadcaster->skipReason($g, 'reminder_pending', $optedOut, $recentReminder, $reminders),
             'sentBefore' => $sameTemplate->has($g->id),
             'hadMessage' => $anyMessage->has($g->id),
             'delivery' => $delivery[$g->id],

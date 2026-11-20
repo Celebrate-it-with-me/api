@@ -48,6 +48,7 @@ use App\Http\Controllers\AppControllers\UserTwoFAController;
 use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\DressCodeController;
 use App\Http\Controllers\Payments\PurchaseController;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 // ========================================
 // PUBLIC ROUTES (No Authentication)
@@ -61,9 +62,9 @@ Route::prefix('invitation/{slug}/access')->name('invitation.access.')->group(fun
 
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
-    Route::get('', [PublicInvitationController::class, 'show'])->middleware(['throttle:invitation-show', 'etag'])->name('show');
+    Route::get('', [PublicInvitationController::class, 'show'])->middleware(['code.failures', 'throttle:invitation-show', 'etag'])->name('show');
     Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'throttle:invitation-rsvp-code', 'module.access:rsvp'])->name('rsvp');
-    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
+    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware(['code.failures', 'throttle:invitation-calendar'])->name('calendar');
     Route::get('comments', [PublicInvitationCommentController::class, 'index'])->middleware(['throttle:invitation-comments-read', 'module.access:comments'])->name('comments.index');
     Route::post('comments', [PublicInvitationCommentController::class, 'store'])->middleware(['throttle:invitation-comments-write', 'throttle:invitation-comments-code', 'module.access:comments'])->name('comments.store');
 
@@ -80,7 +81,7 @@ Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function (
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {
     // Guest-facing: a valid access code of this event is required, even to read (see EnsureGuestEventAccess).
-    Route::prefix('event/{event}')->middleware(['event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
+    Route::prefix('event/{event}')->middleware(['code.failures', 'event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
         Route::get('comments', [PublicEventCommentController::class, 'index'])
             ->middleware('module.access:comments')->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
@@ -101,7 +102,9 @@ Route::prefix('template')->name('template.')->group(function () {
 });
 
 // Authentication Routes
-Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle:payments-webhook')->name('payments.webhook');
+Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle.unsigned:payments-webhook')
+    // The group's per-IP `api` limiter would starve Stripe behind a shared balancer IP just the same.
+    ->withoutMiddleware(ThrottleRequests::class . ':api')->name('payments.webhook');
 
 // "Mis compras" (invoices): its own file, own auth middleware. Keep it above the group that ends the impersonation
 // session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
@@ -217,8 +220,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::get('', [EventsController::class, 'show'])->name('show');
             Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
             Route::prefix('purchase')->name('purchase.')->middleware('event.access:delete_event')->group(function () {
-                Route::get('quote', [PurchaseController::class, 'quote'])->name('quote');
-                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware(['email.verified', 'throttle:10,1,purchase-checkout'])->name('checkout');
+                Route::get('quote', [PurchaseController::class, 'quote'])->middleware('coupon.failures')->name('quote');
+                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware(['email.verified', 'coupon.failures', 'throttle:10,1,purchase-checkout'])->name('checkout');
                 Route::get('status', [PurchaseController::class, 'status'])->name('status');
                 Route::post('{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('throttle:10,1,purchase-cancel')->name('cancel');
             });

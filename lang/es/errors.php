@@ -66,6 +66,7 @@ return [
     ],
     'whatsapp' => [
         'daily_limit' => 'Se alcanzó el límite diario de WhatsApp.',
+        'send_in_progress' => 'Hay otro envío en curso para este evento. Inténtalo de nuevo en un momento.',
         'only_failed_retry' => 'Solo se pueden reintentar los mensajes que fallaron.',
         'retry_limit' => 'Este mensaje ya se reintentó demasiadas veces.',
         'template_not_approved' => 'La plantilla de WhatsApp todavía no está aprobada.',
@@ -73,6 +74,7 @@ return [
         'unavailable' => 'WhatsApp no está conectado.',
         'event_not_published' => 'Este evento todavía no está publicado.',
         'rsvp_closed' => 'Ya pasó la fecha límite para confirmar.',
+        'confirmation_required' => 'El lote es grande: confírmalo para enviarlo.',
     ],
     'collaborators' => [
         'already_member' => 'Esa persona ya colabora en este evento.',

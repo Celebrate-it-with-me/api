@@ -16,12 +16,15 @@ use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\EnsureRecentReauth;
 use App\Http\Middleware\ImpersonationGuard;
+use App\Http\Middleware\LimitCodeFailures;
+use App\Http\Middleware\LimitCouponFailures;
 use App\Http\Middleware\PreventRequestForgery;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RefreshTokenExpirationIfActive;
 use App\Http\Middleware\SetRequestLocale;
 use App\Http\Middleware\StatelessForImpersonation;
+use App\Http\Middleware\ThrottleUnsignedWebhook;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
@@ -117,5 +120,8 @@ class Kernel extends HttpKernel
         'event.access' => EnsureEventAccess::class,
         'event.guest' => EnsureGuestEventAccess::class,
         'module.access' => EnsureModuleAccess::class,
+        'code.failures' => LimitCodeFailures::class,
+        'coupon.failures' => LimitCouponFailures::class,
+        'throttle.unsigned' => ThrottleUnsignedWebhook::class,
     ];
 }

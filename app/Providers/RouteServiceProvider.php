@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\InvitationShareController;
 use App\Http\Controllers\TemplateAssetController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
@@ -51,6 +52,7 @@ class RouteServiceProvider extends ServiceProvider
         'guest-export' => [10, 1],
         'whatsapp-send' => [20, 1],
         'whatsapp-retry' => [30, 1],
+        'whatsapp-preview' => [120, 1],
         'whatsapp-webhook-verify' => [60, 1],
         'whatsapp-webhook-receive' => [1200, 1],
         'invoice-resend' => [5, 10],
@@ -173,6 +175,13 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            // Link preview of an invitation (WhatsApp, Facebook, iMessage…). The app's host sends crawlers here. Outside the
+            // web group on purpose: no session and no Set-Cookie for a crawler (the Blade needs neither). Wrong codes are
+            // braked per event by `code.failures`; the per-IP limit is generous because crawlers share addresses.
+            Route::middleware(['code.failures', 'throttle:og-share'])
+                ->get('og/{slug}/{code}', [InvitationShareController::class, 'show'])
+                ->name('invitation.share');
 
             // Sanitized package files, outside the web and api groups on purpose: no session, no cookies (W6-08).
             Route::middleware('throttle:template-assets')

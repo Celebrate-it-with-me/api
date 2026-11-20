@@ -6,7 +6,10 @@ use App\Models\Events;
 use App\Models\EventUserRole;
 use App\Models\Guest;
 use App\Models\WhatsApp\Message;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Daily cap of WhatsApp messages (audit W-01), per event and per account (the owner of the event), over a rolling 24 h.
@@ -15,6 +18,25 @@ use Illuminate\Support\Carbon;
  */
 class DailyLimit
 {
+    /**
+     * Runs `$callback` while holding the send lock of the event, so that reading the budget / recent sends and queueing
+     * messages is one step: two simultaneous sends (or a send and a retry) can neither pass the cap together nor
+     * duplicate a message. Waits up to 10 s; if the lock does not come, a 409 `send_in_progress`.
+     *
+     * @template T
+     *
+     * @param  \Closure(): T  $callback
+     * @return T
+     */
+    public function exclusive(Events $event, \Closure $callback): mixed
+    {
+        try {
+            return Cache::lock('whatsapp-send-event:' . $event->id, 30)->block((int) config('services.whatsapp.send_lock_wait', 10), $callback);
+        } catch (LockTimeoutException) {
+            throw new HttpResponseException(response()->json(['message' => __('errors.whatsapp.send_in_progress'), 'code' => 'send_in_progress'], 409));
+        }
+    }
+
     public function eventLimit(Events $event): int
     {
         $configured = config('services.whatsapp.max_daily_per_event');

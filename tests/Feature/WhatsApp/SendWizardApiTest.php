@@ -47,7 +47,7 @@ describe('audience', function () {
 
         expect($d['template'])->toBe('invitation')
             ->and($d['totalFamilies'])->toBe(8)
-            ->and($d['blocked'])->toBe(['no_phone' => 1, 'invalid_phone' => 1, 'opted_out' => 1, 'recently_sent' => 1, 'already_responded' => 0])
+            ->and($d['blocked'])->toBe(['no_phone' => 1, 'invalid_phone' => 1, 'opted_out' => 1, 'recently_sent' => 1, 'already_responded' => 0, 'reminder_limit' => 0])
             // eligible: Ana, Beto, Vieja, Falló
             ->and($d['categories']['all']['count'])->toBe(4)
             // never got an invitation (a failed one does not count): Ana, Beto, Falló
