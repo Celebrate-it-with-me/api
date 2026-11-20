@@ -113,7 +113,7 @@ describe('sending', function () {
 
         Guest::factory()->count(501)->create(['event_id' => $event->id, 'parent_id' => null, 'phone' => '+13055550123']);
         $this->actingAs($u['owner'])->postJson("$api/send", ['template' => 'invitation', 'audience' => 'all'])
-            ->assertStatus(422)->assertJsonPath('errors.guest_ids.0', 'too_many');
+            ->assertStatus(422)->assertJsonPath('errors.audience.0', 'too_many_recipients')->assertJsonMissingPath('errors.guest_ids');
         expect(Message::count())->toBe(0);
     });
 
