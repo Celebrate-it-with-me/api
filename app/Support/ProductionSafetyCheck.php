@@ -44,6 +44,11 @@ class ProductionSafetyCheck
             $problems[] = 'SANCTUM_STATEFUL_DOMAINS must list only the real SPA domains.';
         }
 
+        // Superadmins must use two-factor in production (audit A-3). It defaults to on there; only an explicit false turns it off.
+        if (config('admin.require_two_factor_superadmin') !== true) {
+            $problems[] = 'ADMIN_REQUIRE_2FA_SUPERADMIN must be true.';
+        }
+
         // Package files must have their own origin (W6-08): without it they would be addressed on the API's origin.
         if (! app()->environment('local', 'testing') && blank(config('filesystems.disks.template-packages.url'))) {
             $problems[] = 'TEMPLATE_PACKAGES_URL must be set (an origin without cookies, serving the headers of the spec 5.2).';

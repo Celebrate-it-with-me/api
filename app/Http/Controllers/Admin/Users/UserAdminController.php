@@ -45,14 +45,17 @@ class UserAdminController extends Controller
         return response()->json(['data' => $this->users->profile($user)]);
     }
 
-    public function passwordReset(User $user): JsonResponse
+    public function passwordReset(Request $request, User $user): JsonResponse
     {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
+        $this->guardTarget($request, $user);
+
         if ($user->anonymized_at) {
             throw ValidationException::withMessages(['user' => ['account_deleted']]);
         }
 
         ResetPasswordEvent::dispatch($user);
-        $this->audit->record('user.password_reset', $user);
+        $this->audit->record('user.password_reset', $user, ['reason' => $data['reason']]);
 
         return response()->json(['message' => 'Reset email sent.']);
     }
@@ -86,10 +89,12 @@ class UserAdminController extends Controller
         return response()->json(['data' => $this->users->profile($user->refresh())]);
     }
 
-    public function export(User $user)
+    public function export(Request $request, User $user)
     {
+        $data = $request->validate(['reason' => AdminAudit::reasonRule()]);
         $payload = $this->users->export($user);
-        $this->audit->record('user.export', $user);
+        $guests = (int) collect($payload['events'])->sum(fn (array $e) => count($e['guests']));
+        $this->audit->record('user.export', $user, ['reason' => $data['reason'], 'after' => ['events' => count($payload['events']), 'guests' => $guests]]);
 
         return response()->json($payload, 200, [
             'Content-Disposition' => 'attachment; filename="user-' . $user->id . '-export.json"',
@@ -121,7 +126,7 @@ class UserAdminController extends Controller
         return response()->json(['data' => $this->users->profile($user->refresh()), 'archivedEvents' => $result['archivedEvents']]);
     }
 
-    /** Neither staff accounts nor the actor themselves can be suspended or deleted from here. */
+    /** Neither staff accounts nor the actor themselves can be suspended, deleted or have their password reset from here. */
     private function guardTarget(Request $request, User $user): void
     {
         if ($user->is($request->user())) {

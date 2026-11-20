@@ -130,7 +130,7 @@ describe('admin', function () {
     it('records a manual payment (Zelle) and unlocks the event', function () {
         [$event, $owner] = ownedEvent();
 
-        $this->actingAs(adminUser())->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'notes' => 'Zelle 11/13', 'reason' => 'Zelle received'])
+        $this->actingAsReauthed(adminUser())->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'notes' => 'Zelle 11/13', 'reason' => 'Zelle received'])
             ->assertCreated()->assertJsonPath('data.status', 'paid')->assertJsonPath('data.gateway', 'manual');
 
         expect($event->fresh()->eventPlan->slug)->toBe('premium');
@@ -139,7 +139,7 @@ describe('admin', function () {
     it('refunds in full only while the event is not published', function () {
         [$event, $owner] = ownedEvent();
         $admin = adminUser();
-        $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
+        $id = $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
 
         $event->update(['status' => 'published']);
         $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertStatus(422);

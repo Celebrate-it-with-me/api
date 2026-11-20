@@ -53,28 +53,28 @@ describe('roles and permissions', function () {
         $support = staffAs('support');
         $event = eventFor(User::factory()->create());
 
-        $this->actingAs($support)->getJson('/api/v1/admin/dashboard')->assertOk();
-        $this->actingAs($support)->getJson('/api/v1/admin/users')->assertOk();
-        $this->actingAs($support)->getJson('/api/v1/admin/payments')->assertForbidden();
+        $this->actingAsReauthed($support)->getJson('/api/v1/admin/dashboard')->assertOk();
+        $this->actingAsReauthed($support)->getJson('/api/v1/admin/users')->assertOk();
+        $this->actingAsReauthed($support)->getJson('/api/v1/admin/payments')->assertForbidden();
         $this->actingAsReauthed($support)->putJson('/api/v1/admin/payments/price', ['priceCents' => 100, 'reason' => 'trying it out'])->assertForbidden();
-        $this->actingAs($support)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['amountCents' => 1, 'reason' => 'trying it out'])->assertForbidden();
+        $this->actingAsReauthed($support)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['amountCents' => 1, 'reason' => 'trying it out'])->assertForbidden();
         $this->actingAsReauthed($support)->postJson('/api/v1/admin/payments/1/refund', ['reason' => 'trying it out'])->assertForbidden();
-        $this->actingAs($support)->getJson('/api/v1/admin/team')->assertForbidden();
-        $this->actingAs($support)->getJson('/api/v1/admin/audit')->assertForbidden();
+        $this->actingAsReauthed($support)->getJson('/api/v1/admin/team')->assertForbidden();
+        $this->actingAsReauthed($support)->getJson('/api/v1/admin/audit')->assertForbidden();
         $this->actingAsReauthed($support)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id, ['reason' => 'trying it out'])->assertForbidden();
     });
 
     it('tells the panel the roles and permissions of whoever is logged in', function () {
-        $res = $this->actingAs(staffAs('support'))->getJson('/api/v1/admin/userInfo')->assertOk();
+        $res = $this->actingAsReauthed(staffAs('support'))->getJson('/api/v1/admin/userInfo')->assertOk();
 
         expect($res->json('data.roles'))->toBe(['support'])
             ->and($res->json('data.permissions'))->toEqualCanonicalizing(AdminPermissions::SUPPORT_PERMISSIONS);
     });
 
     it('lets both staff roles in and keeps everyone else out', function () {
-        $this->actingAs(staffAs('support'))->getJson('/api/v1/admin/dashboard')->assertOk();
-        $this->actingAs(staffAs('superadmin'))->getJson('/api/v1/admin/dashboard')->assertOk();
-        $this->actingAs(User::factory()->create())->getJson('/api/v1/admin/dashboard')->assertForbidden();
+        $this->actingAsReauthed(staffAs('support'))->getJson('/api/v1/admin/dashboard')->assertOk();
+        $this->actingAsReauthed(staffAs('superadmin'))->getJson('/api/v1/admin/dashboard')->assertOk();
+        $this->actingAsReauthed(User::factory()->create())->getJson('/api/v1/admin/dashboard')->assertForbidden();
     });
 
     it('turns the old admin role into superadmin when the migration runs', function () {
@@ -100,7 +100,7 @@ describe('the audit log', function () {
 
         $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900])->assertStatus(422)->assertJsonValidationErrors('reason');
         $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900, 'reason' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['amountCents' => 9900])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['amountCents' => 9900])->assertStatus(422)->assertJsonValidationErrors('reason');
         $this->actingAsReauthed($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'X', 'kind' => 'fixed_price', 'value' => 100])->assertStatus(422)->assertJsonValidationErrors('reason');
         $this->actingAsReauthed($admin)->deleteJson('/api/v1/admin/users/' . User::factory()->create()->id)->assertStatus(422)->assertJsonValidationErrors('reason');
         $this->actingAsReauthed($admin)->postJson('/api/v1/admin/team', ['email' => 'a@example.com', 'role' => 'support', 'name' => 'A'])->assertStatus(422)->assertJsonValidationErrors('reason');
@@ -113,7 +113,7 @@ describe('the audit log', function () {
         $owner = User::factory()->create();
         $event = eventFor($owner);
 
-        $this->actingAs($admin)->withHeader('User-Agent', 'PestBrowser/1.0')
+        $this->actingAsReauthed($admin)->withHeader('User-Agent', 'PestBrowser/1.0')
             ->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received 11/13'])->assertCreated();
 
         $row = AdminAuditLog::where('action', 'payment.manual')->firstOrFail();
@@ -127,7 +127,7 @@ describe('the audit log', function () {
         $admin = staffAs('superadmin');
         $owner = User::factory()->create();
         $event = eventFor($owner);
-        $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
+        $id = $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
 
         $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked before publishing'])->assertOk();
         $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/price', ['priceCents' => 8900, 'reason' => 'Launch price'])->assertOk();
@@ -167,7 +167,7 @@ describe('the audit log', function () {
         AdminAuditLog::create(['actor_id' => $other->id, 'action' => 'coupon.create']);
         AdminAuditLog::create(['actor_id' => $other->id, 'action' => 'coupon.create', 'created_at' => now()->subDays(40)]);
 
-        $get = fn (string $q = '') => $this->actingAs($admin)->getJson('/api/v1/admin/audit' . $q)->assertOk()->json();
+        $get = fn (string $q = '') => $this->actingAsReauthed($admin)->getJson('/api/v1/admin/audit' . $q)->assertOk()->json();
 
         expect($get('')['meta']['total'])->toBe(4)
             ->and($get('?actor=' . $other->id)['meta']['total'])->toBe(3)
@@ -207,7 +207,7 @@ describe('team', function () {
         $support = staffAs('support');
         User::factory()->create();
 
-        $data = $this->actingAs($super)->getJson('/api/v1/admin/team')->assertOk()->json('data');
+        $data = $this->actingAsReauthed($super)->getJson('/api/v1/admin/team')->assertOk()->json('data');
 
         expect(collect($data)->pluck('role', 'id')->sortKeys()->all())->toBe(collect([$super->id => 'superadmin', $support->id => 'support'])->sortKeys()->all());
     });
@@ -226,7 +226,7 @@ describe('team', function () {
         expect($other->refresh()->hasAnyRole(AdminPermissions::STAFF_ROLES))->toBeFalse()->and($other->exists)->toBeTrue()
             ->and(AdminAuditLog::orderBy('id')->pluck('action')->all())->toBe(['team.role_changed', 'team.removed'])
             ->and(AdminAuditLog::where('action', 'team.role_changed')->first()->before)->toBe(['role' => 'support']);
-        $this->actingAs($other)->getJson('/api/v1/admin/dashboard')->assertForbidden();
+        $this->actingAsReauthed($other)->getJson('/api/v1/admin/dashboard')->assertForbidden();
     });
 
     it('never lets the last superadmin go, or you change yourself', function () {

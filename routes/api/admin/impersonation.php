@@ -11,4 +11,4 @@ use App\Http\Controllers\Admin\Impersonation\ImpersonationController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('users/{user}/impersonate', [ImpersonationController::class, 'store'])
-    ->middleware('admin.can:admin.impersonate');
+    ->middleware(['admin.can:admin.impersonate', 'admin.reauth']);

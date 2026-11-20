@@ -143,7 +143,7 @@ class AdminUserService
         $user->forceFill(['suspended_at' => null, 'suspended_by' => null, 'suspension_reason' => null])->save();
     }
 
-    /** Personal data the user can ask for. Never includes payment gateway identifiers. */
+    /** Personal data the user can ask for. Never includes payment gateway identifiers nor guest access codes (credentials of third parties). */
     public function export(User $user): array
     {
         $roles = EventUserRole::query()->where('user_id', $user->id)->with(['role:id,name', 'event'])->get()->filter(fn ($r) => $r->event);
@@ -159,7 +159,7 @@ class AdminUserService
                 'id' => $r->event->id, 'name' => $r->event->event_name, 'role' => $r->role?->name,
                 'status' => $r->event->status, 'startDate' => $r->event->start_date, 'slug' => $r->event->custom_url_slug,
                 'guests' => $r->role?->name === 'owner'
-                    ? Guest::query()->where('event_id', $r->event->id)->get(['id', 'parent_id', 'name', 'email', 'phone', 'rsvp_status', 'code'])->map->toArray()->all()
+                    ? Guest::query()->where('event_id', $r->event->id)->get(['id', 'parent_id', 'name', 'email', 'phone', 'rsvp_status'])->map->toArray()->all()
                     : [],
             ])->values()->all(),
             'purchases' => EventPurchase::query()->where('user_id', $user->id)->get()
