@@ -31,3 +31,8 @@ Schedule::command('templates:verify-packages')->dailyAt('04:30')->withoutOverlap
 
 // A webhook that never arrived must not leave a paid checkout pending (docs/plans/stripe-checkout-contract-draft.md, §6).
 Schedule::command('payments:reconcile')->everyFiveMinutes()->withoutOverlapping();
+
+// Tables that only grow (webhook keys, orphan WhatsApp statuses, payment events, ended impersonations, dead admin tokens, failed jobs): config/retention.php.
+Schedule::command('data:prune')->dailyAt('02:30')->withoutOverlapping();
+// Expired password reset tokens (the broker's own expiry makes them useless; this only empties the table).
+Schedule::command('auth:clear-resets')->dailyAt('02:45');
