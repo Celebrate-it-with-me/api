@@ -12,6 +12,7 @@ use App\Models\BudgetCategory;
 use App\Models\BudgetItem;
 use App\Models\BudgetPayment;
 use App\Models\Events;
+use App\Support\CsvCells;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -143,7 +144,7 @@ class BudgetController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // so Excel reads the accents
             foreach ($rows as $row) {
-                fputcsv($out, $row);
+                fputcsv($out, CsvCells::row($row));
             }
             fclose($out);
         }, ($event->custom_url_slug ?: 'budget') . '-budget.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);

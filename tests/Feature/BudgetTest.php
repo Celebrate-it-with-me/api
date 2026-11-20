@@ -224,6 +224,15 @@ describe('export and reminders', function () {
             ->and($csv)->toContain('"Salón, Cristal"')->toContain('Parcial');
     });
 
+    it('does not let a typed title or vendor become a spreadsheet formula', function () {
+        [, $u, $url] = budgetEvent();
+        addItem($this, $u['owner'], $url, ['title' => '=HYPERLINK("http://evil.test","x")', 'vendorName' => '+cmd|calc', 'estimatedCost' => 1000]);
+
+        $csv = $this->actingAs($u['owner'])->get("$url/export")->assertOk()->streamedContent();
+
+        expect($csv)->toContain("\"'=HYPERLINK")->toContain("'+cmd|calc")->not->toContain(',=HYPERLINK')->not->toContain(',+cmd');
+    });
+
     it('reminds only items with a balance', function () {
         [$event, $u, $url] = budgetEvent();
         $due = now()->addDays(3)->toDateString();
