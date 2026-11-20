@@ -18,7 +18,7 @@ class ResetAdminTwoFactor extends Command
 
     public function handle(AdminAudit $audit): int
     {
-        $user = User::query()->where('email', $this->argument('email'))->first();
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $this->argument('email'))])->first();
         if (! $user) {
             $this->error('No user with that email.');
 

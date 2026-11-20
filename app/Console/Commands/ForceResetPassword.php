@@ -31,7 +31,7 @@ class ForceResetPassword extends Command
 
         $this->info('Checking this email in our database');
 
-        $user = User::where('email', $email)->first();
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $email)])->first();
 
         if (! $user) {
             $this->error('User with this email does not exist');

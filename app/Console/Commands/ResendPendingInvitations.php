@@ -45,7 +45,7 @@ class ResendPendingInvitations extends Command
         }
 
         $pending->each(function ($invite) {
-            $user = User::where('email', $invite->email)->first();
+            $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $invite->email)])->first();
 
             // Send email based on whether the user is registered or not
             Mail::to($invite->email)->send(

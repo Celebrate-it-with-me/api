@@ -58,7 +58,7 @@ class AdminLoginService
             throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($passwordLimiter)]);
         }
 
-        $user = User::query()->where('email', $email)->first();
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $email)])->first();
         $isStaff = $user?->hasAnyRole(AdminPermissions::STAFF_ROLES);
 
         // Same work whether or not the account exists, so the response time does not tell which emails are registered.
