@@ -138,15 +138,20 @@ class PurchaseService
         $this->assertChargeable($amount);
         $gateway = $this->gateway();
 
-        // Two simultaneous clicks (or two tabs) must not each open a session.
-        $lock = $gateway->name() === 'stripe' ? Cache::lock("checkout-event-{$event->id}", 30) : null;
+        // Two simultaneous clicks (or two tabs) must not each open a session or create a paid purchase, on any gateway.
+        $lock = Cache::lock("checkout-event-{$event->id}", 30);
         try {
-            $lock?->block(10);
+            $lock->block(10);
         } catch (LockTimeoutException) {
             throw new HttpResponseException(response()->json(['message' => 'A checkout is already being created.', 'code' => 'checkout_in_progress'], 409));
         }
 
         try {
+            // F-1: whoever held the lock before us may have just unlocked the event; look again before creating a purchase.
+            if ($this->isUnlocked($event->refresh())) {
+                throw ValidationException::withMessages(['event' => ['already_unlocked']]);
+            }
+
             if ($amount > 0 && $gateway->name() === 'stripe' && ($reused = $this->reuseOpenSession($event, $gateway, $coupon, $amount))) {
                 return $reused;
             }
@@ -191,7 +196,7 @@ class PurchaseService
 
             return ['purchase' => $purchase, 'url' => $session['url']];
         } finally {
-            $lock?->release();
+            $lock->release();
         }
     }
 

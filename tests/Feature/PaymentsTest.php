@@ -13,7 +13,10 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\EventPlanSeeder;
 use Database\Seeders\LaunchCouponSeeder;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -290,4 +293,39 @@ describe('minimum charge', function () {
             expect(EventPurchase::count())->toBe(0);
         }
     })->with([[0, true], [1, false], [49, false], [50, true], [51, true]]);
+});
+
+it('looks again at the event inside the checkout lock and creates no purchase when it was just unlocked (F-1)', function () {
+    [$event, $owner] = ownedEvent();
+    $stale = Events::find($event->id);
+    $stale->eventPlan; // loaded before the "other request" wins the race
+
+    $event->update(['event_plan_id' => EventPlan::where('slug', 'premium')->value('id')]);
+
+    expect(fn () => app(PurchaseService::class)->checkout($stale, $owner, null, 'https://x.test/ok', 'https://x.test/no'))
+        ->toThrow(ValidationException::class);
+    expect(EventPurchase::count())->toBe(0);
+});
+
+it('answers already_unlocked to the second of two checkouts and leaves one purchase (F-1)', function () {
+    [$event, $owner] = ownedEvent();
+    Coupon::create(['code' => 'GIFT', 'kind' => 'percent_off', 'value' => 100]);
+    $url = "/api/v1/app/event/{$event->id}/purchase/checkout";
+
+    $this->actingAs($owner)->postJson($url, ['code' => 'GIFT'])->assertCreated();
+    $this->actingAs($owner)->postJson($url, ['code' => 'GIFT'])->assertStatus(422)->assertJsonPath('errors.event.0', 'already_unlocked');
+
+    expect(EventPurchase::count())->toBe(1);
+});
+
+it('takes the checkout lock on every gateway and releases it afterwards (F-1)', function () {
+    [$event, $owner] = ownedEvent();
+    Coupon::create(['code' => 'GIFT', 'kind' => 'percent_off', 'value' => 100]);
+
+    $lock = Mockery::mock(Lock::class);
+    $lock->shouldReceive('block')->once()->with(10)->andReturn(true);
+    $lock->shouldReceive('release')->once();
+    Cache::shouldReceive('lock')->once()->with("checkout-event-{$event->id}", 30)->andReturn($lock);
+
+    $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => 'GIFT'])->assertCreated();
 });
