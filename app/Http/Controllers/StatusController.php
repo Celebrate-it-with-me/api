@@ -2,30 +2,40 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class StatusController extends Controller
 {
+    /** Seconds the answer is reused, so polling `/status` cannot open a database connection per request (R1-I-3). */
+    public const CACHE_SECONDS = 5;
+
     /**
-     * Executes the callable object.
-     *
-     * This method attempts to establish a database connection and checks if the connected
-     * database name is not 'none'. It then returns a JsonResponse containing a boolean value
-     * depending on the result. If an exception occurs during the process, it returns a
-     * JsonResponse with the boolean value false.
-     *
-     * @return JsonResponse The JsonResponse containing a boolean value.
+     * Legacy probe: true when the database answers. The load balancer should poll `/up` instead; this endpoint is
+     * throttled (`status` limiter) and its answer is cached for a few seconds.
      */
     public function __invoke(): JsonResponse
     {
         try {
+            $ok = (bool) Cache::remember('status.database', self::CACHE_SECONDS, fn () => self::probe());
+        } catch (Throwable) {
+            // The cache store itself is down: probe directly rather than failing the check for the wrong reason.
+            $ok = self::probe();
+        }
+
+        return response()->json($ok, 200, ['Cache-Control' => 'no-store']);
+    }
+
+    private static function probe(): bool
+    {
+        try {
             DB::connection()->getPdo();
 
-            return response()->json(DB::connection()->getDatabaseName() !== 'none');
-        } catch (Exception $e) {
-            return response()->json(false);
+            return DB::connection()->getDatabaseName() !== 'none';
+        } catch (Throwable) {
+            return false;
         }
     }
 }

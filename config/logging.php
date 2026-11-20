@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Logging\RedactSensitiveLogs;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -59,6 +60,7 @@ return [
         ],
 
         'single' => [
+            'tap' => [RedactSensitiveLogs::class],
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -66,6 +68,7 @@ return [
         ],
 
         'daily' => [
+            'tap' => [RedactSensitiveLogs::class],
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -83,6 +86,7 @@ return [
         ],
 
         'papertrail' => [
+            'tap' => [RedactSensitiveLogs::class],
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => env('LOG_PAPERTRAIL_HANDLER', SyslogUdpHandler::class),
@@ -95,6 +99,7 @@ return [
         ],
 
         'stderr' => [
+            'tap' => [RedactSensitiveLogs::class],
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
@@ -106,6 +111,7 @@ return [
         ],
 
         'syslog' => [
+            'tap' => [RedactSensitiveLogs::class],
             'driver' => 'syslog',
             'level' => env('LOG_LEVEL', 'debug'),
             'facility' => LOG_USER,
@@ -113,6 +119,7 @@ return [
         ],
 
         'errorlog' => [
+            'tap' => [RedactSensitiveLogs::class],
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
