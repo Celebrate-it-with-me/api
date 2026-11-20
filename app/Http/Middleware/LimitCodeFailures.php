@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Events;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -50,10 +51,23 @@ class LimitCodeFailures
         return $response;
     }
 
+    /**
+     * One key per event whatever the address used: `invitation/{slug}/...` and `template/event/{id}/...` resolve to
+     * the same event id, so an attacker cannot double the budget by alternating routes. An unknown slug keeps its
+     * own key (there is no event to protect).
+     */
     private function eventKey(Request $request): string
     {
-        $event = $request->route('slug') ?? $request->route('event');
+        $slug = $request->route('slug');
 
-        return mb_strtolower((string) (is_object($event) && isset($event->id) ? $event->id : $event));
+        if (is_string($slug)) {
+            $id = Events::query()->where('custom_url_slug', $slug)->value('id');
+
+            return $id !== null ? 'id:' . $id : 'slug:' . mb_strtolower($slug);
+        }
+
+        $event = $request->route('event');
+
+        return 'id:' . (is_object($event) && isset($event->id) ? $event->id : mb_strtolower((string) $event));
     }
 }

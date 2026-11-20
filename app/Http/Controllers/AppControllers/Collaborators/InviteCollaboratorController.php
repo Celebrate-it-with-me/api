@@ -285,8 +285,23 @@ class InviteCollaboratorController extends Controller
             return response()->json(['message' => __('errors.collaborators.invitation_invalid')], 404);
         }
 
-        if (strtolower((string) $invite->email) !== strtolower((string) $user->email)) {
+        // The invitation belongs to a mailbox, not to whoever typed that address at sign-up: an unverified account
+        // could be registered by anyone with the invitee's email. Verified address, compared without case.
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => __('errors.auth.email_not_verified'),
+                'code' => 'email_not_verified',
+            ], 403);
+        }
+
+        if (mb_strtolower((string) $invite->email) !== mb_strtolower((string) $user->email)) {
             return response()->json(['message' => __('errors.collaborators.not_your_invitation')], 400);
+        }
+
+        // Optional proof of the mail link: when the client sends the token it must match (the SPA does not send it yet).
+        $token = $request->input('token');
+        if ($token !== null && (! is_string($token) || ! hash_equals((string) $invite->token, $token))) {
+            return response()->json(['message' => __('errors.collaborators.invitation_invalid')], 404);
         }
 
         DB::beginTransaction();

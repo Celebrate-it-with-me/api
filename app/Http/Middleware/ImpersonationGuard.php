@@ -9,10 +9,11 @@ use App\Support\AdminPermissions;
 use App\Support\ImpersonationRules;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Server-side limits for a token issued by impersonation. Ordinary tokens pass untouched. With an impersonation
+ * Server-side limits for a token issued by impersonation. Ordinary tokens pass untouched; a panel (`client=admin`) token is refused with 401. With an impersonation
  * token: the session has to be live (else 401), the request is marked with the staff member (`impersonated_by`), and
  * only routes listed in ImpersonationRules::ALLOWED pass; anything else is 403 `impersonation_blocked`.
  */
@@ -21,6 +22,12 @@ class ImpersonationGuard
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->user()?->currentAccessToken();
+
+        // A token issued by the admin panel's own login is for the panel only: the idle/absolute expiry of
+        // TokenLifetime is applied by EnsureAdmin, so here it would live forever. The app does not accept it.
+        if ($token instanceof PersonalAccessToken && $token->client === 'admin') {
+            return response()->json(['message' => __('errors.auth.unauthenticated'), 'code' => 'admin_token_not_accepted'], 401);
+        }
 
         if (! ImpersonationService::isImpersonationToken($token)) {
             return $next($request);

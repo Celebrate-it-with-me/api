@@ -142,3 +142,43 @@ it('serves /og without session or cookies', function () {
 
     expect($response->headers->getCookies())->toBeEmpty();
 });
+
+it('brakes wrong codes on rsvp, comments and songs routes of the invitation', function (string $method, string $path) {
+    codeLimitEvent();
+
+    foreach (range(1, 10) as $i) {
+        codeLimitFromIp('10.0.7.1', $method, "/api/v1/app/invitation/xv-de-valentina/BAD00$i/$path")->assertNotFound();
+    }
+
+    codeLimitFromIp('10.0.7.1', $method, "/api/v1/app/invitation/xv-de-valentina/BAD099/$path")
+        ->assertStatus(429)->assertJsonPath('code', 'too_many_attempts');
+    // Same answer for the right code from the same IP: nothing to learn.
+    codeLimitFromIp('10.0.7.1', $method, "/api/v1/app/invitation/xv-de-valentina/VAL001/$path")->assertStatus(429);
+    // Another IP with a valid code still gets in (per-IP counter only).
+    expect(codeLimitFromIp('10.0.7.2', 'getJson', '/api/v1/app/invitation/xv-de-valentina/VAL001/comments')->status())->toBe(200);
+})->with([
+    'rsvp' => ['postJson', 'rsvp'],
+    'comments read' => ['getJson', 'comments'],
+    'comments write' => ['postJson', 'comments'],
+    'songs read' => ['getJson', 'songs'],
+    'songs search' => ['getJson', 'songs/search?q=abc'],
+    'songs store' => ['postJson', 'songs'],
+    'songs destroy' => ['deleteJson', 'songs/1'],
+    'songs vote' => ['postJson', 'songs/1/vote'],
+]);
+
+it('shares one budget between the slug routes and the event-id routes', function () {
+    [$event] = codeLimitEvent();
+
+    foreach (range(1, 10) as $i) {
+        codeLimitFromIp('10.0.8.1', 'getJson', "/api/v1/app/invitation/xv-de-valentina/BAD00$i/comments")->assertNotFound();
+    }
+    // Same IP, other address of the same event: already spent.
+    codeLimitFromIp('10.0.8.1', 'getJson', "/api/v1/app/template/event/{$event->id}/comments?accessCode=VAL001")->assertStatus(429);
+
+    // Rotating IPs while alternating routes cannot exceed the per-event budget of 20 in total.
+    foreach (range(1, 10) as $i) {
+        codeLimitFromIp('10.0.9.' . $i, 'getJson', "/api/v1/app/template/event/{$event->id}/comments?accessCode=BAD00$i")->assertNotFound();
+    }
+    codeLimitFromIp('10.0.9.200', 'getJson', '/api/v1/app/invitation/xv-de-valentina/VAL001/comments')->assertStatus(429);
+});

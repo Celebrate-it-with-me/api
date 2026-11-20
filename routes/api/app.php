@@ -61,10 +61,10 @@ Route::prefix('invitation/{slug}/access')->name('invitation.access.')->group(fun
 });
 
 // Public invitation: event slug + guest code are the only credentials.
-Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
-    Route::get('', [PublicInvitationController::class, 'show'])->middleware(['code.failures', 'throttle:invitation-show', 'etag'])->name('show');
+Route::prefix('invitation/{slug}/{code}')->middleware('code.failures')->name('invitation.')->group(function () {
+    Route::get('', [PublicInvitationController::class, 'show'])->middleware(['throttle:invitation-show', 'etag'])->name('show');
     Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'throttle:invitation-rsvp-code', 'module.access:rsvp'])->name('rsvp');
-    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware(['code.failures', 'throttle:invitation-calendar'])->name('calendar');
+    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
     Route::get('comments', [PublicInvitationCommentController::class, 'index'])->middleware(['throttle:invitation-comments-read', 'module.access:comments'])->name('comments.index');
     Route::post('comments', [PublicInvitationCommentController::class, 'store'])->middleware(['throttle:invitation-comments-write', 'throttle:invitation-comments-code', 'module.access:comments'])->name('comments.store');
 
@@ -388,7 +388,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('{location}', [EventLocationController::class, 'show'])->name('show');
                 Route::put('{location}', [EventLocationController::class, 'update'])->name('update');
                 Route::delete('{location}', [EventLocationController::class, 'destroy'])->name('destroy');
-                Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->name('images.show');
+                // Writes photos to the DB and disk and calls Google Places: editors only, with its own throttle.
+                Route::get('{placeId}/images', [EventLocationController::class, 'getLocationImages'])->middleware(['event.access:edit_event', 'throttle:location-place-images'])->name('images.show');
                 Route::post('{location}/images', [EventLocationController::class, 'storeImages'])->name('images.store');
                 Route::delete('{location}/images/{image}', [EventLocationController::class, 'destroyImage'])->name('images.destroy');
             });

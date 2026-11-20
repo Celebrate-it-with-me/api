@@ -6,6 +6,7 @@ use App\Models\Events;
 use App\Models\EventType;
 use App\Models\EventUserRole;
 use App\Models\Guest;
+use App\Models\Menu;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -162,5 +163,62 @@ describe('loading the list', function () {
         $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/publish")->assertOk();
 
         $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(unnamed: 10))->assertSuccessful();
+    });
+});
+
+describe('companions per request', function () {
+    it('allows exactly 50 unnamed and 50 named companions, and creates them', function () {
+        [$event, $owner] = limitedEvent('premium');
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(named: 50, unnamed: 50))->assertSuccessful();
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(101);
+    });
+
+    it('refuses 51 unnamed companions and creates nobody', function () {
+        [$event, $owner] = limitedEvent('premium');
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(unnamed: 51))
+            ->assertStatus(422)->assertJsonValidationErrors('unnamedCompanions');
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(unnamed: 1000000))
+            ->assertStatus(422)->assertJsonValidationErrors('unnamedCompanions');
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(0);
+    });
+
+    it('refuses 51 named companions and creates nobody', function () {
+        [$event, $owner] = limitedEvent('premium');
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(named: 51))
+            ->assertStatus(422)->assertJsonValidationErrors('namedCompanions');
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(0);
+    });
+});
+
+describe('menu of the new guest', function () {
+    it('accepts a menu of the same event', function () {
+        [$event, $owner] = limitedEvent('premium');
+        $menu = Menu::factory()->create(['event_id' => $event->id]);
+        $payload = guestPayload();
+        $payload['guest']['menuSelected'] = $menu->id;
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", $payload)->assertSuccessful();
+
+        expect(Guest::where('event_id', $event->id)->value('assigned_menu_id'))->toBe($menu->id);
+    });
+
+    it('refuses the menu of another event, and a made-up one', function () {
+        [$event, $owner] = limitedEvent('premium');
+        $foreign = Menu::factory()->create();
+
+        foreach ([$foreign->id, 999999, 'abc'] as $value) {
+            $payload = guestPayload();
+            $payload['guest']['menuSelected'] = $value;
+            $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", $payload)
+                ->assertStatus(422)->assertJsonValidationErrors('guest.menuSelected');
+        }
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(0);
     });
 });

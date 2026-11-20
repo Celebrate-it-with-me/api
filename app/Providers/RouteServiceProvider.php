@@ -102,6 +102,16 @@ class RouteServiceProvider extends ServiceProvider
                 Limit::perMinutes(10, 3)->by('email-resend-ip|' . $request->ip())->response($tooMany),
             ];
         });
+        // Place photos: each miss is a Google Places call plus downloads. Per user and per event (a day cap protects the quota).
+        RateLimiter::for('location-place-images', function (Request $request) {
+            $event = $request->route('event');
+
+            return [
+                Limit::perMinute(10)->by('place-images-user|' . ($request->user()?->id ?: $request->ip())),
+                Limit::perDay(100)->by('place-images-event|' . (is_object($event) ? $event->getKey() : $event)),
+            ];
+        });
+
         RateLimiter::for('email-verify', fn (Request $request) => Limit::perMinute(20)->by('email-verify|' . $request->ip()));
 
         // Inviting collaborators sends mail from our domain and tells whether an account exists (audit W-03).
