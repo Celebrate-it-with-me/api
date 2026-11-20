@@ -45,6 +45,8 @@ function reauthSweepRoutes(): array
         'POST api/v1/admin/invoices/{invoice}/resend',
         'DELETE api/v1/admin/moderation/{type}/{id}',
         'POST api/v1/admin/moderation/bulk',
+        'PUT api/v1/admin/events/{event}/modules/{module}',
+        'DELETE api/v1/admin/events/{event}/modules/{module}',
     ];
 }
 
@@ -68,9 +70,9 @@ it('puts admin.reauth after admin.can on every sensitive admin route', function 
     expect($found)->toHaveCount(count(reauthSweepRoutes()));
 });
 
-it('leaves password reset, module gifts and the light moderation actions without reauth', function () {
-    $free = ['POST api/v1/admin/users/{user}/password-reset', 'PUT api/v1/admin/events/{event}/modules/{module}',
-        'DELETE api/v1/admin/events/{event}/modules/{module}', 'POST api/v1/admin/moderation/{type}/{id}/hide', 'POST api/v1/admin/moderation/{type}/{id}/restore'];
+it('leaves password reset and the light moderation actions without reauth', function () {
+    $free = ['POST api/v1/admin/users/{user}/password-reset',
+        'POST api/v1/admin/moderation/{type}/{id}/hide', 'POST api/v1/admin/moderation/{type}/{id}/restore'];
     $seen = 0;
     foreach (Route::getRoutes() as $route) {
         foreach ($route->methods() as $method) {
@@ -122,6 +124,8 @@ it('answers 403 reauth_required without a fresh reauth and goes on with one', fu
         ['post', "/api/v1/admin/events/{$event->id}/archive"],
         ['put', "/api/v1/admin/events/{$event->id}/slug"],
         ['post', '/api/v1/admin/moderation/bulk'],
+        ['put', "/api/v1/admin/events/{$event->id}/modules/messaging"],
+        ['delete', "/api/v1/admin/events/{$event->id}/modules/messaging"],
     ];
     foreach ($calls as [$m, $url]) {
         app('auth')->forgetGuards();
