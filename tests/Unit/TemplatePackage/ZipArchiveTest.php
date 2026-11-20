@@ -168,11 +168,26 @@ it('flags a package wrapped in a single folder', function () {
 });
 
 it('never writes anything to disk while reading', function () {
-    $path = tempnam(sys_get_temp_dir(), 'pkg');
+    // The zip lives in a directory of its own, so anything ZipArchive wrote next to it would show up there.
+    $dir = sys_get_temp_dir() . '/zip-read-' . bin2hex(random_bytes(6));
+    mkdir($dir);
+    $path = $dir . '/package.zip';
     file_put_contents($path, PackageBuilder::raw(['manifest.json' => '{}', 'assets/a.svg' => '<svg/>']));
-    $before = glob(sys_get_temp_dir() . '/*');
+
+    // The shared system temp dir is also written by tests running in parallel processes (their "pkg*" / "zip-read-*"
+    // fixtures), so those names are ignored: anything else that appears there while reading is still a failure.
+    $snapshot = fn () => array_values(array_filter(
+        glob(sys_get_temp_dir() . '/*') ?: [],
+        fn (string $file) => ! preg_match('#/(pkg|zip-read-)[^/]*$#', $file),
+    ));
+    $beforeDir = glob($dir . '/*');
+    $beforeTmp = $snapshot();
+
     (new PackageArchive)->read($path, new Report);
-    $after = glob(sys_get_temp_dir() . '/*');
+
+    $afterDir = glob($dir . '/*');
+    $afterTmp = $snapshot();
     @unlink($path);
-    expect(array_diff($after, $before))->toBe([]);
+    @rmdir($dir);
+    expect(array_diff($afterDir, $beforeDir))->toBe([])->and(array_diff($afterTmp, $beforeTmp))->toBe([]);
 });

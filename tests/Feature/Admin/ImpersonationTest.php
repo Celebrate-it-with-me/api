@@ -43,7 +43,13 @@ function impTok(string $plain): array
 
 function impAs(User $user): array
 {
-    return impTok(test()->adminBearer($user));
+    return impTok(test()->adminBearer($user, true));
+}
+
+/** A token like the app's own sessions get (no `client`), for calls to the app routes as the account itself. */
+function impApp(User $user): array
+{
+    return impTok($user->createToken('app')->plainTextToken);
 }
 
 function impStart($test, User $staff, User $target, array $body = []): TestResponse
@@ -200,8 +206,8 @@ describe('using the token', function () {
     it('does not show impersonating to a normal session', function () {
         $user = User::factory()->create();
 
-        $this->getJson('/api/v1/app/auth/ready', impAs($user))->assertOk()->assertJsonPath('impersonating', null);
-        $this->getJson("/api/v1/app/user/hydrate/{$user->id}", impAs($user))->assertOk()->assertJsonMissingPath('impersonating');
+        $this->getJson('/api/v1/app/auth/ready', impApp($user))->assertOk()->assertJsonPath('impersonating', null);
+        $this->getJson("/api/v1/app/user/hydrate/{$user->id}", impApp($user))->assertOk()->assertJsonMissingPath('impersonating');
     });
 
     it('is never renewed, even when it is about to expire', function () {
@@ -256,7 +262,7 @@ describe('ending', function () {
     });
 
     it('is not available to a normal session', function () {
-        $this->postJson('/api/v1/app/impersonation/end', [], impAs(User::factory()->create()))->assertStatus(409)->assertJsonPath('code', 'not_impersonating');
+        $this->postJson('/api/v1/app/impersonation/end', [], impApp(User::factory()->create()))->assertStatus(409)->assertJsonPath('code', 'not_impersonating');
         app('auth')->forgetGuards();
         $this->postJson('/api/v1/app/impersonation/end')->assertUnauthorized();
     });
@@ -357,7 +363,7 @@ describe('what the security review found', function () {
         $tok = impStart($this, impStaff(), $user)->json('token');
 
         $asSupport = $this->getJson('/api/v1/app/user', impTok($tok))->assertOk();
-        $asHerself = $this->getJson('/api/v1/app/user', impAs($user))->assertOk();
+        $asHerself = $this->getJson('/api/v1/app/user', impApp($user))->assertOk();
 
         foreach ([$asSupport, $asHerself] as $response) {
             expect($response->getContent())->not->toContain('JBSWY3DPEHPK3PXP')->not->toContain('abcd-1234')->not->toContain('two_factor_secret');

@@ -217,7 +217,9 @@ class User extends Authenticatable implements HasLocalePreference
             ->withResourceData()
             ->whereHas('userRoles', function ($query) {
                 $query->where('user_id', $this->id);
-            })->get();
+            })
+            ->orderBy('events.id')
+            ->get();
     }
 
     public function ownedEvents(): Collection

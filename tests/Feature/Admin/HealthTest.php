@@ -45,16 +45,16 @@ it('requires the right permission on every endpoint', function (string $endpoint
     $url = "/api/v1/admin/health/{$endpoint}";
 
     $this->getJson($url)->assertUnauthorized();
-    $this->actingAs(User::factory()->create())->getJson($url)->assertForbidden();
-    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->getJson($url)->assertForbidden();
-    $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson($url)->assertOk();
+    $this->actingAsReauthed(User::factory()->create())->getJson($url)->assertForbidden();
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPPORT))->getJson($url)->assertForbidden();
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson($url)->assertOk();
 })->with(HEALTH_ENDPOINTS);
 
 it('lists failed jobs without payload, trace or personal data', function () {
     healthFailedJob();
     healthFailedJob(['queue' => 'mail']);
 
-    $res = $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/failed-jobs?limit=1');
+    $res = $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/failed-jobs?limit=1');
 
     $res->assertOk()->assertJsonPath('total', 2)->assertJsonPath('last24h', 2)
         ->assertJsonCount(1, 'items')
@@ -72,14 +72,14 @@ it('does not run extra queries per failed job', function () {
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
 
     DB::enableQueryLog();
-    $this->actingAs($admin)->getJson('/api/v1/admin/health/failed-jobs')->assertOk();
+    $this->actingAsReauthed($admin)->getJson('/api/v1/admin/health/failed-jobs')->assertOk();
     $few = collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'failed_jobs'))->count();
 
     foreach (range(1, 20) as $_) {
         healthFailedJob();
     }
     DB::flushQueryLog();
-    $this->actingAs($admin)->getJson('/api/v1/admin/health/failed-jobs')->assertOk();
+    $this->actingAsReauthed($admin)->getJson('/api/v1/admin/health/failed-jobs')->assertOk();
     $many = collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'failed_jobs'))->count();
 
     expect($many)->toBe($few);
@@ -93,7 +93,7 @@ it('reports database queue sizes and flags stalled work', function () {
         ['queue' => 'mail', 'payload' => '{}', 'attempts' => 0, 'reserved_at' => null, 'available_at' => now()->timestamp, 'created_at' => now()->timestamp],
     ]);
 
-    $res = $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/queues');
+    $res = $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/queues');
 
     $res->assertOk()->assertJsonPath('measurable', true)->assertJsonPath('driver', 'database')
         ->assertJsonPath('pendingTotal', 3)->assertJsonPath('stalledSuspected', true)
@@ -104,20 +104,20 @@ it('reports database queue sizes and flags stalled work', function () {
 it('marks queues as not measurable when the driver cannot be read', function () {
     config(['queue.default' => 'sync']);
 
-    $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/queues')
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/queues')
         ->assertOk()->assertJsonPath('measurable', false)->assertJsonPath('pendingTotal', null)->assertJsonPath('stalledSuspected', null);
 });
 
 it('reads the scheduler heartbeat as ok, stale or unknown', function () {
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
     Cache::forget(QueueStatus::HEARTBEAT_KEY);
-    $this->actingAs($admin)->getJson('/api/v1/admin/health/queues')->assertJsonPath('scheduler.status', 'unknown');
+    $this->actingAsReauthed($admin)->getJson('/api/v1/admin/health/queues')->assertJsonPath('scheduler.status', 'unknown');
 
     Cache::put(QueueStatus::HEARTBEAT_KEY, now()->subSeconds(30)->toIso8601String());
-    $this->actingAs($admin)->getJson('/api/v1/admin/health/queues')->assertJsonPath('scheduler.status', 'ok');
+    $this->actingAsReauthed($admin)->getJson('/api/v1/admin/health/queues')->assertJsonPath('scheduler.status', 'ok');
 
     Cache::put(QueueStatus::HEARTBEAT_KEY, now()->subMinutes(10)->toIso8601String());
-    $this->actingAs($admin)->getJson('/api/v1/admin/health/queues')->assertJsonPath('scheduler.status', 'stale');
+    $this->actingAsReauthed($admin)->getJson('/api/v1/admin/health/queues')->assertJsonPath('scheduler.status', 'stale');
 });
 
 it('schedules the heartbeat every minute', function () {
@@ -137,7 +137,7 @@ it('summarises recent log errors and sanitises them', function () {
     touch($file, time() + 100);
 
     try {
-        $res = $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/errors');
+        $res = $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/errors');
     } finally {
         unlink($file);
     }
@@ -149,7 +149,7 @@ it('summarises recent log errors and sanitises them', function () {
 });
 
 it('reports connections without leaking configuration', function () {
-    $res = $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/connections');
+    $res = $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/connections');
 
     $res->assertOk();
     $items = collect($res->json('items'))->keyBy('key');
@@ -165,14 +165,14 @@ it('shows a failing probe as error, not as an exception', function () {
     config(['database.redis.default.host' => '127.0.0.1', 'database.redis.default.port' => 1]);
     app('redis')->purge();
 
-    $res = $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/connections')->assertOk();
+    $res = $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->getJson('/api/v1/admin/health/connections')->assertOk();
     expect(collect($res->json('items'))->firstWhere('key', 'redis')['status'])->toBeIn(['error', 'ok']);
 });
 
 it('reads the module catalog without extra queries per module', function () {
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
     DB::enableQueryLog();
-    $res = $this->actingAs($admin)->getJson('/api/v1/admin/health/modules')->assertOk();
+    $res = $this->actingAsReauthed($admin)->getJson('/api/v1/admin/health/modules')->assertOk();
     $modules = collect(DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'module'))->count();
 
     expect($res->json('total'))->toBeGreaterThan(0)->and($res->json('enabled') + $res->json('disabled'))->toBe($res->json('total'));
@@ -190,7 +190,7 @@ it('redacts the usual sensitive shapes', function (string $input, string $absent
 ]);
 
 it('gives support no access to the health screen and lets only superadmin read it', function () {
-    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->getJson('/api/v1/admin/health/failed-jobs')->assertForbidden();
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPPORT))->getJson('/api/v1/admin/health/failed-jobs')->assertForbidden();
     expect(AdminPermissions::for(AdminPermissions::SUPPORT))->not->toContain('admin.system.health', 'admin.system.manage');
     expect(AdminPermissions::for(AdminPermissions::SUPERADMIN))->toContain('admin.system.health', 'admin.system.manage');
 });
@@ -206,14 +206,14 @@ it('requires manage permission and a reason to retry or delete a failed job', fu
     $retry = "/api/v1/admin/health/failed-jobs/{$uuid}/retry";
 
     $this->postJson($retry, ['reason' => 'Se arregló el correo'])->assertUnauthorized();
-    $this->actingAs(User::factory()->create())->postJson($retry, ['reason' => 'Se arregló el correo'])->assertForbidden();
-    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->postJson($retry, ['reason' => 'Se arregló el correo'])->assertForbidden();
-    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", ['reason' => 'Basura conocida'])->assertForbidden();
+    $this->actingAsReauthed(User::factory()->create())->postJson($retry, ['reason' => 'Se arregló el correo'])->assertForbidden();
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPPORT))->postJson($retry, ['reason' => 'Se arregló el correo'])->assertForbidden();
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPPORT))->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", ['reason' => 'Basura conocida'])->assertForbidden();
 
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
-    $this->actingAs($admin)->postJson($retry, [])->assertUnprocessable()->assertJsonValidationErrors('reason');
-    $this->actingAs($admin)->postJson($retry, ['reason' => 'abc'])->assertUnprocessable()->assertJsonValidationErrors('reason');
-    $this->actingAs($admin)->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", [])->assertUnprocessable();
+    $this->actingAsReauthed($admin)->postJson($retry, [])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->actingAsReauthed($admin)->postJson($retry, ['reason' => 'abc'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->actingAsReauthed($admin)->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", [])->assertUnprocessable();
     expect(DB::table('failed_jobs')->count())->toBe(1)->and(DB::table('jobs')->count())->toBe(0);
 });
 
@@ -222,7 +222,7 @@ it('retries one failed job, puts it back on the queue and audits without the pay
     healthFailedJob(['uuid' => $uuid = (string) Str::uuid(), 'payload' => healthPayload(), 'queue' => 'mail']);
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
 
-    $this->actingAs($admin)->postJson("/api/v1/admin/health/failed-jobs/{$uuid}/retry", ['reason' => 'Se arregló el correo'])
+    $this->actingAsReauthed($admin)->postJson("/api/v1/admin/health/failed-jobs/{$uuid}/retry", ['reason' => 'Se arregló el correo'])
         ->assertOk()->assertJsonPath('retried', 1);
 
     expect(DB::table('failed_jobs')->count())->toBe(0)->and(DB::table('jobs')->where('queue', 'mail')->count())->toBe(1);
@@ -236,7 +236,7 @@ it('deletes one failed job and audits it', function () {
     healthFailedJob(['uuid' => $uuid = (string) Str::uuid(), 'payload' => healthPayload()]);
     healthFailedJob();
 
-    $this->actingAs(healthStaff(AdminPermissions::SUPERADMIN))->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", ['reason' => 'Basura conocida'])
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPERADMIN))->deleteJson("/api/v1/admin/health/failed-jobs/{$uuid}", ['reason' => 'Basura conocida'])
         ->assertOk()->assertJsonPath('deleted', 1);
 
     expect(DB::table('failed_jobs')->count())->toBe(1);
@@ -251,16 +251,16 @@ it('keeps a corrupt failed job in the list instead of failing with a 500', funct
     healthFailedJob(['payload' => healthPayload(), 'queue' => 'default']);
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
 
-    $this->actingAs($admin)->postJson("/api/v1/admin/health/failed-jobs/{$uuid}/retry", ['reason' => 'Se arregló el correo'])->assertUnprocessable();
-    $this->actingAs($admin)->postJson('/api/v1/admin/health/failed-jobs/retry', ['queue' => 'default', 'reason' => 'Se arregló el correo'])
+    $this->actingAsReauthed($admin)->postJson("/api/v1/admin/health/failed-jobs/{$uuid}/retry", ['reason' => 'Se arregló el correo'])->assertUnprocessable();
+    $this->actingAsReauthed($admin)->postJson('/api/v1/admin/health/failed-jobs/retry', ['queue' => 'default', 'reason' => 'Se arregló el correo'])
         ->assertOk()->assertJsonPath('retried', 1);
     expect(DB::table('failed_jobs')->where('uuid', $uuid)->exists())->toBeTrue();
 });
 
 it('answers 404 for an unknown or malformed failed job id', function () {
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
-    $this->actingAs($admin)->postJson('/api/v1/admin/health/failed-jobs/' . Str::uuid() . '/retry', ['reason' => 'Se arregló el correo'])->assertNotFound();
-    $this->actingAs($admin)->deleteJson('/api/v1/admin/health/failed-jobs/not-a-uuid', ['reason' => 'Basura conocida'])->assertNotFound();
+    $this->actingAsReauthed($admin)->postJson('/api/v1/admin/health/failed-jobs/' . Str::uuid() . '/retry', ['reason' => 'Se arregló el correo'])->assertNotFound();
+    $this->actingAsReauthed($admin)->deleteJson('/api/v1/admin/health/failed-jobs/not-a-uuid', ['reason' => 'Basura conocida'])->assertNotFound();
 });
 
 it('retries a whole queue in bounded batches', function () {
@@ -272,10 +272,10 @@ it('retries a whole queue in bounded batches', function () {
     $admin = healthStaff(AdminPermissions::SUPERADMIN);
     $url = '/api/v1/admin/health/failed-jobs/retry';
 
-    $this->actingAs($admin)->postJson($url, ['reason' => 'Se arregló el correo'])->assertUnprocessable()->assertJsonValidationErrors('queue');
-    $this->actingAs(healthStaff(AdminPermissions::SUPPORT))->postJson($url, ['queue' => 'mail', 'reason' => 'Se arregló el correo'])->assertForbidden();
+    $this->actingAsReauthed($admin)->postJson($url, ['reason' => 'Se arregló el correo'])->assertUnprocessable()->assertJsonValidationErrors('queue');
+    $this->actingAsReauthed(healthStaff(AdminPermissions::SUPPORT))->postJson($url, ['queue' => 'mail', 'reason' => 'Se arregló el correo'])->assertForbidden();
 
-    $this->actingAs($admin)->postJson($url, ['queue' => 'mail', 'reason' => 'Se arregló el correo'])
+    $this->actingAsReauthed($admin)->postJson($url, ['queue' => 'mail', 'reason' => 'Se arregló el correo'])
         ->assertOk()->assertJsonPath('retried', 50)->assertJsonPath('remaining', 5)->assertJsonPath('limit', 50);
 
     expect(DB::table('jobs')->where('queue', 'mail')->count())->toBe(50)->and(DB::table('failed_jobs')->where('queue', 'default')->count())->toBe(1);

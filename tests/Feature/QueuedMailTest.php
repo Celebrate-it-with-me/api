@@ -4,6 +4,7 @@ use App\Http\Services\Invoices\InvoiceService;
 use App\Http\Services\Payments\PurchaseService;
 use App\Jobs\DeliverCreditNoteEmail;
 use App\Jobs\DeliverInvoiceEmail;
+use App\Jobs\SendPasswordResetLink;
 use App\Mail\InvoiceMail;
 use App\Mail\ResetPasswordEmail;
 use App\Models\EventPlan;
@@ -69,6 +70,10 @@ describe('mail out of the request', function () {
 
         $this->postJson('/api/v1/app/forgot-password', ['email' => $user->email])->assertOk();
 
+        // The endpoint only queues the lookup; the job then queues the mail itself.
+        Queue::assertPushed(SendPasswordResetLink::class);
+        Queue::assertNotPushed(SendQueuedMailable::class);
+        (new SendPasswordResetLink($user->email))->handle();
         Queue::assertPushed(SendQueuedMailable::class);
     });
 });

@@ -10,6 +10,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('events/{event}/modules')->whereNumber('event')->group(function () {
     Route::get('', [ModuleOverrideController::class, 'index'])->withTrashed()->middleware('admin.can:admin.events.view');
-    Route::put('{module}', [ModuleOverrideController::class, 'update'])->middleware('admin.can:admin.modules.gift');
-    Route::delete('{module}', [ModuleOverrideController::class, 'destroy'])->middleware('admin.can:admin.modules.gift');
+    Route::put('{module}', [ModuleOverrideController::class, 'update'])->middleware(['admin.can:admin.modules.gift', 'admin.reauth']);
+    Route::delete('{module}', [ModuleOverrideController::class, 'destroy'])->middleware(['admin.can:admin.modules.gift', 'admin.reauth']);
 });

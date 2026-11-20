@@ -21,8 +21,8 @@ class Coupon extends Model
     public function apply(int $listCents): int
     {
         return match ($this->kind) {
-            'fixed_price' => min($listCents, $this->value),
-            'percent_off' => max(0, (int) round($listCents * (100 - min(100, $this->value)) / 100)),
+            'fixed_price' => max(0, min($listCents, $this->value)),
+            'percent_off' => max(0, (int) round($listCents * (100 - max(0, min(100, $this->value))) / 100)),
             default => $listCents,
         };
     }

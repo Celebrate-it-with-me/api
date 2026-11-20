@@ -26,6 +26,7 @@ return [
         'generate_qr_first' => 'Primero genera el código QR.',
         'code_mismatch' => 'El código no es correcto. Revisa la hora de tu teléfono e inténtalo de nuevo.',
     ],
+    'not_found' => 'No encontrado.',
     'too_many_attempts' => 'Demasiados intentos. Inténtalo de nuevo más tarde.',
     'invitation_access' => [
         'invalid_code' => 'Ese código no es válido. Revísalo o contacta a quien te invitó.',
@@ -66,6 +67,7 @@ return [
     ],
     'whatsapp' => [
         'daily_limit' => 'Se alcanzó el límite diario de WhatsApp.',
+        'send_in_progress' => 'Hay otro envío en curso para este evento. Inténtalo de nuevo en un momento.',
         'only_failed_retry' => 'Solo se pueden reintentar los mensajes que fallaron.',
         'retry_limit' => 'Este mensaje ya se reintentó demasiadas veces.',
         'template_not_approved' => 'La plantilla de WhatsApp todavía no está aprobada.',
@@ -73,6 +75,7 @@ return [
         'unavailable' => 'WhatsApp no está conectado.',
         'event_not_published' => 'Este evento todavía no está publicado.',
         'rsvp_closed' => 'Ya pasó la fecha límite para confirmar.',
+        'confirmation_required' => 'El lote es grande: confírmalo para enviarlo.',
     ],
     'collaborators' => [
         'already_member' => 'Esa persona ya colabora en este evento.',

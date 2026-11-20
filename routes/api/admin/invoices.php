@@ -13,5 +13,5 @@ Route::prefix('invoices')->middleware('admin.can:admin.purchases.manage')->group
     Route::get('credit-notes/{creditNote}/pdf', [InvoiceController::class, 'creditNotePdf'])->whereNumber('creditNote');
     Route::get('{invoice}', [InvoiceController::class, 'show'])->whereNumber('invoice');
     Route::get('{invoice}/pdf', [InvoiceController::class, 'pdf'])->whereNumber('invoice');
-    Route::post('{invoice}/resend', [InvoiceController::class, 'resend'])->whereNumber('invoice');
+    Route::post('{invoice}/resend', [InvoiceController::class, 'resend'])->middleware('admin.reauth')->whereNumber('invoice');
 });

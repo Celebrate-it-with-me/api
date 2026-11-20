@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SendPasswordResetLink;
 use App\Mail\ResetPasswordEmail;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -7,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -33,7 +35,7 @@ it('lets staff send the same reset email from the admin', function () {
     $staff->assignRole('support');
     $user = User::factory()->create();
 
-    $this->actingAs($staff)->postJson("/api/v1/admin/users/{$user->id}/password-reset")->assertOk();
+    $this->actingAs($staff)->postJson("/api/v1/admin/users/{$user->id}/password-reset", ['reason' => 'User locked out'])->assertOk();
 
     Mail::assertSent(ResetPasswordEmail::class, fn ($mail) => $mail->hasTo($user->email));
 });
@@ -107,4 +109,53 @@ it('rejects an expired reset token', function () {
     $this->postJson('/api/v1/app/reset-password', [
         'email' => $user->email, 'token' => $token, 'password' => 'BrandNew12345', 'password_confirmation' => 'BrandNew12345',
     ])->assertStatus(422);
+});
+
+it('queues the same work for a registered and an unknown address, with the same answer', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $known = $this->postJson('/api/v1/app/forgot-password', ['email' => $user->email])->assertOk();
+    $unknown = $this->postJson('/api/v1/app/forgot-password', ['email' => 'nobody@example.com'])->assertOk();
+
+    expect($unknown->json())->toBe($known->json());
+    Queue::assertPushed(SendPasswordResetLink::class, 2);
+});
+
+it('sends nothing and does not fail for an unknown address in the job', function () {
+    Mail::fake();
+
+    (new SendPasswordResetLink('Nobody@Example.com'))->handle();
+
+    Mail::assertNothingSent();
+});
+
+it('finds the account whatever the case of the address in the job', function () {
+    Mail::fake();
+    $user = User::factory()->create(['email' => 'Mixed@Example.com']);
+
+    (new SendPasswordResetLink('mixed@example.com'))->handle();
+
+    Mail::assertSent(ResetPasswordEmail::class, fn ($mail) => $mail->hasTo($user->email));
+});
+
+it('stops queueing after 3 requests an hour for any address', function () {
+    Queue::fake();
+
+    foreach (range(1, 5) as $_) {
+        $this->postJson('/api/v1/app/forgot-password', ['email' => 'nobody@example.com'])->assertOk();
+    }
+
+    Queue::assertPushed(SendPasswordResetLink::class, 3);
+});
+
+it('hashes the password also when the account does not exist (same work at login)', function () {
+    Hash::spy();
+
+    $this->get('/sanctum/csrf-cookie');
+    $this->withHeaders(['Origin' => 'http://dev.app.cwm.com', 'Referer' => 'http://dev.app.cwm.com/'])
+        ->postJson('/api/v1/app/login', ['email' => 'ghost@example.com', 'password' => 'whatever12', 'device' => 'x'])
+        ->assertUnauthorized();
+
+    Hash::shouldHaveReceived('check')->once();
 });

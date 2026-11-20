@@ -29,11 +29,10 @@ class PublicInvitationAccessController extends Controller
         $guest = $this->access->verify($slug, $code);
 
         if (! $guest) {
-            // Never the whole code: a hash prefix lets support correlate attempts without keeping what was typed.
+            // Nothing of the code itself, not even a prefix: only its length.
             Log::info('invitation access: wrong code', [
                 'slug' => $slug,
                 'ip' => $request->ip(),
-                'code_hint' => substr($code, 0, 2) . '***',
                 'code_length' => strlen($code),
             ]);
 

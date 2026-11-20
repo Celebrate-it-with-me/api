@@ -83,7 +83,7 @@ class StaffEventActions
             throw ValidationException::withMessages(['invite' => 'Solo se puede reenviar una invitación pendiente y vigente.']);
         }
 
-        $registered = User::where('email', $invite->email)->exists();
+        $registered = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $invite->email)])->exists();
         Outbox::send($invite->email, $registered ? new InviteRegisteredUserMail($invite) : new InviteUnregisteredUserMail($invite));
 
         $invite->sent_at = now();

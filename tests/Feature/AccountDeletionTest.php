@@ -81,7 +81,7 @@ function accDelete($test, User $user, array $body = [])
 {
     app('auth')->forgetGuards();
 
-    return $test->actingAs($user)->deleteJson('/api/v1/app/account', $body + ['email' => $user->email, 'current_password' => ACC_PASSWORD]);
+    return $test->actingAsCookie($user)->deleteJson('/api/v1/app/account', $body + ['email' => $user->email, 'current_password' => ACC_PASSWORD]);
 }
 
 /** Every text value of the tables that could hold the original address or name of the person. */

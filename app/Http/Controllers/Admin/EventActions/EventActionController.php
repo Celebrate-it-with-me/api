@@ -93,7 +93,7 @@ class EventActionController extends Controller
     {
         $d = $request->validate(['newOwnerEmail' => ['required', 'email'], 'reason' => AdminAudit::reasonRule()]);
 
-        $user = User::where('email', $d['newOwnerEmail'])->first();
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $d['newOwnerEmail'])])->first();
         if (! $user) {
             throw ValidationException::withMessages(['newOwnerEmail' => __('errors.event_actions.owner_not_found')]);
         }

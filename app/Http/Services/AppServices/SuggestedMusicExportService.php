@@ -2,12 +2,15 @@
 
 namespace App\Http\Services\AppServices;
 
+use App\Exports\Roster\SafeCells;
 use App\Models\Events;
 use App\Models\SuggestedMusic;
+use App\Support\CsvCells;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -82,7 +85,7 @@ class SuggestedMusicExportService
 
             // CSV Data
             foreach ($data as $item) {
-                fputcsv($file, [
+                fputcsv($file, CsvCells::row([
                     $item->title,
                     $item->artist,
                     $item->platform,
@@ -92,7 +95,7 @@ class SuggestedMusicExportService
                     $item->upvotes,
                     $item->downvotes,
                     $item->created_at->toDateTimeString(),
-                ]);
+                ]));
             }
             fclose($file);
         };
@@ -119,8 +122,11 @@ class SuggestedMusicExportService
             'CreatedAt' => $item->created_at->toDateTimeString(),
         ]);
 
-        return Excel::download(new class($exportData) implements FromCollection, WithHeadings
+        return Excel::download(new class($exportData) implements FromCollection, WithCustomValueBinder, WithHeadings
         {
+            // Titles and names are typed by guests: no cell becomes a formula.
+            use SafeCells;
+
             protected $collection;
 
             public function __construct($collection)

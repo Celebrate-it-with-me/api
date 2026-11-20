@@ -55,9 +55,9 @@ describe('permissions', function () {
         }
         $organizer = evOwner('Some Organizer');
         foreach ($urls as $url) {
-            $this->actingAs($organizer)->getJson($url)->assertForbidden();
-            $this->actingAs(evStaff('support'))->getJson($url)->assertOk();
-            $this->actingAs(evStaff('superadmin'))->getJson($url)->assertOk();
+            $this->actingAsReauthed($organizer)->getJson($url)->assertForbidden();
+            $this->actingAsReauthed(evStaff('support'))->getJson($url)->assertOk();
+            $this->actingAsReauthed(evStaff('superadmin'))->getJson($url)->assertOk();
         }
     });
 });
@@ -70,7 +70,7 @@ describe('list', function () {
         EventPurchase::create(['event_id' => $event->id, 'user_id' => $owner->id, 'event_plan_id' => $event->event_plan_id, 'gateway' => 'fake',
             'list_price_cents' => 1000, 'amount_cents' => 1000, 'status' => 'pending']);
 
-        $res = $this->actingAs(evStaff('support'))->getJson('/api/v1/admin/events')->assertOk();
+        $res = $this->actingAsReauthed(evStaff('support'))->getJson('/api/v1/admin/events')->assertOk();
 
         $res->assertJsonPath('meta.total', 1)->assertJsonPath('meta.page', 1)->assertJsonPath('meta.lastPage', 1)
             ->assertJsonPath('data.0.id', $event->id)
@@ -90,7 +90,7 @@ describe('list', function () {
         $a = evMake(evOwner('Ana Lopez', 'ana@example.com'), ['event_name' => 'Boda Gris', 'custom_url_slug' => 'boda-gris']);
         $b = evMake(evOwner('Luis Mora', 'luis@familia.org'), ['event_name' => 'XV Sol', 'custom_url_slug' => 'sol-quince']);
         $staff = evStaff('support');
-        $ids = fn (string $q) => collect($this->actingAs($staff)->getJson('/api/v1/admin/events?search=' . urlencode($q))->assertOk()->json('data'))->pluck('id')->all();
+        $ids = fn (string $q) => collect($this->actingAsReauthed($staff)->getJson('/api/v1/admin/events?search=' . urlencode($q))->assertOk()->json('data'))->pluck('id')->all();
 
         expect($ids('boda'))->toBe([$a->id])
             ->and($ids('SOL-QUINCE'))->toBe([$b->id])
@@ -110,7 +110,7 @@ describe('list', function () {
         EventPurchase::create(['event_id' => $draft->id, 'user_id' => $o->id, 'event_plan_id' => $draft->event_plan_id, 'gateway' => 'fake',
             'list_price_cents' => 1000, 'amount_cents' => 1000, 'status' => 'paid']);
         $staff = evStaff('support');
-        $ids = fn (string $qs) => collect($this->actingAs($staff)->getJson("/api/v1/admin/events?$qs")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
+        $ids = fn (string $qs) => collect($this->actingAsReauthed($staff)->getJson("/api/v1/admin/events?$qs")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
 
         expect($ids('status=published'))->toBe([$published->id])
             ->and($ids('status=archived'))->toBe([$archived->id])
@@ -124,7 +124,7 @@ describe('list', function () {
     });
 
     it('validates filters', function () {
-        $this->actingAs(evStaff('support'))->getJson('/api/v1/admin/events?status=bogus&perPage=51&from=nope')
+        $this->actingAsReauthed(evStaff('support'))->getJson('/api/v1/admin/events?status=bogus&perPage=51&from=nope')
             ->assertUnprocessable()->assertJsonValidationErrors(['status', 'perPage', 'from']);
     });
 
@@ -135,9 +135,9 @@ describe('list', function () {
         $e3 = evMake($o, ['start_date' => '2027-04-01 10:00:00']);
         $staff = evStaff('support');
 
-        $page1 = $this->actingAs($staff)->getJson('/api/v1/admin/events?perPage=2')->assertOk();
-        $page2 = $this->actingAs($staff)->getJson('/api/v1/admin/events?perPage=2&page=2')->assertOk();
-        $byDate = $this->actingAs($staff)->getJson('/api/v1/admin/events?sort=startDate')->assertOk();
+        $page1 = $this->actingAsReauthed($staff)->getJson('/api/v1/admin/events?perPage=2')->assertOk();
+        $page2 = $this->actingAsReauthed($staff)->getJson('/api/v1/admin/events?perPage=2&page=2')->assertOk();
+        $byDate = $this->actingAsReauthed($staff)->getJson('/api/v1/admin/events?sort=startDate')->assertOk();
 
         expect($page1->json('meta'))->toBe(['page' => 1, 'perPage' => 2, 'total' => 3, 'lastPage' => 2, 'hiddenInternal' => 0])
             ->and(collect($page1->json('data'))->pluck('id')->all())->toBe([$e3->id, $e2->id])
@@ -150,7 +150,7 @@ describe('list', function () {
         $demo = evMake(User::factory()->create(['email' => 'demo@cwm.test']));
         $staffOwned = evMake(evStaff('superadmin'));
         $viewer = evStaff('support');
-        $ids = fn (string $qs) => collect($this->actingAs($viewer)->getJson("/api/v1/admin/events?$qs")->json('data'))->pluck('id')->sort()->values()->all();
+        $ids = fn (string $qs) => collect($this->actingAsReauthed($viewer)->getJson("/api/v1/admin/events?$qs")->json('data'))->pluck('id')->sort()->values()->all();
 
         expect($ids(''))->toBe([$real->id])
             ->and($ids('internal=0'))->toBe([$real->id])
@@ -162,7 +162,7 @@ describe('list', function () {
         evMake(User::factory()->create(['email' => 'demo@cwm.test']));
         evMake(User::factory()->create(['email' => 'other@cwm.test']));
         $viewer = evStaff('support');
-        $meta = fn (string $qs) => $this->actingAs($viewer)->getJson("/api/v1/admin/events?$qs")->json('meta');
+        $meta = fn (string $qs) => $this->actingAsReauthed($viewer)->getJson("/api/v1/admin/events?$qs")->json('meta');
 
         expect($meta('')['hiddenInternal'])->toBe(2)
             ->and($meta('internal=1')['hiddenInternal'])->toBe(0)
@@ -174,7 +174,7 @@ describe('list', function () {
         $o = evOwner();
         $first = evMake($o);
         Guest::factory()->create(['event_id' => $first->id]);
-        $this->actingAs($staff);
+        $this->actingAsReauthed($staff);
 
         $count = function () {
             DB::flushQueryLog();
@@ -223,7 +223,7 @@ describe('summary', function () {
         DB::table('budget_items')->insert(['event_budget_id' => $budgetId, 'category_id' => $catId, 'title' => 'Cake', 'estimated_cost' => 200, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('budget_payments')->insert(['budget_item_id' => $itemId, 'amount' => 300, 'paid_on' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now()]);
 
-        $res = $this->actingAs(evStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
+        $res = $this->actingAsReauthed(evStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
 
         $res->assertJsonPath('data.event.name', 'XV de Valentina')
             ->assertJsonPath('data.event.slugLocked', true)
@@ -253,12 +253,12 @@ describe('summary', function () {
     it('has null expenses without a budget and finds archived and soft-deleted events', function () {
         $event = evMake(evOwner(), ['status' => 'archived']);
         $staff = evStaff('support');
-        $this->actingAs($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()
+        $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()
             ->assertJsonPath('data.counts.expenses', null)->assertJsonPath('data.event.status', 'archived')->assertJsonPath('data.event.deletedAt', null);
 
         $event->delete();
-        $this->actingAs($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()->assertJsonPath('data.event.deletedAt', fn ($v) => $v !== null);
-        $this->actingAs($staff)->getJson('/api/v1/admin/events/999999')->assertNotFound();
+        $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()->assertJsonPath('data.event.deletedAt', fn ($v) => $v !== null);
+        $this->actingAsReauthed($staff)->getJson('/api/v1/admin/events/999999')->assertNotFound();
     });
 
     it('does not run more queries with 25 collaborators, guests and activities than with none', function () {
@@ -272,7 +272,7 @@ describe('summary', function () {
             EventActivity::logActivity($big->id, 'guest_created', User::find($big->owner_user_id), null, ['name' => "G$i"]);
         }
         // Warm up both: the exceptions of an event are cached after its first read (see EventModules).
-        $this->actingAs($staff)->getJson("/api/v1/admin/events/{$small->id}")->assertOk();
+        $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$small->id}")->assertOk();
         $this->getJson("/api/v1/admin/events/{$big->id}")->assertOk();
         $queries = function (Events $e) {
             DB::flushQueryLog();
@@ -294,8 +294,8 @@ it('does not show payments or amounts to support, only to who manages purchases'
     EventPurchase::create(['event_id' => $event->id, 'user_id' => $owner->id, 'event_plan_id' => $event->event_plan_id, 'gateway' => 'manual',
         'list_price_cents' => 9900, 'amount_cents' => 7900, 'status' => 'paid']);
 
-    $support = $this->actingAs(evStaff('support'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
-    $super = $this->actingAs(evStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
+    $support = $this->actingAsReauthed(evStaff('support'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
+    $super = $this->actingAsReauthed(evStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}")->assertOk();
 
     expect($support->json('data.payment'))->toBeNull()
         ->and($support->json('data.plan.priceCents'))->toBeNull()

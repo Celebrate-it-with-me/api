@@ -54,7 +54,9 @@ class EventsServices
             ->withResourceData()
             ->whereHas('userRoles', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
-            })->get();
+            })
+            ->orderBy('events.id')
+            ->get();
 
         // The active event is one of the user's own events: no need to read and compute it a second time.
         $lastActiveEvent = $user->last_active_event_id
@@ -81,6 +83,7 @@ class EventsServices
                     $subQuery->orWhere('event_description', 'like', '%' . $query . '%');
                 });
             })
+            ->orderBy('events.id')
             ->get();
     }
 

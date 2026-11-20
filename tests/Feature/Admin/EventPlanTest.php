@@ -49,10 +49,10 @@ describe('permissions', function () {
             $call($this)->assertUnauthorized();
         }
         foreach ($calls as $call) {
-            $call($this->actingAs(User::factory()->create()))->assertForbidden();
-            $call($this->actingAs(epStaff('support')))->assertForbidden();
+            $call($this->actingAsReauthed(User::factory()->create()))->assertForbidden();
+            $call($this->actingAsReauthed(epStaff('support')))->assertForbidden();
         }
-        $this->actingAs(epStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}/purchases")->assertOk();
+        $this->actingAsReauthed(epStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}/purchases")->assertOk();
     });
 });
 
@@ -68,7 +68,7 @@ describe('purchases', function () {
         EventPurchase::create(['event_id' => $event->id, 'user_id' => $buyer->id, 'event_plan_id' => $event->event_plan_id, 'gateway' => 'fake',
             'list_price_cents' => 9900, 'amount_cents' => 9900, 'status' => 'pending']);
 
-        $res = $this->actingAs($admin)->getJson("/api/v1/admin/events/{$event->id}/purchases")->assertOk();
+        $res = $this->actingAsReauthed($admin)->getJson("/api/v1/admin/events/{$event->id}/purchases")->assertOk();
 
         $res->assertJsonCount(2, 'data')->assertJsonPath('eventStatus', 'draft')
             ->assertJsonPath('data.1.coupon', 'FUND20')->assertJsonPath('data.1.registeredBy.id', $admin->id)
@@ -82,7 +82,7 @@ describe('purchases', function () {
         EventPurchase::create(['event_id' => $event->id, 'user_id' => User::factory()->create()->id, 'event_plan_id' => $event->event_plan_id, 'gateway' => 'manual',
             'list_price_cents' => 9900, 'amount_cents' => 9900, 'status' => 'paid']);
 
-        $this->actingAs(epStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}/purchases")
+        $this->actingAsReauthed(epStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}/purchases")
             ->assertJsonPath('data.0.refundable', false)->assertJsonPath('data.0.refundBlockedReason', 'event_published');
     });
 
@@ -95,7 +95,7 @@ describe('purchases', function () {
         }
         $admin = epStaff('superadmin');
         DB::enableQueryLog();
-        $this->actingAs($admin)->getJson("/api/v1/admin/events/{$event->id}/purchases")->assertOk();
+        $this->actingAsReauthed($admin)->getJson("/api/v1/admin/events/{$event->id}/purchases")->assertOk();
         $queries = count(DB::getQueryLog());
         DB::disableQueryLog();
         expect($queries)->toBeLessThan(12);
@@ -108,11 +108,11 @@ describe('change plan', function () {
         $admin = epStaff('superadmin');
         $url = "/api/v1/admin/events/{$event->id}/plan";
 
-        $this->actingAs($admin)->patchJson($url, ['planSlug' => 'premium'])->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->patchJson($url, ['planSlug' => 'premium', 'reason' => 'abc'])->assertUnprocessable();
-        $this->actingAs($admin)->patchJson($url, ['planSlug' => 'nope', 'reason' => 'por prueba'])->assertUnprocessable()->assertJsonValidationErrors('planSlug');
+        $this->actingAsReauthed($admin)->patchJson($url, ['planSlug' => 'premium'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->patchJson($url, ['planSlug' => 'premium', 'reason' => 'abc'])->assertUnprocessable();
+        $this->actingAsReauthed($admin)->patchJson($url, ['planSlug' => 'nope', 'reason' => 'por prueba'])->assertUnprocessable()->assertJsonValidationErrors('planSlug');
 
-        $this->actingAs($admin)->patchJson($url, ['planSlug' => 'premium', 'reason' => 'Cortesía del dueño'])
+        $this->actingAsReauthed($admin)->patchJson($url, ['planSlug' => 'premium', 'reason' => 'Cortesía del dueño'])
             ->assertOk()->assertJsonPath('data.plan.slug', 'premium')->assertJsonPath('data.plan.guestLimit', 300);
 
         expect($event->fresh()->eventPlan->slug)->toBe('premium');
@@ -123,7 +123,7 @@ describe('change plan', function () {
 
     it('rejects the same plan', function () {
         $event = epEvent('premium');
-        $this->actingAs(epStaff('superadmin'))->patchJson("/api/v1/admin/events/{$event->id}/plan", ['planSlug' => 'premium', 'reason' => 'por prueba'])
+        $this->actingAsReauthed(epStaff('superadmin'))->patchJson("/api/v1/admin/events/{$event->id}/plan", ['planSlug' => 'premium', 'reason' => 'por prueba'])
             ->assertUnprocessable()->assertJsonValidationErrors('planSlug');
     });
 
@@ -132,7 +132,7 @@ describe('change plan', function () {
         Guest::factory()->count(32)->create(['event_id' => $event->id]);
         $total = $event->guests()->count();
 
-        $res = $this->actingAs(epStaff('superadmin'))->patchJson("/api/v1/admin/events/{$event->id}/plan", ['planSlug' => 'basic', 'reason' => 'Reembolso por fuera'])
+        $res = $this->actingAsReauthed(epStaff('superadmin'))->patchJson("/api/v1/admin/events/{$event->id}/plan", ['planSlug' => 'basic', 'reason' => 'Reembolso por fuera'])
             ->assertOk();
 
         expect($event->guests()->count())->toBe($total);

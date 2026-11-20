@@ -10,7 +10,13 @@ class WhatsAppService
 {
     public function driverName(): string
     {
-        return config('services.whatsapp.driver') === 'meta' ? 'meta' : 'fake';
+        return self::normalizeDriver(config('services.whatsapp.driver')) === 'meta' ? 'meta' : 'fake';
+    }
+
+    /** What is configured, trimmed and lower-cased (`Meta ` runs as `meta`); the safety check uses the same reading. */
+    public static function normalizeDriver(mixed $driver): string
+    {
+        return strtolower(trim((string) $driver));
     }
 
     public function gateway(): WhatsAppGateway

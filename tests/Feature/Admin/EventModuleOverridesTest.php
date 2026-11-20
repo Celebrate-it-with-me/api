@@ -55,15 +55,15 @@ describe('permissions', function () {
 
         $this->getJson("/api/v1/admin/events/{$event->id}/modules")->assertUnauthorized();
         $this->putJson("/api/v1/admin/events/{$event->id}/modules/menus", $put)->assertUnauthorized();
-        $this->actingAs($owner)->getJson("/api/v1/admin/events/{$event->id}/modules")->assertForbidden();
-        $this->actingAs($owner)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", $put)->assertForbidden();
-        $this->actingAs($owner)->deleteJson("/api/v1/admin/events/{$event->id}/modules/menus", ['reason' => 'Quitar regalo'])->assertForbidden();
+        $this->actingAsReauthed($owner)->getJson("/api/v1/admin/events/{$event->id}/modules")->assertForbidden();
+        $this->actingAsReauthed($owner)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", $put)->assertForbidden();
+        $this->actingAsReauthed($owner)->deleteJson("/api/v1/admin/events/{$event->id}/modules/menus", ['reason' => 'Quitar regalo'])->assertForbidden();
 
         foreach (['support', 'superadmin'] as $role) {
             $staff = moStaff($role);
-            $this->actingAs($staff)->getJson("/api/v1/admin/events/{$event->id}/modules")->assertOk();
-            $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", $put)->assertOk();
-            $this->actingAs($staff)->deleteJson("/api/v1/admin/events/{$event->id}/modules/menus", ['reason' => 'Quitar regalo'])->assertOk();
+            $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$event->id}/modules")->assertOk();
+            $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", $put)->assertOk();
+            $this->actingAsReauthed($staff)->deleteJson("/api/v1/admin/events/{$event->id}/modules/menus", ['reason' => 'Quitar regalo'])->assertOk();
         }
     });
 });
@@ -72,12 +72,12 @@ describe('listing', function () {
     it('shows the catalog with base state, effective state and the exception', function () {
         [$event] = moEvent();
         $staff = moStaff('support');
-        $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", [
+        $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", [
             'state' => 'active', 'expiresAt' => now()->addDays(7)->toIso8601String(), 'reason' => 'Regalo por queja',
         ])->assertOk();
-        $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/budget", ['state' => 'locked', 'reason' => 'Abuso detectado'])->assertOk();
+        $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/budget", ['state' => 'locked', 'reason' => 'Abuso detectado'])->assertOk();
 
-        $data = $this->actingAs($staff)->getJson("/api/v1/admin/events/{$event->id}/modules")->assertOk()->json('data');
+        $data = $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$event->id}/modules")->assertOk()->json('data');
         $byKey = collect($data['modules'])->keyBy('key');
 
         expect($data['giftsActive'])->toBe(1)->and($data['blockedActive'])->toBe(1)
@@ -97,7 +97,7 @@ describe('listing', function () {
             EventModuleOverride::create(['event_id' => $busy->id, 'module_key' => $key, 'state' => 'active', 'reason' => 'Prueba larga', 'created_by' => $staff->id]);
         }
         // Warm up both: the exceptions of an event are cached after its first read (see EventModules).
-        $this->actingAs($staff)->getJson("/api/v1/admin/events/{$plain->id}/modules")->assertOk();
+        $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$plain->id}/modules")->assertOk();
         $this->getJson("/api/v1/admin/events/{$busy->id}/modules")->assertOk();
         $queries = function (Events $e) {
             DB::flushQueryLog();
@@ -119,10 +119,10 @@ describe('writing', function () {
         $staff = moStaff('support');
         $url = "/api/v1/admin/events/{$event->id}/modules/menus";
 
-        $this->actingAs($staff)->putJson($url, ['state' => 'active'])->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($staff)->putJson($url, ['state' => 'active', 'reason' => 'no'])->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($staff)->putJson($url, ['state' => 'maybe', 'reason' => 'Regalo valido'])->assertUnprocessable()->assertJsonValidationErrors('state');
-        $this->actingAs($staff)->putJson($url, ['state' => 'active', 'reason' => 'Regalo valido', 'expiresAt' => now()->subDay()->toIso8601String()])
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'active'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'active', 'reason' => 'no'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'maybe', 'reason' => 'Regalo valido'])->assertUnprocessable()->assertJsonValidationErrors('state');
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'active', 'reason' => 'Regalo valido', 'expiresAt' => now()->subDay()->toIso8601String()])
             ->assertUnprocessable()->assertJsonValidationErrors('expiresAt');
         expect(EventModuleOverride::count())->toBe(0);
     });
@@ -132,8 +132,8 @@ describe('writing', function () {
         $staff = moStaff('support');
         $body = ['state' => 'active', 'reason' => 'Regalo valido'];
 
-        $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/nope", $body)->assertUnprocessable();
-        $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/invitation", $body)->assertUnprocessable(); // switched off
+        $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/nope", $body)->assertUnprocessable();
+        $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/invitation", $body)->assertUnprocessable(); // switched off
     });
 
     it('keeps one exception per event and module, and audits before and after', function () {
@@ -141,8 +141,8 @@ describe('writing', function () {
         $staff = moStaff('support');
         $url = "/api/v1/admin/events/{$event->id}/modules/menus";
 
-        $this->actingAs($staff)->putJson($url, ['state' => 'active', 'reason' => 'Primer regalo'])->assertOk();
-        $this->actingAs($staff)->putJson($url, ['state' => 'locked', 'reason' => 'Cambio de decision'])->assertOk();
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'active', 'reason' => 'Primer regalo'])->assertOk();
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'locked', 'reason' => 'Cambio de decision'])->assertOk();
 
         expect(EventModuleOverride::count())->toBe(1);
         $logs = AdminAuditLog::where('action', 'event.module_override')->orderBy('id')->get();
@@ -160,12 +160,12 @@ describe('writing', function () {
         $staff = moStaff('superadmin');
         $url = "/api/v1/admin/events/{$event->id}/modules/menus";
 
-        $this->actingAs($staff)->deleteJson($url, ['reason' => 'Quitar regalo'])->assertNotFound();
-        $this->actingAs($staff)->putJson($url, ['state' => 'active', 'reason' => 'Regalo valido'])->assertOk();
-        $this->actingAs($staff)->deleteJson($url)->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($staff)->deleteJson($url, ['reason' => 'Quitar regalo'])->assertNotFound();
+        $this->actingAsReauthed($staff)->putJson($url, ['state' => 'active', 'reason' => 'Regalo valido'])->assertOk();
+        $this->actingAsReauthed($staff)->deleteJson($url)->assertUnprocessable()->assertJsonValidationErrors('reason');
         expect(EventModuleOverride::count())->toBe(1);
 
-        $this->actingAs($staff)->deleteJson($url, ['reason' => 'Quitar regalo'])->assertOk();
+        $this->actingAsReauthed($staff)->deleteJson($url, ['reason' => 'Quitar regalo'])->assertOk();
 
         $log = AdminAuditLog::where('action', 'event.module_override_removed')->sole();
         expect(EventModuleOverride::count())->toBe(0)
@@ -179,22 +179,22 @@ describe('what the app sees', function () {
     it('shows a gifted module as active and a hand-locked one as locked, and goes back when removed', function () {
         [$event, $owner] = moEvent();
         $staff = moStaff('support');
-        $modules = fn () => collect($this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}")->assertOk()->json('data.modules'))->pluck('state', 'key');
+        $modules = fn () => collect($this->actingAs($owner, 'sanctum')->getJson("/api/v1/app/event/{$event->id}")->assertOk()->json('data.modules'))->pluck('state', 'key');
 
         expect($modules()->all())->toMatchArray(['menus' => 'locked', 'budget' => 'active']);
 
-        $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", ['state' => 'active', 'reason' => 'Regalo valido'])->assertOk();
-        $this->actingAs($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/budget", ['state' => 'locked', 'reason' => 'Bloqueo manual'])->assertOk();
+        $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/menus", ['state' => 'active', 'reason' => 'Regalo valido'])->assertOk();
+        $this->actingAsReauthed($staff)->putJson("/api/v1/admin/events/{$event->id}/modules/budget", ['state' => 'locked', 'reason' => 'Bloqueo manual'])->assertOk();
         expect($modules()->all())->toMatchArray(['menus' => 'active', 'budget' => 'locked', 'rsvp' => 'active', 'seating' => 'locked']);
 
         // The event list and the admin sheet agree.
-        $list = $this->actingAs($owner)->getJson('/api/v1/app/events')->assertOk()->json('data.events.0.modules');
+        $list = $this->actingAs($owner, 'sanctum')->getJson('/api/v1/app/events')->assertOk()->json('data.events.0.modules');
         expect(collect($list)->pluck('state', 'key')->all())->toMatchArray(['menus' => 'active', 'budget' => 'locked']);
-        $sheet = $this->actingAs($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()->json('data.modules');
+        $sheet = $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()->json('data.modules');
         expect(collect($sheet)->pluck('state', 'key')->all())->toMatchArray(['menus' => 'active', 'budget' => 'locked']);
 
-        $this->actingAs($staff)->deleteJson("/api/v1/admin/events/{$event->id}/modules/menus", ['reason' => 'Fin del regalo'])->assertOk();
-        $this->actingAs($staff)->deleteJson("/api/v1/admin/events/{$event->id}/modules/budget", ['reason' => 'Fin del bloqueo'])->assertOk();
+        $this->actingAsReauthed($staff)->deleteJson("/api/v1/admin/events/{$event->id}/modules/menus", ['reason' => 'Fin del regalo'])->assertOk();
+        $this->actingAsReauthed($staff)->deleteJson("/api/v1/admin/events/{$event->id}/modules/budget", ['reason' => 'Fin del bloqueo'])->assertOk();
         expect($modules()->all())->toMatchArray(['menus' => 'locked', 'budget' => 'active']);
     });
 
@@ -214,7 +214,7 @@ describe('expiry', function () {
         EventModuleOverride::create(['event_id' => $event->id, 'module_key' => 'seating', 'state' => 'active', 'reason' => 'Vigente', 'expires_at' => now()->addDay()]);
 
         expect(moStates($event))->toMatchArray(['menus' => 'locked', 'seating' => 'active']);
-        $data = $this->actingAs(moStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/modules")->json('data');
+        $data = $this->actingAsReauthed(moStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/modules")->json('data');
         expect($data['giftsActive'])->toBe(1);
     });
 

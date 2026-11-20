@@ -621,8 +621,10 @@ describe('RSVP note and companion names', function () {
         }
         $this->postJson(GM_INVITATION . '/rsvp', [])->assertStatus(429)->assertJson(['code' => 'too_many_attempts']);
 
-        // Another link from the same address is not blocked by this counter.
-        $this->postJson('/api/v1/app/invitation/xv-galeria/OTHER1/rsvp', [])->assertStatus(404);
+        // The failures brake is one budget per event (code.failures), so another code of the SAME event is blocked too;
+        // a link of another event from the same address is not.
+        $this->postJson('/api/v1/app/invitation/xv-galeria/OTHER1/rsvp', [])->assertStatus(429);
+        $this->postJson('/api/v1/app/invitation/otro-evento/OTHER1/rsvp', [])->assertStatus(404);
     });
 
     it('shows the note in the roster to every role', function (string $role) {

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\InvitationShareController;
 use App\Http\Controllers\TemplateAssetController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
@@ -42,6 +43,8 @@ class RouteServiceProvider extends ServiceProvider
         'background-music-upload' => [10, 1],
         'guest-event' => [60, 1],
         'payments-webhook' => [120, 1],
+        // Signed-looking webhooks (header present): generous per IP, because a balancer can make every caller one IP.
+        'payments-webhook-signed' => [600, 1],
         'reset-password' => [5, 1],
         'oauth' => [20, 1],
         'collaborator-token' => [30, 1],
@@ -51,8 +54,10 @@ class RouteServiceProvider extends ServiceProvider
         'guest-export' => [10, 1],
         'whatsapp-send' => [20, 1],
         'whatsapp-retry' => [30, 1],
+        'whatsapp-preview' => [120, 1],
         'whatsapp-webhook-verify' => [60, 1],
         'whatsapp-webhook-receive' => [1200, 1],
+        'whatsapp-webhook-unsigned' => [60, 1],
         'invoice-resend' => [5, 10],
         'admin-login' => [10, 1],
         'admin-login-2fa' => [10, 1],
@@ -100,6 +105,16 @@ class RouteServiceProvider extends ServiceProvider
                 Limit::perMinutes(10, 3)->by('email-resend-ip|' . $request->ip())->response($tooMany),
             ];
         });
+        // Place photos: each miss is a Google Places call plus downloads. Per user and per event (a day cap protects the quota).
+        RateLimiter::for('location-place-images', function (Request $request) {
+            $event = $request->route('event');
+
+            return [
+                Limit::perMinute(10)->by('place-images-user|' . ($request->user()?->id ?: $request->ip())),
+                Limit::perDay(100)->by('place-images-event|' . (is_object($event) ? $event->getKey() : $event)),
+            ];
+        });
+
         RateLimiter::for('email-verify', fn (Request $request) => Limit::perMinute(20)->by('email-verify|' . $request->ip()));
 
         // Inviting collaborators sends mail from our domain and tells whether an account exists (audit W-03).
@@ -173,6 +188,13 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            // Link preview of an invitation (WhatsApp, Facebook, iMessage…). The app's host sends crawlers here. Outside the
+            // web group on purpose: no session and no Set-Cookie for a crawler (the Blade needs neither). Wrong codes are
+            // braked per event by `code.failures`; the per-IP limit is generous because crawlers share addresses.
+            Route::middleware(['code.failures', 'throttle:og-share'])
+                ->get('og/{slug}/{code}', [InvitationShareController::class, 'show'])
+                ->name('invitation.share');
 
             // Sanitized package files, outside the web and api groups on purpose: no session, no cookies (W6-08).
             Route::middleware('throttle:template-assets')

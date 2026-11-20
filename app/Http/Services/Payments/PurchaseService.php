@@ -27,13 +27,17 @@ class PurchaseService
 
     public const FULL_SLUG = 'premium';
 
+    /** Stripe refuses a charge below 50 cents; zero is fine (nothing is charged) and never reaches the provider. */
+    public const MIN_CHARGE_CENTS = 50;
+
     public function gateway(?string $name = null): PaymentGateway
     {
         $name ??= config('services.payments.gateway');
 
-        // The stand-in gateway confirms with a locally signed webhook: never on a production server.
-        if ($name === 'fake' && app()->environment('production')) {
-            throw new \RuntimeException('The fake payment gateway cannot be used in production.');
+        // The stand-in gateway activates the plan without a payment: only on a developer machine or in tests, never
+        // by default in another environment (P-4: a public server with a wrong APP_ENV must not hand out plans).
+        if ($name === 'fake' && ! app()->environment('local', 'testing')) {
+            throw new \RuntimeException('The fake payment gateway can only be used in local and testing environments.');
         }
 
         // An unknown name is a configuration error: it must never fall back to the stand-in in silence.
@@ -61,6 +65,7 @@ class PurchaseService
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
         $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
+        $this->assertChargeable($amount);
 
         return [
             'plan' => $plan->slug,
@@ -71,6 +76,14 @@ class PurchaseService
             'code' => $coupon?->code,
             'unlocked' => $this->isUnlocked($event),
         ];
+    }
+
+    /** A final amount between 1 and 49 cents cannot be charged: reject it clearly instead of failing at the provider. */
+    private function assertChargeable(int $amount): void
+    {
+        if ($amount > 0 && $amount < self::MIN_CHARGE_CENTS) {
+            throw ValidationException::withMessages(['code' => ['amount_below_minimum']]);
+        }
     }
 
     public function resolveCoupon(string $code): Coupon
@@ -122,17 +135,23 @@ class PurchaseService
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
         $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
+        $this->assertChargeable($amount);
         $gateway = $this->gateway();
 
-        // Two simultaneous clicks (or two tabs) must not each open a session.
-        $lock = $gateway->name() === 'stripe' ? Cache::lock("checkout-event-{$event->id}", 30) : null;
+        // Two simultaneous clicks (or two tabs) must not each open a session or create a paid purchase, on any gateway.
+        $lock = Cache::lock("checkout-event-{$event->id}", 30);
         try {
-            $lock?->block(10);
+            $lock->block(10);
         } catch (LockTimeoutException) {
             throw new HttpResponseException(response()->json(['message' => 'A checkout is already being created.', 'code' => 'checkout_in_progress'], 409));
         }
 
         try {
+            // F-1: whoever held the lock before us may have just unlocked the event; look again before creating a purchase.
+            if ($this->isUnlocked($event->refresh())) {
+                throw ValidationException::withMessages(['event' => ['already_unlocked']]);
+            }
+
             if ($amount > 0 && $gateway->name() === 'stripe' && ($reused = $this->reuseOpenSession($event, $gateway, $coupon, $amount))) {
                 return $reused;
             }
@@ -177,7 +196,7 @@ class PurchaseService
 
             return ['purchase' => $purchase, 'url' => $session['url']];
         } finally {
-            $lock?->release();
+            $lock->release();
         }
     }
 
@@ -268,6 +287,9 @@ class PurchaseService
     /** Record a payment made outside the gateway (Zelle, cash). */
     public function recordManual(Events $event, User $buyer, User $admin, int $amountCents, ?string $notes): EventPurchase
     {
+        if ($this->isUnlocked($event->refresh())) {
+            throw ValidationException::withMessages(['event' => 'This event is already unlocked: nothing to record.']);
+        }
         $plan = $this->fullPlan();
 
         $purchase = EventPurchase::create([

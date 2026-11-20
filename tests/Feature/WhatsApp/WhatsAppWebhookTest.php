@@ -203,3 +203,29 @@ describe('whatsapp:simulate', function () {
         expect(Artisan::call('whatsapp:simulate', ['messageId' => $m->id, 'action' => 'read']))->toBe(1)->and($m->refresh()->status)->toBe('sent');
     });
 });
+
+it('does not hand Meta the api limiter and only throttles unsigned posts strictly (P-2)', function () {
+    $payload = ['entry' => []];
+    // Signed requests are not held to the 120/min `api` limit nor the unsigned one.
+    foreach (range(1, 130) as $_) {
+        waWebhook($this, $payload)->assertOk();
+    }
+    // Malformed signature header: refused (403, as for any bad signature) without computing the HMAC.
+    foreach (['sha256=zz', 'nope', 'sha256=' . str_repeat('a', 63)] as $bad) {
+        waWebhook($this, $payload, $bad)->assertForbidden();
+    }
+    // A well-shaped but wrong one still dies in the controller's check.
+    waWebhook($this, $payload, 'sha256=' . str_repeat('a', 64))->assertForbidden();
+});
+
+it('throttles unsigned posts at the strict limit and caps the body (P-2)', function () {
+    foreach (range(1, 60) as $_) {
+        expect($this->postJson('/api/v1/webhooks/whatsapp', [])->status())->toBe(403);
+    }
+    $this->postJson('/api/v1/webhooks/whatsapp', [])->assertStatus(429);
+});
+
+it('refuses an oversized signed body with 413 (P-2)', function () {
+    $this->call('POST', '/api/v1/webhooks/whatsapp', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_HUB_SIGNATURE_256' => 'sha256=' . str_repeat('a', 64)], str_repeat('x', 1024 * 1024 + 1))
+        ->assertStatus(413);
+});

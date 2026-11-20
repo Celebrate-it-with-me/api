@@ -97,12 +97,12 @@ describe('permissions', function () {
             $this->$m($url, $body)->assertUnauthorized();
         }
         foreach ($routes as [$m, $url, $body]) {
-            $this->actingAs(User::factory()->create())->$m($url, $body)->assertForbidden();
+            $this->actingAsReauthed(User::factory()->create())->$m($url, $body)->assertForbidden();
         }
-        $this->actingAs(modStaff('support'))->getJson('/api/v1/admin/moderation')->assertOk();
-        $this->actingAs(modStaff('superadmin'))->getJson('/api/v1/admin/moderation')->assertOk();
-        $this->actingAs(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
-        $this->actingAs(modStaff('superadmin'))->postJson("/api/v1/admin/moderation/image/{$i->id}/hide", ['reason' => 'not appropriate'])->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->getJson('/api/v1/admin/moderation')->assertOk();
+        $this->actingAsReauthed(modStaff('superadmin'))->getJson('/api/v1/admin/moderation')->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
+        $this->actingAsReauthed(modStaff('superadmin'))->postJson("/api/v1/admin/moderation/image/{$i->id}/hide", ['reason' => 'not appropriate'])->assertOk();
     });
 });
 
@@ -113,7 +113,7 @@ describe('the queue', function () {
         $i = modImage($event, ['created_at' => now()->subDay()]);
         $staff = modStaff('support');
 
-        $res = $this->actingAs($staff)->getJson('/api/v1/admin/moderation')->assertOk();
+        $res = $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation')->assertOk();
 
         expect(collect($res->json('data'))->map(fn ($r) => $r['type'] . $r['id'])->all())->toBe(["image{$i->id}", "comment{$c->id}"])
             ->and($res->json('meta.total'))->toBe(2);
@@ -135,7 +135,7 @@ describe('the queue', function () {
         modImage($b, ['hidden_at' => now(), 'title' => 'Foto sospechosa']);
         modImage($a);
         $staff = modStaff('support');
-        $get = fn (string $q) => $this->actingAs($staff)->getJson('/api/v1/admin/moderation?' . $q)->assertOk()->json('data');
+        $get = fn (string $q) => $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation?' . $q)->assertOk()->json('data');
 
         expect($get('type=image'))->toHaveCount(2)
             ->and($get('type=comment'))->toHaveCount(3)
@@ -147,8 +147,8 @@ describe('the queue', function () {
             ->and($get('search=Rosario'))->toHaveCount(1)
             ->and($get('search=Boda'))->toHaveCount(2)
             ->and($get('search=sospechosa'))->toHaveCount(1);
-        $this->actingAs($staff)->getJson('/api/v1/admin/moderation?type=video')->assertUnprocessable();
-        $this->actingAs($staff)->getJson('/api/v1/admin/moderation?status=pending')->assertUnprocessable();
+        $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation?type=video')->assertUnprocessable();
+        $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation?status=pending')->assertUnprocessable();
     });
 
     it('paginates and does not run a query per row', function () {
@@ -162,7 +162,7 @@ describe('the queue', function () {
         $count = function (string $q) use ($staff) {
             DB::flushQueryLog();
             DB::enableQueryLog();
-            $this->actingAs($staff)->getJson('/api/v1/admin/moderation?' . $q)->assertOk();
+            $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation?' . $q)->assertOk();
 
             return count(DB::getQueryLog());
         };
@@ -170,7 +170,7 @@ describe('the queue', function () {
         $count('perPage=5'); // warm up auth/permission caches
         $small = $count('perPage=5');
         $big = $count('perPage=12');
-        $res = $this->actingAs($staff)->getJson('/api/v1/admin/moderation?perPage=5&page=2')->assertOk();
+        $res = $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation?perPage=5&page=2')->assertOk();
 
         expect($big)->toBe($small)->and($res->json('meta'))->toBe(['page' => 2, 'perPage' => 5, 'total' => 12, 'lastPage' => 3]);
     });
@@ -179,9 +179,9 @@ describe('the queue', function () {
         $event = modEvent();
         $c = modComment($event);
         $staff = modStaff('support');
-        $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
 
-        $row = $this->actingAs($staff)->getJson('/api/v1/admin/moderation?status=hidden')->json('data.0');
+        $row = $this->actingAsReauthed($staff)->getJson('/api/v1/admin/moderation?status=hidden')->json('data.0');
 
         expect($row['hiddenBy'])->toBe(['id' => $staff->id, 'name' => $staff->name])->and($row['hiddenAt'])->not->toBeNull();
     });
@@ -193,14 +193,14 @@ describe('what guests and organizers see', function () {
         $ok = modComment($event, ['comment' => 'se ve']);
         $bad = modComment($event, ['comment' => 'se oculta']);
         $byOrganizer = modComment($event, ['comment' => 'oculto por la organizadora', 'status' => 'hidden']);
-        $this->actingAs(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$bad->id}/hide", ['reason' => 'spam links'])->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$bad->id}/hide", ['reason' => 'spam links'])->assertOk();
         app('auth')->forgetGuards();
         $guest = Guest::factory()->create(['event_id' => $event->id, 'code' => 'VAL001']);
         $public = $this->getJson("/api/v1/app/template/event/{$event->id}/comments?accessCode=VAL001")->assertOk();
         expect(collect($public->json('data'))->pluck('id')->all())->toBe([$ok->id]);
 
         $owner = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
-        $ids = collect($this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/comments/paginated")->assertOk()->json('data'))->pluck('id')->all();
+        $ids = collect($this->actingAs($owner, 'sanctum')->getJson("/api/v1/app/event/{$event->id}/comments/paginated")->assertOk()->json('data'))->pluck('id')->all();
         expect($ids)->toContain($ok->id, $byOrganizer->id)->not->toContain($bad->id);
         $service = app(EventCommentService::class);
         expect($service->listForEvent($event)->pluck('id')->all())->not->toContain($bad->id);
@@ -209,10 +209,10 @@ describe('what guests and organizers see', function () {
     it('keeps a staff-hidden comment hidden when the organizer tries to restore it', function () {
         $event = modEvent();
         $c = modComment($event);
-        $this->actingAs(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
         $ownerUser = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
 
-        $this->actingAs($ownerUser)->patchJson("/api/v1/app/event/{$event->id}/comments/{$c->id}/status", ['status' => 'visible'])->assertForbidden();
+        $this->actingAs($ownerUser, 'sanctum')->patchJson("/api/v1/app/event/{$event->id}/comments/{$c->id}/status", ['status' => 'visible'])->assertForbidden();
         expect($c->fresh()->status->value)->toBe('hidden');
     });
 
@@ -220,16 +220,16 @@ describe('what guests and organizers see', function () {
         $event = modEvent();
         $ok = modImage($event);
         $bad = modImage($event);
-        $this->actingAs(modStaff('support'))->postJson("/api/v1/admin/moderation/image/{$bad->id}/hide", ['reason' => 'not appropriate'])->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/image/{$bad->id}/hide", ['reason' => 'not appropriate'])->assertOk();
 
         expect($event->fresh()->sweetMemoriesImages->pluck('id')->all())->toBe([$ok->id])
             ->and($event->fresh()->sweetMemoriesImages()->count())->toBe(1);
 
         $ownerUser = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
-        $res = $this->actingAs($ownerUser)->getJson("/api/v1/app/event/{$event->id}/sweet-memories-images")->assertOk();
+        $res = $this->actingAs($ownerUser, 'sanctum')->getJson("/api/v1/app/event/{$event->id}/sweet-memories-images")->assertOk();
         expect(collect($res->json('data'))->pluck('id')->all())->toBe([$ok->id]);
         // Restoring brings it back.
-        $this->actingAs(modStaff('support'))->postJson("/api/v1/admin/moderation/image/{$bad->id}/restore")->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/image/{$bad->id}/restore")->assertOk();
         expect($event->fresh()->sweetMemoriesImages()->count())->toBe(2);
     });
 });
@@ -240,7 +240,7 @@ describe('actions', function () {
         $c = modComment($event);
         $staff = modStaff('support');
 
-        $hide = $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'insultos'])->assertOk();
+        $hide = $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'insultos'])->assertOk();
         expect($hide->json('data.changed'))->toBeTrue()->and($hide->json('data.item.status'))->toBe('hidden')
             ->and($c->fresh()->hidden_by)->toBe($staff->id);
         $log = AdminAuditLog::where('action', 'moderation.hide')->firstOrFail();
@@ -248,10 +248,10 @@ describe('actions', function () {
             ->and($log->subject_type)->toBe('comment')->and($log->subject_id)->toBe($c->id);
 
         // Hiding twice changes nothing and writes nothing.
-        $again = $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'insultos'])->assertOk();
+        $again = $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'insultos'])->assertOk();
         expect($again->json('data.changed'))->toBeFalse()->and(AdminAuditLog::where('action', 'moderation.hide')->count())->toBe(1);
 
-        $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/restore")->assertOk()->assertJsonPath('data.item.status', 'visible');
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/restore")->assertOk()->assertJsonPath('data.item.status', 'visible');
         expect($c->fresh()->hidden_at)->toBeNull()->and($c->fresh()->status->value)->toBe('visible')
             ->and(AdminAuditLog::where('action', 'moderation.restore')->where('event_id', $event->id)->exists())->toBeTrue();
     });
@@ -261,22 +261,22 @@ describe('actions', function () {
         $c = modComment($event);
         $staff = modStaff('support');
 
-        $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide")->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'abc'])->assertUnprocessable();
-        $this->actingAs($staff)->deleteJson("/api/v1/admin/moderation/comment/{$c->id}")->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => [['type' => 'comment', 'id' => $c->id]]])->assertUnprocessable();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'delete', 'items' => [['type' => 'comment', 'id' => $c->id]]])->assertUnprocessable();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'restore', 'items' => [['type' => 'comment', 'id' => $c->id]]])->assertOk();
-        $this->actingAs($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/restore")->assertOk();
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide")->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'abc'])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->deleteJson("/api/v1/admin/moderation/comment/{$c->id}")->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => [['type' => 'comment', 'id' => $c->id]]])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'delete', 'items' => [['type' => 'comment', 'id' => $c->id]]])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'restore', 'items' => [['type' => 'comment', 'id' => $c->id]]])->assertOk();
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/moderation/comment/{$c->id}/restore")->assertOk();
         expect(AdminAuditLog::count())->toBe(0);
     });
 
     it('answers 404 for a bad type or a missing item', function () {
         $staff = modStaff('support');
 
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/video/1/hide', ['reason' => 'spam links'])->assertNotFound();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/comment/9999/hide', ['reason' => 'spam links'])->assertNotFound();
-        $this->actingAs($staff)->deleteJson('/api/v1/admin/moderation/image/9999', ['reason' => 'spam links'])->assertNotFound();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/video/1/hide', ['reason' => 'spam links'])->assertNotFound();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/comment/9999/hide', ['reason' => 'spam links'])->assertNotFound();
+        $this->actingAsReauthed($staff)->deleteJson('/api/v1/admin/moderation/image/9999', ['reason' => 'spam links'])->assertNotFound();
     });
 
     it('deletes a photo with both of its files and audits it', function () {
@@ -285,7 +285,7 @@ describe('actions', function () {
         $paths = [$img->image_path, $img->thumbnail_path];
         Storage::disk('sweet-memories')->assertExists($paths);
 
-        $this->actingAs(modStaff('support'))->deleteJson("/api/v1/admin/moderation/image/{$img->id}", ['reason' => 'contenido ofensivo'])
+        $this->actingAsReauthed(modStaff('support'))->deleteJson("/api/v1/admin/moderation/image/{$img->id}", ['reason' => 'contenido ofensivo'])
             ->assertOk()->assertJsonPath('data.item', null);
 
         Storage::disk('sweet-memories')->assertMissing($paths);
@@ -299,7 +299,7 @@ describe('actions', function () {
         $a = modImage($event);
         $b = modImage($event, ['image_path' => $a->image_path]);
 
-        $this->actingAs(modStaff('support'))->deleteJson("/api/v1/admin/moderation/image/{$b->id}", ['reason' => 'contenido ofensivo'])->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->deleteJson("/api/v1/admin/moderation/image/{$b->id}", ['reason' => 'contenido ofensivo'])->assertOk();
 
         Storage::disk('sweet-memories')->assertExists($a->image_path);
         Storage::disk('sweet-memories')->assertMissing($b->thumbnail_path);
@@ -308,7 +308,7 @@ describe('actions', function () {
     it('soft deletes a comment like the organizer does', function () {
         $c = modComment(modEvent());
 
-        $this->actingAs(modStaff('support'))->deleteJson("/api/v1/admin/moderation/comment/{$c->id}", ['reason' => 'contenido ofensivo'])->assertOk();
+        $this->actingAsReauthed(modStaff('support'))->deleteJson("/api/v1/admin/moderation/comment/{$c->id}", ['reason' => 'contenido ofensivo'])->assertOk();
 
         expect(EventComment::find($c->id))->toBeNull()->and(EventComment::withTrashed()->find($c->id))->not->toBeNull();
     });
@@ -322,7 +322,7 @@ describe('bulk', function () {
         $c2 = modComment($b);
         $i1 = modImage($a);
 
-        $res = $this->actingAs(modStaff('support'))->postJson('/api/v1/admin/moderation/bulk', [
+        $res = $this->actingAsReauthed(modStaff('support'))->postJson('/api/v1/admin/moderation/bulk', [
             'action' => 'hide',
             'items' => [['type' => 'comment', 'id' => $c1->id], ['type' => 'comment', 'id' => $c2->id], ['type' => 'image', 'id' => $i1->id]],
             'reason' => 'spam masivo',
@@ -337,7 +337,7 @@ describe('bulk', function () {
         $ok = modComment($event);
         $img = modImage($event);
 
-        $res = $this->actingAs(modStaff('support'))->postJson('/api/v1/admin/moderation/bulk', [
+        $res = $this->actingAsReauthed(modStaff('support'))->postJson('/api/v1/admin/moderation/bulk', [
             'action' => 'hide',
             'items' => [['type' => 'comment', 'id' => 9999], ['type' => 'comment', 'id' => $ok->id], ['type' => 'comment', 'id' => $ok->id], ['type' => 'image', 'id' => $img->id]],
             'reason' => 'spam masivo',
@@ -358,7 +358,7 @@ describe('bulk', function () {
             tap(Mockery::mock(Filesystem::class), fn ($m) => $m->shouldReceive('delete')->andThrow(new RuntimeException('disk down')))
         );
 
-        $res = $this->actingAs(modStaff('support'))->postJson('/api/v1/admin/moderation/bulk', [
+        $res = $this->actingAsReauthed(modStaff('support'))->postJson('/api/v1/admin/moderation/bulk', [
             'action' => 'delete',
             'items' => [['type' => 'image', 'id' => $img->id], ['type' => 'comment', 'id' => $good->id]],
             'reason' => 'contenido ofensivo',
@@ -373,10 +373,10 @@ describe('bulk', function () {
         $staff = modStaff('support');
         $items = fn (int $n) => array_map(fn ($i) => ['type' => 'comment', 'id' => $i], range(1, $n));
 
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => $items(101), 'reason' => 'spam masivo'])->assertUnprocessable();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => [], 'reason' => 'spam masivo'])->assertUnprocessable();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'nuke', 'items' => $items(1), 'reason' => 'spam masivo'])->assertUnprocessable();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => [['type' => 'video', 'id' => 1]], 'reason' => 'spam masivo'])->assertUnprocessable();
-        $this->actingAs($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => $items(100), 'reason' => 'spam masivo'])->assertOk()->assertJsonPath('data.failed', 100);
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => $items(101), 'reason' => 'spam masivo'])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => [], 'reason' => 'spam masivo'])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'nuke', 'items' => $items(1), 'reason' => 'spam masivo'])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => [['type' => 'video', 'id' => 1]], 'reason' => 'spam masivo'])->assertUnprocessable();
+        $this->actingAsReauthed($staff)->postJson('/api/v1/admin/moderation/bulk', ['action' => 'hide', 'items' => $items(100), 'reason' => 'spam masivo'])->assertOk()->assertJsonPath('data.failed', 100);
     });
 });

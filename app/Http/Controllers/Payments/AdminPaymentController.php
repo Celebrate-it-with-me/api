@@ -9,6 +9,7 @@ use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
 use App\Models\EventPurchase;
 use App\Models\Events;
+use App\Models\EventUserRole;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,19 +29,23 @@ class AdminPaymentController extends Controller
     {
         $data = $request->validate([
             'userId' => ['nullable', 'integer', 'exists:users,id'],
-            'amountCents' => ['required', 'integer', 'min:0'],
+            // 10,000 USD: far above the 99 plan, low enough that a typo cannot book a six-figure sale.
+            'amountCents' => ['required', 'integer', 'min:0', 'max:1000000'],
             'notes' => ['nullable', 'string', 'max:500'],
             'reason' => AdminAudit::reasonRule(),
         ]);
         $buyer = isset($data['userId']) ? User::findOrFail($data['userId']) : $request->user();
 
         $beforePlan = $event->eventPlan?->slug;
+        // The invoice goes to the buyer: one who is not on the event is allowed but flagged in the audit trail.
+        $buyerIsMember = EventUserRole::query()->where('event_id', $event->id)->where('user_id', $buyer->id)->exists();
         $purchase = $this->purchases->recordManual($event, $buyer, $request->user(), $data['amountCents'], $data['notes'] ?? null);
 
         $this->audit->record('payment.manual', $purchase, [
             'event_id' => $event->id, 'user_id' => $buyer->id, 'reason' => $data['reason'],
             'before' => ['plan' => $beforePlan],
-            'after' => ['plan' => $purchase->plan?->slug, 'amountCents' => $purchase->amount_cents, 'gateway' => 'manual'],
+            'after' => ['plan' => $purchase->plan?->slug, 'amountCents' => $purchase->amount_cents, 'gateway' => 'manual']
+                + ($buyerIsMember ? [] : ['warning' => 'buyer_not_event_member']),
         ]);
 
         return response()->json(['data' => $purchase], 201);
@@ -121,7 +126,8 @@ class AdminPaymentController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:64', Rule::unique('coupons', 'code')],
             'kind' => ['required', Rule::in(['fixed_price', 'percent_off'])],
-            'value' => ['required', 'integer', 'min:0'],
+            // F-2: a percentage is 1-100 (never above), a fixed price is zero or more cents.
+            'value' => ['required', 'integer', 'min:0', 'max:2147483647', Rule::when($request->input('kind') === 'percent_off', ['between:1,100'])],
             'isFounder' => ['boolean'],
             'maxUses' => ['nullable', 'integer', 'min:1'],
             'expiresAt' => ['nullable', 'date'],

@@ -26,6 +26,7 @@ return [
         'generate_qr_first' => 'Generate the QR code first.',
         'code_mismatch' => 'The code is not correct. Check your phone\'s clock and try again.',
     ],
+    'not_found' => 'Not found.',
     'too_many_attempts' => 'Too many attempts. Try again later.',
     'invitation_access' => [
         'invalid_code' => 'That code is not valid. Check it or contact the person who invited you.',
@@ -66,6 +67,7 @@ return [
     ],
     'whatsapp' => [
         'daily_limit' => 'The daily WhatsApp limit was reached.',
+        'send_in_progress' => 'Another send is in progress for this event. Try again in a moment.',
         'only_failed_retry' => 'Only failed messages can be retried.',
         'retry_limit' => 'This message was already retried too many times.',
         'template_not_approved' => 'The WhatsApp template is not approved yet.',
@@ -73,6 +75,7 @@ return [
         'unavailable' => 'WhatsApp is not connected.',
         'event_not_published' => 'This event is not published yet.',
         'rsvp_closed' => 'The RSVP deadline has passed.',
+        'confirmation_required' => 'The batch is big: confirm it to send.',
     ],
     'collaborators' => [
         'already_member' => 'This person is already a collaborator.',

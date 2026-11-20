@@ -4,11 +4,14 @@ namespace App\Exceptions;
 
 use App\Http\Services\Auth\SocialAuthService;
 use App\Http\Services\Payments\PaymentGatewayException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -72,6 +75,16 @@ class Handler extends ExceptionHandler
             return app(SocialAuthService::class)->rateLimitedRedirect($request, $provider);
         });
 
+        // F-5: a missing record, a record of someone else and a route-model binding miss all answer the same 404 body,
+        // so the message cannot reveal model names or whether an id exists.
+        $this->renderable(function (ModelNotFoundException $e, Request $request) {
+            return $request->expectsJson() || $request->is('api/*') ? self::notFoundResponse() : null;
+        });
+        $this->renderable(function (NotFoundHttpException $e, Request $request) {
+            return ($e->getPrevious() instanceof ModelNotFoundException || $e->getMessage() === '') && ($request->expectsJson() || $request->is('api/*'))
+                ? self::notFoundResponse() : null;
+        });
+
         // Every 429 of the API (named limiters, services that throw, abort(429)) has the body of the global `api` limiter.
         $this->renderable(function (HttpExceptionInterface $e, Request $request) {
             if ($e->getStatusCode() === 429 && ($request->expectsJson() || $request->is('api/*'))) {
@@ -81,6 +94,11 @@ class Handler extends ExceptionHandler
                 ], 429, $e->getHeaders());
             }
         });
+    }
+
+    private static function notFoundResponse(): JsonResponse
+    {
+        return response()->json(['message' => __('errors.not_found')], 404);
     }
 
     /** A phpredis or Predis connection failure, however deep in the exception chain. */

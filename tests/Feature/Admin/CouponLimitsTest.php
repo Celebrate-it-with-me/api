@@ -98,3 +98,30 @@ describe('updating coupon limits', function () {
         expect($coupon->refresh()->max_uses)->toBe(50);
     });
 });
+
+describe('coupon value bounds (F-2)', function () {
+    $create = fn ($test, string $kind, int $value) => $test->actingAsReauthed(couponStaff(AdminPermissions::SUPERADMIN))
+        ->postJson('/api/v1/admin/payments/coupons', ['code' => 'B' . $kind . $value, 'kind' => $kind, 'value' => $value, 'reason' => 'Bounds check']);
+
+    it('accepts percent_off from 1 to 100 only', function () use ($create) {
+        foreach ([1, 100] as $ok) {
+            $create($this, 'percent_off', $ok)->assertCreated();
+        }
+        foreach ([0, 101, -5] as $bad) {
+            $create($this, 'percent_off', $bad)->assertUnprocessable()->assertJsonValidationErrors('value');
+        }
+    });
+
+    it('accepts a fixed_price of zero or more and rejects negatives', function () use ($create) {
+        $create($this, 'fixed_price', 0)->assertCreated();
+        $create($this, 'fixed_price', 7900)->assertCreated();
+        $create($this, 'fixed_price', -1)->assertUnprocessable()->assertJsonValidationErrors('value');
+    });
+
+    it('never prices below zero even with a stored out-of-range value', function () {
+        expect((new Coupon(['kind' => 'percent_off', 'value' => 101]))->apply(10000))->toBe(0)
+            ->and((new Coupon(['kind' => 'percent_off', 'value' => -20]))->apply(10000))->toBe(10000)
+            ->and((new Coupon(['kind' => 'fixed_price', 'value' => -500]))->apply(10000))->toBe(0)
+            ->and((new Coupon(['kind' => 'percent_off', 'value' => 50]))->apply(9999))->toBe(5000);
+    });
+});

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\ResetPasswordEvent;
 use App\Events\UserLoggedOutEvent;
 use App\Events\UserRegistered;
 use App\Http\Middleware\EnsureNotSuspended;
@@ -14,7 +13,9 @@ use App\Http\Requests\Auth\AppRegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Services\Admin\Account\AdminLoginService;
 use App\Http\Services\Auth\PostLoginService;
+use App\Jobs\SendPasswordResetLink;
 use App\Models\User;
+use App\Support\TimingSafePassword;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -94,16 +95,13 @@ class AuthenticationController extends Controller
      */
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $user = User::query()->where('email', $request->input('email'))->first();
-
-        // At most 3 emails per hour to one address: the answer stays the same so it does not reveal anything.
+        // At most 3 emails per hour to one address. The answer is always the same and the work (account lookup, token,
+        // mail) is queued for every address, registered or not, so neither the body nor the timing reveals anything.
         $limitKey = 'app-forgot:' . Str::lower((string) $request->input('email'));
-        if (! $user || RateLimiter::tooManyAttempts($limitKey, 3)) {
-            return response()->json(['message' => 'Password reset link sent successfully!']);
+        if (! RateLimiter::tooManyAttempts($limitKey, 3)) {
+            RateLimiter::hit($limitKey, 3600);
+            SendPasswordResetLink::dispatch((string) $request->input('email'));
         }
-        RateLimiter::hit($limitKey, 3600);
-
-        ResetPasswordEvent::dispatch($user);
 
         return response()->json(['message' => 'Password reset link sent successfully!']);
     }
@@ -188,7 +186,7 @@ class AuthenticationController extends Controller
 
         $user = User::query()
             ->with(['lastLoginSession', 'activeEvent'])
-            ->where('email', $request->input('email'))
+            ->whereRaw('lower(email) = ?', [mb_strtolower((string) $request->input('email'))])
             ->first();
 
         // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.
@@ -198,7 +196,10 @@ class AuthenticationController extends Controller
                 ->header('Retry-After', RateLimiter::availableIn($limitKey));
         }
 
-        if (! $user || ! Hash::check($request->input('password'), $user->password)) {
+        // Same hashing work whether or not the account exists, so the response time does not tell which emails are registered.
+        $passwordOk = TimingSafePassword::check($request->input('password'), $user?->password);
+
+        if (! $user || ! $passwordOk) {
             RateLimiter::hit($limitKey, 15 * 60);
 
             return response()->json(['message' => __('errors.auth.invalid_credentials')], 401);

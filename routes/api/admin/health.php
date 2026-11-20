@@ -22,7 +22,7 @@ Route::prefix('health')->group(function () {
         Route::get('modules', [HealthController::class, 'modules']);
     });
 
-    Route::middleware('admin.can:admin.system.manage')->group(function () {
+    Route::middleware(['admin.can:admin.system.manage', 'admin.reauth'])->group(function () {
         Route::post('failed-jobs/retry', [HealthController::class, 'retryQueue']);
         Route::post('failed-jobs/{uuid}/retry', [HealthController::class, 'retryJob'])->whereUuid('uuid');
         Route::delete('failed-jobs/{uuid}', [HealthController::class, 'forgetJob'])->whereUuid('uuid');
@@ -32,7 +32,7 @@ Route::prefix('health')->group(function () {
 Route::prefix('system')->group(function () {
     Route::get('version', [VersionController::class, 'show'])->middleware('admin.can:admin.system.health');
     Route::get('maintenance', [MaintenanceController::class, 'show'])->middleware('admin.can:admin.system.health');
-    Route::put('maintenance', [MaintenanceController::class, 'update'])->middleware('admin.can:admin.system.manage');
+    Route::put('maintenance', [MaintenanceController::class, 'update'])->middleware(['admin.can:admin.system.manage', 'admin.reauth']);
 
     // "Require two-factor for all staff": reading and changing it are superadmin only (`admin.security.manage`); changing it needs a recent re-authentication.
     Route::get('security', [SecurityController::class, 'show'])->middleware('admin.can:admin.security.manage');

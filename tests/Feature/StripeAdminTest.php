@@ -207,10 +207,10 @@ describe('resolve review', function () {
         $p = admPurchase(['needs_review' => true]);
         $staff = admStaff();
 
-        $this->actingAs($staff)->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", [])->assertStatus(422);
-        $this->actingAs($staff)->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", ['reason' => 'Checked in Stripe'])->assertOk()->assertJsonPath('data.needsReview', false);
-        $this->actingAs($staff)->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", ['reason' => 'Checked in Stripe'])->assertStatus(409)->assertJsonPath('code', 'not_needs_review');
-        $this->actingAs(admStaff('support'))->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", ['reason' => 'Checked in Stripe'])->assertForbidden();
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", [])->assertStatus(422);
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", ['reason' => 'Checked in Stripe'])->assertOk()->assertJsonPath('data.needsReview', false);
+        $this->actingAsReauthed($staff)->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", ['reason' => 'Checked in Stripe'])->assertStatus(409)->assertJsonPath('code', 'not_needs_review');
+        $this->actingAsReauthed(admStaff('support'))->postJson("/api/v1/admin/payments/{$p->id}/resolve-review", ['reason' => 'Checked in Stripe'])->assertForbidden();
 
         expect($p->fresh()->needs_review)->toBeFalse()->and(AdminAuditLog::where('action', 'payment.review.resolve')->count())->toBe(1);
     });
@@ -223,15 +223,15 @@ describe('revenue view', function () {
         $lost = admPurchase(['status' => 'chargeback', 'dispute_id' => 'dp_2', 'dispute_status' => 'lost', 'gateway_payment_id' => 'pi_l']);
         $staff = admStaff();
 
-        $ids = fn (string $q) => collect($this->actingAs($staff)->getJson("/api/v1/admin/revenue/purchases?{$q}")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
+        $ids = fn (string $q) => collect($this->actingAsReauthed($staff)->getJson("/api/v1/admin/revenue/purchases?{$q}")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
 
         expect($ids('status=chargeback'))->toBe([$lost->id])
             ->and($ids('disputed=1'))->toBe([$disputed->id, $lost->id])
             ->and($ids('needsReview=1'))->toBe([$disputed->id])
             ->and($ids('needsReview=0'))->toHaveCount(2);
-        $row = collect($this->actingAs($staff)->getJson('/api/v1/admin/revenue/purchases?needsReview=1')->json('data'))->first();
+        $row = collect($this->actingAsReauthed($staff)->getJson('/api/v1/admin/revenue/purchases?needsReview=1')->json('data'))->first();
         expect($row)->toMatchArray(['disputeStatus' => 'needs_response', 'needsReview' => true]);
-        $this->actingAs($staff)->getJson('/api/v1/admin/revenue/purchases?status=bogus')->assertStatus(422);
+        $this->actingAsReauthed($staff)->getJson('/api/v1/admin/revenue/purchases?status=bogus')->assertStatus(422);
     });
 
     it('shows the gateway data, a timeline with dispute and chargeback, and a Stripe link built on the server', function () {
@@ -241,14 +241,14 @@ describe('revenue view', function () {
         ]);
         $staff = admStaff();
 
-        $detail = $this->actingAs($staff)->getJson("/api/v1/admin/revenue/purchases/{$p->id}")->assertOk()->json('data');
+        $detail = $this->actingAsReauthed($staff)->getJson("/api/v1/admin/revenue/purchases/{$p->id}")->assertOk()->json('data');
         expect($detail)->toMatchArray([
             'gatewayPaymentId' => 'pi_3Abc123', 'gatewayRefundId' => 're_9', 'disputeId' => 'dp_9', 'disputeStatus' => 'lost', 'taxCents' => 250,
             'stripeUrl' => 'https://dashboard.stripe.com/test/payments/pi_3Abc123',
         ])->and(collect($detail['timeline'])->pluck('type')->all())->toBe(['created', 'paid', 'disputed', 'chargeback']);
 
         config(['services.stripe.secret' => 'rk_live_dummy']);
-        $this->actingAs($staff)->getJson("/api/v1/admin/revenue/purchases/{$p->id}")->assertJsonPath('data.stripeUrl', 'https://dashboard.stripe.com/payments/pi_3Abc123');
+        $this->actingAsReauthed($staff)->getJson("/api/v1/admin/revenue/purchases/{$p->id}")->assertJsonPath('data.stripeUrl', 'https://dashboard.stripe.com/payments/pi_3Abc123');
     });
 
     it('never builds a link from anything but a Stripe payment id of a Stripe purchase', function () {
@@ -258,7 +258,7 @@ describe('revenue view', function () {
         $none = admPurchase(['gateway_payment_id' => null]);
 
         foreach ([$weird, $fake, $none] as $p) {
-            $this->actingAs($staff)->getJson("/api/v1/admin/revenue/purchases/{$p->id}")->assertOk()->assertJsonPath('data.stripeUrl', null);
+            $this->actingAsReauthed($staff)->getJson("/api/v1/admin/revenue/purchases/{$p->id}")->assertOk()->assertJsonPath('data.stripeUrl', null);
         }
     });
 });
@@ -288,6 +288,6 @@ it('reports no invoice on the status endpoint until one exists, with the failure
     $p = admPurchase(['user_id' => $owner->id, 'status' => 'failed', 'failure_code' => 'expired', 'paid_at' => null]);
     EventUserRole::create(['event_id' => $p->event_id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
 
-    $this->actingAs($owner)->getJson("/api/v1/app/event/{$p->event_id}/purchase/status?purchase={$p->id}")
+    $this->actingAs($owner, 'sanctum')->getJson("/api/v1/app/event/{$p->event_id}/purchase/status?purchase={$p->id}")
         ->assertOk()->assertJsonPath('data.invoiceId', null)->assertJsonPath('data.failureCode', 'expired')->assertJsonPath('data.status', 'failed');
 });

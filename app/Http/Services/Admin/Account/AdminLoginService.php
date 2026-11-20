@@ -7,11 +7,11 @@ use App\Models\AdminAuditLog;
 use App\Models\User;
 use App\Support\AdminPermissions;
 use App\Support\ClientInfo;
+use App\Support\TimingSafePassword;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -36,8 +36,6 @@ class AdminLoginService
     /** Wrong passwords allowed per email and address in 15 minutes. */
     private const PASSWORD_MAX_FAILURES = 5;
 
-    private static ?string $dummyHash = null;
-
     public function __construct(
         private readonly TwoFactorService $twoFactor,
         private readonly AccountSecurity $security,
@@ -58,11 +56,11 @@ class AdminLoginService
             throw new ThrottleRequestsException(__('errors.too_many_attempts'), null, ['Retry-After' => RateLimiter::availableIn($passwordLimiter)]);
         }
 
-        $user = User::query()->where('email', $email)->first();
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $email)])->first();
         $isStaff = $user?->hasAnyRole(AdminPermissions::STAFF_ROLES);
 
         // Same work whether or not the account exists, so the response time does not tell which emails are registered.
-        $passwordOk = Hash::check($password, $user?->password ?? (self::$dummyHash ??= Hash::make('not-a-real-password')));
+        $passwordOk = TimingSafePassword::check($password, $user?->password);
 
         // A token for the admin panel is only for administrators; anyone else gets the same answer as a wrong password.
         // A staff account whose mailbox was never verified is not let in either: the password may have been chosen by

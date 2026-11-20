@@ -14,11 +14,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('users', [UserAdminController::class, 'index'])->middleware('admin.can:admin.users.view');
 Route::get('users/{user}', [UserAdminController::class, 'show'])->middleware('admin.can:admin.users.view');
 Route::post('users/{user}/password-reset', [UserAdminController::class, 'passwordReset'])->middleware('admin.can:admin.users.reset_password');
-Route::post('users/{user}/suspend', [UserAdminController::class, 'suspend'])->middleware('admin.can:admin.users.suspend');
-Route::post('users/{user}/unsuspend', [UserAdminController::class, 'unsuspend'])->middleware('admin.can:admin.users.suspend');
-Route::get('users/{user}/export', [UserAdminController::class, 'export'])->middleware('admin.can:admin.users.export');
+Route::post('users/{user}/suspend', [UserAdminController::class, 'suspend'])->middleware(['admin.can:admin.users.suspend', 'admin.reauth']);
+Route::post('users/{user}/unsuspend', [UserAdminController::class, 'unsuspend'])->middleware(['admin.can:admin.users.suspend', 'admin.reauth']);
+Route::get('users/{user}/export', [UserAdminController::class, 'export'])->middleware(['admin.can:admin.users.export', 'admin.reauth']);
 Route::delete('users/{user}', [UserAdminController::class, 'destroy'])->middleware(['admin.can:admin.users.delete', 'admin.reauth']);
 
 // Legacy create, still used by the old screen. Audited. The legacy edit (PUT|PATCH users/{user}) was removed: it changed
 // anybody's email and password with no reauthentication (S-04); the profile of an account is not edited from the panel.
-Route::post('users', [UserController::class, 'store'])->middleware('admin.can:admin.users.manage');
+Route::post('users', [UserController::class, 'store'])->middleware(['admin.can:admin.users.manage', 'admin.reauth']);

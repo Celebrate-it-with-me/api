@@ -13,7 +13,10 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\EventPlanSeeder;
 use Database\Seeders\LaunchCouponSeeder;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -130,7 +133,7 @@ describe('admin', function () {
     it('records a manual payment (Zelle) and unlocks the event', function () {
         [$event, $owner] = ownedEvent();
 
-        $this->actingAs(adminUser())->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'notes' => 'Zelle 11/13', 'reason' => 'Zelle received'])
+        $this->actingAsReauthed(adminUser())->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'notes' => 'Zelle 11/13', 'reason' => 'Zelle received'])
             ->assertCreated()->assertJsonPath('data.status', 'paid')->assertJsonPath('data.gateway', 'manual');
 
         expect($event->fresh()->eventPlan->slug)->toBe('premium');
@@ -139,7 +142,7 @@ describe('admin', function () {
     it('refunds in full only while the event is not published', function () {
         [$event, $owner] = ownedEvent();
         $admin = adminUser();
-        $id = $this->actingAs($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
+        $id = $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/events/{$event->id}/manual", ['userId' => $owner->id, 'amountCents' => 9900, 'reason' => 'Zelle received'])->json('data.id');
 
         $event->update(['status' => 'published']);
         $this->actingAsReauthed($admin)->postJson("/api/v1/admin/payments/{$id}/refund", ['reason' => 'Asked for it'])->assertStatus(422);
@@ -272,4 +275,57 @@ describe('launch offer', function () {
         expect(Coupon::where('code', LaunchCouponSeeder::CODE)->count())->toBe(1)
             ->and(Coupon::where('code', LaunchCouponSeeder::CODE)->first())->max_uses->toBe(250)->is_active->toBeFalse();
     });
+});
+
+describe('minimum charge', function () {
+    it('rejects a final amount between 1 and 49 cents and accepts 0 and 50 or more', function (int $value, bool $ok) {
+        [$event, $owner] = ownedEvent();
+        Coupon::create(['code' => 'EDGE', 'kind' => 'fixed_price', 'value' => $value]);
+        $quote = "/api/v1/app/event/{$event->id}/purchase/quote?code=EDGE";
+        $checkout = "/api/v1/app/event/{$event->id}/purchase/checkout";
+
+        if ($ok) {
+            $this->actingAs($owner)->getJson($quote)->assertOk()->assertJsonPath('data.amountCents', $value);
+            $this->actingAs($owner)->postJson($checkout, ['code' => 'EDGE'])->assertCreated();
+        } else {
+            $this->actingAs($owner)->getJson($quote)->assertStatus(422)->assertJsonPath('errors.code.0', 'amount_below_minimum');
+            $this->actingAs($owner)->postJson($checkout, ['code' => 'EDGE'])->assertStatus(422)->assertJsonPath('errors.code.0', 'amount_below_minimum');
+            expect(EventPurchase::count())->toBe(0);
+        }
+    })->with([[0, true], [1, false], [49, false], [50, true], [51, true]]);
+});
+
+it('looks again at the event inside the checkout lock and creates no purchase when it was just unlocked (F-1)', function () {
+    [$event, $owner] = ownedEvent();
+    $stale = Events::find($event->id);
+    $stale->eventPlan; // loaded before the "other request" wins the race
+
+    $event->update(['event_plan_id' => EventPlan::where('slug', 'premium')->value('id')]);
+
+    expect(fn () => app(PurchaseService::class)->checkout($stale, $owner, null, 'https://x.test/ok', 'https://x.test/no'))
+        ->toThrow(ValidationException::class);
+    expect(EventPurchase::count())->toBe(0);
+});
+
+it('answers already_unlocked to the second of two checkouts and leaves one purchase (F-1)', function () {
+    [$event, $owner] = ownedEvent();
+    Coupon::create(['code' => 'GIFT', 'kind' => 'percent_off', 'value' => 100]);
+    $url = "/api/v1/app/event/{$event->id}/purchase/checkout";
+
+    $this->actingAs($owner)->postJson($url, ['code' => 'GIFT'])->assertCreated();
+    $this->actingAs($owner)->postJson($url, ['code' => 'GIFT'])->assertStatus(422)->assertJsonPath('errors.event.0', 'already_unlocked');
+
+    expect(EventPurchase::count())->toBe(1);
+});
+
+it('takes the checkout lock on every gateway and releases it afterwards (F-1)', function () {
+    [$event, $owner] = ownedEvent();
+    Coupon::create(['code' => 'GIFT', 'kind' => 'percent_off', 'value' => 100]);
+
+    $lock = Mockery::mock(Lock::class);
+    $lock->shouldReceive('block')->once()->with(10)->andReturn(true);
+    $lock->shouldReceive('release')->once();
+    Cache::shouldReceive('lock')->once()->with("checkout-event-{$event->id}", 30)->andReturn($lock);
+
+    $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/purchase/checkout", ['code' => 'GIFT'])->assertCreated();
 });

@@ -22,7 +22,7 @@ class InviteRegisteredUserMail extends Mailable
     {
         $this->invite = $invite;
         // She already has an account: write in her language.
-        $this->locale(MailLocale::forUser(User::query()->where('email', $invite->email)->first()));
+        $this->locale(MailLocale::forUser(User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $invite->email)])->first()));
     }
 
     public function envelope(): Envelope
