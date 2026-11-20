@@ -22,7 +22,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     ->prefix('event/{event}/whatsapp')->name('event.whatsapp.')->group(function () {
         Route::get('audience', [WhatsAppAudienceController::class, 'audience'])->name('audience');
         Route::get('recipients', [WhatsAppAudienceController::class, 'recipients'])->name('recipients');
-        Route::post('preview', [WhatsAppAudienceController::class, 'preview'])->name('preview');
+        Route::post('preview', [WhatsAppAudienceController::class, 'preview'])->middleware('throttle:whatsapp-preview')->name('preview');
         Route::get('batches/active', [WhatsAppAudienceController::class, 'activeBatch'])->name('batches.active');
         Route::get('batches/{batch}', [WhatsAppAudienceController::class, 'batch'])->name('batches.show');
     });

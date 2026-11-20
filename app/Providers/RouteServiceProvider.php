@@ -52,6 +52,7 @@ class RouteServiceProvider extends ServiceProvider
         'guest-export' => [10, 1],
         'whatsapp-send' => [20, 1],
         'whatsapp-retry' => [30, 1],
+        'whatsapp-preview' => [120, 1],
         'whatsapp-webhook-verify' => [60, 1],
         'whatsapp-webhook-receive' => [1200, 1],
         'invoice-resend' => [5, 10],

@@ -48,6 +48,7 @@ use App\Http\Controllers\AppControllers\UserTwoFAController;
 use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\DressCodeController;
 use App\Http\Controllers\Payments\PurchaseController;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 // ========================================
 // PUBLIC ROUTES (No Authentication)
@@ -101,7 +102,9 @@ Route::prefix('template')->name('template.')->group(function () {
 });
 
 // Authentication Routes
-Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle:payments-webhook')->name('payments.webhook');
+Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle.unsigned:payments-webhook')
+    // The group's per-IP `api` limiter would starve Stripe behind a shared balancer IP just the same.
+    ->withoutMiddleware(ThrottleRequests::class . ':api')->name('payments.webhook');
 
 // "Mis compras" (invoices): its own file, own auth middleware. Keep it above the group that ends the impersonation
 // session: ImpersonationBlocksTest walks the routes in order and that last route revokes the token.
@@ -217,8 +220,8 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             Route::get('', [EventsController::class, 'show'])->name('show');
             Route::match(['put', 'patch'], '', [EventsController::class, 'update'])->name('update');
             Route::prefix('purchase')->name('purchase.')->middleware('event.access:delete_event')->group(function () {
-                Route::get('quote', [PurchaseController::class, 'quote'])->name('quote');
-                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware(['email.verified', 'throttle:10,1,purchase-checkout'])->name('checkout');
+                Route::get('quote', [PurchaseController::class, 'quote'])->middleware('coupon.failures')->name('quote');
+                Route::post('checkout', [PurchaseController::class, 'checkout'])->middleware(['email.verified', 'coupon.failures', 'throttle:10,1,purchase-checkout'])->name('checkout');
                 Route::get('status', [PurchaseController::class, 'status'])->name('status');
                 Route::post('{purchase}/cancel', [PurchaseController::class, 'cancel'])->whereNumber('purchase')->middleware('throttle:10,1,purchase-cancel')->name('cancel');
             });
