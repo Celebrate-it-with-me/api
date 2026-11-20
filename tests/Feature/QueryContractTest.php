@@ -249,3 +249,15 @@ it('does not run more queries for more events or tables', function () {
 
     expect($after)->toBe($before);
 });
+
+it('lists events by id even when an older row was rewritten last', function () {
+    [$owner] = contractFixture();
+
+    // PostgreSQL moves an updated row to the end of the heap: without an ORDER BY a plain scan would return it last.
+    Events::whereKey(9201)->update(['event_description' => 'Rewritten']);
+
+    $ids = fn (string $url, string $path) => collect($this->actingAs($owner)->getJson($url)->assertOk()->json($path))->pluck('id')->all();
+
+    expect($ids('/api/v1/app/events', 'data.events'))->toBe([9201, 9202, 9203])
+        ->and($ids('/api/v1/app/event/filters?query=contract', 'data'))->toBe([9201, 9202, 9203]);
+});
