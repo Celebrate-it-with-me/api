@@ -15,6 +15,7 @@ use App\Http\Services\Admin\Account\AdminLoginService;
 use App\Http\Services\Auth\PostLoginService;
 use App\Jobs\SendPasswordResetLink;
 use App\Models\User;
+use App\Support\TimingSafePassword;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -31,9 +32,6 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthenticationController extends Controller
 {
-    /** Hash checked against when the account does not exist, to keep the work of the login the same. */
-    private static ?string $dummyHash = null;
-
     /**
      * Step one of the admin sign-in. Without two-factor it answers the plain token (as always); with it, a JSON
      * `{twoFactorRequired: true, challenge}` that `adminTwoFactorLogin` trades for the token.
@@ -199,7 +197,7 @@ class AuthenticationController extends Controller
         }
 
         // Same hashing work whether or not the account exists, so the response time does not tell which emails are registered.
-        $passwordOk = Hash::check($request->input('password'), $user?->password ?? (self::$dummyHash ??= Hash::make('not-a-real-password')));
+        $passwordOk = TimingSafePassword::check($request->input('password'), $user?->password);
 
         if (! $user || ! $passwordOk) {
             RateLimiter::hit($limitKey, 15 * 60);
