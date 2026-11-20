@@ -6,6 +6,7 @@ use App\Models\WhatsApp\Message;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -89,6 +90,41 @@ describe('send lock per event (M-4)', function () {
         $m = Message::first();
         // The second click (another tab) finds it already retried: 409, and the count moves only once.
         $this->actingAs($u['owner'])->postJson("$api/messages/{$m->id}/retry")->assertStatus(202);
+        $this->actingAs($u['owner'])->postJson("$api/messages/{$m->id}/retry")->assertStatus(409)->assertJsonPath('code', 'not_failed');
+        expect($m->fresh()->retry_count)->toBe(1);
+    });
+
+    it('refuses a retry past the retry limit and past the daily cap', function () {
+        [$event, $u, $api] = waEvent();
+        waGuest($event);
+        FakeGateway::failNext(new WhatsAppException('131026', 'Message undeliverable', false));
+        $this->actingAs($u['owner'])->postJson("$api/send", ['template' => 'invitation', 'audience' => 'all'])->assertStatus(202);
+        $m = Message::first();
+
+        $m->forceFill(['status' => 'failed', 'retry_count' => 3])->save();
+        $this->actingAs($u['owner'])->postJson("$api/messages/{$m->id}/retry")->assertStatus(409)->assertJsonPath('code', 'retry_limit');
+
+        $m->forceFill(['status' => 'failed', 'retry_count' => 0])->save();
+        config(['services.whatsapp.max_daily_per_event' => 0]);
+        $this->actingAs($u['owner'])->postJson("$api/messages/{$m->id}/retry")->assertStatus(429)->assertJsonPath('code', 'whatsapp_daily_limit');
+        expect($m->fresh()->status)->toBe('failed');
+    });
+
+    it('takes nothing when the message stopped being failed between our read and our write', function () {
+        [$event, $u, $api] = waEvent();
+        waGuest($event);
+        FakeGateway::failNext(new WhatsAppException('131026', 'Message undeliverable', false));
+        $this->actingAs($u['owner'])->postJson("$api/send", ['template' => 'invitation', 'audience' => 'all'])->assertStatus(202);
+        $m = Message::first();
+
+        // Another process retries it right after we re-read it under the lock.
+        $reads = 0;
+        Message::retrieved(function (Message $loaded) use (&$reads, $m) {
+            if ($loaded->id === $m->id && ++$reads === 2) {
+                DB::table('whatsapp_messages')->where('id', $m->id)->update(['status' => 'queued', 'retry_count' => 1]);
+            }
+        });
+
         $this->actingAs($u['owner'])->postJson("$api/messages/{$m->id}/retry")->assertStatus(409)->assertJsonPath('code', 'not_failed');
         expect($m->fresh()->retry_count)->toBe(1);
     });
