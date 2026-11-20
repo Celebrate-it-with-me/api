@@ -33,7 +33,7 @@ it('lets staff send the same reset email from the admin', function () {
     $staff->assignRole('support');
     $user = User::factory()->create();
 
-    $this->actingAs($staff)->postJson("/api/v1/admin/users/{$user->id}/password-reset")->assertOk();
+    $this->actingAs($staff)->postJson("/api/v1/admin/users/{$user->id}/password-reset", ['reason' => 'User locked out'])->assertOk();
 
     Mail::assertSent(ResetPasswordEmail::class, fn ($mail) => $mail->hasTo($user->email));
 });
