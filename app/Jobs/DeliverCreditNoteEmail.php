@@ -19,6 +19,7 @@ class DeliverCreditNoteEmail implements ShouldQueue
 
     public function __construct(public readonly int $creditNoteId)
     {
+        $this->onQueue('mail');
         $this->afterCommit();
     }
 

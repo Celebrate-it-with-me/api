@@ -41,13 +41,13 @@ services:
             - cwm_mailpit
 
     # Queue worker and scheduler: same image and code as cwm_api, no web server. In a PaaS these are two extra
-    # processes (see docs in the performance report): `php artisan queue:work --tries=3 --max-time=3600` and a
+    # processes (see docs in the performance report): `php artisan queue:work --queue=mail,whatsapp,default --tries=3 --max-time=3600` and a
     # cron `* * * * * php artisan schedule:run` (or `schedule:work`). After changing PHP code: `docker restart cwm_queue`.
     cwm_queue:
         image: sail-8.4/app
         container_name: cwm_queue
         hostname: cwm_queue
-        command: php artisan queue:work --tries=3 --max-time=3600 --sleep=3
+        command: php artisan queue:work --queue=mail,whatsapp,default --tries=3 --max-time=3600 --sleep=3
         restart: unless-stopped
         environment:
             WWWUSER: '${WWWUSER}'

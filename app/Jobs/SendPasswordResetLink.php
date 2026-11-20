@@ -17,7 +17,16 @@ class SendPasswordResetLink implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(public readonly string $email) {}
+    public function __construct(public readonly string $email)
+    {
+        $this->onQueue('mail');
+    }
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [30, 120];
+    }
 
     public function handle(): void
     {
