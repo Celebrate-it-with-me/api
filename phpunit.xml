@@ -26,6 +26,7 @@
         <env name="DB_DATABASE" value="testing"/>
         <env name="HCAPTCHA_ENABLED" value="false"/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="PAYMENTS_GATEWAY" value="fake"/>
         <env name="PAYMENTS_WEBHOOK_SECRET" value="testing-webhook-secret"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
