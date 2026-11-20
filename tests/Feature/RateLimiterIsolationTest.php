@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Events;
+use App\Models\Guest;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Database\Seeders\DatabaseSeeder;
@@ -46,10 +48,14 @@ it('keeps the 5 per minute of reset-password when other routes were hit first (a
 });
 
 it('enforces the original limit of a public route (31st calendar request is 429)', function () {
+    // A valid code: hits do not count in the wrong-code brake, so this is the per-IP limit of the route itself.
+    $event = Events::factory()->create(['status' => 'published', 'custom_url_slug' => 'xv-de-valentina', 'start_date' => '2026-12-25 19:00:00']);
+    Guest::factory()->create(['event_id' => $event->id, 'code' => 'VAL001', 'parent_id' => null]);
+
     foreach (range(1, 30) as $i) {
-        expect($this->get('/api/v1/app/invitation/nope/NOPE/calendar.ics')->status())->not->toBe(429);
+        expect($this->get('/api/v1/app/invitation/xv-de-valentina/VAL001/calendar.ics')->status())->not->toBe(429);
     }
-    $this->get('/api/v1/app/invitation/nope/NOPE/calendar.ics')->assertStatus(429)->assertHeader('Retry-After');
+    $this->get('/api/v1/app/invitation/xv-de-valentina/VAL001/calendar.ics')->assertStatus(429)->assertHeader('Retry-After');
 });
 
 it('isolates the counters per route for an authenticated user', function () {

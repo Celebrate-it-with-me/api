@@ -16,6 +16,7 @@ use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\EnsureRecentReauth;
 use App\Http\Middleware\ImpersonationGuard;
+use App\Http\Middleware\LimitCodeFailures;
 use App\Http\Middleware\PreventRequestForgery;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
@@ -117,5 +118,6 @@ class Kernel extends HttpKernel
         'event.access' => EnsureEventAccess::class,
         'event.guest' => EnsureGuestEventAccess::class,
         'module.access' => EnsureModuleAccess::class,
+        'code.failures' => LimitCodeFailures::class,
     ];
 }

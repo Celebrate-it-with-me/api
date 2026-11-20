@@ -266,9 +266,9 @@ it('does not mark the invitation as opened nor write activity: a crawler is not 
 });
 
 it('allows a burst of crawlers per IP', function () {
-    expect(RouteServiceProvider::ROUTE_LIMITS['og-share'])->toBe([300, 1]);
+    expect(RouteServiceProvider::ROUTE_LIMITS['og-share'])->toBe([60, 1]);
     shareEvent();
-    foreach (range(1, 70) as $_) {
+    foreach (range(1, 60) as $_) {
         $this->get('/og/xv-de-valentina/AB1234')->assertOk();
     }
 });

@@ -61,9 +61,9 @@ Route::prefix('invitation/{slug}/access')->name('invitation.access.')->group(fun
 
 // Public invitation: event slug + guest code are the only credentials.
 Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function () {
-    Route::get('', [PublicInvitationController::class, 'show'])->middleware(['throttle:invitation-show', 'etag'])->name('show');
+    Route::get('', [PublicInvitationController::class, 'show'])->middleware(['code.failures', 'throttle:invitation-show', 'etag'])->name('show');
     Route::post('rsvp', [PublicInvitationController::class, 'rsvp'])->middleware(['throttle:invitation-rsvp', 'throttle:invitation-rsvp-code', 'module.access:rsvp'])->name('rsvp');
-    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware('throttle:invitation-calendar')->name('calendar');
+    Route::get('calendar.ics', [PublicInvitationController::class, 'calendar'])->middleware(['code.failures', 'throttle:invitation-calendar'])->name('calendar');
     Route::get('comments', [PublicInvitationCommentController::class, 'index'])->middleware(['throttle:invitation-comments-read', 'module.access:comments'])->name('comments.index');
     Route::post('comments', [PublicInvitationCommentController::class, 'store'])->middleware(['throttle:invitation-comments-write', 'throttle:invitation-comments-code', 'module.access:comments'])->name('comments.store');
 
@@ -80,7 +80,7 @@ Route::prefix('invitation/{slug}/{code}')->name('invitation.')->group(function (
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {
     // Guest-facing: a valid access code of this event is required, even to read (see EnsureGuestEventAccess).
-    Route::prefix('event/{event}')->middleware(['event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
+    Route::prefix('event/{event}')->middleware(['code.failures', 'event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
         Route::get('comments', [PublicEventCommentController::class, 'index'])
             ->middleware('module.access:comments')->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
