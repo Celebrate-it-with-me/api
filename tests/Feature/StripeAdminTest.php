@@ -288,6 +288,6 @@ it('reports no invoice on the status endpoint until one exists, with the failure
     $p = admPurchase(['user_id' => $owner->id, 'status' => 'failed', 'failure_code' => 'expired', 'paid_at' => null]);
     EventUserRole::create(['event_id' => $p->event_id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
 
-    $this->actingAsReauthed($owner)->getJson("/api/v1/app/event/{$p->event_id}/purchase/status?purchase={$p->id}")
+    $this->actingAs($owner, 'sanctum')->getJson("/api/v1/app/event/{$p->event_id}/purchase/status?purchase={$p->id}")
         ->assertOk()->assertJsonPath('data.invoiceId', null)->assertJsonPath('data.failureCode', 'expired')->assertJsonPath('data.status', 'failed');
 });

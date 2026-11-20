@@ -53,7 +53,7 @@ describe('app: sending a request', function () {
         $user = User::factory()->create();
         $event = supportEventFor($user);
 
-        $res = $this->actingAsReauthed($user)->postJson('/api/v1/app/support', [
+        $res = $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', [
             'message' => 'No puedo subir fotos',
             'eventId' => $event->id,
             'context' => ['screen' => 'Recuerdos', 'route' => '/events/1/memories', 'plan' => 'basic', 'language' => 'es'],
@@ -81,26 +81,26 @@ describe('app: sending a request', function () {
 
     it('validates message length', function () {
         $user = User::factory()->create();
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'hey'])->assertUnprocessable()->assertJsonValidationErrors('message');
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => str_repeat('a', 2001)])->assertUnprocessable();
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => str_repeat('a', 2000)])->assertCreated();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'hey'])->assertUnprocessable()->assertJsonValidationErrors('message');
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => str_repeat('a', 2001)])->assertUnprocessable();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => str_repeat('a', 2000)])->assertCreated();
     });
 
     it('only accepts an event the user belongs to', function () {
         $user = User::factory()->create();
         $foreign = supportEventFor(User::factory()->create());
 
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda con mi evento', 'eventId' => $foreign->id])
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda con mi evento', 'eventId' => $foreign->id])
             ->assertUnprocessable()->assertJsonValidationErrors('eventId');
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda con mi evento', 'eventId' => 999999])->assertUnprocessable();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda con mi evento', 'eventId' => 999999])->assertUnprocessable();
 
         $mine = supportEventFor($user, 'viewer');
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda con mi evento', 'eventId' => $mine->id])->assertCreated();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda con mi evento', 'eventId' => $mine->id])->assertCreated();
     });
 
     it('validates the context: allowed keys, value and total size', function () {
         $user = User::factory()->create();
-        $post = fn (array $ctx) => $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor', 'context' => $ctx]);
+        $post = fn (array $ctx) => $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor', 'context' => $ctx]);
 
         $post(['evil' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('context');
         $post(['screen' => ['nested' => 1]])->assertUnprocessable();
@@ -112,16 +112,16 @@ describe('app: sending a request', function () {
     it('rate limits to 5 per minute', function () {
         $user = User::factory()->create();
         foreach (range(1, 5) as $_) {
-            $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor'])->assertCreated();
+            $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor'])->assertCreated();
         }
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor'])->assertStatus(429);
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor'])->assertStatus(429);
     });
 
     it('still saves the request if the mail fails', function () {
         Mail::shouldReceive('to')->andThrow(new RuntimeException('smtp down'));
         $user = User::factory()->create();
 
-        $this->actingAsReauthed($user)->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor'])->assertCreated();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/app/support', ['message' => 'Ayuda por favor'])->assertCreated();
         expect(SupportRequest::count())->toBe(1);
     });
 
@@ -131,7 +131,7 @@ describe('app: sending a request', function () {
         makeRequest($a, ['message' => 'Mía uno']);
         makeRequest($b, ['message' => 'De otra']);
 
-        $res = $this->actingAsReauthed($a)->getJson('/api/v1/app/support')->assertOk();
+        $res = $this->actingAs($a, 'sanctum')->getJson('/api/v1/app/support')->assertOk();
         expect($res->json('data'))->toHaveCount(1)
             ->and($res->json('data.0.message'))->toBe('Mía uno')
             ->and($res->json('data.0'))->not->toHaveKey('notes');

@@ -200,7 +200,7 @@ describe('what guests and organizers see', function () {
         expect(collect($public->json('data'))->pluck('id')->all())->toBe([$ok->id]);
 
         $owner = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
-        $ids = collect($this->actingAsReauthed($owner)->getJson("/api/v1/app/event/{$event->id}/comments/paginated")->assertOk()->json('data'))->pluck('id')->all();
+        $ids = collect($this->actingAs($owner, 'sanctum')->getJson("/api/v1/app/event/{$event->id}/comments/paginated")->assertOk()->json('data'))->pluck('id')->all();
         expect($ids)->toContain($ok->id, $byOrganizer->id)->not->toContain($bad->id);
         $service = app(EventCommentService::class);
         expect($service->listForEvent($event)->pluck('id')->all())->not->toContain($bad->id);
@@ -212,7 +212,7 @@ describe('what guests and organizers see', function () {
         $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/comment/{$c->id}/hide", ['reason' => 'spam links'])->assertOk();
         $ownerUser = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
 
-        $this->actingAsReauthed($ownerUser)->patchJson("/api/v1/app/event/{$event->id}/comments/{$c->id}/status", ['status' => 'visible'])->assertForbidden();
+        $this->actingAs($ownerUser, 'sanctum')->patchJson("/api/v1/app/event/{$event->id}/comments/{$c->id}/status", ['status' => 'visible'])->assertForbidden();
         expect($c->fresh()->status->value)->toBe('hidden');
     });
 
@@ -226,7 +226,7 @@ describe('what guests and organizers see', function () {
             ->and($event->fresh()->sweetMemoriesImages()->count())->toBe(1);
 
         $ownerUser = User::find(EventUserRole::where('event_id', $event->id)->value('user_id'));
-        $res = $this->actingAsReauthed($ownerUser)->getJson("/api/v1/app/event/{$event->id}/sweet-memories-images")->assertOk();
+        $res = $this->actingAs($ownerUser, 'sanctum')->getJson("/api/v1/app/event/{$event->id}/sweet-memories-images")->assertOk();
         expect(collect($res->json('data'))->pluck('id')->all())->toBe([$ok->id]);
         // Restoring brings it back.
         $this->actingAsReauthed(modStaff('support'))->postJson("/api/v1/admin/moderation/image/{$bad->id}/restore")->assertOk();

@@ -166,6 +166,7 @@ return [
         'format' => 'formato',
         'guest.menuItemIds' => 'platos del invitado',
         'guest.menuItemIds.*' => 'plato del invitado',
+        'guest.menuSelected' => 'menú del invitado',
         'include_pending' => 'incluir pendientes',
         'q' => 'búsqueda',
         'checklist' => 'lista de comprobación',

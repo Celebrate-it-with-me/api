@@ -200,6 +200,7 @@ return [
         'format' => 'format',
         'guest.menuItemIds' => 'guest dishes',
         'guest.menuItemIds.*' => 'guest dish',
+        'guest.menuSelected' => 'guest menu',
         'include_pending' => 'include pending',
         'q' => 'search',
         'checklist' => 'checklist',

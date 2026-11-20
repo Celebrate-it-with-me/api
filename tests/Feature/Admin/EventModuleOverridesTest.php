@@ -179,7 +179,7 @@ describe('what the app sees', function () {
     it('shows a gifted module as active and a hand-locked one as locked, and goes back when removed', function () {
         [$event, $owner] = moEvent();
         $staff = moStaff('support');
-        $modules = fn () => collect($this->actingAsReauthed($owner)->getJson("/api/v1/app/event/{$event->id}")->assertOk()->json('data.modules'))->pluck('state', 'key');
+        $modules = fn () => collect($this->actingAs($owner, 'sanctum')->getJson("/api/v1/app/event/{$event->id}")->assertOk()->json('data.modules'))->pluck('state', 'key');
 
         expect($modules()->all())->toMatchArray(['menus' => 'locked', 'budget' => 'active']);
 
@@ -188,7 +188,7 @@ describe('what the app sees', function () {
         expect($modules()->all())->toMatchArray(['menus' => 'active', 'budget' => 'locked', 'rsvp' => 'active', 'seating' => 'locked']);
 
         // The event list and the admin sheet agree.
-        $list = $this->actingAsReauthed($owner)->getJson('/api/v1/app/events')->assertOk()->json('data.events.0.modules');
+        $list = $this->actingAs($owner, 'sanctum')->getJson('/api/v1/app/events')->assertOk()->json('data.events.0.modules');
         expect(collect($list)->pluck('state', 'key')->all())->toMatchArray(['menus' => 'active', 'budget' => 'locked']);
         $sheet = $this->actingAsReauthed($staff)->getJson("/api/v1/admin/events/{$event->id}")->assertOk()->json('data.modules');
         expect(collect($sheet)->pluck('state', 'key')->all())->toMatchArray(['menus' => 'active', 'budget' => 'locked']);
