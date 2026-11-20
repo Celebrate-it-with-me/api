@@ -254,3 +254,29 @@ describe('limits on POST access/verify', function () {
         $this->getJson(GATE_URL . '/nada/access')->assertStatus(429);
     });
 });
+
+describe('CSRF on public POSTs from a stateful SPA domain', function () {
+    // The middleware skips CSRF when the environment is "testing"; pretend to be local so it really runs.
+    beforeEach(function () {
+        $this->app->detectEnvironment(fn () => 'local');
+        $this->statefulHeaders = ['Origin' => 'http://dev.app.cwm.com', 'Referer' => 'http://dev.app.cwm.com/i/xv-de-valentina'];
+    });
+
+    it('does not answer 419 to POST access/verify sent from a stateful domain without a CSRF token', function () {
+        gateEvent();
+
+        $this->postJson(GATE_URL . '/xv-de-valentina/access/verify', ['code' => 'NOPE00'], $this->statefulHeaders)->assertStatus(422);
+        $this->postJson(GATE_URL . '/xv-de-valentina/access/verify', ['code' => 'AB1234'], $this->statefulHeaders)->assertOk();
+    });
+
+    it('keeps answering 429 to a stateful domain when the limits are exceeded', function () {
+        gateEvent();
+
+        foreach (range(1, 5) as $i) {
+            $this->postJson(GATE_URL . "/slug-$i/access/verify", ['code' => 'NOPE00'], $this->statefulHeaders)->assertStatus(422);
+        }
+
+        $this->postJson(GATE_URL . '/slug-6/access/verify', ['code' => 'NOPE00'], $this->statefulHeaders)
+            ->assertStatus(429)->assertJsonPath('code', 'too_many_attempts');
+    });
+});
