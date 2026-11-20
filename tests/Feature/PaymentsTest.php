@@ -273,3 +273,21 @@ describe('launch offer', function () {
             ->and(Coupon::where('code', LaunchCouponSeeder::CODE)->first())->max_uses->toBe(250)->is_active->toBeFalse();
     });
 });
+
+describe('minimum charge', function () {
+    it('rejects a final amount between 1 and 49 cents and accepts 0 and 50 or more', function (int $value, bool $ok) {
+        [$event, $owner] = ownedEvent();
+        Coupon::create(['code' => 'EDGE', 'kind' => 'fixed_price', 'value' => $value]);
+        $quote = "/api/v1/app/event/{$event->id}/purchase/quote?code=EDGE";
+        $checkout = "/api/v1/app/event/{$event->id}/purchase/checkout";
+
+        if ($ok) {
+            $this->actingAs($owner)->getJson($quote)->assertOk()->assertJsonPath('data.amountCents', $value);
+            $this->actingAs($owner)->postJson($checkout, ['code' => 'EDGE'])->assertCreated();
+        } else {
+            $this->actingAs($owner)->getJson($quote)->assertStatus(422)->assertJsonPath('errors.code.0', 'amount_below_minimum');
+            $this->actingAs($owner)->postJson($checkout, ['code' => 'EDGE'])->assertStatus(422)->assertJsonPath('errors.code.0', 'amount_below_minimum');
+            expect(EventPurchase::count())->toBe(0);
+        }
+    })->with([[0, true], [1, false], [49, false], [50, true], [51, true]]);
+});

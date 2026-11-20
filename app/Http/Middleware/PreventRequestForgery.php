@@ -25,5 +25,9 @@ class PreventRequestForgery extends Middleware
         'api/v1/app/invitation/*/*/songs',
         'api/v1/app/invitation/*/*/songs/*',
         'api/v1/app/invitation/*/*/songs/*/vote',
+
+        // Public collaborator-invite decline: authenticated by the token in the URL, no session involved.
+        // (Accept is NOT exempt: it needs a logged-in user.)
+        'api/v1/app/event/*/collaborators/invite/*/decline',
     ];
 }
