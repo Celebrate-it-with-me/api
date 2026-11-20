@@ -164,3 +164,33 @@ describe('loading the list', function () {
         $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(unnamed: 10))->assertSuccessful();
     });
 });
+
+describe('companions per request', function () {
+    it('allows exactly 50 unnamed and 50 named companions, and creates them', function () {
+        [$event, $owner] = limitedEvent('premium');
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(named: 50, unnamed: 50))->assertSuccessful();
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(101);
+    });
+
+    it('refuses 51 unnamed companions and creates nobody', function () {
+        [$event, $owner] = limitedEvent('premium');
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(unnamed: 51))
+            ->assertStatus(422)->assertJsonValidationErrors('unnamedCompanions');
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(unnamed: 1000000))
+            ->assertStatus(422)->assertJsonValidationErrors('unnamedCompanions');
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(0);
+    });
+
+    it('refuses 51 named companions and creates nobody', function () {
+        [$event, $owner] = limitedEvent('premium');
+
+        $this->actingAs($owner)->postJson("/api/v1/app/event/{$event->id}/guests", guestPayload(named: 51))
+            ->assertStatus(422)->assertJsonValidationErrors('namedCompanions');
+
+        expect(Guest::where('event_id', $event->id)->count())->toBe(0);
+    });
+});
