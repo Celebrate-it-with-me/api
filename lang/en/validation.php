@@ -268,6 +268,7 @@ return [
         'companions.*.rsvp_status' => 'companion response',
         'confirmEmail' => 'confirmation email',
         'confirmationDeadline' => 'confirmation deadline',
+        'confirm_large' => 'large send confirmation',
         'context' => 'context',
         'context.*' => 'context',
         'country' => 'country',
