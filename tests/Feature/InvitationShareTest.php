@@ -210,6 +210,26 @@ it('falls back to the brand image when the stored photo has vanished', function 
     $this->get('/og/xv-de-valentina/AB1234')->assertOk()->assertSee('og:image" content="https://app.quinvite.test/og-default.png"', false);
 });
 
+it('does not decode a photo that failed again on every visit: the failure is remembered for ten minutes', function () {
+    [$event] = shareEvent();
+    $path = shareCover($event);
+    $disk = Storage::disk('event-media');
+    $good = $disk->get($path);
+    $disk->delete(CoverPhoto::sharePath($path));
+    $disk->put($path, 'not an image');
+
+    $this->get('/og/xv-de-valentina/AB1234')->assertOk()->assertSee('og-default.png', false);
+
+    // The photo is fixed, but inside the interval nothing is retried: still the brand image and no derived file.
+    $disk->put($path, $good);
+    $this->get('/og/xv-de-valentina/AB1234')->assertOk()->assertSee('og-default.png', false);
+    expect($disk->exists(CoverPhoto::sharePath($path)))->toBeFalse();
+
+    $this->travel(11)->minutes();
+    $this->get('/og/xv-de-valentina/AB1234')->assertOk()->assertSee(CoverPhoto::sharePath($path), false);
+    expect($disk->exists(CoverPhoto::sharePath($path)))->toBeTrue();
+});
+
 it('never serves an upload that belongs to another event', function () {
     [$event] = shareEvent();
     $other = Events::factory()->create();

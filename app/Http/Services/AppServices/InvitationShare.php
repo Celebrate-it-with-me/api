@@ -7,6 +7,7 @@ use App\Models\EventLocation;
 use App\Models\Events;
 use App\Models\Guest;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -19,6 +20,9 @@ class InvitationShare
 {
     /** Longest guest name the title carries; longer ones are cut with an ellipsis. */
     public const NAME_LIMIT = 40;
+
+    /** How long a failed derivation of the preview image is remembered (no retry in between). */
+    public const FAILURE_TTL_SECONDS = 600;
 
     public function __construct(private readonly InvitationService $invitations, private readonly CoverPhoto $covers) {}
 
@@ -132,7 +136,7 @@ class InvitationShare
             // Only a photo of this event's own folder is ever served.
             $path = CoverPhoto::pathFor($value, $event->id);
             $focus = $this->coverSetting($event->template_config['sections'] ?? [], 'focus');
-            if ($path === null || ! $this->covers->makeShare($path, is_string($focus) ? $focus : null)) {
+            if ($path === null || ! $this->shareImageReady($path, is_string($focus) ? $focus : null)) {
                 return $brand;
             }
 
@@ -151,6 +155,25 @@ class InvitationShare
         }
 
         return $brand;
+    }
+
+    /**
+     * Whether the derived 1200x630 image exists, making it when it does not. A failure is remembered for
+     * FAILURE_TTL_SECONDS so a photo that cannot be decoded is not decoded again on every crawler visit.
+     */
+    private function shareImageReady(string $path, ?string $focus): bool
+    {
+        $marker = 'share-image-failed|' . sha1($path);
+
+        if (Cache::has($marker)) {
+            return false;
+        }
+        if ($this->covers->makeShare($path, $focus)) {
+            return true;
+        }
+        Cache::put($marker, true, self::FAILURE_TTL_SECONDS);
+
+        return false;
     }
 
     /** @param array<int, mixed> $sections */
