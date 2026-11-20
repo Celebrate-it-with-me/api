@@ -195,7 +195,7 @@ describe('gateway resolution', function () {
     });
 
     it('is checked by the production safety check', function () {
-        $base = ['app.debug' => false, 'session.secure' => true, 'sanctum.stateful' => ['app.quinvite.com'], 'services.whatsapp.driver' => 'meta', 'services.whatsapp.app_secret' => 's', 'services.whatsapp.verify_token' => 'v'];
+        $base = ['app.debug' => false, 'admin.require_two_factor_superadmin' => true, 'session.secure' => true, 'sanctum.stateful' => ['app.quinvite.com'], 'services.whatsapp.driver' => 'meta', 'services.whatsapp.app_secret' => 's', 'services.whatsapp.verify_token' => 'v'];
 
         config($base + ['services.stripe.secret' => 'sk_test_x', 'services.stripe.webhook_secret' => 'whsec_x']);
         expect(ProductionSafetyCheck::problems())->toContain('STRIPE_SECRET must be a live key (sk_live_ or rk_live_), not a test key.');
