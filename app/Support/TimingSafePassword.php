@@ -14,7 +14,16 @@ class TimingSafePassword
 
     public static function dummyHash(): string
     {
-        return self::$dummyHash ??= Hash::make('not-a-real-password');
+        if (self::$dummyHash === null) {
+            $hash = (string) Hash::make('not-a-real-password');
+            // A mocked Hash facade answers nothing: use it for this call but do not remember it.
+            if ($hash === '') {
+                return $hash;
+            }
+            self::$dummyHash = $hash;
+        }
+
+        return self::$dummyHash;
     }
 
     /** Hash::check against the account hash, or against the stand-in when there is none. Always runs one check. */
