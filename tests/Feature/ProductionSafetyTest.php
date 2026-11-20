@@ -252,3 +252,18 @@ it('prints the warnings in app:doctor and fails on them only with --strict', fun
     deployedConfig();
     $this->artisan('app:doctor --strict')->expectsOutputToContain('No warnings.')->assertSuccessful();
 });
+
+it('warns that local template packages live on the container disk', function () {
+    $this->app['env'] = 'production';
+    deployedConfig(['filesystems.disks.template-packages' => ['driver' => 'local', 'url' => 'https://x.test']]);
+
+    expect(ProductionSafetyCheck::warnings())->toBe(['TEMPLATE_PACKAGES_DRIVER is local: packages live on the container disk. Use r2.']);
+});
+
+it('app:doctor still fails in production on a blocking problem, whatever the warnings', function () {
+    $this->app['env'] = 'production';
+    deployedConfig();
+    config(['app.debug' => true]);
+
+    $this->artisan('app:doctor')->expectsOutputToContain('APP_DEBUG must be false.')->assertFailed();
+});

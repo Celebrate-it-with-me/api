@@ -1,9 +1,13 @@
 <?php
 
+use App\Support\Logging\RedactingFormatter;
 use App\Support\Logging\RedactSensitiveLogs;
 use App\Support\Logging\RedactSensitiveQuery;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Log;
+use Monolog\Formatter\LineFormatter;
+use Monolog\Level;
+use Monolog\LogRecord;
 
 function redactLogFile(): string
 {
@@ -59,4 +63,13 @@ it('taps every real channel', function () {
     foreach (['single', 'daily', 'stderr', 'syslog', 'errorlog', 'papertrail'] as $channel) {
         expect(config("logging.channels.$channel.tap"))->toBe([RedactSensitiveLogs::class], $channel);
     }
+});
+
+it('masks batches written by a handler too', function () {
+    $formatter = new RedactingFormatter(new LineFormatter);
+    $record = fn (string $m) => new LogRecord(new DateTimeImmutable, 'app', Level::Info, $m);
+
+    $batch = $formatter->formatBatch([$record('/a?token=ONE'), $record('/b?code=TWO')]);
+
+    expect($batch)->not->toContain('ONE')->not->toContain('TWO')->toContain('token=[redacted]');
 });
