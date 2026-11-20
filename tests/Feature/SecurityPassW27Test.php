@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Services\Payments\FakeGateway;
+use App\Http\Services\Payments\InvalidWebhookException;
+use App\Http\Services\Payments\PaymentGateway;
+use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -43,9 +46,9 @@ describe('payment webhook throttle (M-1)', function () {
     });
 
     it('rejects a malformed signature header with 400 before the HMAC is computed (P-1)', function () {
-        $gateway = Mockery::mock(\App\Http\Services\Payments\PaymentGateway::class);
+        $gateway = Mockery::mock(PaymentGateway::class);
         $gateway->shouldNotReceive('parseWebhook');
-        $this->mock(\App\Http\Services\Payments\PurchaseService::class, fn ($m) => $m->shouldReceive('gateway')->andReturn($gateway));
+        $this->mock(PurchaseService::class, fn ($m) => $m->shouldReceive('gateway')->andReturn($gateway));
 
         foreach (['bad', 'x', str_repeat('g', 64)] as $value) {
             $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $value], '{}')->assertStatus(400);
@@ -56,9 +59,9 @@ describe('payment webhook throttle (M-1)', function () {
     });
 
     it('lets a Stripe-shaped header through to the gateway (P-1)', function () {
-        $gateway = Mockery::mock(\App\Http\Services\Payments\PaymentGateway::class);
-        $gateway->shouldReceive('parseWebhook')->once()->andThrow(new \App\Http\Services\Payments\InvalidWebhookException('x'));
-        $this->mock(\App\Http\Services\Payments\PurchaseService::class, fn ($m) => $m->shouldReceive('gateway')->andReturn($gateway));
+        $gateway = Mockery::mock(PaymentGateway::class);
+        $gateway->shouldReceive('parseWebhook')->once()->andThrow(new InvalidWebhookException('x'));
+        $this->mock(PurchaseService::class, fn ($m) => $m->shouldReceive('gateway')->andReturn($gateway));
 
         $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_STRIPE_SIGNATURE' => 't=1700000000,v1=' . str_repeat('a', 64) . ',v0=' . str_repeat('b', 64)], '{}')
             ->assertStatus(400);
