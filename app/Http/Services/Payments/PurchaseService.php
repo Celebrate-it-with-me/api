@@ -27,6 +27,9 @@ class PurchaseService
 
     public const FULL_SLUG = 'premium';
 
+    /** Stripe refuses a charge below 50 cents; zero is fine (nothing is charged) and never reaches the provider. */
+    public const MIN_CHARGE_CENTS = 50;
+
     public function gateway(?string $name = null): PaymentGateway
     {
         $name ??= config('services.payments.gateway');
@@ -61,6 +64,7 @@ class PurchaseService
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
         $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
+        $this->assertChargeable($amount);
 
         return [
             'plan' => $plan->slug,
@@ -71,6 +75,14 @@ class PurchaseService
             'code' => $coupon?->code,
             'unlocked' => $this->isUnlocked($event),
         ];
+    }
+
+    /** A final amount between 1 and 49 cents cannot be charged: reject it clearly instead of failing at the provider. */
+    private function assertChargeable(int $amount): void
+    {
+        if ($amount > 0 && $amount < self::MIN_CHARGE_CENTS) {
+            throw ValidationException::withMessages(['code' => ['amount_below_minimum']]);
+        }
     }
 
     public function resolveCoupon(string $code): Coupon
@@ -122,6 +134,7 @@ class PurchaseService
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
         $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
+        $this->assertChargeable($amount);
         $gateway = $this->gateway();
 
         // Two simultaneous clicks (or two tabs) must not each open a session.
