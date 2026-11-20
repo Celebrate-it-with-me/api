@@ -19,5 +19,11 @@ class PreventRequestForgery extends Middleware
 
         // Public code gate of a link without guest code: no session, nobody is logged in; the 5/min, 30/h and per-slug limits are the protection.
         'api/v1/app/invitation/*/access/verify',
+
+        // Public guest writes of the invitation (comments, suggested songs): identified only by slug + guest code, no session.
+        'api/v1/app/invitation/*/*/comments',
+        'api/v1/app/invitation/*/*/songs',
+        'api/v1/app/invitation/*/*/songs/*',
+        'api/v1/app/invitation/*/*/songs/*/vote',
     ];
 }

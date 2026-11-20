@@ -280,3 +280,23 @@ describe('CSRF on public POSTs from a stateful SPA domain', function () {
             ->assertStatus(429)->assertJsonPath('code', 'too_many_attempts');
     });
 });
+
+describe('CSRF on the other public invitation writes from a stateful SPA domain', function () {
+    beforeEach(function () {
+        $this->app->detectEnvironment(fn () => 'local');
+        $this->statefulHeaders = ['Origin' => 'http://dev.app.cwm.com', 'Referer' => 'http://dev.app.cwm.com/i/xv-de-valentina/AB1234'];
+        gateEvent();
+    });
+
+    // Whatever the module or the body says (403, 404, 422...), the answer must not be the CSRF 419.
+    it('does not answer 419 to the guest writes identified only by slug and code', function (string $method, string $path) {
+        $status = $this->json($method, GATE_URL . '/xv-de-valentina/AB1234/' . $path, [], $this->statefulHeaders)->getStatusCode();
+
+        expect($status)->not->toBe(419);
+    })->with([
+        'comments' => ['POST', 'comments'],
+        'songs store' => ['POST', 'songs'],
+        'songs destroy' => ['DELETE', 'songs/1'],
+        'songs vote' => ['POST', 'songs/1/vote'],
+    ]);
+});
