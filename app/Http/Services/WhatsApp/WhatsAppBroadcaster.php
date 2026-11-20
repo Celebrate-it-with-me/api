@@ -50,7 +50,8 @@ class WhatsAppBroadcaster
             throw ValidationException::withMessages(['audience' => ['no_recipients']]);
         }
         if ($guests->count() > self::MAX_BATCH) {
-            throw ValidationException::withMessages(['guest_ids' => ['too_many']]);
+            // F-9: the error belongs to the field the caller actually sent; `guest_ids too_many` stays for explicit lists.
+            throw ValidationException::withMessages($audience === 'selected' ? ['guest_ids' => ['too_many']] : ['audience' => ['too_many_recipients']]);
         }
 
         // Every locale in play needs its template ready before anything is queued.

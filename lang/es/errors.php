@@ -26,6 +26,7 @@ return [
         'generate_qr_first' => 'Primero genera el código QR.',
         'code_mismatch' => 'El código no es correcto. Revisa la hora de tu teléfono e inténtalo de nuevo.',
     ],
+    'not_found' => 'No encontrado.',
     'too_many_attempts' => 'Demasiados intentos. Inténtalo de nuevo más tarde.',
     'invitation_access' => [
         'invalid_code' => 'Ese código no es válido. Revísalo o contacta a quien te invitó.',

@@ -126,7 +126,8 @@ class AdminPaymentController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:64', Rule::unique('coupons', 'code')],
             'kind' => ['required', Rule::in(['fixed_price', 'percent_off'])],
-            'value' => ['required', 'integer', 'min:0'],
+            // F-2: a percentage is 1-100 (never above), a fixed price is zero or more cents.
+            'value' => ['required', 'integer', 'min:0', 'max:2147483647', Rule::when($request->input('kind') === 'percent_off', ['between:1,100'])],
             'isFounder' => ['boolean'],
             'maxUses' => ['nullable', 'integer', 'min:1'],
             'expiresAt' => ['nullable', 'date'],
