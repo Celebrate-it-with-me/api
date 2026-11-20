@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Http\Services\WhatsApp\WhatsAppService;
+
 /**
  * What must not be true on a production server. Run on boot (web requests only) and by `php artisan app:doctor`, so a
  * copied development `.env` fails loudly instead of running with debug pages, plain cookies or the fake gateway.
@@ -12,6 +14,11 @@ class ProductionSafetyCheck
     public static function problems(): array
     {
         $problems = [];
+
+        // The checks above only bite with APP_ENV=production (P-4): a public URL under another name runs unprotected.
+        if (! app()->environment('production', 'staging') && ! self::isLocalUrl((string) config('app.url'))) {
+            $problems[] = 'APP_ENV must be "production" (or "staging") when APP_URL is not a local address.';
+        }
 
         if (config('app.debug')) {
             $problems[] = 'APP_DEBUG must be false.';
@@ -55,10 +62,13 @@ class ProductionSafetyCheck
         }
 
         // WhatsApp (audit W-10): the fake driver "sends" nothing; Meta without its secrets leaves the webhook answering 403.
-        $driver = config('services.whatsapp.driver');
+        // Strict (P-3): the service runs as `fake` for ANYTHING but `meta`, so anything else must be reported here.
+        $driver = WhatsAppService::normalizeDriver(config('services.whatsapp.driver'));
         if ($driver === 'fake') {
             $problems[] = 'WHATSAPP_DRIVER must not be "fake".';
-        } elseif ($driver === 'meta') {
+        } elseif ($driver !== 'meta') {
+            $problems[] = 'WHATSAPP_DRIVER must be "meta" (any other value runs as the fake driver).';
+        } else {
             foreach (['app_secret' => 'WHATSAPP_APP_SECRET', 'verify_token' => 'WHATSAPP_VERIFY_TOKEN'] as $key => $env) {
                 if (blank(config("services.whatsapp.$key"))) {
                     $problems[] = "$env must be set.";
@@ -67,5 +77,13 @@ class ProductionSafetyCheck
         }
 
         return $problems;
+    }
+
+    /** Development hosts: localhost, loopback, .test/.localhost/.local and the project's own *.cwm.com. */
+    public static function isLocalUrl(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return $host === '' || (bool) preg_match('/^(localhost|127\.|\[?::1\]?$)|\.(test|localhost|local)$|(^|\.)cwm\.com$/', $host);
     }
 }
