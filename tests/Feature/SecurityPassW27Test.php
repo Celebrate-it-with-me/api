@@ -1,16 +1,17 @@
 <?php
 
+use App\Http\Services\Payments\FakeGateway;
 use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
 use App\Models\EventUserRole;
-use Spatie\Permission\Models\Role;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -36,7 +37,7 @@ describe('payment webhook throttle (M-1)', function () {
         }
 
         $raw = json_encode(['type' => 'unknown.event']);
-        $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => \App\Http\Services\Payments\FakeGateway::sign($raw)], $raw)
+        $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => FakeGateway::sign($raw)], $raw)
             ->assertOk();
     });
 
