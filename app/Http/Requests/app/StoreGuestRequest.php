@@ -4,6 +4,7 @@ namespace App\Http\Requests\app;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreGuestRequest extends FormRequest
 {
@@ -31,6 +32,8 @@ class StoreGuestRequest extends FormRequest
             'guest.email' => ['nullable', 'email', 'max:255'],
             'guest.phone' => ['nullable', 'string', 'max:20'],
             'guest.gender' => ['nullable', 'string', 'in:male,female,other'],
+            // A menu of THIS event only: an id of another event's menu must not be assignable.
+            'guest.menuSelected' => ['nullable', 'integer', Rule::exists('menus', 'id')->where('event_id', $this->eventId())],
 
             'namedCompanions' => ['nullable', 'array', 'max:' . self::MAX_COMPANIONS],
             'namedCompanions.*.name' => ['required_with:namedCompanions', 'string', 'max:255'],
@@ -45,5 +48,12 @@ class StoreGuestRequest extends FormRequest
             'preferences.allergies' => ['nullable', 'string', 'max:255'],
             'preferences.notes' => ['nullable', 'string'],
         ];
+    }
+
+    private function eventId(): mixed
+    {
+        $event = $this->route('event');
+
+        return is_object($event) ? $event->getKey() : $event;
     }
 }
