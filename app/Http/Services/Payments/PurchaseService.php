@@ -34,9 +34,10 @@ class PurchaseService
     {
         $name ??= config('services.payments.gateway');
 
-        // The stand-in gateway confirms with a locally signed webhook: never on a production server.
-        if ($name === 'fake' && app()->environment('production')) {
-            throw new \RuntimeException('The fake payment gateway cannot be used in production.');
+        // The stand-in gateway activates the plan without a payment: only on a developer machine or in tests, never
+        // by default in another environment (P-4: a public server with a wrong APP_ENV must not hand out plans).
+        if ($name === 'fake' && ! app()->environment('local', 'testing')) {
+            throw new \RuntimeException('The fake payment gateway can only be used in local and testing environments.');
         }
 
         // An unknown name is a configuration error: it must never fall back to the stand-in in silence.
@@ -281,6 +282,9 @@ class PurchaseService
     /** Record a payment made outside the gateway (Zelle, cash). */
     public function recordManual(Events $event, User $buyer, User $admin, int $amountCents, ?string $notes): EventPurchase
     {
+        if ($this->isUnlocked($event->refresh())) {
+            throw ValidationException::withMessages(['event' => 'This event is already unlocked: nothing to record.']);
+        }
         $plan = $this->fullPlan();
 
         $purchase = EventPurchase::create([

@@ -172,14 +172,31 @@ describe('resend from My purchases', function () {
         $this->actingAs($me)->putJson(BP_URL, validProfile())->assertOk();
         Mail::fake();
 
-        $this->actingAs($me)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'billing'])->assertOk()->assertJsonPath('data.sentTo', 'facturas@example.com');
+        // The billing address is free text: it only receives the copy when it is the account's verified address (P-11).
+        $this->actingAs($me)->putJson(BP_URL, validProfile(['billingEmail' => strtoupper($me->email)]))->assertOk();
+        $this->actingAs($me)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'billing'])->assertOk()->assertJsonPath('data.sentTo', strtoupper($me->email));
         $this->actingAs($me)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'account'])->assertOk()->assertJsonPath('data.sentTo', $me->email);
         Mail::assertSent(InvoiceMail::class, 2);
+        Mail::assertNotSent(InvoiceMail::class, fn ($m) => $m->hasTo('facturas@example.com'));
 
         // Free-form addresses are not accepted.
         $this->actingAs($me)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'evil@example.com'])->assertUnprocessable();
         $this->actingAs($me)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'account', 'email' => 'evil@example.com'])->assertOk()->assertJsonPath('data.sentTo', $me->email);
         Mail::assertNotSent(InvoiceMail::class, fn ($m) => $m->hasTo('evil@example.com'));
+    });
+
+    it('refuses a billing address that is not her verified account address, and an unverified account (P-11)', function () {
+        $me = User::factory()->create();
+        $invoice = billingInvoice($me);
+        $this->actingAs($me)->putJson(BP_URL, validProfile())->assertOk(); // facturas@example.com
+        Mail::fake();
+
+        $this->actingAs($me)->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'billing'])
+            ->assertUnprocessable()->assertJsonValidationErrors('to');
+
+        $me->forceFill(['email_verified_at' => null])->save();
+        $this->actingAs($me->fresh())->postJson("/api/v1/app/account/invoices/{$invoice->id}/resend", ['to' => 'account'])->assertUnprocessable();
+        Mail::assertNothingSent();
     });
 
     it('asks for a billing email first when she has none', function () {

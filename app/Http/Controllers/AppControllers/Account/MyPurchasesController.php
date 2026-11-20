@@ -90,6 +90,11 @@ class MyPurchasesController extends Controller
         if (! $email) {
             throw ValidationException::withMessages(['to' => ['no_billing_email']]);
         }
+        // A fiscal document goes only to an address the account has verified (P-11): the billing address is free text
+        // that anyone can type, so it counts only when it IS the verified account address.
+        if ($user->email_verified_at === null || strcasecmp(trim($email), trim((string) $user->email)) !== 0) {
+            throw ValidationException::withMessages(['to' => ['billing_email_not_verified']]);
+        }
 
         $this->invoices->sendCopy($doc, $email);
 

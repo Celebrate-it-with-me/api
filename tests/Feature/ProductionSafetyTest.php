@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Services\Payments\FakeGateway;
+use App\Http\Services\Payments\PurchaseService;
+use App\Http\Services\WhatsApp\WhatsAppService;
 use App\Models\User;
 use App\Support\ProductionSafetyCheck;
 use Database\Seeders\AdminUserSeeder;
@@ -95,4 +98,56 @@ it('defaults ADMIN_REQUIRE_2FA_SUPERADMIN to true only when APP_ENV is productio
             }
         }
     }
+});
+
+it('flags a WhatsApp driver that is not literally meta, because the service would run as fake (P-3)', function () {
+    $base = ['app.debug' => false, 'admin.require_two_factor_superadmin' => true, 'services.payments.gateway' => 'stripe', 'services.stripe.secret' => 'rk_live_x', 'services.stripe.webhook_secret' => 'x', 'session.secure' => true,
+        'sanctum.stateful' => ['app.quinvite.com'], 'services.whatsapp.app_secret' => 's', 'services.whatsapp.verify_token' => 'v'];
+
+    foreach (['twilio', '', null, 'metaa'] as $driver) {
+        config($base + ['services.whatsapp.driver' => $driver]);
+        expect(ProductionSafetyCheck::problems())->toContain('WHATSAPP_DRIVER must be "meta" (any other value runs as the fake driver).');
+    }
+
+    // "Meta " is read the same way by the service and by the check: it runs as meta and passes.
+    config($base + ['services.whatsapp.driver' => ' Meta ']);
+    expect(app(WhatsAppService::class)->driverName())->toBe('meta')
+        ->and(ProductionSafetyCheck::problems())->toBe([]);
+});
+
+it('keeps the strict gateway names: only stripe or manual pass in production (P-3)', function () {
+    foreach (['Stripe', ' stripe', '', null, 'paddle'] as $gateway) {
+        config(['services.payments.gateway' => $gateway]);
+        expect(ProductionSafetyCheck::problems())->toContain('PAYMENTS_GATEWAY must be "stripe" (or "manual").');
+    }
+});
+
+it('warns when APP_URL is public and APP_ENV is neither production nor staging (P-4)', function () {
+    $message = 'APP_ENV must be "production" (or "staging") when APP_URL is not a local address.';
+
+    config(['app.url' => 'https://api.quinvite.com']);
+    expect(ProductionSafetyCheck::problems())->toContain($message);
+
+    foreach (['production', 'staging'] as $env) {
+        $this->app['env'] = $env;
+        expect(ProductionSafetyCheck::problems())->not->toContain($message);
+    }
+
+    $this->app['env'] = 'local';
+    foreach (['http://localhost', 'http://127.0.0.1:8000', 'http://dev.api.cwm.com', 'http://app.test', 'http://[::1]'] as $url) {
+        config(['app.url' => $url]);
+        expect(ProductionSafetyCheck::problems())->not->toContain($message);
+    }
+});
+
+it('refuses the fake payment gateway outside local and testing (P-4)', function () {
+    $purchases = app(PurchaseService::class);
+    expect($purchases->gateway('fake'))->toBeInstanceOf(FakeGateway::class);
+
+    foreach (['staging', 'production', 'development'] as $env) {
+        $this->app['env'] = $env;
+        expect(fn () => $purchases->gateway('fake'))->toThrow(RuntimeException::class);
+    }
+    $this->app['env'] = 'local';
+    expect($purchases->gateway('fake'))->toBeInstanceOf(FakeGateway::class);
 });

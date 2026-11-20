@@ -102,7 +102,7 @@ Route::prefix('template')->name('template.')->group(function () {
 });
 
 // Authentication Routes
-Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle.unsigned:payments-webhook')
+Route::post('payments/webhook', [PurchaseController::class, 'webhook'])->middleware('throttle.unsigned:payments-webhook,payments-webhook-signed,256')
     // The group's per-IP `api` limiter would starve Stripe behind a shared balancer IP just the same.
     ->withoutMiddleware(ThrottleRequests::class . ':api')->name('payments.webhook');
 

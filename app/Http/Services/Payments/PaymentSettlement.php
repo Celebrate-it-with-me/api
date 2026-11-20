@@ -6,6 +6,7 @@ use App\Http\Services\Invoices\InvoiceService;
 use App\Jobs\DeliverCreditNoteEmail;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
+use App\Models\Events;
 use App\Models\PaymentEvent;
 use App\Support\InvitationCache;
 use Illuminate\Support\Facades\Cache;
@@ -124,14 +125,21 @@ class PaymentSettlement
             return 'ignored'; // already applied: a repeat must not count twice
         }
 
-        // What was charged must be what was asked for. Answered 200 anyway: a retry could never fix it.
-        if (($amount !== null && $amount !== (int) $purchase->amount_cents)
+        // What was charged must be what was asked for. Answered 200 anyway: a retry could never fix it. A real provider
+        // event without amount or currency (P-7) proves nothing: only the stand-in gateway may omit them.
+        $unproven = $purchase->gateway !== 'fake' && ($amount === null || $currency === null);
+        if ($unproven
+            || ($amount !== null && $amount !== (int) $purchase->amount_cents)
             || ($currency !== null && strtolower($currency) !== strtolower((string) $purchase->currency))) {
             $purchase->update(['needs_review' => true, 'failure_code' => 'amount_mismatch', 'gateway_payment_id' => $paymentId ?? $purchase->gateway_payment_id]);
             Log::warning('Payment amount does not match the purchase', ['purchase_id' => $purchase->id]);
 
             return 'mismatch';
         }
+
+        // Two purchases of one event can be settled at the same moment, each under the lock of its OWN row. The event row
+        // is the shared one: whoever holds it decides, the other waits and then sees the first as paid (P-6).
+        Events::query()->whereKey($purchase->event_id)->lockForUpdate()->first();
 
         // The event is already paid for by another purchase: take the money back at once, do not invoice twice.
         $other = EventPurchase::query()->where('event_id', $purchase->event_id)->where('status', 'paid')->whereKeyNot($purchase->id)->exists();
