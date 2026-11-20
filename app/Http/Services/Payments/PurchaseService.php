@@ -282,6 +282,9 @@ class PurchaseService
     /** Record a payment made outside the gateway (Zelle, cash). */
     public function recordManual(Events $event, User $buyer, User $admin, int $amountCents, ?string $notes): EventPurchase
     {
+        if ($this->isUnlocked($event->refresh())) {
+            throw ValidationException::withMessages(['event' => 'This event is already unlocked: nothing to record.']);
+        }
         $plan = $this->fullPlan();
 
         $purchase = EventPurchase::create([
