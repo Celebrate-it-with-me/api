@@ -94,7 +94,7 @@ class AuthenticationController extends Controller
      */
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $user = User::query()->where('email', $request->input('email'))->first();
+        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower((string) $request->input('email'))])->first();
 
         // At most 3 emails per hour to one address: the answer stays the same so it does not reveal anything.
         $limitKey = 'app-forgot:' . Str::lower((string) $request->input('email'));
@@ -188,7 +188,7 @@ class AuthenticationController extends Controller
 
         $user = User::query()
             ->with(['lastLoginSession', 'activeEvent'])
-            ->where('email', $request->input('email'))
+            ->whereRaw('lower(email) = ?', [mb_strtolower((string) $request->input('email'))])
             ->first();
 
         // Per account and address, on top of the per-IP limit of the API: a botnet cannot guess one password.

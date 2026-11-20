@@ -100,3 +100,34 @@ it('only reveals an invitation through its own event (S-08)', function () {
     $this->getJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->token}")->assertOk();
     $this->getJson("/api/v1/app/event/{$other->id}/collaborators/invite/{$inv->token}")->assertStatus(422);
 });
+
+it('refuses to accept an invitation from an account whose email is not verified (hijack by sign-up)', function () {
+    [$event, $owner] = collabEvent();
+    $squatter = User::factory()->unverified()->create(['email' => 'guy@example.com']);
+    $inv = collabInvite($event, $owner);
+
+    $this->actingAs($squatter)->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept")
+        ->assertForbidden()->assertJsonPath('code', 'email_not_verified');
+
+    expect($inv->fresh()->status)->toBe('pending')
+        ->and(EventUserRole::where('event_id', $event->id)->where('user_id', $squatter->id)->exists())->toBeFalse();
+});
+
+it('compares the invitation email without case', function () {
+    [$event, $owner] = collabEvent();
+    $guy = User::factory()->create(['email' => 'Guy@Example.com']);
+    $inv = collabInvite($event, $owner);
+
+    $this->actingAs($guy)->postJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept")->assertOk();
+});
+
+it('checks the link token when the client sends it', function () {
+    [$event, $owner] = collabEvent();
+    $guy = User::factory()->create(['email' => 'guy@example.com']);
+    $inv = collabInvite($event, $owner);
+    $url = "/api/v1/app/event/{$event->id}/collaborators/invite/{$inv->id}/accept";
+
+    $this->actingAs($guy)->postJson($url, ['token' => 'wrong'])->assertNotFound();
+    $this->actingAs($guy)->postJson($url, ['token' => ['x']])->assertNotFound();
+    $this->actingAs($guy)->postJson($url, ['token' => $inv->token])->assertOk();
+});
