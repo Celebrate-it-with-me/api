@@ -54,7 +54,7 @@ function blkSetup($test): array
         'event_plan_id' => EventPlan::orderBy('id')->value('id'),
     ]);
     app('auth')->forgetGuards();
-    $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $test->adminBearer($staff)])
+    $imp = $test->postJson("/api/v1/admin/users/{$owner->id}/impersonate", ['reason' => 'Auditar bloqueos'], ['Authorization' => 'Bearer ' . $test->adminBearer($staff, true)])
         ->assertCreated()->json('token');
 
     return [$owner, $event, $imp, $owner->createToken('normal')->plainTextToken];

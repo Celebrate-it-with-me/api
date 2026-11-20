@@ -52,14 +52,14 @@ describe('permissions', function () {
         $this->getJson(PL . 'basic/impact?maxGuests=5')->assertUnauthorized();
 
         $user = User::factory()->create();
-        $this->actingAs($user)->patchJson(PL . 'basic', $patch)->assertForbidden();
-        $this->actingAs($user)->getJson(PL . 'basic/impact?maxGuests=5')->assertForbidden();
+        $this->actingAsReauthed($user)->patchJson(PL . 'basic', $patch)->assertForbidden();
+        $this->actingAsReauthed($user)->getJson(PL . 'basic/impact?maxGuests=5')->assertForbidden();
 
         $support = plStaff('support');
-        $this->actingAs($support)->getJson(PL . 'basic/impact?maxGuests=5')->assertOk();
-        $this->actingAs($support)->patchJson(PL . 'basic', $patch)->assertForbidden();
+        $this->actingAsReauthed($support)->getJson(PL . 'basic/impact?maxGuests=5')->assertOk();
+        $this->actingAsReauthed($support)->patchJson(PL . 'basic', $patch)->assertForbidden();
 
-        $this->actingAs(plStaff('superadmin'))->patchJson(PL . 'basic', $patch)->assertOk();
+        $this->actingAsReauthed(plStaff('superadmin'))->patchJson(PL . 'basic', $patch)->assertOk();
     });
 });
 
@@ -71,7 +71,7 @@ describe('update plan', function () {
         plEvent('basic', 3);
         plEvent('basic', 1);
 
-        $res = $this->actingAs($admin)->patchJson(PL . 'basic', [
+        $res = $this->actingAsReauthed($admin)->patchJson(PL . 'basic', [
             'maxGuests' => 2, 'name' => 'Gratis', 'description' => 'Nueva', 'reason' => 'Bajamos el límite',
         ])->assertOk()->json('data');
 
@@ -90,7 +90,7 @@ describe('update plan', function () {
 
     it('validates reason, values, existence and coherence', function () {
         $admin = plStaff('superadmin');
-        $p = fn (string $slug, array $b) => $this->actingAs($admin)->patchJson(PL . $slug, $b);
+        $p = fn (string $slug, array $b) => $this->actingAsReauthed($admin)->patchJson(PL . $slug, $b);
 
         $p('basic', ['maxGuests' => 10])->assertUnprocessable()->assertJsonValidationErrors('reason');
         $p('basic', ['maxGuests' => 10, 'reason' => 'abc'])->assertUnprocessable()->assertJsonValidationErrors('reason');
@@ -123,12 +123,12 @@ describe('plan impact', function () {
         plEvent('basic', 1);
         plEvent('premium', 6);
 
-        $data = $this->actingAs(plStaff('support'))->getJson(PL . 'basic/impact?maxGuests=2')->assertOk()->json('data');
+        $data = $this->actingAsReauthed(plStaff('support'))->getJson(PL . 'basic/impact?maxGuests=2')->assertOk()->json('data');
         expect($data['eventsOverNewLimit'])->toBe(1)->and($data['eventsNowOver'])->toBe(0)
             ->and((int) EventPlan::where('slug', 'basic')->value('max_guests'))->toBe($limit);
 
-        $this->actingAs(plStaff('support'))->getJson(PL . 'basic/impact?maxGuests=0')->assertOk()->assertJsonPath('data.eventsOverNewLimit', 0);
-        $this->actingAs(plStaff('support'))->getJson(PL . 'basic/impact')->assertUnprocessable();
+        $this->actingAsReauthed(plStaff('support'))->getJson(PL . 'basic/impact?maxGuests=0')->assertOk()->assertJsonPath('data.eventsOverNewLimit', 0);
+        $this->actingAsReauthed(plStaff('support'))->getJson(PL . 'basic/impact')->assertUnprocessable();
     });
 });
 

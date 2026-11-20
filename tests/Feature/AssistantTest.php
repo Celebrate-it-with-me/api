@@ -389,7 +389,7 @@ describe('impersonation', function () {
         $staff->assignRole(AdminPermissions::SUPPORT);
         [, $u, $url] = assistantEvent();
         app('auth')->forgetGuards();
-        $token = $this->postJson("/api/v1/admin/users/{$u['owner']->id}/impersonate", ['reason' => 'Revisar el plan'], ['Authorization' => 'Bearer ' . $this->adminBearer($staff)])->assertCreated()->json('token');
+        $token = $this->postJson("/api/v1/admin/users/{$u['owner']->id}/impersonate", ['reason' => 'Revisar el plan'], ['Authorization' => 'Bearer ' . $this->adminBearer($staff, true)])->assertCreated()->json('token');
         $headers = ['Authorization' => 'Bearer ' . $token];
 
         app('auth')->forgetGuards();

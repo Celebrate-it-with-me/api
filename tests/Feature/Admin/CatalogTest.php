@@ -62,20 +62,20 @@ describe('permissions', function () {
         $this->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertUnauthorized();
 
         $organizer = User::factory()->create();
-        $this->actingAs($organizer)->getJson('/api/v1/admin/catalog')->assertForbidden();
-        $this->actingAs($organizer)->getJson($impact)->assertForbidden();
-        $this->actingAs($organizer)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertForbidden();
+        $this->actingAsReauthed($organizer)->getJson('/api/v1/admin/catalog')->assertForbidden();
+        $this->actingAsReauthed($organizer)->getJson($impact)->assertForbidden();
+        $this->actingAsReauthed($organizer)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertForbidden();
 
         $support = catStaff('support');
-        $this->actingAs($support)->getJson('/api/v1/admin/catalog')->assertOk();
-        $this->actingAs($support)->getJson($impact)->assertOk();
-        $this->actingAs($support)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertForbidden();
-        $this->actingAs($support)->patchJson("/api/v1/admin/catalog/modules/{$key}", $patch)->assertForbidden();
+        $this->actingAsReauthed($support)->getJson('/api/v1/admin/catalog')->assertOk();
+        $this->actingAsReauthed($support)->getJson($impact)->assertOk();
+        $this->actingAsReauthed($support)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertForbidden();
+        $this->actingAsReauthed($support)->patchJson("/api/v1/admin/catalog/modules/{$key}", $patch)->assertForbidden();
 
         $admin = catStaff('superadmin');
-        $this->actingAs($admin)->getJson('/api/v1/admin/catalog')->assertOk();
-        $this->actingAs($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertOk();
-        $this->actingAs($admin)->patchJson("/api/v1/admin/catalog/modules/{$key}", $patch)->assertOk();
+        $this->actingAsReauthed($admin)->getJson('/api/v1/admin/catalog')->assertOk();
+        $this->actingAsReauthed($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", $put)->assertOk();
+        $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/catalog/modules/{$key}", $patch)->assertOk();
     });
 });
 
@@ -88,7 +88,7 @@ describe('overview', function () {
         $event = catEvent('basic');
         EventModuleOverride::create(['event_id' => $event->id, 'module_key' => $key, 'state' => 'active', 'reason' => 'Regalo', 'created_by' => null]);
 
-        $data = $this->actingAs(catStaff('support'))->getJson('/api/v1/admin/catalog')->assertOk()->json('data');
+        $data = $this->actingAsReauthed(catStaff('support'))->getJson('/api/v1/admin/catalog')->assertOk()->json('data');
 
         $module = collect($data['modules'])->firstWhere('key', $key);
         expect($module['isEnabled'])->toBeTrue()
@@ -110,7 +110,7 @@ describe('overview', function () {
         $count = function () use ($admin) {
             DB::flushQueryLog();
             DB::enableQueryLog();
-            $this->actingAs($admin)->getJson('/api/v1/admin/catalog')->assertOk();
+            $this->actingAsReauthed($admin)->getJson('/api/v1/admin/catalog')->assertOk();
             $n = count(DB::getQueryLog());
             DB::disableQueryLog();
 
@@ -140,7 +140,7 @@ describe('impact', function () {
 
         // premium keeps it, lux (if it had it) and basic get it: basic is added.
         $current = Module::where('key', $key)->first()->plans()->pluck('slug')->all();
-        $data = $this->actingAs(catStaff('support'))
+        $data = $this->actingAsReauthed(catStaff('support'))
             ->getJson('/api/v1/admin/catalog/impact?' . http_build_query(['module' => $key, 'planSlugs' => array_values(array_unique([...$current, 'basic']))]))
             ->assertOk()->json('data');
 
@@ -153,7 +153,7 @@ describe('impact', function () {
         $other = Module::query()->enabled()->whereHas('plans', fn ($q) => $q->where('slug', 'basic'))->first();
         $e = catEvent('basic');
         $planSlugs = $other->plans()->pluck('slug')->reject(fn ($s) => $s === 'basic')->values()->all();
-        $out = $this->actingAs(catStaff('support'))
+        $out = $this->actingAsReauthed(catStaff('support'))
             ->getJson('/api/v1/admin/catalog/impact?' . http_build_query(['module' => $other->key, 'planSlugs' => $planSlugs]))
             ->assertOk()->json('data');
         $row = collect($out['plans'])->firstWhere('slug', 'basic');
@@ -170,7 +170,7 @@ describe('impact', function () {
         $admin = catStaff('support');
 
         foreach (["/api/v1/admin/catalog/impact?module={$key}", "/api/v1/admin/catalog/impact?module={$key}&planSlugs="] as $url) {
-            $data = $this->actingAs($admin)->getJson($url)->assertOk()->json('data');
+            $data = $this->actingAsReauthed($admin)->getJson($url)->assertOk()->json('data');
 
             expect($data['planSlugs'])->toBe([])
                 ->and($data['currentPlanSlugs'])->toBe($current)
@@ -185,8 +185,8 @@ describe('impact', function () {
 
     it('validates the module and the plans', function () {
         $admin = catStaff('support');
-        $this->actingAs($admin)->getJson('/api/v1/admin/catalog/impact?module=nope&planSlugs[]=basic')->assertUnprocessable();
-        $this->actingAs($admin)->getJson('/api/v1/admin/catalog/impact?module=' . catPremiumOnlyModule() . '&planSlugs[]=ghost')->assertUnprocessable();
+        $this->actingAsReauthed($admin)->getJson('/api/v1/admin/catalog/impact?module=nope&planSlugs[]=basic')->assertUnprocessable();
+        $this->actingAsReauthed($admin)->getJson('/api/v1/admin/catalog/impact?module=' . catPremiumOnlyModule() . '&planSlugs[]=ghost')->assertUnprocessable();
     });
 });
 
@@ -195,10 +195,10 @@ describe('changing the plans of a module', function () {
         $key = catPremiumOnlyModule();
         $admin = catStaff('superadmin');
 
-        $this->actingAs($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => ['premium']])->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => ['premium'], 'reason' => 'abc'])->assertUnprocessable();
-        $this->actingAs($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => ['ghost'], 'reason' => 'Motivo válido'])->assertUnprocessable();
-        $this->actingAs($admin)->putJson('/api/v1/admin/catalog/modules/ghost/plans', ['planSlugs' => ['premium'], 'reason' => 'Motivo válido'])->assertNotFound();
+        $this->actingAsReauthed($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => ['premium']])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => ['premium'], 'reason' => 'abc'])->assertUnprocessable();
+        $this->actingAsReauthed($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => ['ghost'], 'reason' => 'Motivo válido'])->assertUnprocessable();
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/catalog/modules/ghost/plans', ['planSlugs' => ['premium'], 'reason' => 'Motivo válido'])->assertNotFound();
     });
 
     it('adds a module to a plan so its events get it', function () {
@@ -207,7 +207,7 @@ describe('changing the plans of a module', function () {
         expect(catState($basicEvent, $key))->toBe('locked');
 
         $slugs = Module::where('key', $key)->first()->plans()->pluck('slug')->push('basic')->all();
-        $data = $this->actingAs(catStaff('superadmin'))
+        $data = $this->actingAsReauthed(catStaff('superadmin'))
             ->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'reason' => 'Ahora es gratis'])
             ->assertOk()->json('data');
 
@@ -225,7 +225,7 @@ describe('changing the plans of a module', function () {
         $admin = catStaff('superadmin');
 
         $slugs = Module::where('key', $key)->first()->plans()->pluck('slug')->reject(fn ($s) => $s === 'basic')->values()->all();
-        $data = $this->actingAs($admin)
+        $data = $this->actingAsReauthed($admin)
             ->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'reason' => 'Pasa a pago'])
             ->assertOk()->json('data');
 
@@ -247,7 +247,7 @@ describe('changing the plans of a module', function () {
         $event = catEvent('basic');
         $slugs = Module::where('key', $key)->first()->plans()->pluck('slug')->reject(fn ($s) => $s === 'basic')->values()->all();
 
-        $data = $this->actingAs(catStaff('superadmin'))
+        $data = $this->actingAsReauthed(catStaff('superadmin'))
             ->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'keepForExisting' => false, 'reason' => 'Sin conservar'])
             ->assertOk()->json('data');
 
@@ -262,7 +262,7 @@ describe('changing the plans of a module', function () {
         EventModuleOverride::create(['event_id' => $event->id, 'module_key' => $key, 'state' => 'locked', 'expires_at' => now()->subDay(), 'reason' => 'Vencida', 'created_by' => null]);
         $slugs = Module::where('key', $key)->first()->plans()->pluck('slug')->reject(fn ($s) => $s === 'basic')->values()->all();
 
-        $this->actingAs(catStaff('superadmin'))
+        $this->actingAsReauthed(catStaff('superadmin'))
             ->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'reason' => 'Pasa a pago'])
             ->assertOk()->assertJsonPath('data.overridesCreated', 1);
 
@@ -273,7 +273,7 @@ describe('changing the plans of a module', function () {
         $key = catPremiumOnlyModule();
         $slugs = Module::where('key', $key)->first()->plans()->pluck('slug')->reject(fn ($s) => $s === 'premium')->values()->all();
 
-        $this->actingAs(catStaff('superadmin'))
+        $this->actingAsReauthed(catStaff('superadmin'))
             ->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'reason' => 'Quitar de premium'])
             ->assertUnprocessable()->assertJsonPath('code', 'module_in_sold_plan');
 
@@ -287,14 +287,14 @@ describe('changing the plans of a module', function () {
         $module->plans()->sync([EventPlan::where('slug', 'basic')->value('id')]);
         $event = catEvent('basic');
 
-        $data = $this->actingAs(catStaff('superadmin'))
+        $data = $this->actingAsReauthed(catStaff('superadmin'))
             ->putJson('/api/v1/admin/catalog/modules/custom_service/plans', ['planSlugs' => [], 'reason' => 'A medida', 'keepForExisting' => false])
             ->assertOk()->json('data');
 
         expect($data['module']['planSlugs'])->toBe([])
             ->and(catState($event, 'custom_service'))->toBe('locked');
 
-        $row = collect($this->actingAs(catStaff('support'))->getJson('/api/v1/admin/catalog')->json('data.modules'))->firstWhere('key', 'custom_service');
+        $row = collect($this->actingAsReauthed(catStaff('support'))->getJson('/api/v1/admin/catalog')->json('data.modules'))->firstWhere('key', 'custom_service');
         expect($row['planSlugs'])->toBe([]);
     });
 
@@ -304,7 +304,7 @@ describe('changing the plans of a module', function () {
         $admin = catStaff('superadmin');
         $slugs = Module::where('key', $key)->first()->plans()->pluck('slug')->reject(fn ($s) => $s === 'basic')->values()->all();
 
-        $this->actingAs($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'reason' => 'Pasa a pago'])->assertOk();
+        $this->actingAsReauthed($admin)->putJson("/api/v1/admin/catalog/modules/{$key}/plans", ['planSlugs' => $slugs, 'reason' => 'Pasa a pago'])->assertOk();
 
         $log = AdminAuditLog::where('action', 'catalog.module_plans_updated')->firstOrFail();
         expect($log->actor_id)->toBe($admin->id)
@@ -319,7 +319,7 @@ describe('changing the plans of a module', function () {
 
 describe('turning a module on and off', function () {
     it('requires a reason', function () {
-        $this->actingAs(catStaff('superadmin'))->patchJson('/api/v1/admin/catalog/modules/' . catPremiumOnlyModule(), ['isEnabled' => false])
+        $this->actingAsReauthed(catStaff('superadmin'))->patchJson('/api/v1/admin/catalog/modules/' . catPremiumOnlyModule(), ['isEnabled' => false])
             ->assertUnprocessable()->assertJsonValidationErrors('reason');
     });
 
@@ -330,7 +330,7 @@ describe('turning a module on and off', function () {
         EventModuleOverride::create(['event_id' => $gifted->id, 'module_key' => $key, 'state' => 'active', 'reason' => 'Regalo', 'created_by' => null]);
         $admin = catStaff('superadmin');
 
-        $data = $this->actingAs($admin)->patchJson("/api/v1/admin/catalog/modules/{$key}", ['isEnabled' => false, 'reason' => 'En mantenimiento'])
+        $data = $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/catalog/modules/{$key}", ['isEnabled' => false, 'reason' => 'En mantenimiento'])
             ->assertOk()->json('data');
 
         expect($data['module']['isEnabled'])->toBeFalse()->and($data['orphanOverrides'])->toBe(1)
@@ -340,7 +340,7 @@ describe('turning a module on and off', function () {
         expect($log->before)->toBe(['isEnabled' => true])->and($log->after['isEnabled'])->toBeFalse()
             ->and($log->after['orphanOverrides'])->toBe(1)->and($log->reason)->toBe('En mantenimiento');
 
-        $this->actingAs($admin)->patchJson("/api/v1/admin/catalog/modules/{$key}", ['isEnabled' => true, 'reason' => 'Ya está listo'])->assertOk();
+        $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/catalog/modules/{$key}", ['isEnabled' => true, 'reason' => 'Ya está listo'])->assertOk();
         expect(catState($event, $key))->toBe('active');
     });
 });

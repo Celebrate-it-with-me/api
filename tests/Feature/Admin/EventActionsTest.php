@@ -60,9 +60,9 @@ describe('permissions', function () {
         foreach ($routes as [$m, $url]) {
             $this->app['auth']->forgetGuards();
             $this->{$m . 'Json'}($url)->assertUnauthorized();
-            $this->actingAs(User::factory()->create())->{$m . 'Json'}($url)->assertForbidden();
-            $this->actingAs(acStaff('support'))->{$m . 'Json'}($url)->assertForbidden();
-            $this->actingAs(acStaff('superadmin'))->{$m . 'Json'}($url)->assertUnprocessable(); // passes the permission, fails on the reason
+            $this->actingAsReauthed(User::factory()->create())->{$m . 'Json'}($url)->assertForbidden();
+            $this->actingAsReauthed(acStaff('support'))->{$m . 'Json'}($url)->assertForbidden();
+            $this->actingAsReauthed(acStaff('superadmin'))->{$m . 'Json'}($url)->assertUnprocessable(); // passes the permission, fails on the reason
         }
     });
 
@@ -71,15 +71,15 @@ describe('permissions', function () {
         foreach (['comments', 'images', 'padrinos', 'guests'] as $s) {
             $this->app['auth']->forgetGuards();
             $this->getJson("/api/v1/admin/events/{$event->id}/content?section={$s}")->assertUnauthorized();
-            $this->actingAs(User::factory()->create())->getJson("/api/v1/admin/events/{$event->id}/content?section={$s}")->assertForbidden();
-            $this->actingAs(acStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/content?section={$s}")->assertOk();
+            $this->actingAsReauthed(User::factory()->create())->getJson("/api/v1/admin/events/{$event->id}/content?section={$s}")->assertForbidden();
+            $this->actingAsReauthed(acStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/content?section={$s}")->assertOk();
         }
         $this->app['auth']->forgetGuards();
         $this->getJson("/api/v1/admin/events/{$event->id}/log")->assertUnauthorized();
-        $this->actingAs(User::factory()->create())->getJson("/api/v1/admin/events/{$event->id}/log")->assertForbidden();
-        $this->actingAs(acStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/log")->assertOk()->assertJsonPath('meta.canViewStaff', false);
-        $this->actingAs(acStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/log?source=staff")->assertForbidden();
-        $this->actingAs(acStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}/log?source=staff")->assertOk();
+        $this->actingAsReauthed(User::factory()->create())->getJson("/api/v1/admin/events/{$event->id}/log")->assertForbidden();
+        $this->actingAsReauthed(acStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/log")->assertOk()->assertJsonPath('meta.canViewStaff', false);
+        $this->actingAsReauthed(acStaff('support'))->getJson("/api/v1/admin/events/{$event->id}/log?source=staff")->assertForbidden();
+        $this->actingAsReauthed(acStaff('superadmin'))->getJson("/api/v1/admin/events/{$event->id}/log?source=staff")->assertOk();
     });
 });
 
@@ -90,7 +90,7 @@ describe('lifecycle', function () {
         $base = "/api/v1/admin/events/{$event->id}";
 
         foreach ([['publish', 'published'], ['unpublish', 'draft'], ['archive', 'archived'], ['restore', 'draft']] as [$action, $status]) {
-            $this->actingAs($admin)->postJson("$base/$action", ['reason' => 'Pedido de la dueña'])
+            $this->actingAsReauthed($admin)->postJson("$base/$action", ['reason' => 'Pedido de la dueña'])
                 ->assertOk()->assertJsonPath('data.status', $status);
             $this->assertDatabaseHas('admin_audit_log', ['action' => "event.$action", 'event_id' => $event->id, 'actor_id' => $admin->id, 'reason' => 'Pedido de la dueña']);
         }
@@ -100,20 +100,20 @@ describe('lifecycle', function () {
         $admin = acStaff('superadmin');
         $event = acEvent();
 
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$event->id}/publish")->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$event->id}/restore", ['reason' => 'motivo valido'])->assertUnprocessable()->assertJsonValidationErrors('status');
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$event->id}/publish")->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$event->id}/restore", ['reason' => 'motivo valido'])->assertUnprocessable()->assertJsonValidationErrors('status');
         expect(AdminAuditLog::count())->toBe(0);
     });
 
     it('flags the event activity as staff work, without naming the actor', function () {
         $admin = acStaff('superadmin');
         $event = acEvent();
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$event->id}/publish", ['reason' => 'Pedido de la dueña'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$event->id}/publish", ['reason' => 'Pedido de la dueña'])->assertOk();
 
         $row = EventActivity::where('event_id', $event->id)->where('type', 'event_published')->first();
         expect($row->actor_id)->toBeNull()->and($row->payload['by_staff'])->toBeTrue();
 
-        $this->actingAs($admin)->getJson("/api/v1/admin/events/{$event->id}/log")
+        $this->actingAsReauthed($admin)->getJson("/api/v1/admin/events/{$event->id}/log")
             ->assertJsonPath('data.0.type', 'event_published')->assertJsonPath('data.0.byStaff', true)->assertJsonPath('data.0.actor', null);
     });
 
@@ -122,7 +122,7 @@ describe('lifecycle', function () {
         $event->eventPlan->update(['max_guests' => 2]);
         Guest::factory()->count(5)->create(['event_id' => $event->id]);
 
-        $this->actingAs(acStaff('superadmin'))->postJson("/api/v1/admin/events/{$event->id}/publish", ['reason' => 'Pedido de la dueña'])
+        $this->actingAsReauthed(acStaff('superadmin'))->postJson("/api/v1/admin/events/{$event->id}/publish", ['reason' => 'Pedido de la dueña'])
             ->assertStatus(402)->assertJsonPath('code', 'guest_limit_exceeded')->assertJsonPath('excess', 3);
         expect($event->refresh()->status)->toBe('draft')->and(AdminAuditLog::count())->toBe(0);
     });
@@ -136,12 +136,12 @@ describe('emails', function () {
         $event = acEvent($owner);
         $url = "/api/v1/admin/events/{$event->id}/resend-owner-email";
 
-        $this->actingAs($admin)->postJson($url, ['reason' => 'No le llegó'])->assertOk()->assertJsonPath('data.sent', 'confirm_account');
+        $this->actingAsReauthed($admin)->postJson($url, ['reason' => 'No le llegó'])->assertOk()->assertJsonPath('data.sent', 'confirm_account');
         Mail::assertSent(ConfirmAccountEmail::class, fn ($m) => $m->hasTo($owner->email)
             && str_contains($m->confirmUrl ?? '', '/email/verify/' . $owner->id . '/' . sha1($owner->email)) && str_contains($m->confirmUrl, 'signature='));
 
         $owner->forceFill(['email_verified_at' => now()])->save();
-        $this->actingAs($admin)->postJson($url, ['reason' => 'No le llegó'])->assertOk()->assertJsonPath('data.sent', 'welcome');
+        $this->actingAsReauthed($admin)->postJson($url, ['reason' => 'No le llegó'])->assertOk()->assertJsonPath('data.sent', 'welcome');
         Mail::assertSent(WelcomeEmail::class, fn ($m) => $m->hasTo($owner->email));
         expect(AdminAuditLog::where('action', 'event.resend_owner_email')->count())->toBe(2);
     });
@@ -154,17 +154,17 @@ describe('emails', function () {
             'token' => EventCollaborationInvite::generateToken(), 'status' => 'pending', 'expires_at' => now()->addDay()]);
         $invite = $mk();
 
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$event->id}/resend-collaborator-invite/{$invite->id}", ['reason' => 'Lo pidió'])
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$event->id}/resend-collaborator-invite/{$invite->id}", ['reason' => 'Lo pidió'])
             ->assertOk()->assertJsonPath('data.resendCount', 1);
         Mail::assertSent(InviteUnregisteredUserMail::class);
 
         $expired = $mk(['expires_at' => now()->subDay()]);
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$event->id}/resend-collaborator-invite/{$expired->id}", ['reason' => 'Lo pidió'])->assertUnprocessable();
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$event->id}/resend-collaborator-invite/{$expired->id}", ['reason' => 'Lo pidió'])->assertUnprocessable();
 
-        $this->actingAs($admin)->getJson("/api/v1/admin/events/{$event->id}/collaborator-invites")->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('data.0.status', 'expired');
+        $this->actingAsReauthed($admin)->getJson("/api/v1/admin/events/{$event->id}/collaborator-invites")->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('data.0.status', 'expired');
 
         $other = acEvent();
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$other->id}/resend-collaborator-invite/{$invite->id}", ['reason' => 'Lo pidió'])->assertNotFound();
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$other->id}/resend-collaborator-invite/{$invite->id}", ['reason' => 'Lo pidió'])->assertNotFound();
     });
 });
 
@@ -174,7 +174,7 @@ describe('slug', function () {
         $event->update(['custom_url_slug' => 'viejo-enlace']);
         expect($event->isSlugLocked())->toBeTrue();
 
-        $this->actingAs(acStaff('superadmin'))->putJson("/api/v1/admin/events/{$event->id}/slug", ['slug' => 'nuevo-enlace', 'reason' => 'Error de ortografía'])
+        $this->actingAsReauthed(acStaff('superadmin'))->putJson("/api/v1/admin/events/{$event->id}/slug", ['slug' => 'nuevo-enlace', 'reason' => 'Error de ortografía'])
             ->assertOk()->assertJsonPath('data.slug', 'nuevo-enlace')->assertJsonPath('data.previousSlug', 'viejo-enlace')->assertJsonStructure(['data' => ['warning']]);
 
         $log = AdminAuditLog::where('action', 'event.change_slug')->first();
@@ -189,9 +189,9 @@ describe('slug', function () {
         $url = "/api/v1/admin/events/{$event->id}/slug";
 
         foreach (['Mal Formato', 'ocupado', 'mio'] as $slug) {
-            $this->actingAs($admin)->putJson($url, ['slug' => $slug, 'reason' => 'motivo valido'])->assertUnprocessable()->assertJsonValidationErrors('slug');
+            $this->actingAsReauthed($admin)->putJson($url, ['slug' => $slug, 'reason' => 'motivo valido'])->assertUnprocessable()->assertJsonValidationErrors('slug');
         }
-        $this->actingAs($admin)->putJson($url, ['slug' => 'libre'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->putJson($url, ['slug' => 'libre'])->assertUnprocessable()->assertJsonValidationErrors('reason');
     });
 });
 
@@ -203,7 +203,7 @@ describe('transfer', function () {
         $event = acEvent($old);
         EventUserRole::create(['event_id' => $event->id, 'user_id' => $new->id, 'role_id' => Role::where('name', 'viewer')->value('id')]);
 
-        $this->actingAs(acStaff('superadmin'))->postJson("/api/v1/admin/events/{$event->id}/transfer", ['newOwnerEmail' => $new->email, 'reason' => 'Venta de la cuenta'])
+        $this->actingAsReauthed(acStaff('superadmin'))->postJson("/api/v1/admin/events/{$event->id}/transfer", ['newOwnerEmail' => $new->email, 'reason' => 'Venta de la cuenta'])
             ->assertOk()->assertJsonPath('data.newOwner.id', $new->id)->assertJsonPath('data.previousOwner.role', 'editor');
 
         $roles = EventUserRole::where('event_id', $event->id)->with('role')->get()->mapWithKeys(fn ($r) => [$r->user_id => $r->role->name]);
@@ -220,7 +220,7 @@ describe('transfer', function () {
         $url = "/api/v1/admin/events/{$event->id}/transfer";
 
         foreach (['nadie@example.com', $suspended->email, $owner->email] as $email) {
-            $this->actingAs($admin)->postJson($url, ['newOwnerEmail' => $email, 'reason' => 'motivo valido'])->assertUnprocessable()->assertJsonValidationErrors('newOwnerEmail');
+            $this->actingAsReauthed($admin)->postJson($url, ['newOwnerEmail' => $email, 'reason' => 'motivo valido'])->assertUnprocessable()->assertJsonValidationErrors('newOwnerEmail');
         }
         expect(EventUserRole::where('event_id', $event->id)->count())->toBe(1);
     });
@@ -233,11 +233,11 @@ describe('content', function () {
         Padrino::create(['event_id' => $event->id, 'name' => 'Tío Luis', 'phone' => '+13055551234', 'status' => 'invited']);
         $support = acStaff('support');
 
-        $g = $this->actingAs($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=guests")->assertOk();
+        $g = $this->actingAsReauthed($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=guests")->assertOk();
         $g->assertJsonPath('data.0.phone', '+1 *** ** 0149')->assertJsonPath('data.0.email', 'a***@gmail.com')->assertJsonMissingPath('data.0.code');
         expect($g->getContent())->not->toContain('3055550149')->not->toContain('ana@gmail.com');
 
-        $this->actingAs($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=padrinos")->assertJsonPath('data.0.phone', '+1 *** ** 1234');
+        $this->actingAsReauthed($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=padrinos")->assertJsonPath('data.0.phone', '+1 *** ** 1234');
     });
 
     it('lists comments paginated with the ids the moderation API needs, and validates the section', function () {
@@ -248,10 +248,10 @@ describe('content', function () {
         }
         $support = acStaff('support');
 
-        $this->actingAs($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=comments&perPage=5")
+        $this->actingAsReauthed($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=comments&perPage=5")
             ->assertOk()->assertJsonCount(5, 'data')->assertJsonPath('meta.total', 7)->assertJsonPath('meta.lastPage', 2)
             ->assertJsonPath('data.0.author.name', 'Ana')->assertJsonPath('data.0.type', 'comment');
-        $this->actingAs($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=otra")->assertUnprocessable();
+        $this->actingAsReauthed($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=otra")->assertUnprocessable();
     });
 
     it('does not run more queries when the page has more rows', function () {
@@ -260,7 +260,7 @@ describe('content', function () {
         $count = function () use ($event, $support) {
             DB::flushQueryLog();
             DB::enableQueryLog();
-            $this->actingAs($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=comments")->assertOk();
+            $this->actingAsReauthed($support)->getJson("/api/v1/admin/events/{$event->id}/content?section=comments")->assertOk();
 
             return count(DB::getQueryLog());
         };
@@ -282,9 +282,9 @@ describe('staff log', function () {
     it('shows the staff actions on that event to superadmin only', function () {
         $admin = acStaff('superadmin');
         $event = acEvent();
-        $this->actingAs($admin)->postJson("/api/v1/admin/events/{$event->id}/publish", ['reason' => 'Pedido de la dueña'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson("/api/v1/admin/events/{$event->id}/publish", ['reason' => 'Pedido de la dueña'])->assertOk();
 
-        $this->actingAs($admin)->getJson("/api/v1/admin/events/{$event->id}/log?source=staff")
+        $this->actingAsReauthed($admin)->getJson("/api/v1/admin/events/{$event->id}/log?source=staff")
             ->assertOk()->assertJsonPath('data.0.action', 'event.publish')->assertJsonPath('data.0.reason', 'Pedido de la dueña')->assertJsonPath('data.0.actor.id', $admin->id);
     });
 });

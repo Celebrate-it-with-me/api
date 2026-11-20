@@ -33,19 +33,19 @@ function maintOn(?User $by = null, array $extra = []): void
 
 it('guards the maintenance endpoints by permission', function () {
     $this->getJson(MAINT_URL)->assertUnauthorized();
-    $this->actingAs(User::factory()->create())->getJson(MAINT_URL)->assertForbidden();
-    $this->actingAs(maintStaff(AdminPermissions::SUPPORT))->getJson(MAINT_URL)->assertForbidden();
-    $this->actingAs(maintStaff(AdminPermissions::SUPPORT))->putJson(MAINT_URL, ['active' => true, 'reason' => 'Migración grande'])->assertForbidden();
-    $this->actingAs(maintStaff(AdminPermissions::SUPERADMIN))->getJson(MAINT_URL)->assertOk()->assertJsonPath('active', false);
+    $this->actingAsReauthed(User::factory()->create())->getJson(MAINT_URL)->assertForbidden();
+    $this->actingAsReauthed(maintStaff(AdminPermissions::SUPPORT))->getJson(MAINT_URL)->assertForbidden();
+    $this->actingAsReauthed(maintStaff(AdminPermissions::SUPPORT))->putJson(MAINT_URL, ['active' => true, 'reason' => 'Migración grande'])->assertForbidden();
+    $this->actingAsReauthed(maintStaff(AdminPermissions::SUPERADMIN))->getJson(MAINT_URL)->assertOk()->assertJsonPath('active', false);
 });
 
 it('requires a reason and validates the estimated end', function () {
     $admin = maintStaff(AdminPermissions::SUPERADMIN);
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => true])->assertUnprocessable()->assertJsonValidationErrors('reason');
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => true, 'reason' => 'abc'])->assertUnprocessable();
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => true, 'reason' => 'Migración grande', 'estimatedEnd' => now()->subHour()->toIso8601String()])->assertUnprocessable()->assertJsonValidationErrors('estimatedEnd');
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => true, 'reason' => 'Migración grande', 'estimatedEnd' => now()->addDays(3)->toIso8601String()])->assertUnprocessable();
-    $this->actingAs($admin)->putJson(MAINT_URL, ['reason' => 'Migración grande'])->assertUnprocessable()->assertJsonValidationErrors('active');
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => true])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => true, 'reason' => 'abc'])->assertUnprocessable();
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => true, 'reason' => 'Migración grande', 'estimatedEnd' => now()->subHour()->toIso8601String()])->assertUnprocessable()->assertJsonValidationErrors('estimatedEnd');
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => true, 'reason' => 'Migración grande', 'estimatedEnd' => now()->addDays(3)->toIso8601String()])->assertUnprocessable();
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['reason' => 'Migración grande'])->assertUnprocessable()->assertJsonValidationErrors('active');
     expect(app(MaintenanceMode::class)->active())->toBeFalse();
 });
 
@@ -53,13 +53,13 @@ it('turns maintenance on and off, recording who and why in the audit log', funct
     $admin = maintStaff(AdminPermissions::SUPERADMIN);
     $end = now()->addHour();
 
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => true, 'message' => 'Mejorando cosas', 'estimatedEnd' => $end->toIso8601String(), 'reason' => 'Migración grande'])
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => true, 'message' => 'Mejorando cosas', 'estimatedEnd' => $end->toIso8601String(), 'reason' => 'Migración grande'])
         ->assertOk()->assertJsonPath('active', true)->assertJsonPath('message', 'Mejorando cosas')->assertJsonPath('activatedBy.id', $admin->id);
-    $this->actingAs($admin)->getJson(MAINT_URL)->assertJsonPath('active', true);
+    $this->actingAsReauthed($admin)->getJson(MAINT_URL)->assertJsonPath('active', true);
     $on = DB::table('admin_audit_log')->where('action', 'system.maintenance_on')->first();
     expect($on->actor_id)->toBe($admin->id)->and($on->reason)->toBe('Migración grande');
 
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => false, 'reason' => 'Terminamos'])->assertOk()->assertJsonPath('active', false);
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => false, 'reason' => 'Terminamos'])->assertOk()->assertJsonPath('active', false);
     expect(DB::table('admin_audit_log')->where('action', 'system.maintenance_off')->count())->toBe(1);
     $this->getJson('/api/v1/public/system-status')->assertOk()->assertJsonPath('maintenance', false);
 });
@@ -72,7 +72,7 @@ it('answers 503 JSON to the rest of the API while it is on', function () {
     expect($res->json('retryAfter'))->toBeGreaterThan(60)->toBeLessThanOrEqual(1800);
     expect($res->headers->get('Retry-After'))->not->toBeNull();
     $this->postJson('/api/v1/app/login', [])->assertStatus(503);
-    $this->actingAs(User::factory()->create())->getJson('/api/v1/app/events')->assertStatus(503);
+    $this->actingAsReauthed(User::factory()->create())->getJson('/api/v1/app/events')->assertStatus(503);
 });
 
 it('keeps the admin API, the staff login, the status endpoint and the webhook reachable', function () {
@@ -80,13 +80,13 @@ it('keeps the admin API, the staff login, the status endpoint and the webhook re
     $admin = maintStaff(AdminPermissions::SUPERADMIN);
 
     $this->postJson('/api/v1/admin/login', ['email' => 'x@example.com', 'password' => 'nope', 'device' => 'd'])->assertStatus(422);
-    $this->actingAs($admin)->getJson(MAINT_URL)->assertOk()->assertJsonPath('active', true);
-    $this->actingAs($admin)->getJson('/api/v1/admin/dashboard')->assertOk();
+    $this->actingAsReauthed($admin)->getJson(MAINT_URL)->assertOk()->assertJsonPath('active', true);
+    $this->actingAsReauthed($admin)->getJson('/api/v1/admin/dashboard')->assertOk();
     $this->getJson('/api/v1/public/system-status')->assertOk();
     expect($this->postJson('/api/v1/app/payments/webhook', [])->status())->not->toBe(503);
 
     // The superadmin can switch it off while it is on.
-    $this->actingAs($admin)->putJson(MAINT_URL, ['active' => false, 'reason' => 'Terminamos'])->assertOk();
+    $this->actingAsReauthed($admin)->putJson(MAINT_URL, ['active' => false, 'reason' => 'Terminamos'])->assertOk();
     expect(app(MaintenanceMode::class)->active())->toBeFalse();
     $this->getJson('/api/v1/public/system-status')->assertJsonPath('maintenance', false);
 });

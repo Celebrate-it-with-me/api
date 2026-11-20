@@ -69,7 +69,7 @@ describe('permissions', function () {
             $this->json($m, ADMIN_USERS . $path)->assertUnauthorized();
         }
         foreach ($routes as [$m, $path]) {
-            $this->actingAs($normal)->json($m, ADMIN_USERS . $path)->assertForbidden();
+            $this->actingAsReauthed($normal)->json($m, ADMIN_USERS . $path)->assertForbidden();
         }
     });
 
@@ -78,12 +78,12 @@ describe('permissions', function () {
         $target = User::factory()->create();
         Event::fake([ResetPasswordEvent::class]);
 
-        $this->actingAs($support)->getJson(ADMIN_USERS)->assertOk();
-        $this->actingAs($support)->getJson(ADMIN_USERS . "/{$target->id}")->assertOk();
-        $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/password-reset")->assertOk();
-        $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'Abuse reports'])->assertForbidden();
-        $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/unsuspend", ['reason' => 'Abuse reports'])->assertForbidden();
-        $this->actingAs($support)->getJson(ADMIN_USERS . "/{$target->id}/export")->assertForbidden();
+        $this->actingAsReauthed($support)->getJson(ADMIN_USERS)->assertOk();
+        $this->actingAsReauthed($support)->getJson(ADMIN_USERS . "/{$target->id}")->assertOk();
+        $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/password-reset", ['reason' => 'User locked out'])->assertOk();
+        $this->actingAsReauthed($support)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'Abuse reports'])->assertForbidden();
+        $this->actingAsReauthed($support)->postJson(ADMIN_USERS . "/{$target->id}/unsuspend", ['reason' => 'Abuse reports'])->assertForbidden();
+        $this->actingAsReauthed($support)->getJson(ADMIN_USERS . "/{$target->id}/export")->assertForbidden();
         $this->actingAsReauthed($support)->deleteJson(ADMIN_USERS . "/{$target->id}", ['reason' => 'Because', 'confirmEmail' => $target->email])->assertForbidden();
     });
 });
@@ -95,7 +95,7 @@ describe('listing and profile', function () {
         User::factory()->create(['email' => 'demo1@cwm.test']);
         User::factory()->create(['email' => 'demo2@cwm.test']);
         usersStaff('support');
-        $meta = fn (string $q = '') => $this->actingAs($admin)->getJson(ADMIN_USERS . $q)->assertOk()->json('meta');
+        $meta = fn (string $q = '') => $this->actingAsReauthed($admin)->getJson(ADMIN_USERS . $q)->assertOk()->json('meta');
 
         // two demo accounts + the support member + the superadmin himself
         expect($meta()['hiddenInternal'])->toBe(4)->and($meta('?internal=1')['hiddenInternal'])->toBe(0);
@@ -109,7 +109,7 @@ describe('listing and profile', function () {
         $sus->forceFill(['suspended_at' => now()])->save();
         $support = usersStaff('support');
 
-        $ids = fn (string $q = '') => collect($this->actingAs($admin)->getJson(ADMIN_USERS . $q)->assertOk()->json('data'))->pluck('id')->all();
+        $ids = fn (string $q = '') => collect($this->actingAsReauthed($admin)->getJson(ADMIN_USERS . $q)->assertOk()->json('data'))->pluck('id')->all();
 
         expect($ids())->toContain($ana->id, $sus->id)->not->toContain($demo->id, $support->id, $admin->id)
             ->and($ids('?internal=1'))->toContain($demo->id, $support->id, $admin->id)
@@ -129,7 +129,7 @@ describe('listing and profile', function () {
         UserLoginSession::create(['user_id' => $ana->id, 'login_time' => '2026-11-01 10:00:00']);
         UserLoginSession::create(['user_id' => $ana->id, 'login_time' => '2026-11-05 10:00:00']);
 
-        $res = $this->actingAs($admin)->getJson(ADMIN_USERS . '?search=Ana&perPage=5')->assertOk();
+        $res = $this->actingAsReauthed($admin)->getJson(ADMIN_USERS . '?search=Ana&perPage=5')->assertOk();
         $row = $res->json('data.0');
 
         expect($row)->toHaveKeys(['id', 'name', 'email', 'phone', 'staffRoles', 'eventsCount', 'suspended', 'lastAccessAt', 'createdAt'])
@@ -144,7 +144,7 @@ describe('listing and profile', function () {
         $count = function () use ($admin) {
             DB::flushQueryLog();
             DB::enableQueryLog();
-            $this->actingAs($admin)->getJson(ADMIN_USERS . '?perPage=100')->assertOk();
+            $this->actingAsReauthed($admin)->getJson(ADMIN_USERS . '?perPage=100')->assertOk();
 
             return count(DB::getQueryLog());
         };
@@ -162,9 +162,9 @@ describe('listing and profile', function () {
         usersEvent($ana, 'viewer', 'draft');
         usersPurchase($ana, $event, 9900);
         UserLoginSession::create(['user_id' => $ana->id, 'login_time' => now(), 'ip_address' => '1.2.3.4', 'browser' => 'Firefox']);
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$ana->id}/suspend", ['reason' => 'Spam invitations'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$ana->id}/suspend", ['reason' => 'Spam invitations'])->assertOk();
 
-        $d = $this->actingAs($admin)->getJson(ADMIN_USERS . "/{$ana->id}")->assertOk()->json('data');
+        $d = $this->actingAsReauthed($admin)->getJson(ADMIN_USERS . "/{$ana->id}")->assertOk()->json('data');
 
         expect($d['events'])->toHaveCount(2)
             ->and(collect($d['events'])->pluck('role')->all())->toEqualCanonicalizing(['owner', 'viewer'])
@@ -185,14 +185,14 @@ describe('listing and profile', function () {
         $link($social, 'google');
         $link($mixed, 'google');
         $link($mixed, 'facebook');
-        $get = fn (User $u) => $this->actingAs($admin)->getJson(ADMIN_USERS . "/{$u->id}")->assertOk();
+        $get = fn (User $u) => $this->actingAsReauthed($admin)->getJson(ADMIN_USERS . "/{$u->id}")->assertOk();
 
         expect($get($pw)->json('data.signInMethods'))->toBe(['password'])
             ->and($get($social)->json('data.signInMethods'))->toBe(['google'])
             ->and($get($mixed)->json('data.signInMethods'))->toEqualCanonicalizing(['password', 'google', 'facebook']);
         expect($get($mixed)->getContent())->not->toContain('secret');
 
-        $this->actingAs($admin)->getJson(ADMIN_USERS)->assertOk()->assertJsonMissingPath('data.0.signInMethods');
+        $this->actingAsReauthed($admin)->getJson(ADMIN_USERS)->assertOk()->assertJsonMissingPath('data.0.signInMethods');
     });
 });
 
@@ -202,7 +202,7 @@ describe('password reset', function () {
         $target = User::factory()->create();
         Event::fake([ResetPasswordEvent::class]);
 
-        $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/password-reset")->assertOk();
+        $this->actingAs($support)->postJson(ADMIN_USERS . "/{$target->id}/password-reset", ['reason' => 'User locked out'])->assertOk();
 
         Event::assertDispatched(ResetPasswordEvent::class, fn ($e) => $e->user->is($target));
         expect(AdminAuditLog::where('action', 'user.password_reset')->where('user_id', $target->id)->where('actor_id', $support->id)->count())->toBe(1);
@@ -215,10 +215,10 @@ describe('suspension', function () {
         $other = usersStaff('support');
         $target = User::factory()->create();
 
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$target->id}/suspend")->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$other->id}/suspend", ['reason' => 'Not allowed'])->assertStatus(422);
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$admin->id}/suspend", ['reason' => 'Not allowed'])->assertStatus(422);
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$target->id}/suspend")->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$other->id}/suspend", ['reason' => 'Not allowed'])->assertStatus(422);
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$admin->id}/suspend", ['reason' => 'Not allowed'])->assertStatus(422);
         expect(User::whereNotNull('suspended_at')->count())->toBe(0)
             ->and(AdminAuditLog::count())->toBe(0);
     });
@@ -230,7 +230,7 @@ describe('suspension', function () {
         $token = $target->createToken('spa')->plainTextToken;
 
         $this->withToken($token)->getJson('/api/v1/app/user')->assertOk();
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'Fraud reports'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$target->id}/suspend", ['reason' => 'Fraud reports'])->assertOk();
 
         expect($target->tokens()->count())->toBe(0);
         $this->app['auth']->forgetGuards();
@@ -248,7 +248,7 @@ describe('suspension', function () {
             ->assertForbidden()->assertJson(['code' => 'account_suspended', 'supportEmail' => 'help@example.com']);
         $this->postJson('/api/v1/app/login', ['device' => 'test', 'email' => $target->email, 'password' => 'wrong'])->assertUnauthorized();
 
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$target->id}/unsuspend", ['reason' => 'Resolved with user'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$target->id}/unsuspend", ['reason' => 'Resolved with user'])->assertOk();
         expect($target->refresh()->suspended_at)->toBeNull()->and($target->suspension_reason)->toBeNull();
         $this->app['auth']->forgetGuards();
         $this->app['auth']->shouldUse('web'); // actingAs() switched the default guard to sanctum
@@ -266,7 +266,7 @@ describe('suspension', function () {
         $guest = Guest::factory()->create(['event_id' => $event->id, 'code' => 'AB1234', 'parent_id' => null, 'rsvp_status' => 'pending']);
         $this->getJson('/api/v1/app/invitation/xv-de-ana/AB1234')->assertOk();
 
-        $this->actingAs($admin)->postJson(ADMIN_USERS . "/{$owner->id}/suspend", ['reason' => 'Spam invitations'])->assertOk();
+        $this->actingAsReauthed($admin)->postJson(ADMIN_USERS . "/{$owner->id}/suspend", ['reason' => 'Spam invitations'])->assertOk();
 
         $this->getJson('/api/v1/app/invitation/xv-de-ana/AB1234')->assertOk();
     });
@@ -280,7 +280,7 @@ describe('export', function () {
         Guest::factory()->create(['event_id' => $event->id, 'name' => 'Rosa', 'parent_id' => null]);
         usersPurchase($ana, $event);
 
-        $res = $this->actingAs($admin)->get(ADMIN_USERS . "/{$ana->id}/export")->assertOk();
+        $res = $this->actingAsReauthed($admin)->get(ADMIN_USERS . "/{$ana->id}/export?reason=Data+request")->assertOk();
         $data = $res->json();
 
         expect($res->headers->get('Content-Disposition'))->toContain('attachment')
@@ -368,15 +368,15 @@ describe('legacy user edit (S-04)', function () {
         $super->assignRole('superadmin');
         $existing = User::factory()->create();
 
-        $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => $existing->email, 'password' => 'LongEnough1234'])->assertStatus(422);
-        $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'short'])->assertStatus(422);
+        $this->actingAsReauthed($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => $existing->email, 'password' => 'LongEnough1234'])->assertStatus(422);
+        $this->actingAsReauthed($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'short'])->assertStatus(422);
     });
 
     it('creates a user that can sign in (the password is hashed once)', function () {
         $super = User::factory()->create();
         $super->assignRole('superadmin');
 
-        $this->actingAs($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'LongEnough1234'])->assertSuccessful();
+        $this->actingAsReauthed($super)->postJson('/api/v1/admin/users', ['name' => 'N', 'email' => 'new@example.com', 'password' => 'LongEnough1234'])->assertSuccessful();
 
         expect(Hash::check('LongEnough1234', User::where('email', 'new@example.com')->value('password')))->toBeTrue();
     });

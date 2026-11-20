@@ -43,7 +43,7 @@ function impTok(string $plain): array
 
 function impAs(User $user): array
 {
-    return impTok(test()->adminBearer($user));
+    return impTok(test()->adminBearer($user, true));
 }
 
 function impStart($test, User $staff, User $target, array $body = []): TestResponse
