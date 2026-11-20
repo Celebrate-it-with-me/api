@@ -43,6 +43,8 @@ class RouteServiceProvider extends ServiceProvider
         'background-music-upload' => [10, 1],
         'guest-event' => [60, 1],
         'payments-webhook' => [120, 1],
+        // Signed-looking webhooks (header present): generous per IP, because a balancer can make every caller one IP.
+        'payments-webhook-signed' => [600, 1],
         'reset-password' => [5, 1],
         'oauth' => [20, 1],
         'collaborator-token' => [30, 1],
@@ -55,6 +57,7 @@ class RouteServiceProvider extends ServiceProvider
         'whatsapp-preview' => [120, 1],
         'whatsapp-webhook-verify' => [60, 1],
         'whatsapp-webhook-receive' => [1200, 1],
+        'whatsapp-webhook-unsigned' => [60, 1],
         'invoice-resend' => [5, 10],
         'admin-login' => [10, 1],
         'admin-login-2fa' => [10, 1],

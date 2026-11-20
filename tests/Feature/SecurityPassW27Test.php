@@ -30,15 +30,59 @@ function w27Owner(): array
 }
 
 describe('payment webhook throttle (M-1)', function () {
-    it('never throttles a signed request: garbage cannot starve the provider', function () {
+    it('does not throttle a well-shaped signed request at the strict limit: garbage cannot starve the provider (M-1)', function () {
+        $fake = str_repeat('a', 64);
         foreach (range(1, 130) as $_) {
-            $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => 'bad'], '{}')
+            $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $fake], '{}')
                 ->assertStatus(400);
         }
 
         $raw = json_encode(['type' => 'unknown.event']);
         $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => FakeGateway::sign($raw)], $raw)
             ->assertOk();
+    });
+
+    it('rejects a malformed signature header with 400 before the HMAC is computed (P-1)', function () {
+        $gateway = Mockery::mock(\App\Http\Services\Payments\PaymentGateway::class);
+        $gateway->shouldNotReceive('parseWebhook');
+        $this->mock(\App\Http\Services\Payments\PurchaseService::class, fn ($m) => $m->shouldReceive('gateway')->andReturn($gateway));
+
+        foreach (['bad', 'x', str_repeat('g', 64)] as $value) {
+            $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $value], '{}')->assertStatus(400);
+        }
+        foreach (['t=abc,v1=' . str_repeat('a', 64), 't=1', 'v1=' . str_repeat('a', 64), 't=1,v1=zz'] as $value) {
+            $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_STRIPE_SIGNATURE' => $value], '{}')->assertStatus(400);
+        }
+    });
+
+    it('lets a Stripe-shaped header through to the gateway (P-1)', function () {
+        $gateway = Mockery::mock(\App\Http\Services\Payments\PaymentGateway::class);
+        $gateway->shouldReceive('parseWebhook')->once()->andThrow(new \App\Http\Services\Payments\InvalidWebhookException('x'));
+        $this->mock(\App\Http\Services\Payments\PurchaseService::class, fn ($m) => $m->shouldReceive('gateway')->andReturn($gateway));
+
+        $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_STRIPE_SIGNATURE' => 't=1700000000,v1=' . str_repeat('a', 64) . ',v0=' . str_repeat('b', 64)], '{}')
+            ->assertStatus(400);
+    });
+
+    it('refuses a body above the cap before anything else (P-1)', function () {
+        $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => str_repeat('a', 64)], str_repeat('x', 256 * 1024 + 1))
+            ->assertStatus(413);
+    });
+
+    it('applies a generous per-IP limit to signed-looking requests too (P-1)', function () {
+        $fake = str_repeat('a', 64);
+        foreach (range(1, 600) as $_) {
+            $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $fake], '{}');
+        }
+        $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => $fake], '{}')->assertStatus(429);
+    });
+
+    it('keeps accepting a genuinely signed event while the generous limit has room (P-1)', function () {
+        foreach (range(1, 300) as $_) {
+            $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => str_repeat('a', 64)], '{}');
+        }
+        $raw = json_encode(['type' => 'unknown.event']);
+        $this->call('POST', '/api/v1/app/payments/webhook', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_X_SIGNATURE' => FakeGateway::sign($raw)], $raw)->assertOk();
     });
 
     it('still throttles requests with no signature header at all', function () {
