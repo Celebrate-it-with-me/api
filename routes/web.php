@@ -3,7 +3,12 @@
 use App\Http\Controllers\Dev\MailGalleryController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\StatusController;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,7 +25,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/status', StatusController::class);
+// Legacy DB probe: throttled, cached a few seconds (StatusController) and without session or cookies. The balancer uses /up.
+Route::get('/status', StatusController::class)->middleware('throttle:status')->withoutMiddleware([
+    EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class,
+]);
 
 Route::prefix('oauth')->middleware('throttle:oauth')->group(function () {
     Route::get('{provider}/redirect', [SocialAuthController::class, 'redirect'])
