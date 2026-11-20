@@ -20,6 +20,7 @@ class DeliverInvoiceEmail implements ShouldQueue
 
     public function __construct(public readonly int $invoiceId, public readonly ?string $email = null, public readonly bool $resend = false)
     {
+        $this->onQueue('mail');
         $this->afterCommit();
     }
 
