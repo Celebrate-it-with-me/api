@@ -93,6 +93,39 @@ it('lists the companions who attend, each with their own table, and ignores the 
         ->and(json_encode($data))->not->toContain('Mesa 9')->not->toContain('Luis');
 });
 
+it('lists a companion with a table even while their answer is pending, and not one who declined', function () {
+    [$event, $main, $ana, $luis] = tablesEvent();
+    $luis->forceFill(['rsvp_status' => 'not-attending'])->save();
+    seat($event, $main, 'Mesa 1');
+    seat($event, $ana, 'Mesa 1');
+    seat($event, $luis, 'Mesa 1');
+
+    $names = collect(tablesSection($this->getJson(IT_URL))['data']['tables'])->pluck('name')->all();
+
+    expect($names)->toBe(['Rosa Fernández', 'Ana Fernández']);
+});
+
+it('does not list a pending companion who has no table, nor a companion of another group', function () {
+    [$event, $main] = tablesEvent();
+    $other = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'code' => 'OTH998']);
+    $stranger = Guest::factory()->create(['event_id' => $event->id, 'parent_id' => $other->id, 'name' => 'Extraña Pérez', 'rsvp_status' => 'pending']);
+    seat($event, $main, 'Mesa 1');
+    seat($event, $stranger, 'Mesa 1');
+
+    $names = collect(tablesSection($this->getJson(IT_URL))['data']['tables'])->pluck('name')->all();
+
+    expect($names)->toBe(['Rosa Fernández']);
+});
+
+it('hides the block from a main guest who will not attend', function () {
+    [$event, $main, $ana] = tablesEvent();
+    $main->forceFill(['rsvp_status' => 'not-attending'])->save();
+    seat($event, $main, 'Mesa 1');
+    seat($event, $ana, 'Mesa 1');
+
+    expect(tablesSection($this->getJson(IT_URL)))->toBeNull();
+});
+
 it('says sameTable when everybody listed shares it', function () {
     [$event, $main, $ana] = tablesEvent();
     $ana->forceFill(['rsvp_status' => 'attending'])->save();
