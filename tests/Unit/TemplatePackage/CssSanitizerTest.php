@@ -340,3 +340,43 @@ it('fuzz: random garbage never throws and never produces output with a dangerous
     }
     expect(true)->toBeTrue();
 });
+
+it('does not count colour channels as shadow or outline measures', function (string $decl) {
+    [$out, $codes] = css(".pkg-card{{$decl}}", ['pkg-card' => 'wrapper']);
+    expect($codes)->toBe([])->and($out)->not->toBeNull();
+})->with([
+    ['box-shadow:0 0 20px rgba(40,221,238,.4)'],
+    ['box-shadow:0 0 20px rgba(40,221,238,.4),0 0 42px rgba(255,27,169,.3)'],
+    ['box-shadow:0 0 14px #28ddee66'],
+    ['box-shadow:0 0 14px #fff'],
+    ['box-shadow:0 0 20px hsla(330,100%,60%,.4)'],
+    ['box-shadow:0 0 20px oklch(0.8 0.2 330)'],
+    ['box-shadow:0 0 20px color-mix(in srgb,#ff00ff 50%,red)'],
+    ['text-shadow:0 2px 20px rgba(239,179,69,.19)'],
+    ['outline:2px solid rgb(255 27 169)'],
+    ['box-shadow:0 4px 12px rgba(0,0,0,.2)'],
+]);
+
+it('still rejects oversized or dynamic shadows and outlines', function (string $decl) {
+    [, $codes] = css(".pkg-card{{$decl}}", ['pkg-card' => 'wrapper']);
+    expect($codes)->toContain('css_forbidden_property');
+})->with([
+    ['box-shadow:0 0 150px rgba(40,221,238,.4)'],
+    ['box-shadow:120px 0 10px rgba(40,221,238,.4)'],
+    ['text-shadow:0 0 101px #28ddee'],
+    ['outline-width:101px'],
+    ['outline-offset:120px'],
+    ['outline:120px solid rgb(255,27,169)'],
+    ['box-shadow:0 0 9rem rgba(40,221,238,.4)'],
+    ['box-shadow:0 0 9em hsla(330,100%,60%,.4)'],
+    ['box-shadow:0 0 calc(10px + 2px) rgba(40,221,238,.4)'],
+    ['box-shadow:0 0 var(--pkg-x) rgba(40,221,238,.4)'],
+]);
+
+it('applies the drop-shadow() limit to the offsets, not to the colour channels', function () {
+    [$out, $codes] = css('.pkg-a{filter:drop-shadow(0 0 20px rgba(255,27,169,.5))}');
+    expect($codes)->toBe([])->and($out)->not->toBeNull();
+
+    [, $codes] = css('.pkg-a{filter:drop-shadow(0 0 150px rgba(255,27,169,.5))}');
+    expect($codes)->toContain('css_forbidden_property');
+});
