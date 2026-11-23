@@ -667,7 +667,11 @@ class InvitationEditor
         $copy->template_config = $config;
         $copy->invitation_stage = $state === 'save_the_date' ? Events::STAGE_SAVE_THE_DATE : Events::STAGE_INVITATION;
 
-        $guest = new Guest(['name' => $body['guest_name'] ?? ($event->locale === 'en' ? 'Guest' : 'Invitada/o')]);
+        $guest = new Guest([
+            'name' => $body['guest_name'] ?? ($event->locale === 'en' ? 'Guest' : 'Invitada/o'),
+            // An unsaved model has no column default: without this the sample reaches the SPA with a null status.
+            'rsvp_status' => InvitationService::STATUS_PENDING,
+        ]);
 
         return $this->invitations->build($copy, $guest, $body['locale'] ?? null, true);
     }

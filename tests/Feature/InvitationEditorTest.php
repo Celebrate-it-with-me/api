@@ -912,6 +912,18 @@ describe('POST invitation/preview', function () {
             ->and($preview['guest']['name'])->toBe('Invitada/o');
     });
 
+    it('gives the sample guest a pending RSVP status and no companions', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival'), 'template_config' => ['theme' => ['preset' => 'rosa']]]);
+
+        $preview = edPreview($this, $event, $m['owner'])->assertOk()->json('data');
+
+        $rsvp = collect($preview['sections'])->firstWhere('type', 'rsvp');
+        expect($rsvp)->not->toBeNull()
+            ->and($rsvp['data']['guest']['status'])->toBe('pending')
+            ->and($rsvp['data']['companions'])->toBe([]);
+    });
+
     it('shows unsaved changes and writes nothing', function () {
         edInstall(edBuilder('festival', 'free'));
         [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);

@@ -7,12 +7,12 @@ use App\Models\Seating\TableAssignment;
 
 /**
  * "Your table" of the public invitation (docs/plans/invitation-premium-modules-contract.md, section 7): the table the
- * organizer assigned to this guest and to her companions who attend. Read only, per guest, and nothing about the
+ * organizer assigned to this guest and to her companions who have not declined. Read only, per guest, and nothing about the
  * other people sitting there. No assignment, no section.
  */
 class InvitationTables
 {
-    private const ATTENDING = 'attending';
+    private const NOT_ATTENDING = 'not-attending';
 
     /**
      * @return array{tables: list<array{personId: int, name: string, table: string, seat: ?string}>, sameTable: bool}|null
@@ -24,8 +24,13 @@ class InvitationTables
             return null;
         }
 
+        // A main guest who declined does not see the block.
+        if ($guest->rsvp_status === self::NOT_ATTENDING) {
+            return null;
+        }
+
         $people = collect([$guest])->concat(
-            $guest->companions()->where('rsvp_status', self::ATTENDING)->orderBy('id')->get(),
+            $guest->companions()->where('rsvp_status', '!=', self::NOT_ATTENDING)->orderBy('id')->get(),
         );
 
         $assignments = TableAssignment::query()
