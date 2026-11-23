@@ -17,6 +17,7 @@ use Sabberworm\CSS\Renderable;
 use Sabberworm\CSS\RuleSet\AtRuleSet;
 use Sabberworm\CSS\RuleSet\DeclarationBlock;
 use Sabberworm\CSS\Settings;
+use Sabberworm\CSS\Value\Color;
 use Sabberworm\CSS\Value\CSSFunction;
 use Sabberworm\CSS\Value\CSSString;
 use Sabberworm\CSS\Value\Size;
@@ -30,6 +31,8 @@ use Sabberworm\CSS\Value\ValueList;
  */
 class CssSanitizer
 {
+    private const COLOR_FUNCTIONS = ['rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'lab', 'lch', 'oklab', 'oklch', 'color', 'color-mix', 'light-dark'];
+
     private const AT_BLOCKS = ['media', 'supports', 'container'];
 
     private const PROPERTIES = [
@@ -1054,6 +1057,10 @@ class CssSanitizer
     {
         if ($value instanceof Size) {
             return [$value];
+        }
+        // Colours (hex, rgb(), hsl()...) carry channels, not lengths: never count them as measures.
+        if ($value instanceof Color || ($value instanceof CSSFunction && in_array(strtolower($value->getName()), self::COLOR_FUNCTIONS, true))) {
+            return [];
         }
         $out = [];
         if ($value instanceof ValueList && ! $value instanceof URL) {
