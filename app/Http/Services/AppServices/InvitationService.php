@@ -452,7 +452,7 @@ class InvitationService
     /** @return array{sections: array<int, array<string, mixed>>, theme: array<string, mixed>}|null */
     private function cachedVersion(int $versionId): ?array
     {
-        $key = "invitation.version.{$versionId}";
+        $key = InvitationCache::byIdKey('invitation.version', $versionId);
 
         if (($hit = Cache::get($key)) !== null) {
             return $hit;
@@ -468,7 +468,7 @@ class InvitationService
 
         // A draft can still change: only published and archived versions are immutable.
         if (! $version->isDraft()) {
-            Cache::forever($key, $content);
+            Cache::put($key, $content, InvitationCache::BY_ID_TTL);
         }
 
         return $content;

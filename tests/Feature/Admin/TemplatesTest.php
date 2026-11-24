@@ -10,6 +10,7 @@ use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion;
 use App\Models\User;
 use App\Support\AdminPermissions;
+use App\Support\InvitationCache;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\InvitationTemplateSeeder;
 use Illuminate\Database\QueryException;
@@ -369,7 +370,7 @@ describe('events keep their look', function () {
     it('serves version content from the cache by version id, without reading the version again', function () {
         $event = tplPublish(tplPublishedEvent('xv-cache'));
         tplCoverTitle($event);
-        $key = "invitation.version.{$event->template_version_id}";
+        $key = InvitationCache::byIdKey('invitation.version', $event->template_version_id);
 
         expect(Cache::has($key))->toBeTrue();
 
@@ -381,6 +382,40 @@ describe('events keep their look', function () {
         expect($reads)->toBe(0);
     });
 
+    it('does not serve a stale entry kept under the old id-only key, nor one from before a global change', function () {
+        $event = tplPublish(tplPublishedEvent('xv-stale'));
+        $id = $event->template_version_id;
+        $stale = ['sections' => [['type' => 'cover', 'title' => ['es' => 'VIEJO']]], 'theme' => [], 'package_id' => null];
+
+        // What a previous incarnation of the database left in Redis under the same version id.
+        Cache::forever("invitation.version.{$id}", $stale);
+        expect(tplCoverTitle($event))->not->toBe('VIEJO');
+
+        // Warm, then the row is repaired with the query builder and the invalidation the repair must call runs.
+        $warmKey = InvitationCache::byIdKey('invitation.version', $id);
+        expect(Cache::get($warmKey)['sections'][0]['title'])->not->toBe('NUEVO');
+
+        $sections = InvitationTemplateVersion::query()->find($id)->sections;
+        $sections[0]['title']['es'] = 'NUEVO';
+        DB::table('invitation_template_versions')->where('id', $id)->update(['sections' => json_encode($sections)]);
+        expect(tplCoverTitle($event))->not->toBe('NUEVO');
+
+        InvitationCache::flushAll();
+        expect(tplCoverTitle($event))->toBe('NUEVO')
+            ->and(InvitationCache::byIdKey('invitation.version', $id))->not->toBe($warmKey);
+    });
+
+    it('renews the version entries when any template, version or package is saved', function () {
+        $event = tplPublish(tplPublishedEvent('xv-renew'));
+        tplCoverTitle($event);
+        $before = InvitationCache::byIdKey('invitation.version', $event->template_version_id);
+
+        InvitationTemplate::query()->first()->touch();
+
+        expect(InvitationCache::byIdKey('invitation.version', $event->template_version_id))->not->toBe($before)
+            ->and(Cache::has($before))->toBeTrue();
+    });
+
     it('does not cache a draft', function () {
         $draftId = tplDraft();
         $event = tplPublishedEvent('xv-draft');
@@ -388,7 +423,7 @@ describe('events keep their look', function () {
 
         tplCoverTitle($event);
 
-        expect(Cache::has("invitation.version.{$draftId}"))->toBeFalse();
+        expect(Cache::has(InvitationCache::byIdKey('invitation.version', $draftId)))->toBeFalse();
     });
 });
 
