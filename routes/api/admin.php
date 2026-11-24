@@ -30,6 +30,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         Route::post('{purchase}/sync', [AdminPaymentController::class, 'sync'])->middleware(['admin.can:admin.purchases.manage', 'admin.reauth']);
         Route::post('{purchase}/resolve-review', [AdminPaymentController::class, 'resolveReview'])->middleware(['admin.can:admin.purchases.manage', 'admin.reauth']);
         Route::put('price', [AdminPaymentController::class, 'updatePrice'])->middleware(['admin.can:admin.pricing.manage', 'admin.reauth']);
+        Route::get('launch-offer', [AdminPaymentController::class, 'launchOffer'])->middleware('admin.can:admin.pricing.manage');
+        Route::put('launch-offer', [AdminPaymentController::class, 'updateLaunchOffer'])->middleware(['admin.can:admin.pricing.manage', 'admin.reauth']);
         Route::get('coupons', [AdminPaymentController::class, 'coupons'])->middleware('admin.can:admin.pricing.manage');
         Route::post('coupons', [AdminPaymentController::class, 'storeCoupon'])->middleware(['admin.can:admin.pricing.manage', 'admin.reauth']);
         Route::patch('coupons/{coupon}', [AdminPaymentController::class, 'updateCoupon'])->middleware(['admin.can:admin.pricing.manage', 'admin.reauth']);

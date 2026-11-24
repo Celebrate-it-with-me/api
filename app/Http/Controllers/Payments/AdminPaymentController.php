@@ -7,13 +7,17 @@ use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\Payments\PaymentSettlement;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
+use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
 use App\Models\EventUserRole;
+use App\Models\LaunchOffer;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Permissions are on the routes (`admin.can:`); every write here is in the audit log with its reason. */
 class AdminPaymentController extends Controller
@@ -114,6 +118,81 @@ class AdminPaymentController extends Controller
         $this->audit->record('pricing.update', $plan, ['reason' => $data['reason'], 'before' => ['priceCents' => $before], 'after' => ['priceCents' => $plan->price_cents]]);
 
         return response()->json(['data' => $plan]);
+    }
+
+    /** The launch offer as the admin sees it; `data` is null until one exists (the launch seeder or the first PUT creates it). */
+    public function launchOffer(): JsonResponse
+    {
+        $plan = $this->purchases->fullPlan();
+
+        return response()->json(['data' => $this->offerPayload($plan, $this->purchases->launchOffer($plan))]);
+    }
+
+    /**
+     * Turn the offer on or off and set its price and slots. `slotsUsed` is a correction: the used count is derived from the
+     * paid purchases, so the admin states the number she wants and the difference is stored (e.g. a sale made outside
+     * the platform that should take a slot). The first PUT creates the offer and needs `priceCents` and `totalSlots`.
+     */
+    public function updateLaunchOffer(Request $request): JsonResponse
+    {
+        $plan = $this->purchases->fullPlan();
+        $data = $request->validate([
+            'isActive' => ['sometimes', 'boolean'],
+            // Stripe's floor is 50 cents; an offer is a discount, so it must be below the list price.
+            'priceCents' => ['sometimes', 'integer', 'min:' . PurchaseService::MIN_CHARGE_CENTS, 'lt:' . max(1, (int) $plan->price_cents)],
+            'totalSlots' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            'slotsUsed' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            'reason' => AdminAudit::reasonRule(),
+        ]);
+
+        $offer = DB::transaction(function () use ($plan, $data) {
+            $offer = $this->purchases->launchOffer($plan, lock: true);
+            if (! $offer && (! isset($data['priceCents']) || ! isset($data['totalSlots']))) {
+                throw ValidationException::withMessages(['priceCents' => ['required_to_create_offer']]);
+            }
+            $before = $this->offerPayload($plan, $offer);
+            $offer ??= new LaunchOffer(['event_plan_id' => $plan->id, 'is_active' => false, 'used_adjustment' => 0]);
+
+            $offer->fill(array_filter([
+                'is_active' => $data['isActive'] ?? null, 'price_cents' => $data['priceCents'] ?? null, 'total_slots' => $data['totalSlots'] ?? null,
+            ], fn ($v) => $v !== null));
+            if (isset($data['slotsUsed'])) {
+                $offer->used_adjustment = $data['slotsUsed'] - $offer->paidCount();
+            }
+            $offer->save();
+
+            return [$offer, $before];
+        });
+        [$offer, $before] = $offer;
+
+        $after = $this->offerPayload($plan, $offer);
+        $this->audit->record(($data['isActive'] ?? null) === false ? 'launch_offer.deactivate' : 'launch_offer.update', $offer, [
+            'reason' => $data['reason'], 'before' => $before, 'after' => $after,
+        ]);
+
+        return response()->json(['data' => $after]);
+    }
+
+    private function offerPayload(EventPlan $plan, ?LaunchOffer $offer): ?array
+    {
+        if (! $offer) {
+            return null;
+        }
+
+        return [
+            'id' => $offer->id,
+            'isActive' => (bool) $offer->is_active,
+            'active' => $offer->isOpen($plan),
+            'priceCents' => (int) $offer->price_cents,
+            'listPriceCents' => (int) $plan->price_cents,
+            'currency' => $plan->currency,
+            'totalSlots' => (int) $offer->total_slots,
+            'slotsUsed' => $offer->usedSlots(),
+            'slotsPaid' => $offer->paidCount(),
+            'slotsAdjustment' => (int) $offer->used_adjustment,
+            'slotsHeld' => $offer->heldSlots(),
+            'slotsLeft' => $offer->slotsLeft(),
+        ];
     }
 
     public function coupons(): JsonResponse
