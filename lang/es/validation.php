@@ -160,9 +160,11 @@ return [
     'custom' => [],
 
     'attributes' => [
+        'allowBelowUsed' => 'permitir por debajo de lo usado',
         'commitments.*.resolution' => 'resolución del compromiso',
         'companions.*.menuItemIds' => 'platos del acompañante',
         'companions.*.menuItemIds.*' => 'plato del acompañante',
+        'expectedAmountCents' => 'importe esperado',
         'format' => 'formato',
         'guest.menuItemIds' => 'platos del invitado',
         'guest.menuItemIds.*' => 'plato del invitado',
@@ -173,6 +175,8 @@ return [
         'ack_third_party_marks' => 'confirmación de marcas de terceros',
         'package' => 'paquete',
         'remember' => 'recordarme',
+        'slotsUsed' => 'cupos usados',
+        'totalSlots' => 'cupos totales',
         'visibility' => 'visibilidad',
         'preset' => 'preajuste',
         'package_id' => 'paquete',
