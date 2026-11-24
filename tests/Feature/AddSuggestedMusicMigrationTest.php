@@ -48,7 +48,7 @@ it('is already satisfied on a fresh install: the seeder brings the section, swit
     $music = collect(sectionsOf($before))->firstWhere('type', 'suggested_music');
     expect($template->fresh()->current_version_id)->toBe($before)
         ->and($music['enabled'])->toBeTrue()
-        ->and(array_column(sectionsOf($before), 'type'))->toBe(['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'tables', 'suggested_music', 'comments', 'closing', 'music']);
+        ->and(array_column(sectionsOf($before), 'type'))->toBe(['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'tables', 'suggested_music', 'comments', 'music', 'closing']);
 });
 
 it('starts new events with the section on, through the seeder', function () {
