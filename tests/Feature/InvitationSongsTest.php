@@ -144,8 +144,8 @@ describe('GET invitation songs', function () {
         $rows = collect($response->json('data'));
 
         expect($rows->pluck('id')->all())->toBe([$theirs->id, $mine->id])
-            ->and(array_keys($rows[0]))->toBe(['id', 'title', 'artist', 'thumbnailUrl', 'previewUrl', 'votes', 'votedByMe', 'suggestedByMe'])
-            ->and($rows[0])->toMatchArray(['votes' => 2, 'votedByMe' => true, 'suggestedByMe' => false])
+            ->and(array_keys($rows[0]))->toBe(['id', 'title', 'artist', 'platform', 'platformId', 'thumbnailUrl', 'previewUrl', 'votes', 'votedByMe', 'suggestedByMe'])
+            ->and($rows[0])->toMatchArray(['platform' => 'spotify', 'platformId' => spotifyId(2), 'votes' => 2, 'votedByMe' => true, 'suggestedByMe' => false])
             ->and($rows[1])->toMatchArray(['votes' => 0, 'votedByMe' => false, 'suggestedByMe' => true])
             ->and($response->json('meta'))->toBe(['currentPage' => 1, 'lastPage' => 1, 'total' => 2, 'votesTotal' => 2, 'votesRemaining' => 1])
             ->and($response->getContent())->not->toContain('OTH999')->not->toContain('Tía Marta')->not->toContain('SNG123')->not->toContain('suggested_by');
@@ -344,7 +344,7 @@ describe('POST invitation songs', function () {
 
         $response = $this->postJson(IS_URL . '/songs', songBody(1, ['previewUrl' => 'https://p.scdn.co/mp3-preview/abc']))->assertCreated();
 
-        expect(array_keys($response->json('data')))->toBe(['id', 'title', 'artist', 'thumbnailUrl', 'previewUrl', 'votes', 'votedByMe', 'suggestedByMe'])
+        expect(array_keys($response->json('data')))->toBe(['id', 'title', 'artist', 'platform', 'platformId', 'thumbnailUrl', 'previewUrl', 'votes', 'votedByMe', 'suggestedByMe'])
             ->and($response->json('data'))->toMatchArray(['title' => 'Canción 1', 'votes' => 0, 'votedByMe' => false, 'suggestedByMe' => true, 'previewUrl' => 'https://p.scdn.co/mp3-preview/abc']);
 
         $stored = SuggestedMusic::first();
