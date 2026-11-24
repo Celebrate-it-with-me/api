@@ -50,6 +50,71 @@ class PackageInstaller
         return $this->query->show($package->id);
     }
 
+    /**
+     * Trusted console install of one package slug (the reserved `classic`): the same validation, files, rows and audit as
+     * an admin install, with the reserved slug and the engine fonts allowed. It is idempotent: the same version with the
+     * same content is a no-op; the same version with other content is refused (bump the version). The admin endpoints can
+     * never reach this: they validate with a context that refuses the reserved slugs.
+     *
+     * @return array{status: 'installed'|'unchanged', package: TemplatePackage}
+     */
+    public function installTrusted(string $zipPath, string $reason, string $onlySlug): array
+    {
+        $manifest = $this->peekManifest($zipPath);
+        if (($manifest['slug'] ?? null) !== $onlySlug || ! is_string($manifest['version'] ?? null)) {
+            throw new \RuntimeException("Este comando solo instala el paquete «{$onlySlug}» (el manifiesto dice «" . (is_string($manifest['slug'] ?? null) ? $manifest['slug'] : '?') . '»).');
+        }
+
+        $lock = Cache::lock(PackageStage::LOCK, PackageStage::LOCK_SECONDS);
+        try {
+            $lock->block(10);
+        } catch (LockTimeoutException) {
+            throw new \RuntimeException('Otra instalación de paquete está en curso. Inténtalo de nuevo en unos segundos.');
+        }
+
+        try {
+            $existing = TemplatePackage::query()->where('slug', $onlySlug)->where('semver', $manifest['version'])->first();
+            [$summary, $meta] = $this->stage->stageTrusted($zipPath, $existing ? $onlySlug : null);
+            $token = $summary['stageToken'];
+
+            if (! $meta['valid']) {
+                $this->stage->discard($token);
+                $codes = array_map(fn (array $e) => ($e['code'] ?? '?') . ' (' . ($e['file'] ?? '?') . ')', array_slice($summary['report']['errors'], 0, 10));
+                throw new \RuntimeException('El paquete no es válido: ' . implode(', ', $codes));
+            }
+            if ($existing) {
+                $same = hash_equals((string) $existing->content_hash, (string) $meta['build']['contentHash']);
+                $this->stage->discard($token);
+                if (! $same) {
+                    throw new \RuntimeException("La versión {$onlySlug} {$manifest['version']} ya está instalada con otro contenido: sube una versión nueva.");
+                }
+
+                return ['status' => 'unchanged', 'package' => $existing];
+            }
+
+            return ['status' => 'installed', 'package' => $this->persist($token, $meta, $reason)];
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /** @return array<string, mixed> manifest.json of a zip, read without extracting anything */
+    private function peekManifest(string $zipPath): array
+    {
+        $zip = new \ZipArchive;
+        if (! is_file($zipPath) || $zip->open($zipPath) !== true) {
+            throw new \RuntimeException('No se pudo abrir el zip del paquete.');
+        }
+        $raw = $zip->statName('manifest.json') !== false && ($zip->statName('manifest.json')['size'] ?? 0) <= 65536 ? $zip->getFromName('manifest.json') : false;
+        $zip->close();
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+        if (! is_array($json)) {
+            throw new \RuntimeException('El zip no trae un manifest.json legible.');
+        }
+
+        return $json;
+    }
+
     /** @param array<string, mixed> $meta */
     private function persist(string $token, array $meta, string $reason): TemplatePackage
     {

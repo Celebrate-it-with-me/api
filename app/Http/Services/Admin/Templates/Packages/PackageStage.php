@@ -52,6 +52,27 @@ class PackageStage
         }
     }
 
+    /**
+     * Trusted console only (never reachable from a request): validates a zip that may use the slugs reserved to the
+     * system and the engine's remote fonts, and stages it like an upload. The caller holds LOCK. `$reinstallSlug` takes
+     * that slug out of what the validator believes installed, so the same version can be checked again (idempotent install).
+     *
+     * @return array{0: array{valid: bool, stageToken: string, expiresAt: string, report: array}, 1: array<string, mixed>} the summary and the stored metadata
+     */
+    public function stageTrusted(string $path, ?string $reinstallSlug = null): array
+    {
+        $context = $this->context();
+        $context->allowReservedSlugs = true;
+        $context->allowEngineFonts = true;
+        if ($reinstallSlug !== null) {
+            unset($context->installed[$reinstallSlug], $context->levels[$reinstallSlug], $context->visibilities[$reinstallSlug], $context->previous[$reinstallSlug]);
+        }
+        $result = (new TemplatePackageValidator)->validate($path, $context);
+        $summary = $this->store($result, (string) hash_file('sha256', $path), (int) filesize($path));
+
+        return [$summary, (array) $this->readMeta($summary['stageToken'])];
+    }
+
     /** @return array<string, mixed> the stored metadata of a token; 404 when it does not exist, 410 when it expired */
     public function load(string $token): array
     {
