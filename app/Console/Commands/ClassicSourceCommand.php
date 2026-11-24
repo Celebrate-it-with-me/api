@@ -19,6 +19,7 @@ class ClassicSourceCommand extends Command
         $mode = (string) $this->argument('mode');
         if ($mode === 'status') {
             $this->line('classic_source = ' . $classic->current());
+            $this->line('Eventos publicados sin versión fijada (siguen el origen): ' . $classic->followingPublished());
 
             return self::SUCCESS;
         }
@@ -43,7 +44,7 @@ class ClassicSourceCommand extends Command
         }
 
         $this->info($result['changed']
-            ? "classic_source: {$result['from']} -> {$result['to']}. Los eventos con versión fijada no cambian."
+            ? "classic_source: {$result['from']} -> {$result['to']}. Los eventos con versión fijada no cambian; cambian los borradores y {$result['following']} evento(s) publicado(s) sin versión fijada (etapa Save the date)."
             : "classic_source ya era {$result['to']}: sin cambios.");
 
         return self::SUCCESS;

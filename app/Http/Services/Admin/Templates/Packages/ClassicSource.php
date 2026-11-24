@@ -4,6 +4,7 @@ namespace App\Http\Services\Admin\Templates\Packages;
 
 use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\AppServices\ModuleSupport;
+use App\Models\Events;
 use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion as Version;
 use App\Models\TemplatePackage;
@@ -83,6 +84,17 @@ class ClassicSource
         }
     }
 
+    /**
+     * Published events of the two Classic templates with no fixed version (the Save the date stage fixes nothing): they
+     * follow the pointer, so a change of source changes the invitation their guests already see. Drafts follow it too.
+     */
+    public function followingPublished(): int
+    {
+        $ids = InvitationTemplate::query()->whereIn('slug', self::TEMPLATES)->pluck('id');
+
+        return Events::query()->whereIn('template_id', $ids)->whereNull('template_version_id')->where('status', 'published')->count();
+    }
+
     /** @return 'native'|'package'|'mixed'|'unknown' what the two Classic templates point at now */
     public function current(): string
     {
@@ -98,7 +110,7 @@ class ClassicSource
     /**
      * Points both Classic templates at the native version or at the package version, all or nothing.
      *
-     * @return array{changed: bool, from: string, to: string}
+     * @return array{changed: bool, from: string, to: string, following: int}
      */
     public function switchTo(string $mode, string $reason): array
     {
@@ -141,7 +153,7 @@ class ClassicSource
 
         $changed = $before !== $after;
 
-        return ['changed' => $changed, 'from' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'to' => $mode];
+        return ['changed' => $changed, 'from' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'to' => $mode, 'following' => $this->followingPublished()];
     }
 
     /** The newest version of the Classic package for this template that can be drawn (never a draft, never a withdrawn package). */

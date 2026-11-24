@@ -376,6 +376,25 @@ describe('publishing a native Classic version while the source is the package (C
     });
 });
 
+describe('who follows the pointer (CS-004)', function () {
+    it('counts the published events without a fixed version, reports them in status and in the switch message, and changes nothing about them', function () {
+        clsInstall(clsPackage());
+        $pinned = clsEvent('boda-fija');
+        app(InvitationService::class)->pinVersion($pinned);
+        $pinned->save();
+        clsEvent('boda-save-the-date');
+        clsEvent('boda-borrador', 'wedding', false);
+
+        expect(app(ClassicSource::class)->followingPublished())->toBe(1);
+        clsSource('status');
+        expect(Artisan::output())->toContain('Eventos publicados sin versión fijada (siguen el origen): 1');
+        clsSource('package');
+        expect(Artisan::output())->toContain('1 evento(s) publicado(s) sin versión fijada')->toContain('Los eventos con versión fijada no cambian')
+            ->and(clsPayload('boda-save-the-date')['theme']['package']['slug'])->toBe('classic')
+            ->and(clsPayload('boda-fija')['theme'])->not->toHaveKey('package');
+    });
+});
+
 describe('the switch', function () {
     it('is native by default, and an unflipped install changes what the public sees in nothing', function () {
         $event = clsEvent('boda-camila');
