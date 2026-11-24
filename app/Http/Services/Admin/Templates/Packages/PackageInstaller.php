@@ -54,11 +54,12 @@ class PackageInstaller
      * Trusted console install of one package slug (the reserved `classic`): the same validation, files, rows and audit as
      * an admin install, with the reserved slug and the engine fonts allowed. It is idempotent: the same version with the
      * same content is a no-op; the same version with other content is refused (bump the version). The admin endpoints can
-     * never reach this: they validate with a context that refuses the reserved slugs.
+     * never reach this: they validate with a context that refuses the reserved slugs. `$within` runs inside the same
+     * transaction that creates the package and its drafts, so there is never a half installed package.
      *
      * @return array{status: 'installed'|'unchanged', package: TemplatePackage}
      */
-    public function installTrusted(string $zipPath, string $reason, string $onlySlug): array
+    public function installTrusted(string $zipPath, string $reason, string $onlySlug, ?callable $within = null): array
     {
         $manifest = $this->peekManifest($zipPath);
         if (($manifest['slug'] ?? null) !== $onlySlug || ! is_string($manifest['version'] ?? null)) {
@@ -92,7 +93,7 @@ class PackageInstaller
                 return ['status' => 'unchanged', 'package' => $existing];
             }
 
-            return ['status' => 'installed', 'package' => $this->persist($token, $meta, $reason)];
+            return ['status' => 'installed', 'package' => $this->persist($token, $meta, $reason, $within)];
         } finally {
             $lock->release();
         }
@@ -116,7 +117,7 @@ class PackageInstaller
     }
 
     /** @param array<string, mixed> $meta */
-    private function persist(string $token, array $meta, string $reason): TemplatePackage
+    private function persist(string $token, array $meta, string $reason, ?callable $within = null): TemplatePackage
     {
         $build = $meta['build'];
         $manifest = $build['json']['manifest'];
@@ -146,7 +147,7 @@ class PackageInstaller
         $thumbnail = $this->thumbnails->publishStaged($token, $slug, $semver, $build['contentHash']);
 
         try {
-            $package = DB::transaction(function () use ($meta, $build, $manifest, $folder, $thumbnail) {
+            $package = DB::transaction(function () use ($meta, $build, $manifest, $folder, $thumbnail, $within) {
                 $package = TemplatePackage::query()->create([
                     'slug' => $manifest['slug'],
                     'semver' => $manifest['version'],
@@ -173,6 +174,9 @@ class PackageInstaller
 
                 foreach ($manifest['eventTypes'] as $type) {
                     $this->draftFor($package, $type, $build['json'], $thumbnail);
+                }
+                if ($within !== null) {
+                    $within($package);
                 }
 
                 return $package;

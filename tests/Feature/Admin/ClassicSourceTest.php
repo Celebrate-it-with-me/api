@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Services\Admin\AdminAudit;
 use App\Http\Services\Admin\Templates\Packages\ClassicSource;
 use App\Http\Services\Admin\Templates\Packages\PackageStage;
 use App\Http\Services\AppServices\InvitationService;
@@ -216,6 +217,83 @@ describe('install', function () {
         expect($context->allowReservedSlugs)->toBeFalse()->and($context->allowEngineFonts)->toBeFalse();
         clsInstall(clsPackage());
         expect(app(PackageStage::class)->context()->allowReservedSlugs)->toBeFalse();
+    });
+});
+
+describe('the lifecycle endpoints of the admin never touch the reserved package (CS-001, CS-002)', function () {
+    function clsStaff(): User
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('superadmin');
+        test()->actingAsReauthed($admin);
+
+        return $admin;
+    }
+
+    it('answers 409 console_only to activate, deactivate and withdraw, and changes nothing', function () {
+        clsInstall(clsPackage());
+        clsStaff();
+        $pkg = TemplatePackage::where('slug', 'classic')->sole();
+        $state = fn () => [(array) DB::table('template_packages')->where('id', $pkg->id)->first(['status', 'activated_at', 'deactivated_at', 'withdrawn_at']), Version::orderBy('id')->get()->map->only(['id', 'status'])->all(), InvitationTemplate::orderBy('id')->get()->map->only(['id', 'is_active', 'current_version_id'])->all()];
+        $before = $state();
+        $base = '/api/v1/admin/templates/packages/' . $pkg->id;
+
+        $this->postJson("{$base}/activate", ['reason' => 'Intentar activar', 'checklist' => ['accessibility' => true, 'contrast' => true, 'long_names' => true, 'no_photo' => true, 'sections_reordered' => true, 'performance' => true]])->assertStatus(409)->assertJson(['code' => 'console_only']);
+        $this->postJson("{$base}/deactivate", ['reason' => 'Intentar desactivar'])->assertStatus(409)->assertJson(['code' => 'console_only']);
+        $this->deleteJson($base, ['reason' => 'Intentar retirar'])->assertStatus(409)->assertJson(['code' => 'console_only']);
+
+        expect($state())->toBe($before)->and(clsTemplate('wedding')->is_active)->toBeTrue();
+        expect(AdminAuditLog::whereIn('action', ['template.package_activated', 'template.package_deactivated', 'template.package_withdrawn'])->count())->toBe(0);
+    });
+
+    it('cannot activate a half installed classic: the native version stays published', function () {
+        clsInstall(clsPackage());
+        $pkg = TemplatePackage::where('slug', 'classic')->sole();
+        // The state an old crash could leave: installed, with drafts.
+        Version::where('package_id', $pkg->id)->update(['status' => 'draft', 'archived_at' => null]);
+        $pkg->forceFill(['status' => 'installed', 'activated_at' => null])->save();
+        $native = clsTemplate('wedding')->current_version_id;
+        clsStaff();
+
+        $this->postJson('/api/v1/admin/templates/packages/' . $pkg->id . '/activate', ['reason' => 'Activar a medias', 'checklist' => ['accessibility' => true, 'contrast' => true, 'long_names' => true, 'no_photo' => true, 'sections_reordered' => true, 'performance' => true]])->assertStatus(409)->assertJson(['code' => 'console_only']);
+        expect(Version::find($native)->status)->toBe('published')->and(clsTemplate('wedding')->current_version_id)->toBe($native);
+    });
+
+    it('still lets the admin manage the other packages', function () {
+        clsStaff();
+        $up = $this->post('/api/v1/admin/templates/packages/validate', ['package' => UploadedFile::fake()->createWithContent('b.zip', (string) file_get_contents(PackageBuilder::good()->zip()))], ['Accept' => 'application/json'])->assertOk()->json('data');
+        $id = $this->postJson('/api/v1/admin/templates/packages', ['stage_token' => $up['stageToken'], 'reason' => 'Instalar botanica'])->assertCreated()->json('data.id');
+
+        $this->postJson("/api/v1/admin/templates/packages/{$id}/activate", ['reason' => 'Activar botanica', 'checklist' => ['accessibility' => true, 'contrast' => true, 'long_names' => true, 'no_photo' => true, 'sections_reordered' => true, 'performance' => true]])->assertOk();
+    });
+});
+
+describe('the install is atomic (CS-001)', function () {
+    it('leaves nothing behind when the parking or its audit fails', function () {
+        $this->app->bind(AdminAudit::class, fn ($app) => new class($app['request']) extends AdminAudit
+        {
+            public function record(string $action, $subject = null, array $data = []): AdminAuditLog
+            {
+                if ($action === 'template.classic_package_installed') {
+                    throw new RuntimeException('boom');
+                }
+
+                return parent::record($action, $subject, $data);
+            }
+        });
+        $before = [TemplatePackage::count(), Version::count()];
+
+        expect(clsInstall(clsPackage()))->toBe(1)->and(Artisan::output())->toContain('boom');
+
+        expect([TemplatePackage::count(), Version::count()])->toBe($before)
+            ->and(Storage::disk('template-packages')->allFiles('classic'))->toBe([])
+            ->and(AdminAuditLog::where('action', 'template.classic_package_installed')->count())->toBe(0);
+    });
+
+    it('never has the package installed with drafts: it is parked in the same transaction', function () {
+        clsInstall(clsPackage());
+        expect(Version::whereNotNull('package_id')->where('status', 'draft')->count())->toBe(0)
+            ->and(TemplatePackage::where('slug', 'classic')->value('status'))->toBe('active');
     });
 });
 

@@ -40,30 +40,37 @@ class ClassicSource
      */
     public function install(string $zipPath, string $reason): array
     {
-        $result = $this->installer->installTrusted($zipPath, $reason, self::SLUG);
-        $package = $result['package'];
-
-        // A crash between the two steps leaves drafts: running the command again finishes the job.
-        $parked = DB::transaction(function () use ($package) {
-            $drafts = Version::query()->where('package_id', $package->id)->where('status', Version::DRAFT)->lockForUpdate()->get();
-            foreach ($drafts as $draft) {
-                $draft->forceFill(['status' => Version::ARCHIVED, 'archived_at' => now()])->save();
-            }
-            if ($package->status === TemplatePackage::INSTALLED) {
-                $package->forceFill(['status' => TemplatePackage::ACTIVE, 'activated_at' => now()])->save();
-            }
-
-            return $drafts->count();
-        });
-
-        if ($result['status'] === 'installed') {
+        // Parked and audited in the very transaction that creates the package: no half installed state is ever visible.
+        $parkedNew = null;
+        $result = $this->installer->installTrusted($zipPath, $reason, self::SLUG, function (TemplatePackage $package) use (&$parkedNew, $reason) {
+            $parkedNew = $this->park($package);
             $this->audit->record('template.classic_package_installed', ['template_package', $package->id], [
                 'reason' => $reason,
-                'after' => ['slug' => $package->slug, 'version' => $package->semver, 'contentHash' => $package->content_hash, 'versions' => $parked],
+                'after' => ['slug' => $package->slug, 'version' => $package->semver, 'contentHash' => $package->content_hash, 'versions' => $parkedNew],
             ]);
+        });
+        $package = $result['package'];
+
+        // An older half installation (before this guarantee) is finished by running the command again.
+        if ($result['status'] === 'unchanged') {
+            DB::transaction(fn () => $this->park($package));
         }
 
         return ['status' => $result['status'], 'package' => $package->fresh(), 'missingModules' => ModuleSupport::missingFor($package)];
+    }
+
+    /** Parks the drafts of the package where the switch can point at them and marks the package active. @return int versions parked */
+    private function park(TemplatePackage $package): int
+    {
+        $drafts = Version::query()->where('package_id', $package->id)->where('status', Version::DRAFT)->lockForUpdate()->get();
+        foreach ($drafts as $draft) {
+            $draft->forceFill(['status' => Version::ARCHIVED, 'archived_at' => now()])->save();
+        }
+        if ($package->status === TemplatePackage::INSTALLED) {
+            $package->forceFill(['status' => TemplatePackage::ACTIVE, 'activated_at' => now()])->save();
+        }
+
+        return $drafts->count();
     }
 
     /** @return 'native'|'package'|'mixed'|'unknown' what the two Classic templates point at now */
