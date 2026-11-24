@@ -17,6 +17,7 @@ use App\Models\InvitationTemplateVersion;
 use App\Models\TemplatePackage;
 use App\Models\User;
 use App\Support\AdminPermissions;
+use App\Support\InvitationCache;
 use App\Support\ProductionSafetyCheck;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1015,6 +1016,21 @@ describe('wave 6 security (W6-08)', function () {
         'not a package path' => ['../../.env'],
         'extension not served' => ['botanical/1.0.0-0123456789abcdef/assets/x.html'],
     ]);
+
+    it('keys the package fragment by the global token, so a reused id never serves another incarnation', function () {
+        $pkg = pkgInstalledActive();
+        $payload = app(PackagePayload::class);
+        $old = InvitationCache::byIdKey('invitation.package', $pkg->id);
+
+        Cache::forever("invitation.package.{$pkg->id}", ['slug' => 'ghost']);
+        $fragment = $payload->fragment($pkg->id);
+        expect($fragment)->not->toBe(['slug' => 'ghost'])
+            ->and(Cache::has($old))->toBeTrue();
+
+        $pkg->forceFill(['status' => TemplatePackage::DEACTIVATED])->save();
+
+        expect(InvitationCache::byIdKey('invitation.package', $pkg->id))->not->toBe($old);
+    });
 
     it('has no origin for the files outside local: the invitation falls back to Classic and the doctor complains', function () {
         $pkg = pkgInstalledActive();
