@@ -402,6 +402,102 @@ describe('hold cap per account (LO-001)', function () {
     });
 });
 
+describe('sessions that outlive the offer (LO-002, LO-006)', function () {
+    it('keeps the purchase pending and starts nothing new when the old session cannot be closed', function () {
+        makeOffer();
+        Coupon::create(['code' => 'HALFC', 'kind' => 'percent_off', 'value' => 50]);
+        [$event, $owner] = offerEvent();
+        $first = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        $this->stripe->failNext = true; // the expire call fails; the session is still open at Stripe
+
+        checkoutOf($this, $event, $owner, ['code' => 'HALFC'])->assertStatus(409)->assertJsonPath('code', 'previous_session_open');
+
+        expect(EventPurchase::find($first))->status->toBe('pending')->and(EventPurchase::count())->toBe(1);
+        // If that session is paid late, it is the same purchase: honoured, nothing lost.
+        payPurchase($this, $first);
+        expect(EventPurchase::find($first)->status)->toBe('paid')->and($event->fresh()->eventPlan->slug)->toBe('premium');
+    });
+
+    it('closes the old purchase when Stripe says the session is already expired, and refuses while it is being paid', function () {
+        makeOffer();
+        Coupon::create(['code' => 'HALFD', 'kind' => 'percent_off', 'value' => 50]);
+        [$event, $owner] = offerEvent();
+        $first = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        $sid = EventPurchase::find($first)->gateway_session_id;
+
+        $this->stripe->sessions[$sid]['status'] = 'complete';
+        $this->stripe->sessions[$sid]['payment_status'] = 'paid';
+        checkoutOf($this, $event, $owner, ['code' => 'HALFD'])->assertStatus(409)->assertJsonPath('code', 'payment_in_progress');
+        expect(EventPurchase::find($first)->status)->toBe('pending');
+
+        $this->stripe->sessions[$sid]['status'] = 'expired';
+        checkoutOf($this, $event, $owner, ['code' => 'HALFD'])->assertCreated();
+        expect(EventPurchase::find($first))->status->toBe('failed')->failure_code->toBe('superseded');
+    });
+
+    it('honours and flags a payment that arrives for a purchase already marked failed', function () {
+        makeOffer();
+        [$event, $owner] = offerEvent();
+        $id = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        EventPurchase::whereKey($id)->update(['status' => 'failed', 'failure_code' => 'superseded']);
+
+        payPurchase($this, $id);
+
+        expect(EventPurchase::find($id))->status->toBe('paid')->needs_review->toBeTrue()->failure_code->toBeNull()
+            ->and($event->fresh()->eventPlan->slug)->toBe('premium');
+    });
+
+    it('honours a payment on an open session after the offer ran out, flagging it as oversold', function () {
+        $offer = makeOffer(['total_slots' => 5]);
+        [$event, $owner] = offerEvent();
+        $id = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        $offer->update(['total_slots' => 0]);
+
+        payPurchase($this, $id);
+
+        expect(EventPurchase::find($id))->status->toBe('paid')->amount_cents->toBe(7900)->needs_review->toBeTrue()
+            ->and(EventPurchase::find($id)->notes)->toContain('launch_offer_oversold');
+    });
+
+    it('closes the pending sessions when the admin turns the offer off or changes its price', function () {
+        $admin = superadmin();
+        $offer = makeOffer();
+        [$a, $ownerA] = offerEvent();
+        [$b, $ownerB] = offerEvent();
+        $pa = checkoutOf($this, $a, $ownerA)->assertCreated()->json('data.purchaseId');
+        $pb = checkoutOf($this, $b, $ownerB)->assertCreated()->json('data.purchaseId');
+
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/launch-offer', ['priceCents' => 7000, 'reason' => 'Price fix'])
+            ->assertOk()->assertJsonPath('data.sessionsClosed', 2)->assertJsonPath('data.sessionsStillOpen', 0);
+
+        expect(EventPurchase::find($pa))->status->toBe('failed')->failure_code->toBe('offer_closed')
+            ->and(EventPurchase::find($pb)->status)->toBe('failed')
+            ->and($this->stripe->callsTo('post', '#/expire$#'))->toHaveCount(2);
+
+        $pc = checkoutOf($this, $a, $ownerA)->assertCreated()->json('data.purchaseId');
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/launch-offer', ['isActive' => false, 'reason' => 'Pause'])
+            ->assertOk()->assertJsonPath('data.sessionsClosed', 1);
+        expect(EventPurchase::find($pc)->status)->toBe('failed');
+
+        // No change of price or state: nothing is closed.
+        $pd = checkoutOf($this, $b, $ownerB)->assertCreated()->json('data.purchaseId');
+        $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/launch-offer', ['totalSlots' => 60, 'reason' => 'More slots'])
+            ->assertOk()->assertJsonPath('data.sessionsClosed', 0);
+        expect(EventPurchase::find($pd)->status)->toBe('pending');
+    });
+
+    it('reports a session it could not close and leaves its purchase pending', function () {
+        makeOffer();
+        [$a, $ownerA] = offerEvent();
+        $pa = checkoutOf($this, $a, $ownerA)->assertCreated()->json('data.purchaseId');
+        $this->stripe->failNext = true;
+
+        $this->actingAsReauthed(superadmin())->putJson('/api/v1/admin/payments/launch-offer', ['isActive' => false, 'reason' => 'Pause now'])
+            ->assertOk()->assertJsonPath('data.sessionsClosed', 0)->assertJsonPath('data.sessionsStillOpen', 1);
+        expect(EventPurchase::find($pa)->status)->toBe('pending');
+    });
+});
+
 describe('offer and coupons', function () {
     it('never stacks: LANZAMIENTO79 gives 79 once, spends its use AND one slot of the offer', function () {
         $this->seed(LaunchCouponSeeder::class);
@@ -568,15 +664,15 @@ describe('seeders', function () {
     });
 });
 
+function superadmin(): User
+{
+    $admin = User::factory()->create();
+    $admin->assignRole('superadmin');
+
+    return $admin;
+}
+
 describe('admin', function () {
-    function superadmin(): User
-    {
-        $admin = User::factory()->create();
-        $admin->assignRole('superadmin');
-
-        return $admin;
-    }
-
     it('shows null until an offer exists, then creates it with the first PUT and audits it', function () {
         $admin = superadmin();
         $this->actingAsReauthed($admin)->getJson('/api/v1/admin/payments/launch-offer')->assertOk()->assertJsonPath('data', null);
@@ -585,7 +681,8 @@ describe('admin', function () {
         $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/launch-offer', ['priceCents' => 7900, 'totalSlots' => 100, 'isActive' => true, 'reason' => 'Launch day'])
             ->assertOk()
             ->assertJsonPath('data', ['id' => LaunchOffer::first()->id, 'isActive' => true, 'active' => true, 'priceCents' => 7900, 'listPriceCents' => 9900, 'currency' => 'USD',
-                'totalSlots' => 100, 'slotsUsed' => 0, 'slotsPaid' => 0, 'slotsAdjustment' => 0, 'slotsHeld' => 0, 'slotsLeft' => 100]);
+                'totalSlots' => 100, 'slotsUsed' => 0, 'slotsPaid' => 0, 'slotsAdjustment' => 0, 'slotsHeld' => 0, 'slotsLeft' => 100,
+                'sessionsClosed' => 0, 'sessionsStillOpen' => 0]);
 
         $log = AdminAuditLog::where('action', 'launch_offer.update')->first();
         expect($log)->reason->toBe('Launch day')->subject_type->toBe('launch_offer')->and($log->before)->toBeNull()->and($log->after['totalSlots'])->toBe(100);

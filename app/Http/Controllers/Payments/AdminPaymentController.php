@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Payments;
 
 use App\Http\Controllers\Controller;
 use App\Http\Services\Admin\AdminAudit;
+use App\Http\Services\Payments\PaymentGatewayException;
 use App\Http\Services\Payments\PaymentSettlement;
 use App\Http\Services\Payments\PurchaseService;
 use App\Models\Coupon;
@@ -165,12 +166,32 @@ class AdminPaymentController extends Controller
         });
         [$offer, $before] = $offer;
 
-        $after = $this->offerPayload($plan, $offer);
+        // LO-006: turning the offer off or changing its price must not leave sessions open at the old price. They are closed
+        // here (outside the transaction: it calls the provider); one that cannot be closed stays pending and is reported.
+        $closes = ($before['isActive'] ?? false) && (($data['isActive'] ?? true) === false || (isset($data['priceCents']) && $data['priceCents'] !== $before['priceCents']));
+        $sessions = $closes ? $this->closeOfferSessions($offer) : ['closed' => 0, 'stillOpen' => 0];
+
+        $after = $this->offerPayload($plan, $offer) + ['sessionsClosed' => $sessions['closed'], 'sessionsStillOpen' => $sessions['stillOpen']];
         $this->audit->record(($data['isActive'] ?? null) === false ? 'launch_offer.deactivate' : 'launch_offer.update', $offer, [
             'reason' => $data['reason'], 'before' => $before, 'after' => $after,
         ]);
 
         return response()->json(['data' => $after]);
+    }
+
+    /** @return array{closed: int, stillOpen: int} */
+    private function closeOfferSessions(LaunchOffer $offer): array
+    {
+        $out = ['closed' => 0, 'stillOpen' => 0];
+        foreach ($offer->purchases()->where('status', 'pending')->get() as $purchase) {
+            try {
+                $this->settlement->cancel($purchase, 'offer_closed')->status === 'failed' ? $out['closed']++ : null;
+            } catch (PaymentGatewayException) {
+                $out['stillOpen']++;
+            }
+        }
+
+        return $out;
     }
 
     private function offerPayload(EventPlan $plan, ?LaunchOffer $offer): ?array

@@ -159,7 +159,14 @@ class PaymentSettlement
         if ($tax !== null && $tax > 0) {
             $purchase->update(['tax_cents' => $tax]);
         }
+        // LO-002: money arrived for an attempt we had given up on (a session that could not be closed in time). The payment is
+        // real and matches the purchase, so it is honoured, but a person looks at it.
+        $wasFailed = $purchase->status === 'failed';
         $this->purchases->activate($purchase, $paymentId);
+        if ($wasFailed) {
+            $purchase->refresh()->update(['needs_review' => true]);
+            Log::warning('A payment arrived for a purchase already marked failed: honoured and flagged', ['purchase_id' => $purchase->id]);
+        }
         $after[] = fn () => $this->purchases->invoice($purchase->refresh());
 
         return 'processed';
@@ -360,7 +367,7 @@ class PaymentSettlement
      *
      * @throws PaymentGatewayException when the session could not be closed
      */
-    public function cancel(EventPurchase $purchase): EventPurchase
+    public function cancel(EventPurchase $purchase, string $code = 'cancelled'): EventPurchase
     {
         if ($purchase->gateway_session_id && $purchase->gateway === 'stripe') {
             $gateway = $this->purchases->gateway($purchase->gateway);
@@ -375,10 +382,10 @@ class PaymentSettlement
             }
         }
 
-        DB::transaction(function () use ($purchase) {
+        DB::transaction(function () use ($purchase, $code) {
             $locked = EventPurchase::query()->lockForUpdate()->findOrFail($purchase->id);
             if ($locked->status === 'pending') {
-                $locked->update(['status' => 'failed', 'failure_code' => 'cancelled']);
+                $locked->update(['status' => 'failed', 'failure_code' => $code]);
             }
         });
 

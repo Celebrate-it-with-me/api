@@ -294,10 +294,13 @@ class PurchaseService
                         throw new HttpResponseException(response()->json(['message' => 'A payment is being confirmed.', 'code' => 'payment_in_progress'], 409));
                     }
                 } else {
-                    $gateway->expireSession($candidate->gateway_session_id);
+                    $this->closeSession($gateway, $candidate);
                 }
             } catch (PaymentGatewayException $e) {
-                Log::warning('Could not close or read a previous session', ['purchase_id' => $candidate->id, 'error' => $e->getMessage()]);
+                // LO-002: the session may still be open and payable. The purchase stays pending (the payment would still match
+                // it), nothing new is started on top of it, and the buyer retries in a moment.
+                Log::error('Could not close or read a previous session: purchase left pending', ['purchase_id' => $candidate->id, 'error' => $e->getMessage()]);
+                throw new HttpResponseException(response()->json(['message' => 'The previous payment session could not be closed yet.', 'code' => 'previous_session_open'], 409));
             }
 
             EventPurchase::query()->whereKey($candidate->id)->where('status', 'pending')
@@ -305,6 +308,29 @@ class PurchaseService
         }
 
         return null;
+    }
+
+    /**
+     * Close a pending session. Expiring one Stripe already closed is an error there, so on failure the session is read: if it is
+     * expired it is fine; if it was paid meanwhile the purchase must not be failed.
+     *
+     * @throws PaymentGatewayException when it cannot be established that the session is closed
+     */
+    private function closeSession(PaymentGateway $gateway, EventPurchase $purchase): void
+    {
+        try {
+            $gateway->expireSession($purchase->gateway_session_id);
+
+            return;
+        } catch (PaymentGatewayException $e) {
+            $session = $gateway->retrieveSession($purchase->gateway_session_id); // may throw: still unknown
+            if ($session['state'] === 'complete') {
+                throw new HttpResponseException(response()->json(['message' => 'A payment is being confirmed.', 'code' => 'payment_in_progress'], 409));
+            }
+            if ($session['state'] !== 'expired') {
+                throw $e;
+            }
+        }
     }
 
     /** Payment confirmed: activate the full plan. Idempotent. */
