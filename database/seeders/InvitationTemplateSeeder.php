@@ -130,6 +130,9 @@ class InvitationTemplateSeeder extends Seeder
         $order = 0;
         $sections = [];
 
+        // The closing is always the last section of a page (the owner's decision, 2026-11-24).
+        uksort($copy, fn (string $a, string $b) => ($a === 'closing') <=> ($b === 'closing'));
+
         foreach ($copy as $type => $texts) {
             $sections[] = [
                 'type' => $type,

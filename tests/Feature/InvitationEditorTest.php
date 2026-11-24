@@ -524,6 +524,22 @@ describe('PATCH invitation/sections', function () {
         expect($event->fresh()->template_config['sections'])->toContain(['type' => 'closing', 'enabled' => true, 'order' => 5]);
     });
 
+    it('keeps the closing last, whatever the template says, and refuses to move it before another section', function () {
+        edInstall(edBuilder());
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        edPlan($event, 'premium');
+
+        // Another section placed after the closing: the closing still reads as the last one.
+        $res = edSections($this, $event, $m['owner'], [['type' => 'closing', 'enabled' => true], ['type' => 'rsvp', 'order' => 9]])->assertOk();
+        $types = array_column($res->json('data.sections'), 'type');
+        expect(end($types))->toBe('closing')
+            ->and(collect($res->json('data.sections'))->firstWhere('type', 'closing')['order'])->toBeGreaterThan(9);
+
+        // Explicitly moving it in front of the rest is refused with a structured error.
+        $res = edSections($this, $event, $m['owner'], [['type' => 'closing', 'order' => 2]])->assertUnprocessable();
+        expect($res->json('errors')['sections.0.order'][0])->toBe('closing_last');
+    });
+
     it('answers a code per section', function () {
         edInstall(edBuilder());
         [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
@@ -534,6 +550,7 @@ describe('PATCH invitation/sections', function () {
             [[['type' => 'rsvp', 'order' => 1]], 'sections.0.order', 'cover_first'],
             [[['type' => 'cover', 'order' => 9]], 'sections.0.order', 'cover_first'],
             [[['type' => 'nope', 'enabled' => true]], 'sections.0.type', 'invalid_type'],
+            [[['type' => 'closing', 'order' => 1]], 'sections.0.order', 'closing_last'],
             [[['type' => 'closing', 'enabled' => 'si']], 'sections.0.enabled', 'invalid_type'],
             [[['type' => 'closing', 'order' => 500]], 'sections.0.order', 'invalid_type'],
             [[['type' => 'closing', 'title' => ['es' => 'x']]], 'sections.0', 'invalid_type'],

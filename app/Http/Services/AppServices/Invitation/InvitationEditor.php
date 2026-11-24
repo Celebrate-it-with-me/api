@@ -470,6 +470,14 @@ class InvitationEditor
 
             // The cover goes first: nothing may come before it.
             $effective = $this->effectiveSections($ctx['content'], $config);
+            // The closing stays the last section: it cannot be given an order that puts it before an enabled one.
+            if (isset($changes['closing']['order'])) {
+                $rawClosing = $changes['closing']['order'];
+                $moved = collect($effective)->except('closing')->filter(fn (array $s) => ($s['enabled'] ?? false) && ($s['order'] ?? 99) >= $rawClosing);
+                if ($moved->isNotEmpty()) {
+                    throw ValidationException::withMessages(['sections.' . $changes['closing']['_i'] . '.order' => ['closing_last']]);
+                }
+            }
             if (collect($changes)->contains(fn (array $c) => isset($c['order']))) {
                 $cover = $effective['cover']['order'] ?? 0;
                 $errors = [];
@@ -952,7 +960,7 @@ class InvitationEditor
         return $base->keys()->merge($own->keys())->unique()
             ->filter(fn ($type) => in_array($type, (array) config('invitation.section_types'), true))
             ->mapWithKeys(fn ($type) => [$type => array_merge($base[$type] ?? ['type' => $type, 'enabled' => false, 'order' => 99], $own[$type] ?? [])])
-            ->all();
+            ->pipe(fn ($sections) => InvitationService::closingLast($sections->all()));
     }
 
     /** @return list<array<string, mixed>> */

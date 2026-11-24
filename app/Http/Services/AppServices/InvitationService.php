@@ -517,6 +517,25 @@ class InvitationService
             : $section, $sections);
     }
 
+    /**
+     * The closing is always the last section of the page, whatever order a template or an old config carries: its
+     * order becomes one past the highest of the others (decision of 2026-11-24; read-time, nothing is rewritten).
+     *
+     * @param  array<string, array<string, mixed>>  $sections  by type
+     * @return array<string, array<string, mixed>>
+     */
+    public static function closingLast(array $sections): array
+    {
+        if (! isset($sections['closing'])) {
+            return $sections;
+        }
+
+        $highest = collect($sections)->except('closing')->max(fn (array $s) => (int) ($s['order'] ?? 99));
+        $sections['closing']['order'] = max((int) $highest + 1, 1);
+
+        return $sections;
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function resolveSections(Events $event, ?Guest $guest, array $templateSections, string $locale, array $config): array
     {
@@ -532,9 +551,12 @@ class InvitationService
         $base = collect($templateSections)->keyBy('type');
         $overrides = collect($config['sections'] ?? [])->keyBy('type');
 
-        return $base->keys()->merge($overrides->keys())->unique()
+        $merged = $base->keys()->merge($overrides->keys())->unique()
             ->filter(fn (string $type) => in_array($type, self::SECTION_TYPES, true))
-            ->map(fn (string $type) => array_merge($base[$type] ?? ['type' => $type, 'enabled' => false, 'order' => 99], $overrides[$type] ?? []))
+            ->mapWithKeys(fn (string $type) => [$type => array_merge($base[$type] ?? ['type' => $type, 'enabled' => false, 'order' => 99], $overrides[$type] ?? [])])
+            ->all();
+
+        return collect(self::closingLast($merged))
             ->filter(fn (array $section) => $section['enabled'] ?? false)
             ->filter(fn (array $section) => ! isset(self::SECTION_MODULES[$section['type']])
                 || $modules->isActive($event, self::SECTION_MODULES[$section['type']]))

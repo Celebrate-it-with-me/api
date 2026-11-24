@@ -99,7 +99,7 @@ describe('gallery and music in the public invitation', function () {
         $types = sectionTypes($response);
 
         expect(array_search('gallery', $types))->toBeLessThan(array_search('rsvp', $types))
-            ->and(end($types))->toBe('music')
+            ->and(end($types))->toBe('closing')
             ->and(sectionOf($response, 'gallery')['title'])->toBe('My memories')
             ->and(sectionOf($response, 'gallery')['settings'])->toBe(['layout' => 'grid', 'maxPhotos' => 12, 'showCaptions' => true]);
 
@@ -237,7 +237,7 @@ describe('the catalog and the Classic templates', function () {
         $sections = DB::table('invitation_templates')->where('slug', 'classic-quinceanera')->value('default_sections');
         $types = array_column(json_decode($sections, true), 'type');
 
-        expect($types)->toBe(['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'tables', 'suggested_music', 'comments', 'closing', 'music']);
+        expect($types)->toBe(['cover', 'itinerary', 'locations', 'dress_code', 'padrinos', 'gallery', 'rsvp', 'tables', 'suggested_music', 'comments', 'music', 'closing']);
     });
 
     it('publishes a next version for old Classic templates and moves their events to it', function () {

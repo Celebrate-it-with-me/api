@@ -7,6 +7,7 @@ use App\Models\Events;
 use App\Models\EventType;
 use App\Models\Guest;
 use App\Models\GuestRsvpLog;
+use App\Models\InvitationTemplate;
 use App\Models\Rsvp;
 use App\Models\User;
 use Database\Seeders\EventPlanSeeder;
@@ -113,7 +114,7 @@ describe('GET invitation', function () {
         [$event] = invitationFixture();
         $event->update(['template_config' => [
             'sections' => [
-                ['type' => 'closing', 'order' => 0, 'title' => 'Hasta pronto'],
+                ['type' => 'comments', 'order' => 0, 'title' => 'Hasta pronto'],
                 ['type' => 'rsvp', 'enabled' => false],
             ],
             'theme' => ['preset' => 'sage'],
@@ -121,7 +122,7 @@ describe('GET invitation', function () {
 
         $data = $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data');
 
-        expect(collect($data['sections'])->pluck('type')->all())->toBe(['closing', 'cover', 'suggested_music', 'comments'])
+        expect(collect($data['sections'])->pluck('type')->all())->toBe(['comments', 'cover', 'suggested_music', 'closing'])
             ->and($data['sections'][0]['title'])->toBe('Hasta pronto')
             ->and($data['theme']['preset'])->toBe('sage')
             ->and($data['theme']['colors']['primary'])->toBe('#5f7a5b');
@@ -309,5 +310,25 @@ describe('GET invitation calendar block', function () {
 
         expect($sections->firstWhere('type', 'rsvp'))->toBeNull()
             ->and($sections->firstWhere('type', 'save_the_date')['data']['calendar'])->toHaveKeys(['google', 'icsPath']);
+    });
+});
+
+describe('closing last', function () {
+    it('draws the closing last even when the template or the config puts it earlier', function () {
+        [$event] = invitationFixture();
+        $event->update(['template_config' => ['sections' => [['type' => 'closing', 'enabled' => true, 'order' => 1]]]]);
+
+        $types = collect($this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data.sections'))->pluck('type')->all();
+
+        expect(end($types))->toBe('closing')->and($types[0])->toBe('cover');
+    });
+
+    it('seeds the stock templates with the closing as the last section', function () {
+        $this->seed(InvitationTemplateSeeder::class);
+
+        foreach (InvitationTemplate::query()->get() as $template) {
+            $types = array_column($template->default_sections, 'type');
+            expect(end($types))->toBe('closing');
+        }
     });
 });
