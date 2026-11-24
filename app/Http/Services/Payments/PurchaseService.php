@@ -9,6 +9,7 @@ use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
+use App\Models\LaunchOffer;
 use App\Models\User;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -59,21 +60,66 @@ class PurchaseService
         return $event->eventPlan?->slug === self::FULL_SLUG;
     }
 
+    public function launchOffer(EventPlan $plan, bool $lock = false): ?LaunchOffer
+    {
+        return LaunchOffer::query()->where('event_plan_id', $plan->id)->when($lock, fn ($q) => $q->lockForUpdate())->first();
+    }
+
+    /**
+     * The price rule. The launch offer (no code) and a coupon never stack: the buyer gets whichever is cheaper, ONCE.
+     * On a tie the coupon wins (she typed it, and it keeps the offer's slot for someone else). A coupon that loses is
+     * not applied, so it is not spent. A 100 % coupon (0) always beats the offer.
+     *
+     * @return array{amount: int, coupon: Coupon|null, offer: LaunchOffer|null, source: string}
+     */
+    public function price(EventPlan $plan, ?Coupon $coupon, Events $event, ?LaunchOffer $offer): array
+    {
+        $list = (int) $plan->price_cents;
+        $couponAmount = $coupon ? $coupon->apply($list) : null;
+        $offerAmount = $offer && $offer->isOpen($plan, $event->id) ? (int) $offer->price_cents : null;
+
+        if ($couponAmount !== null && ($offerAmount === null || $couponAmount <= $offerAmount)) {
+            return ['amount' => $couponAmount, 'coupon' => $coupon, 'offer' => null, 'source' => 'coupon'];
+        }
+        if ($offerAmount !== null) {
+            return ['amount' => $offerAmount, 'coupon' => null, 'offer' => $offer, 'source' => 'offer'];
+        }
+
+        return ['amount' => $list, 'coupon' => null, 'offer' => null, 'source' => 'list'];
+    }
+
+    /** What the screen shows about the offer: never reveals anything about other events beyond the public count. */
+    public function offerSummary(EventPlan $plan, Events $event, ?LaunchOffer $offer = null): array
+    {
+        $offer ??= $this->launchOffer($plan);
+
+        return [
+            'active' => (bool) $offer?->isOpen($plan, $event->id),
+            'priceCents' => $offer?->price_cents,
+            'listPriceCents' => (int) $plan->price_cents,
+            'slotsLeft' => $offer && $offer->is_active ? $offer->slotsLeft($event->id) : 0,
+            'totalSlots' => $offer ? (int) $offer->total_slots : 0,
+        ];
+    }
+
     /** What the buyer would pay, with an optional code. */
     public function quote(Events $event, ?string $code = null): array
     {
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
-        $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
-        $this->assertChargeable($amount);
+        $offer = $this->launchOffer($plan);
+        $price = $this->price($plan, $coupon, $event, $offer);
+        $this->assertChargeable($price['amount']);
 
         return [
             'plan' => $plan->slug,
             'listPriceCents' => $plan->price_cents,
-            'amountCents' => $amount,
+            'amountCents' => $price['amount'],
             'currency' => $plan->currency,
             'maxGuests' => $plan->max_guests,
-            'code' => $coupon?->code,
+            'code' => $price['coupon']?->code,
+            'source' => $price['source'],
+            'offer' => $this->offerSummary($plan, $event, $offer),
             'unlocked' => $this->isUnlocked($event),
         ];
     }
@@ -126,7 +172,7 @@ class PurchaseService
      * @param  array{locale?: string}  $context
      * @return array{purchase: EventPurchase, url: string|null}
      */
-    public function checkout(Events $event, User $user, ?string $code, string $successUrl, string $cancelUrl, array $context = []): array
+    public function checkout(Events $event, User $user, ?string $code, string $successUrl, string $cancelUrl, array $context = [], ?int $expectedAmountCents = null): array
     {
         if ($this->isUnlocked($event)) {
             throw ValidationException::withMessages(['event' => ['already_unlocked']]);
@@ -134,8 +180,10 @@ class PurchaseService
 
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
-        $amount = $coupon ? $coupon->apply($plan->price_cents) : $plan->price_cents;
-        $this->assertChargeable($amount);
+        // A first look to decide whether a pending session can be reused; the price that is charged is decided again
+        // below under the offer's lock.
+        $first = $this->price($plan, $coupon, $event, $this->launchOffer($plan));
+        $this->assertChargeable($first['amount']);
         $gateway = $this->gateway();
 
         // Two simultaneous clicks (or two tabs) must not each open a session or create a paid purchase, on any gateway.
@@ -152,23 +200,40 @@ class PurchaseService
                 throw ValidationException::withMessages(['event' => ['already_unlocked']]);
             }
 
-            if ($amount > 0 && $gateway->name() === 'stripe' && ($reused = $this->reuseOpenSession($event, $gateway, $coupon, $amount))) {
+            if ($first['amount'] > 0 && $gateway->name() === 'stripe' && ($reused = $this->reuseOpenSession($event, $gateway, $first['coupon'], $first['amount'], $first['offer']))) {
                 return $reused;
             }
 
             // The coupon's cap is checked and the use reserved under a lock, so N simultaneous checkouts of a 1-use code
             // cannot all get through (a use is only counted as consumed when the payment confirms).
-            $purchase = DB::transaction(function () use ($event, $user, $plan, $coupon, $gateway, $amount) {
-                if ($coupon) {
-                    $this->reserveCoupon($coupon);
+            // The launch offer's row is locked too, so N simultaneous checkouts for the last slot cannot all get the offer
+            // price: the price is decided again here, one at a time, and the slot is held by the purchase created in it.
+            $applied = null;
+            $purchase = DB::transaction(function () use ($event, $user, $plan, $coupon, $gateway, $expectedAmountCents, &$applied) {
+                $offer = $this->launchOffer($plan, lock: true);
+                $price = $this->price($plan, $coupon, $event, $offer);
+                $this->assertChargeable($price['amount']);
+
+                // The buyer saw one price and the slot is gone (or came back): tell her instead of charging another.
+                if ($expectedAmountCents !== null && $expectedAmountCents !== $price['amount']) {
+                    throw new HttpResponseException(response()->json([
+                        'message' => 'The price changed.', 'code' => 'price_changed', 'data' => ['amountCents' => $price['amount'], 'offer' => $this->offerSummary($plan, $event, $offer)],
+                    ], 409));
                 }
 
+                if ($price['coupon']) {
+                    $this->reserveCoupon($price['coupon']);
+                }
+                $applied = $price['coupon'];
+
                 return EventPurchase::create([
-                    'event_id' => $event->id, 'user_id' => $user->id, 'event_plan_id' => $plan->id, 'coupon_id' => $coupon?->id,
-                    'gateway' => $gateway->name(), 'list_price_cents' => $plan->price_cents, 'amount_cents' => $amount,
-                    'currency' => $plan->currency, 'status' => 'pending', 'is_founder' => (bool) $coupon?->is_founder,
+                    'event_id' => $event->id, 'user_id' => $user->id, 'event_plan_id' => $plan->id, 'coupon_id' => $price['coupon']?->id,
+                    'launch_offer_id' => $price['offer']?->id,
+                    'gateway' => $gateway->name(), 'list_price_cents' => $plan->price_cents, 'amount_cents' => $price['amount'],
+                    'currency' => $plan->currency, 'status' => 'pending', 'is_founder' => (bool) $price['coupon']?->is_founder,
                 ]);
             });
+            $amount = (int) $purchase->amount_cents;
 
             // Nothing to charge: the provider is not involved (it would refuse a zero amount).
             if ($amount === 0) {
@@ -178,7 +243,7 @@ class PurchaseService
             }
 
             try {
-                $session = $gateway->createSession($purchase, $successUrl, $cancelUrl, $context + ['coupon' => $coupon?->code]);
+                $session = $gateway->createSession($purchase, $successUrl, $cancelUrl, $context + ['coupon' => $applied?->code]);
             } catch (PaymentGatewayException $e) {
                 // The attempt is over and holds nothing (a failed purchase releases its coupon use).
                 $purchase->update(['status' => 'failed', 'failure_code' => 'gateway_error']);
@@ -201,13 +266,13 @@ class PurchaseService
     }
 
     /** The pending session of this event if it is still usable for the same price; any other is closed and marked failed. */
-    private function reuseOpenSession(Events $event, PaymentGateway $gateway, ?Coupon $coupon, int $amount): ?array
+    private function reuseOpenSession(Events $event, PaymentGateway $gateway, ?Coupon $coupon, int $amount, ?LaunchOffer $offer = null): ?array
     {
         $pending = EventPurchase::query()->where('event_id', $event->id)->where('gateway', 'stripe')->where('status', 'pending')
             ->whereNotNull('gateway_session_id')->orderByDesc('id')->get();
 
         foreach ($pending as $candidate) {
-            $reusable = (int) $candidate->amount_cents === $amount && $candidate->coupon_id === $coupon?->id
+            $reusable = (int) $candidate->amount_cents === $amount && $candidate->coupon_id === $coupon?->id && $candidate->launch_offer_id === $offer?->id
                 && (! $candidate->session_expires_at || $candidate->session_expires_at->isFuture());
 
             try {
@@ -280,8 +345,37 @@ class PurchaseService
                 Coupon::query()->whereKey($purchase->coupon_id)->increment('times_used');
             }
 
+            // Paid on the launch offer: the slot is now consumed (it is counted from the paid purchases). Whether it went
+            // over the cap is looked at once the payment is committed.
+            if ($purchase->launch_offer_id) {
+                $purchaseId = $purchase->id;
+                DB::afterCommit(fn () => $this->flagOversold($purchaseId));
+            }
+
             return $purchase->refresh();
         });
+    }
+
+    /**
+     * Two payments the checkout could not tell apart (a hold that expired while the buyer was still paying) can exceed the
+     * cap. The money is real and the price shown was honoured: nothing is refunded or blocked, the purchase is only flagged
+     * for a person and logged.
+     */
+    private function flagOversold(int $purchaseId): void
+    {
+        $purchase = EventPurchase::query()->find($purchaseId);
+        $offer = $purchase?->launch_offer_id ? LaunchOffer::query()->find($purchase->launch_offer_id) : null;
+        if (! $purchase || ! $offer || $purchase->status !== 'paid') {
+            return;
+        }
+
+        // This payment is the latest to commit: if the committed total (paid plus the admin correction) is over the cap, it is the one that went over.
+        $position = $offer->usedSlots();
+
+        if ($position > (int) $offer->total_slots && ! $purchase->needs_review) {
+            $purchase->update(['needs_review' => true, 'notes' => trim(($purchase->notes ? $purchase->notes . ' ' : '') . 'launch_offer_oversold')]);
+            Log::warning('Launch offer oversold: the price shown was honoured', ['purchase_id' => $purchase->id, 'offer_id' => $offer->id, 'position' => $position, 'total_slots' => $offer->total_slots]);
+        }
     }
 
     /** Record a payment made outside the gateway (Zelle, cash). */
