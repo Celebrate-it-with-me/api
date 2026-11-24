@@ -5,12 +5,13 @@ namespace App\Http\Services\AppServices;
 use App\Http\Services\Admin\Templates\Packages\MissingPackagesUrl;
 use App\Http\Services\Admin\Templates\Packages\PackageFiles;
 use App\Models\TemplatePackage;
+use App\Support\InvitationCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * What the public invitation needs from an installed package (`data.theme.package` and the AST of each section).
  *
- * The package never changes once installed, so the fragment without URLs is cached forever by package id; URLs are
+ * The package never changes once installed, so the fragment without URLs is cached by package id under the global invitation token; URLs are
  * composed on every request from the disk (changing the CDN never rewrites a stored row). A package that is
  * withdrawn, missing or newer than the engine yields null: the invitation then falls back to Classic (spec 5.4).
  */
@@ -84,7 +85,7 @@ class PackagePayload
     /** The URL-free, immutable part of an installed package. @return array<string, mixed> */
     public function fragment(int $packageId): array
     {
-        return Cache::rememberForever("invitation.package.{$packageId}", function () use ($packageId) {
+        return Cache::remember(InvitationCache::byIdKey('invitation.package', $packageId), InvitationCache::BY_ID_TTL, function () use ($packageId) {
             return $this->fragmentFrom(TemplatePackage::query()->findOrFail($packageId)->toArray(), null);
         });
     }

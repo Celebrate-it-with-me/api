@@ -107,6 +107,19 @@ class InvitationCache
         }
     }
 
+    /** Lifetime of what is cached by id (versions, package fragments): a bound for keys orphaned by a token change. */
+    public const BY_ID_TTL = 86400;
+
+    /**
+     * Key of an immutable-looking row cached by id (an invitation version, a package fragment). It carries the global
+     * token, so any save of a template, version or package, and any fresh database that re-uses the ids, renews it.
+     * Costs one cache read (the token), never a query.
+     */
+    public static function byIdKey(string $prefix, int $id): string
+    {
+        return sprintf('%s.%s.%d', $prefix, self::token(self::GLOBAL), $id);
+    }
+
     public static function ttl(): int
     {
         return max(1, (int) config('http.invitation.cache_ttl', 300));
