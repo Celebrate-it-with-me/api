@@ -613,17 +613,65 @@ class InvitationService
         return $sections;
     }
 
-    private function googleCalendarUrl(Events $event): string
+    private function googleCalendarUrl(Events $event, bool $withPlace = false): string
     {
         $start = $event->start_date;
         $end = $event->end_date ?? $start->copy()->addHours(4);
+        $place = $withPlace ? $this->mainPlaceText($event) : null;
 
-        return 'https://calendar.google.com/calendar/render?' . http_build_query([
+        return 'https://calendar.google.com/calendar/render?' . http_build_query(array_filter([
             'action' => 'TEMPLATE',
             'text' => $event->event_name,
             'dates' => $start->format('Ymd\THis') . '/' . $end->format('Ymd\THis'),
             'ctz' => $event->timezone,
-        ]);
+            'location' => $place,
+        ], fn ($value) => $value !== null));
+    }
+
+    /** The main place of the event (the ceremony first) as one line of text, or null without places. */
+    private function mainPlace(Events $event): ?EventLocation
+    {
+        $order = array_flip(EventLocation::TYPES);
+
+        return EventLocation::query()->where('event_id', $event->id)->orderBy('id')->get()
+            ->sortBy([fn ($a, $b) => ($order[$a->type] ?? 99) <=> ($order[$b->type] ?? 99), fn ($a, $b) => $a->id <=> $b->id])
+            ->first();
+    }
+
+    private function mainPlaceText(Events $event): ?string
+    {
+        $place = $this->mainPlace($event);
+        $text = $place ? implode(', ', array_filter([$place->name, $place->address, $place->city, $place->state])) : '';
+
+        return $text !== '' ? $text : null;
+    }
+
+    /**
+     * What the guest needs to keep the date after answering: the event's own title, start and end with its zone, the
+     * main place and the links. Nothing of other guests or of the owner.
+     *
+     * @return array<string, mixed>
+     */
+    private function calendarData(Events $event): array
+    {
+        $start = $event->start_date;
+        $end = $event->end_date ?? $start->copy()->addHours(4);
+        $place = $this->mainPlace($event);
+
+        return [
+            'title' => $event->event_name,
+            // Wall-clock time in the event timezone: render it without converting.
+            'startsAt' => $start->format('Y-m-d\TH:i:s'),
+            'endsAt' => $end->format('Y-m-d\TH:i:s'),
+            'timezone' => $event->timezone,
+            'location' => $place ? [
+                'name' => $place->name,
+                'address' => implode(', ', array_filter([$place->address, $place->city, $place->state])) ?: null,
+                'links' => $this->routeLinks($place),
+            ] : null,
+            'google' => $this->googleCalendarUrl($event, true),
+            'icsPath' => 'calendar.ics',
+        ];
     }
 
     /** The event as an .ics file. Times are the event's local time with its zone id. */
@@ -645,6 +693,7 @@ class InvitationService
             "DTSTART;TZID={$zone}:" . $start->format('Ymd\THis'),
             "DTEND;TZID={$zone}:" . $end->format('Ymd\THis'),
             'SUMMARY:' . $escape((string) $event->event_name),
+            ...(($place = $this->mainPlaceText($event)) !== null ? ['LOCATION:' . $escape($place)] : []),
             'END:VEVENT',
             'END:VCALENDAR',
             '',
@@ -961,6 +1010,7 @@ class InvitationService
             'canEditNames' => $window['isOpen'],
             'deadline' => $window['deadline'],
             'isOpen' => $window['isOpen'],
+            'calendar' => $this->calendarData($event),
         ] + ($menu ? ['menu' => $menu['menu']] : []);
     }
 
