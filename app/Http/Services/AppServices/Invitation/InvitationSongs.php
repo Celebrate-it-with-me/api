@@ -213,6 +213,8 @@ class InvitationSongs
             'id' => $song->id,
             'title' => $song->title,
             'artist' => $song->artist,
+            'platform' => $song->platform,
+            'platformId' => $song->platformId,
             'thumbnailUrl' => $song->thumbnailUrl !== '' ? $song->thumbnailUrl : null,
             'previewUrl' => $usePreview && $song->previewUrl ? $song->previewUrl : null,
             'votes' => (int) $votes,
