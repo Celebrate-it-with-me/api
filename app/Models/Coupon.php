@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Coupon extends Model
 {
-    protected $fillable = ['code', 'kind', 'value', 'is_founder', 'max_uses', 'times_used', 'expires_at', 'is_active', 'notes'];
+    protected $fillable = ['code', 'kind', 'value', 'is_founder', 'max_uses', 'times_used', 'expires_at', 'is_active', 'notes', 'launch_offer_id'];
 
     protected $casts = ['is_founder' => 'boolean', 'is_active' => 'boolean', 'expires_at' => 'datetime'];
 

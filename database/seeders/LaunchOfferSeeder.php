@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\LaunchOffer;
 use Illuminate\Database\Seeder;
@@ -27,8 +28,11 @@ class LaunchOfferSeeder extends Seeder
             return;
         }
 
-        LaunchOffer::query()->firstOrCreate(['event_plan_id' => $plan->id], [
+        $offer = LaunchOffer::query()->firstOrCreate(['event_plan_id' => $plan->id], [
             'is_active' => true, 'price_cents' => self::PRICE_CENTS, 'total_slots' => self::TOTAL_SLOTS, 'used_adjustment' => 0,
         ]);
+
+        // The founder code shares the offer's slots (one cap of N for both). Only fills it when empty.
+        Coupon::query()->where('code', LaunchCouponSeeder::CODE)->whereNull('launch_offer_id')->update(['launch_offer_id' => $offer->id]);
     }
 }

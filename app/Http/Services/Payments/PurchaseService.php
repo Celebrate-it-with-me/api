@@ -67,8 +67,8 @@ class PurchaseService
 
     /**
      * The price rule. The launch offer (no code) and a coupon never stack: the buyer gets whichever is cheaper, ONCE.
-     * On a tie the coupon wins (she typed it, and it keeps the offer's slot for someone else). A coupon that loses is
-     * not applied, so it is not spent. A 100 % coupon (0) always beats the offer.
+     * On a tie the coupon wins and is spent. A coupon that loses is not applied, so it is not spent. A 100 % or 50 %
+     * coupon beats the offer and takes no slot. A coupon tied to the offer takes a slot of the offer (one cap of N for both).
      *
      * @return array{amount: int, coupon: Coupon|null, offer: LaunchOffer|null, source: string}
      */
@@ -78,8 +78,16 @@ class PurchaseService
         $couponAmount = $coupon ? $coupon->apply($list) : null;
         $offerAmount = $offer && $offer->isOpen($plan, $event->id) ? (int) $offer->price_cents : null;
 
+        // A code tied to the offer (LANZAMIENTO79) shares its slots: with the offer sold out, off, or for someone at her
+        // hold cap, the code gives no discount at all and the buyer is told why (the screen shows "the offer ended").
+        $linked = $coupon && $coupon->launch_offer_id !== null;
+        if ($linked && ($offerAmount === null || (int) $coupon->launch_offer_id !== (int) $offer->id)) {
+            throw ValidationException::withMessages(['code' => ['launch_offer_exhausted']]);
+        }
+
         if ($couponAmount !== null && ($offerAmount === null || $couponAmount <= $offerAmount)) {
-            return ['amount' => $couponAmount, 'coupon' => $coupon, 'offer' => null, 'source' => 'coupon'];
+            // A linked code takes a slot of the offer like the offer itself; any other code (50 %, 100 %...) takes none.
+            return ['amount' => $couponAmount, 'coupon' => $coupon, 'offer' => $linked ? $offer : null, 'source' => 'coupon'];
         }
         if ($offerAmount !== null) {
             return ['amount' => $offerAmount, 'coupon' => null, 'offer' => $offer, 'source' => 'offer'];

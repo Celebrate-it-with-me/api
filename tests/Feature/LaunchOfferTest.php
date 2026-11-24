@@ -50,9 +50,13 @@ function offerEvent(): array
 
 function makeOffer(array $over = []): LaunchOffer
 {
-    return LaunchOffer::create($over + [
+    $offer = LaunchOffer::create($over + [
         'event_plan_id' => EventPlan::where('slug', 'premium')->value('id'), 'is_active' => true, 'price_cents' => 7900, 'total_slots' => 100,
     ]);
+    // The founder code, when it exists, shares the offer's slots (what the seeders do).
+    Coupon::where('code', 'LANZAMIENTO79')->update(['launch_offer_id' => $offer->id]);
+
+    return $offer;
 }
 
 function quoteOf($test, Events $event, User $owner, ?string $code = null)
@@ -336,20 +340,82 @@ describe('checkout and money', function () {
 });
 
 describe('offer and coupons', function () {
-    it('never stacks: a code that gives the same price wins (the coupon is spent, the slot is not)', function () {
+    it('never stacks: LANZAMIENTO79 gives 79 once, spends its use AND one slot of the offer', function () {
         $this->seed(LaunchCouponSeeder::class);
-        $offer = makeOffer();
+        $offer = makeOffer(['total_slots' => 2]);
         [$event, $owner] = offerEvent();
 
         quoteOf($this, $event, $owner, LaunchCouponSeeder::CODE)->assertOk()
             ->assertJsonPath('data.amountCents', 7900)->assertJsonPath('data.source', 'coupon')->assertJsonPath('data.code', 'LANZAMIENTO79');
 
-        $id = checkoutOf($this, $event, $owner, ['code' => 'lanzamiento79'])->assertCreated()->json('data.purchaseId');
+        $id = checkoutOf($this, $event, $owner, ['code' => 'lanzamiento79', 'expectedAmountCents' => 7900])->assertCreated()->json('data.purchaseId');
         payPurchase($this, $id);
 
-        expect(EventPurchase::find($id))->amount_cents->toBe(7900)->launch_offer_id->toBeNull()->is_founder->toBeTrue()
+        expect(EventPurchase::find($id))->amount_cents->toBe(7900)->launch_offer_id->toBe($offer->id)->is_founder->toBeTrue()
             ->and(Coupon::where('code', 'LANZAMIENTO79')->value('times_used'))->toBe(1)
-            ->and($offer->usedSlots())->toBe(0);
+            ->and($offer->usedSlots())->toBe(1)->and($offer->slotsLeft())->toBe(1);
+    });
+
+    it('shares ONE cap of slots between the public offer and the code', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        $offer = makeOffer(['total_slots' => 2]);
+        [$a, $ownerA] = offerEvent();
+        [$b, $ownerB] = offerEvent();
+        [$c, $ownerC] = offerEvent();
+
+        payPurchase($this, checkoutOf($this, $a, $ownerA)->assertCreated()->json('data.purchaseId'));
+        payPurchase($this, checkoutOf($this, $b, $ownerB, ['code' => 'LANZAMIENTO79'])->assertCreated()->json('data.purchaseId'));
+
+        expect($offer->slotsLeft())->toBe(0);
+        quoteOf($this, $c, $ownerC)->assertJsonPath('data.amountCents', 9900);
+        foreach ([fn () => quoteOf($this, $c, $ownerC, 'LANZAMIENTO79'), fn () => checkoutOf($this, $c, $ownerC, ['code' => 'LANZAMIENTO79', 'expectedAmountCents' => 7900])] as $try) {
+            $try()->assertStatus(422)->assertJsonPath('errors.code.0', 'launch_offer_exhausted');
+        }
+        expect(EventPurchase::where('event_id', $c->id)->count())->toBe(0)->and(Coupon::where('code', 'LANZAMIENTO79')->value('times_used'))->toBe(1);
+    });
+
+    it('gives the code no discount when the offer is switched off, and a refund frees its slot', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        $offer = makeOffer(['total_slots' => 1]);
+        [$a, $ownerA] = offerEvent();
+        [$b, $ownerB] = offerEvent();
+        $id = checkoutOf($this, $a, $ownerA, ['code' => 'LANZAMIENTO79'])->assertCreated()->json('data.purchaseId');
+        payPurchase($this, $id);
+        quoteOf($this, $b, $ownerB, 'LANZAMIENTO79')->assertStatus(422)->assertJsonPath('errors.code.0', 'launch_offer_exhausted');
+
+        app(PurchaseService::class)->refund(EventPurchase::find($id), 'asked');
+        quoteOf($this, $b, $ownerB, 'LANZAMIENTO79')->assertOk()->assertJsonPath('data.amountCents', 7900);
+
+        $offer->update(['is_active' => false]);
+        quoteOf($this, $b, $ownerB, 'LANZAMIENTO79')->assertStatus(422)->assertJsonPath('errors.code.0', 'launch_offer_exhausted');
+    });
+
+    it('keeps the code\'s own max uses as a second cap', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        makeOffer(['total_slots' => 5]);
+        Coupon::where('code', 'LANZAMIENTO79')->update(['times_used' => 100]);
+        [$event, $owner] = offerEvent();
+
+        quoteOf($this, $event, $owner, 'LANZAMIENTO79')->assertStatus(422)->assertJsonPath('errors.code.0', 'invalid_code');
+    });
+
+    it('uses the code with no offer at all exactly as before (not tied to anything)', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        [$event, $owner] = offerEvent();
+
+        quoteOf($this, $event, $owner, 'LANZAMIENTO79')->assertOk()->assertJsonPath('data.amountCents', 7900);
+        expect(Coupon::where('code', 'LANZAMIENTO79')->value('launch_offer_id'))->toBeNull();
+    });
+
+    it('lets a 50 percent code beat the offer without taking a slot', function () {
+        $offer = makeOffer();
+        Coupon::create(['code' => 'HALFB', 'kind' => 'percent_off', 'value' => 50]);
+        [$event, $owner] = offerEvent();
+
+        $id = checkoutOf($this, $event, $owner, ['code' => 'HALFB', 'expectedAmountCents' => 4950])->assertCreated()->json('data.purchaseId');
+        payPurchase($this, $id);
+
+        expect(EventPurchase::find($id))->amount_cents->toBe(4950)->launch_offer_id->toBeNull()->and($offer->usedSlots())->toBe(0);
     });
 
     it('gives the best price: a bigger coupon wins, a smaller one is ignored and not spent', function () {
@@ -379,13 +445,10 @@ describe('offer and coupons', function () {
             ->and(EventPurchase::first())->amount_cents->toBe(0)->launch_offer_id->toBeNull();
     });
 
-    it('still honours LANZAMIENTO79 when the offer is sold out, and rejects an invalid code even with the offer open', function () {
-        $this->seed(LaunchCouponSeeder::class);
-        makeOffer(['total_slots' => 0]);
+    it('rejects an invalid code even with the offer open', function () {
+        makeOffer();
         [$event, $owner] = offerEvent();
 
-        quoteOf($this, $event, $owner)->assertJsonPath('data.amountCents', 9900);
-        quoteOf($this, $event, $owner, 'LANZAMIENTO79')->assertJsonPath('data.amountCents', 7900)->assertJsonPath('data.source', 'coupon');
         quoteOf($this, $event, $owner, 'NOPE')->assertStatus(422)->assertJsonPath('errors.code.0', 'invalid_code');
     });
 
@@ -416,6 +479,23 @@ describe('seeders', function () {
         $this->seed(LaunchOfferSeeder::class);
 
         expect(LaunchOffer::count())->toBe(0);
+    });
+
+    it('ties the founder code to the offer when the offer seeder runs first', function () {
+        $this->seed(LaunchOfferSeeder::class);
+        $this->seed(LaunchCouponSeeder::class);
+        $this->seed(LaunchOfferSeeder::class);
+
+        expect(Coupon::where('code', 'LANZAMIENTO79')->value('launch_offer_id'))->toBe(LaunchOffer::first()->id);
+    });
+
+    it('ties the founder code to the offer when the coupon seeder runs first', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        $this->seed(LaunchOfferSeeder::class);
+        Coupon::where('code', 'LANZAMIENTO79')->update(['launch_offer_id' => null]);
+        $this->seed(LaunchCouponSeeder::class);
+
+        expect(Coupon::where('code', 'LANZAMIENTO79')->value('launch_offer_id'))->toBe(LaunchOffer::first()->id);
     });
 
     it('is loaded by the demo seeder', function () {
