@@ -14,6 +14,7 @@ use App\Models\Events;
 use App\Models\EventUserRole;
 use App\Models\LaunchOffer;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -139,31 +140,45 @@ class AdminPaymentController extends Controller
         $plan = $this->purchases->fullPlan();
         $data = $request->validate([
             'isActive' => ['sometimes', 'boolean'],
-            // Stripe's floor is 50 cents; an offer is a discount, so it must be below the list price.
-            'priceCents' => ['sometimes', 'integer', 'min:' . PurchaseService::MIN_CHARGE_CENTS, 'lt:' . max(1, (int) $plan->price_cents)],
+            // An offer is a discount (below the list price) but not a typo: at least half of it, and never under Stripe's 50 cents.
+            'priceCents' => ['sometimes', 'integer', 'min:' . max(PurchaseService::MIN_CHARGE_CENTS, (int) ceil($plan->price_cents / 2)), 'lt:' . max(1, (int) $plan->price_cents)],
             'totalSlots' => ['sometimes', 'integer', 'min:0', 'max:100000'],
             'slotsUsed' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            // Lowering the total under what is already used (or setting used above the total) must be said on purpose.
+            'allowBelowUsed' => ['sometimes', 'boolean'],
             'reason' => AdminAudit::reasonRule(),
         ]);
 
-        $offer = DB::transaction(function () use ($plan, $data) {
-            $offer = $this->purchases->launchOffer($plan, lock: true);
-            if (! $offer && (! isset($data['priceCents']) || ! isset($data['totalSlots']))) {
-                throw ValidationException::withMessages(['priceCents' => ['required_to_create_offer']]);
-            }
-            $before = $this->offerPayload($plan, $offer);
-            $offer ??= new LaunchOffer(['event_plan_id' => $plan->id, 'is_active' => false, 'used_adjustment' => 0]);
+        try {
+            $offer = DB::transaction(function () use ($plan, $data) {
+                $offer = $this->purchases->launchOffer($plan, lock: true);
+                if (! $offer && (! isset($data['priceCents']) || ! isset($data['totalSlots']))) {
+                    throw ValidationException::withMessages(['priceCents' => ['required_to_create_offer']]);
+                }
+                $before = $this->offerPayload($plan, $offer);
+                $offer ??= new LaunchOffer(['event_plan_id' => $plan->id, 'is_active' => false, 'used_adjustment' => 0]);
 
-            $offer->fill(array_filter([
-                'is_active' => $data['isActive'] ?? null, 'price_cents' => $data['priceCents'] ?? null, 'total_slots' => $data['totalSlots'] ?? null,
-            ], fn ($v) => $v !== null));
-            if (isset($data['slotsUsed'])) {
-                $offer->used_adjustment = $data['slotsUsed'] - $offer->paidCount();
-            }
-            $offer->save();
+                $offer->fill(array_filter([
+                    'is_active' => $data['isActive'] ?? null, 'price_cents' => $data['priceCents'] ?? null, 'total_slots' => $data['totalSlots'] ?? null,
+                ], fn ($v) => $v !== null));
+                if (isset($data['slotsUsed'])) {
+                    // The correction only adds (sales made outside the platform); it never hides paid purchases.
+                    if ($data['slotsUsed'] < $offer->paidCount()) {
+                        throw ValidationException::withMessages(['slotsUsed' => ['below_paid_purchases']]);
+                    }
+                    $offer->used_adjustment = $data['slotsUsed'] - $offer->paidCount();
+                }
+                if (! ($data['allowBelowUsed'] ?? false) && (int) $offer->total_slots < $offer->usedSlots()) {
+                    throw ValidationException::withMessages(['totalSlots' => ['below_used_slots']]);
+                }
+                $offer->save();
 
-            return [$offer, $before];
-        });
+                return [$offer, $before];
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Two first PUTs at once: the other one created the row. Nothing was changed by this one; try again.
+            return response()->json(['message' => 'The launch offer was just created by another request.', 'code' => 'launch_offer_conflict'], 409);
+        }
         [$offer, $before] = $offer;
 
         // LO-006: turning the offer off or changing its price must not leave sessions open at the old price. They are closed

@@ -715,6 +715,7 @@ describe('admin', function () {
         $put(['priceCents' => 7900, 'reason' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('reason');
         $put(['priceCents' => 10, 'reason' => 'too cheap'])->assertStatus(422)->assertJsonValidationErrors('priceCents');
         $put(['priceCents' => 9900, 'reason' => 'not a discount'])->assertStatus(422)->assertJsonValidationErrors('priceCents');
+        $put(['priceCents' => 4000, 'reason' => 'under half the list'])->assertStatus(422)->assertJsonValidationErrors('priceCents');
         $put(['totalSlots' => -1, 'reason' => 'negative'])->assertStatus(422)->assertJsonValidationErrors('totalSlots');
         $put(['slotsUsed' => -3, 'reason' => 'negative'])->assertStatus(422)->assertJsonValidationErrors('slotsUsed');
         expect(LaunchOffer::first())->price_cents->toBe(7900)->total_slots->toBe(100);
@@ -723,6 +724,34 @@ describe('admin', function () {
     it('needs a login', function () {
         $this->getJson('/api/v1/admin/payments/launch-offer')->assertUnauthorized();
         $this->putJson('/api/v1/admin/payments/launch-offer', ['totalSlots' => 1, 'reason' => 'anonymous'])->assertUnauthorized();
+    });
+
+    it('does not let the total fall under the used slots or the used count hide paid purchases, unless said on purpose', function () {
+        $admin = superadmin();
+        $offer = makeOffer(['total_slots' => 10]);
+        [$event, $owner] = offerEvent();
+        payPurchase($this, checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId'));
+        $offer->update(['used_adjustment' => 4]); // 5 used
+        $put = fn (array $b) => $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/launch-offer', $b + ['reason' => 'Adjusting slots']);
+
+        $put(['totalSlots' => 3])->assertStatus(422)->assertJsonPath('errors.totalSlots.0', 'below_used_slots');
+        $put(['slotsUsed' => 11])->assertStatus(422)->assertJsonPath('errors.totalSlots.0', 'below_used_slots');
+        $put(['slotsUsed' => 0])->assertStatus(422)->assertJsonPath('errors.slotsUsed.0', 'below_paid_purchases');
+        expect($offer->fresh())->total_slots->toBe(10)->used_adjustment->toBe(4);
+
+        $put(['totalSlots' => 3, 'allowBelowUsed' => true])->assertOk()->assertJsonPath('data.totalSlots', 3)->assertJsonPath('data.slotsLeft', 0);
+        $put(['totalSlots' => 5, 'slotsUsed' => 5])->assertOk()->assertJsonPath('data.slotsUsed', 5);
+    });
+
+    it('answers 409 instead of 500 when two first PUTs race on the unique row', function () {
+        $plan = EventPlan::where('slug', 'premium')->value('id');
+        LaunchOffer::creating(function () use ($plan) {
+            DB::table('launch_offers')->insert(['event_plan_id' => $plan, 'is_active' => true, 'price_cents' => 7900, 'total_slots' => 1, 'used_adjustment' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        });
+
+        $this->actingAsReauthed(superadmin())->putJson('/api/v1/admin/payments/launch-offer', ['priceCents' => 7900, 'totalSlots' => 100, 'reason' => 'Create twice'])
+            ->assertStatus(409)->assertJsonPath('code', 'launch_offer_conflict');
+        expect(AdminAuditLog::where('action', 'like', 'launch_offer%')->count())->toBe(0);
     });
 
     it('is for the superadmin only, behind re-authentication, and never for organizers', function () {
