@@ -16,6 +16,7 @@ class InstallClassicPackage extends Command
 {
     protected $signature = 'templates:install-classic
         {path : The classic package: a .zip, or the folder dev-packages/classic/<version> (package.json and ast.json at its root are left out)}
+        {--actor= : Email of the staff member who runs it (goes to the audit log; the operating system user is always recorded)}
         {--reason= : Why (5 to 500 characters, goes to the audit log)}';
 
     protected $description = 'Install the reserved classic template package from the trusted console (idempotent; does not switch the source)';
@@ -25,6 +26,14 @@ class InstallClassicPackage extends Command
         $reason = trim((string) $this->option('reason'));
         if (mb_strlen($reason) < 5 || mb_strlen($reason) > 500) {
             $this->error('Indica --reason="..." (entre 5 y 500 caracteres).');
+
+            return self::INVALID;
+        }
+
+        try {
+            $actor = ClassicSource::actor($this->option('actor'));
+        } catch (\InvalidArgumentException $e) {
+            $this->error($e->getMessage());
 
             return self::INVALID;
         }
@@ -46,7 +55,7 @@ class InstallClassicPackage extends Command
         }
 
         try {
-            $result = $classic->install($path, $reason);
+            $result = $classic->install($path, $reason, $actor);
         } catch (HttpResponseException $e) {
             $this->error((string) $e->getResponse()->getContent());
 
@@ -73,7 +82,9 @@ class InstallClassicPackage extends Command
 
     private function zipFolder(string $dir): ?string
     {
-        $temp = tempnam(sys_get_temp_dir(), 'classic') . '.zip';
+        $base = tempnam(sys_get_temp_dir(), 'classic');
+        $temp = $base . '.zip';
+        @unlink($base); // tempnam creates the base file; only the .zip is used
         $zip = new ZipArchive;
         if ($zip->open($temp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return null;

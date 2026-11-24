@@ -8,6 +8,8 @@ use App\Models\Events;
 use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion as Version;
 use App\Models\TemplatePackage;
+use App\Models\User;
+use App\Support\AdminPermissions;
 use App\Support\InvitationCache;
 use Illuminate\Support\Facades\DB;
 
@@ -39,16 +41,17 @@ class ClassicSource
      *
      * @return array{status: 'installed'|'unchanged', package: TemplatePackage, missingModules: list<string>}
      */
-    public function install(string $zipPath, string $reason): array
+    public function install(string $zipPath, string $reason, ?User $actor = null): array
     {
         self::assertReason($reason);
         // Parked and audited in the very transaction that creates the package: no half installed state is ever visible.
         $parkedNew = null;
-        $result = $this->installer->installTrusted($zipPath, $reason, self::SLUG, function (TemplatePackage $package) use (&$parkedNew, $reason) {
+        $result = $this->installer->installTrusted($zipPath, $reason, self::SLUG, function (TemplatePackage $package) use (&$parkedNew, $reason, $actor) {
             $parkedNew = $this->park($package);
             $this->audit->record('template.classic_package_installed', ['template_package', $package->id], [
                 'reason' => $reason,
-                'after' => ['slug' => $package->slug, 'version' => $package->semver, 'contentHash' => $package->content_hash, 'versions' => $parkedNew],
+                'actor' => $actor,
+                'after' => ['slug' => $package->slug, 'version' => $package->semver, 'contentHash' => $package->content_hash, 'versions' => $parkedNew, 'console' => self::console()],
             ]);
         });
         $package = $result['package'];
@@ -73,6 +76,28 @@ class ClassicSource
         }
 
         return $drafts->count();
+    }
+
+    /** Who ran the console command, for the audit log (the console has no session): operating system user and host. @return array{osUser: string, host: string} */
+    public static function console(): array
+    {
+        $user = function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? null) : null;
+
+        return ['osUser' => (string) ($user ?? get_current_user() ?: 'console'), 'host' => (string) (gethostname() ?: 'unknown')];
+    }
+
+    /** The staff member named with --actor: must exist and be staff, checked before anything is written. */
+    public static function actor(?string $email): ?User
+    {
+        if ($email === null || trim($email) === '') {
+            return null;
+        }
+        $user = User::query()->where('email', mb_strtolower(trim($email)))->first();
+        if ($user === null || ! $user->hasAnyRole(AdminPermissions::STAFF_ROLES)) {
+            throw new \InvalidArgumentException('--actor debe ser el correo de una persona del equipo (staff).');
+        }
+
+        return $user;
     }
 
     /** The audit log keeps the reason in a 500 character column: checked before anything is written. */
@@ -112,7 +137,7 @@ class ClassicSource
      *
      * @return array{changed: bool, from: string, to: string, following: int}
      */
-    public function switchTo(string $mode, string $reason): array
+    public function switchTo(string $mode, string $reason, ?User $actor = null): array
     {
         if (! in_array($mode, [self::NATIVE, self::PACKAGE], true)) {
             throw new \InvalidArgumentException('El origen debe ser native o package.');
@@ -121,7 +146,7 @@ class ClassicSource
 
         $before = [];
         $after = [];
-        DB::transaction(function () use ($mode, $reason, &$before, &$after) {
+        DB::transaction(function () use ($mode, $reason, $actor, &$before, &$after) {
             $templates = InvitationTemplate::query()->whereIn('slug', self::TEMPLATES)->orderBy('id')->lockForUpdate()->get();
             if ($templates->count() !== count(self::TEMPLATES)) {
                 throw new \RuntimeException('Faltan las plantillas Clásica (classic-quinceanera, classic-wedding).');
@@ -144,8 +169,9 @@ class ClassicSource
             if ($before !== $after) {
                 $this->audit->record('template.classic_source_changed', ['template', null], [
                     'reason' => $reason,
+                    'actor' => $actor,
                     'before' => ['source' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'currentVersionIds' => $before],
-                    'after' => ['source' => $mode, 'currentVersionIds' => $after],
+                    'after' => ['source' => $mode, 'currentVersionIds' => $after, 'console' => self::console()],
                 ]);
                 InvitationCache::flushAll();
             }
@@ -156,7 +182,7 @@ class ClassicSource
         return ['changed' => $changed, 'from' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'to' => $mode, 'following' => $this->followingPublished()];
     }
 
-    /** The newest version of the Classic package for this template that can be drawn (never a draft, never a withdrawn package). */
+    /** The newest version of the Classic package for this template that can be drawn (never a draft) and that the public may be shown. */
     private function packageVersion(InvitationTemplate $template): Version
     {
         $version = Version::query()
@@ -170,8 +196,19 @@ class ClassicSource
         if ($version === null) {
             throw new \RuntimeException("La plantilla {$template->slug} no tiene una versión del paquete Clásica instalada.");
         }
-        if (ModuleSupport::missingFor($version->package) !== []) {
-            throw new \RuntimeException('El paquete Clásica no trae todos los módulos (' . implode(', ', ModuleSupport::missingFor($version->package)) . '): las plantillas gratis dejarían de poder activarlos.');
+        $package = $version->package;
+        $why = match (true) {
+            $package->status !== TemplatePackage::ACTIVE => "el paquete está {$package->status}",
+            $package->engine_min > (int) config('invitation.engine') => 'el paquete pide un motor más nuevo que el actual',
+            $package->visibility !== TemplatePackage::PUBLIC => 'el paquete no es público',
+            ($package->manifest['thirdPartyMarks'] ?? []) !== [] => 'el paquete declara marcas de terceros y su uso no se confirma desde este comando',
+            default => null,
+        };
+        if ($why !== null) {
+            throw new \RuntimeException("La Clásica no puede pasar a package: {$why}.");
+        }
+        if (ModuleSupport::missingFor($package) !== []) {
+            throw new \RuntimeException('El paquete Clásica no trae todos los módulos (' . implode(', ', ModuleSupport::missingFor($package)) . '): las plantillas gratis dejarían de poder activarlos.');
         }
 
         return $version;

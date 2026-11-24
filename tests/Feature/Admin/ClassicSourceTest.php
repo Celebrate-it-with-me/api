@@ -395,6 +395,82 @@ describe('who follows the pointer (CS-004)', function () {
     });
 });
 
+describe('what the switch demands of the package (CS-006)', function () {
+    it('refuses a package that is deactivated, needs a newer engine, is not public or declares third party marks', function (string $change, string $message) {
+        clsInstall(clsPackage());
+        $pkg = TemplatePackage::where('slug', 'classic')->sole();
+        $manifest = $pkg->manifest;
+        $row = match ($change) {
+            'deactivated' => ['status' => 'deactivated'],
+            'engine' => ['engine_min' => 9],
+            'private' => ['visibility' => 'private'],
+            'marks' => ['manifest' => json_encode([...$manifest, 'thirdPartyMarks' => [['name' => 'X', 'owner' => 'Y', 'usage' => 'Z']]])],
+        };
+        DB::table('template_packages')->where('id', $pkg->id)->update($row);
+        $pointers = [clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id];
+
+        expect(clsSource('package'))->toBe(1)->and(Artisan::output())->toContain($message);
+        expect([clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id])->toBe($pointers);
+    })->with([
+        'deactivated' => ['deactivated', 'el paquete está deactivated'],
+        'engine' => ['engine', 'motor más nuevo'],
+        'private' => ['private', 'no es público'],
+        'marks' => ['marks', 'marcas de terceros'],
+    ]);
+
+    it('still goes to native when the package is in any of those states', function () {
+        clsInstall(clsPackage());
+        clsSource('package');
+        TemplatePackage::where('slug', 'classic')->update(['status' => 'deactivated']);
+
+        expect(clsSource('native'))->toBe(0);
+    });
+});
+
+describe('who ran the console command (CS-007)', function () {
+    it('records the operating system user and host always, and the staff member when --actor is given', function () {
+        $staff = User::factory()->create(['email' => 'staff@cwm.test']);
+        $staff->assignRole('superadmin');
+        expect(Artisan::call('templates:install-classic', ['path' => clsPackage()->zip(), '--reason' => 'Instalar la Clásica', '--actor' => 'STAFF@cwm.test']))->toBe(0);
+        expect(clsSource('package'))->toBe(0);
+        expect(Artisan::call('templates:classic-source', ['mode' => 'native', '--reason' => 'Volver a nativa', '--actor' => 'staff@cwm.test']))->toBe(0);
+
+        foreach (['template.classic_package_installed', 'template.classic_source_changed'] as $action) {
+            $log = AdminAuditLog::where('action', $action)->orderBy('id')->first();
+            expect($log->after['console'])->toHaveKeys(['osUser', 'host'])->and($log->after['console']['osUser'])->not->toBe('');
+        }
+        expect(AdminAuditLog::where('action', 'template.classic_package_installed')->sole()->actor_id)->toBe($staff->id)
+            ->and(AdminAuditLog::where('action', 'template.classic_source_changed')->orderBy('id')->first()->actor_id)->toBeNull()
+            ->and(AdminAuditLog::where('action', 'template.classic_source_changed')->orderByDesc('id')->first()->actor_id)->toBe($staff->id);
+    });
+
+    it('refuses an --actor that does not exist or is not staff, before writing anything', function (?string $email) {
+        User::factory()->create(['email' => 'plain@cwm.test']);
+        expect(Artisan::call('templates:install-classic', ['path' => clsPackage()->zip(), '--reason' => 'Instalar la Clásica', '--actor' => $email]))->toBe(2)
+            ->and(Artisan::output())->toContain('--actor');
+        expect(TemplatePackage::count())->toBe(0);
+
+        clsInstall(clsPackage());
+        expect(Artisan::call('templates:classic-source', ['mode' => 'package', '--reason' => 'Probar el paquete', '--actor' => $email]))->toBe(2);
+        expect(app(ClassicSource::class)->current())->toBe('native');
+    })->with(['ghost@cwm.test', 'plain@cwm.test']);
+});
+
+describe('the temp files of the folder install (CS-010)', function () {
+    it('leaves no tempnam base file behind', function () {
+        $dir = sys_get_temp_dir() . '/cls-tmp-' . uniqid();
+        foreach (clsPackage()->files as $path => $bytes) {
+            @mkdir(dirname("{$dir}/{$path}"), 0777, true);
+            file_put_contents("{$dir}/{$path}", $bytes);
+        }
+        $count = fn () => count(glob(sys_get_temp_dir() . '/classic*'));
+        $before = $count();
+
+        expect(Artisan::call('templates:install-classic', ['path' => $dir, '--reason' => 'Instalar desde carpeta']))->toBe(0);
+        expect($count())->toBe($before);
+    });
+});
+
 describe('the switch', function () {
     it('is native by default, and an unflipped install changes what the public sees in nothing', function () {
         $event = clsEvent('boda-camila');
