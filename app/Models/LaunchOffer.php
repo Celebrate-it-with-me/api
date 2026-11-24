@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -19,11 +18,6 @@ class LaunchOffer extends Model
     protected $fillable = ['event_plan_id', 'is_active', 'price_cents', 'total_slots', 'used_adjustment'];
 
     protected $casts = ['is_active' => 'boolean'];
-
-    public function plan(): BelongsTo
-    {
-        return $this->belongsTo(EventPlan::class, 'event_plan_id');
-    }
 
     public function purchases(): HasMany
     {

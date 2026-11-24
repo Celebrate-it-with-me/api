@@ -288,6 +288,23 @@ describe('checkout and money', function () {
             ->and($offer->usedSlots())->toBe(2)->and($offer->slotsLeft())->toBe(0);
     });
 
+    it('does not flag a purchase that was refunded or is not on the offer when the commit hook runs', function () {
+        $offer = makeOffer(['total_slots' => 0]);
+        [$event, $owner] = offerEvent();
+        $id = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        $flag = new ReflectionMethod(PurchaseService::class, 'flagOversold');
+        $service = app(PurchaseService::class);
+
+        $flag->invoke($service, $id); // still pending
+        EventPurchase::whereKey($id)->update(['status' => 'refunded']);
+        $flag->invoke($service, $id);
+        EventPurchase::whereKey($id)->update(['status' => 'paid', 'launch_offer_id' => null]);
+        $flag->invoke($service, $id);
+        $flag->invoke($service, 999999);
+
+        expect(EventPurchase::find($id)->needs_review)->toBeFalse();
+    });
+
     it('counts the admin correction as used slots', function () {
         $offer = makeOffer(['total_slots' => 5, 'used_adjustment' => 4]);
         [$event, $owner] = offerEvent();
