@@ -10,7 +10,7 @@ class ClassicSourceCommand extends Command
 {
     protected $signature = 'templates:classic-source
         {mode : native, package or status}
-        {--reason= : Why (at least 5 characters, goes to the audit log); required to change}';
+        {--reason= : Why (5 to 500 characters, goes to the audit log); required to change}';
 
     protected $description = 'Show or change where the free Classic invitation is drawn from: the native engine or the classic package';
 
@@ -28,8 +28,8 @@ class ClassicSourceCommand extends Command
             return self::INVALID;
         }
         $reason = trim((string) $this->option('reason'));
-        if (mb_strlen($reason) < 5) {
-            $this->error('Indica --reason="..." (mínimo 5 caracteres).');
+        if (mb_strlen($reason) < 5 || mb_strlen($reason) > 500) {
+            $this->error('Indica --reason="..." (entre 5 y 500 caracteres).');
 
             return self::INVALID;
         }

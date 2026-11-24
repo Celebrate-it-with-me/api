@@ -297,6 +297,46 @@ describe('the install is atomic (CS-001)', function () {
     });
 });
 
+describe('the reason and the audit (CS-003)', function () {
+    it('refuses a reason of 501 characters before writing anything, in both commands and in the service', function () {
+        $long = str_repeat('a', 501);
+        expect(Artisan::call('templates:install-classic', ['path' => clsPackage()->zip(), '--reason' => $long]))->toBe(2)
+            ->and(Artisan::output())->toContain('entre 5 y 500');
+        expect(TemplatePackage::count())->toBe(0)->and(Version::whereNotNull('package_id')->count())->toBe(0)->and(Storage::disk('local')->files('template-staging'))->toBe([]);
+
+        clsInstall(clsPackage());
+        $pointers = [clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id];
+        expect(clsSource('package', $long))->toBe(2)->and(Artisan::output())->toContain('entre 5 y 500');
+        expect([clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id])->toBe($pointers)
+            ->and(AdminAuditLog::where('action', 'template.classic_source_changed')->count())->toBe(0);
+
+        expect(fn () => app(ClassicSource::class)->switchTo('package', $long))->toThrow(InvalidArgumentException::class)
+            ->and(fn () => app(ClassicSource::class)->install(clsPackage()->zip(), $long))->toThrow(InvalidArgumentException::class);
+    });
+
+    it('accepts a reason of exactly 500 characters and keeps it whole in the audit log', function () {
+        $limit = str_repeat('é', 500);
+        expect(clsInstall(clsPackage(), $limit))->toBe(0)->and(clsSource('package', $limit))->toBe(0);
+        expect(AdminAuditLog::where('action', 'template.classic_source_changed')->sole()->reason)->toBe($limit)
+            ->and(AdminAuditLog::where('action', 'template.classic_package_installed')->sole()->reason)->toBe($limit);
+    });
+
+    it('moves nothing when the audit of the switch cannot be written', function () {
+        clsInstall(clsPackage());
+        $pointers = [clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id];
+        $this->app->bind(AdminAudit::class, fn ($app) => new class($app['request']) extends AdminAudit
+        {
+            public function record(string $action, $subject = null, array $data = []): AdminAuditLog
+            {
+                throw new RuntimeException('audit down');
+            }
+        });
+
+        expect(fn () => app(ClassicSource::class)->switchTo('package', 'Cambiar el origen'))->toThrow(RuntimeException::class, 'audit down');
+        expect([clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id])->toBe($pointers);
+    });
+});
+
 describe('the switch', function () {
     it('is native by default, and an unflipped install changes what the public sees in nothing', function () {
         $event = clsEvent('boda-camila');

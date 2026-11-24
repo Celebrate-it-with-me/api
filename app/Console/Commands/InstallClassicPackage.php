@@ -16,15 +16,15 @@ class InstallClassicPackage extends Command
 {
     protected $signature = 'templates:install-classic
         {path : The classic package: a .zip, or the folder dev-packages/classic/<version> (package.json and ast.json at its root are left out)}
-        {--reason= : Why (at least 5 characters, goes to the audit log)}';
+        {--reason= : Why (5 to 500 characters, goes to the audit log)}';
 
     protected $description = 'Install the reserved classic template package from the trusted console (idempotent; does not switch the source)';
 
     public function handle(ClassicSource $classic): int
     {
         $reason = trim((string) $this->option('reason'));
-        if (mb_strlen($reason) < 5) {
-            $this->error('Indica --reason="..." (mínimo 5 caracteres).');
+        if (mb_strlen($reason) < 5 || mb_strlen($reason) > 500) {
+            $this->error('Indica --reason="..." (entre 5 y 500 caracteres).');
 
             return self::INVALID;
         }

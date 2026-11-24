@@ -40,6 +40,7 @@ class ClassicSource
      */
     public function install(string $zipPath, string $reason): array
     {
+        self::assertReason($reason);
         // Parked and audited in the very transaction that creates the package: no half installed state is ever visible.
         $parkedNew = null;
         $result = $this->installer->installTrusted($zipPath, $reason, self::SLUG, function (TemplatePackage $package) use (&$parkedNew, $reason) {
@@ -73,6 +74,15 @@ class ClassicSource
         return $drafts->count();
     }
 
+    /** The audit log keeps the reason in a 500 character column: checked before anything is written. */
+    public static function assertReason(string $reason): void
+    {
+        $length = mb_strlen(trim($reason));
+        if ($length < 5 || $length > 500) {
+            throw new \InvalidArgumentException('La razón debe tener entre 5 y 500 caracteres.');
+        }
+    }
+
     /** @return 'native'|'package'|'mixed'|'unknown' what the two Classic templates point at now */
     public function current(): string
     {
@@ -95,10 +105,11 @@ class ClassicSource
         if (! in_array($mode, [self::NATIVE, self::PACKAGE], true)) {
             throw new \InvalidArgumentException('El origen debe ser native o package.');
         }
+        self::assertReason($reason);
 
         $before = [];
         $after = [];
-        DB::transaction(function () use ($mode, &$before, &$after) {
+        DB::transaction(function () use ($mode, $reason, &$before, &$after) {
             $templates = InvitationTemplate::query()->whereIn('slug', self::TEMPLATES)->orderBy('id')->lockForUpdate()->get();
             if ($templates->count() !== count(self::TEMPLATES)) {
                 throw new \RuntimeException('Faltan las plantillas Clásica (classic-quinceanera, classic-wedding).');
@@ -116,17 +127,19 @@ class ClassicSource
                     $template->forceFill(['current_version_id' => $targets[$template->id]->id])->save();
                 }
             }
+
+            // The audit is part of the change: if it cannot be written, the pointers do not move.
+            if ($before !== $after) {
+                $this->audit->record('template.classic_source_changed', ['template', null], [
+                    'reason' => $reason,
+                    'before' => ['source' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'currentVersionIds' => $before],
+                    'after' => ['source' => $mode, 'currentVersionIds' => $after],
+                ]);
+                InvitationCache::flushAll();
+            }
         });
 
         $changed = $before !== $after;
-        if ($changed) {
-            InvitationCache::flushAll();
-            $this->audit->record('template.classic_source_changed', ['template', null], [
-                'reason' => $reason,
-                'before' => ['source' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'currentVersionIds' => $before],
-                'after' => ['source' => $mode, 'currentVersionIds' => $after],
-            ]);
-        }
 
         return ['changed' => $changed, 'from' => $mode === self::PACKAGE ? self::NATIVE : self::PACKAGE, 'to' => $mode];
     }
