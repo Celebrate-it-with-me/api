@@ -8,6 +8,7 @@ use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion as Version;
 use App\Models\TemplatePackage;
 use App\Support\InvitationCache;
+use App\Support\TemplatePackage\TemplatePackageValidator;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,7 +30,7 @@ class PackageLifecycle
     /** @param array<string, bool> $checklist the six confirmed items of the review (audited with who and when) */
     public function activate(int $id, string $reason, bool $ackThirdPartyMarks, array $checklist): array
     {
-        $package = $this->query->find($id);
+        $package = $this->assertWebManaged($this->query->find($id));
 
         if (! in_array($package->status, [TemplatePackage::INSTALLED, TemplatePackage::DEACTIVATED], true)) {
             throw PackageError::conflict('package_not_installable', 'Solo se activa un paquete instalado o desactivado.');
@@ -85,7 +86,7 @@ class PackageLifecycle
     /** @return array<string, mixed> */
     public function deactivate(int $id, string $reason): array
     {
-        $package = $this->query->find($id);
+        $package = $this->assertWebManaged($this->query->find($id));
 
         if ($package->status !== TemplatePackage::ACTIVE) {
             throw PackageError::conflict('package_not_active', 'Solo se desactiva un paquete activo.');
@@ -108,7 +109,7 @@ class PackageLifecycle
 
     public function withdraw(int $id, string $reason): void
     {
-        $package = $this->query->find($id);
+        $package = $this->assertWebManaged($this->query->find($id));
 
         if ($package->isWithdrawn()) {
             throw PackageError::conflict('package_withdrawn', 'El paquete ya está retirado.');
@@ -139,5 +140,20 @@ class PackageLifecycle
             'reason' => $reason,
             'after' => ['slug' => $package->slug, 'version' => $package->semver],
         ]);
+    }
+
+    /**
+     * The packages of the reserved slugs (`classic`...) belong to the system: they are installed and switched only from the
+     * trusted console (templates:install-classic, templates:classic-source). Their versions are parked on purpose, so
+     * activating one would archive the native version for good, and deactivating or withdrawing one would switch the free
+     * Classic off.
+     */
+    private function assertWebManaged(TemplatePackage $package): TemplatePackage
+    {
+        if (in_array($package->slug, TemplatePackageValidator::RESERVED_SLUGS, true)) {
+            throw PackageError::conflict('console_only', 'Este paquete es del sistema: solo se administra desde la consola de confianza (templates:install-classic, templates:classic-source).');
+        }
+
+        return $package;
     }
 }
