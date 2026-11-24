@@ -4,18 +4,20 @@ namespace App\Http\Controllers\AppControllers\EventActivity;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AppResources\EventActivity\EventActivityResource;
+use App\Models\EventActivity;
 use App\Models\Events;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class EventActivityController extends Controller
 {
     /**
-     * Get the latest 10 activities for the dashboard.
+     * Get the latest 10 activities for the dashboard: only the types that have a readable sentence.
      */
     public function dashboardLogs(Events $event): AnonymousResourceCollection
     {
         return EventActivityResource::collection(
             $event->activities()
+                ->whereIn('type', array_keys(EventActivity::FEED_TYPES))
                 ->with('actor')
                 ->latest()
                 ->limit(10)

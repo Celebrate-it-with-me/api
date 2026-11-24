@@ -38,6 +38,8 @@
     "Guest :name suggested the song \":song\".": "El invitado :name sugirió la canción «:song».",
     "Photo uploaded by :name.": "Foto subida por :name.",
     "Music added by :name.": "Música agregada por :name.",
+    "Cover photo of the invitation updated by :user": "La foto de portada de la invitación fue actualizada por :user",
+    "Cover photo of the invitation removed by :user": "La foto de portada de la invitación fue quitada por :user",
     "Activity logged.": "Actividad registrada.",
     "System": "Sistema",
     "This event has no background music.": "Este evento no tiene música de fondo."

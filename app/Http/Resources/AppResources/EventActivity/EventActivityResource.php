@@ -18,6 +18,7 @@ class EventActivityResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type,
             'message' => $this->message,
+            'meta' => $this->meta,
             'icon' => $this->icon,
             'color' => $this->color,
             'createdAt' => $this->created_at->diffForHumans(),
