@@ -188,7 +188,7 @@ class TemplatePackageValidator
 
         if (isset($files['theme.css']) && $slugOk) {
             $sanitizer = new CssSanitizer($this->limits);
-            $css = $sanitizer->sanitize($files['theme.css'], $slug, 'theme.css', $report, $assets, [...$families, ...self::ENGINE_FAMILIES, ...($this->context->allowEngineFonts ? self::ENGINE_REMOTE_FAMILIES : [])], $classKinds);
+            $css = $sanitizer->sanitize($files['theme.css'], $slug, 'theme.css', $report, $assets, [...$families, ...self::ENGINE_FAMILIES, ...($this->context->allowEngineFonts ? self::ENGINE_REMOTE_FAMILIES : [])], $classKinds, $this->variantValues($manifest, $json['editable.json'] ?? null));
             $artifacts['css'] = $css;
             if ($css !== null) {
                 (new DeclaredStyleCheck)->check($htmlNodes, $sanitizer->declaredStyles(), $this->tokenColorSets($json['tokens.json'] ?? null), $report);
@@ -363,6 +363,33 @@ class TemplatePackageValidator
     private function plainPair(mixed $pair, int $max): bool
     {
         return is_array($pair) && $this->plain($pair['es'] ?? null, $max) && $this->plain($pair['en'] ?? null, $max);
+    }
+
+    /**
+     * The closed lists a `[data-inv-opt-<id>="<value>"]` selector may use: the package's own `variants` (as declared, only
+     * when well formed) and the toggles bound to an option (`on`, `off`) (a malformed variant is reported by `variants()`; here it simply allows nothing).
+     *
+     * @return array<string, list<string>>
+     */
+    private function variantValues(?array $manifest, mixed $editable = null): array
+    {
+        $variants = is_array($manifest['variants'] ?? null) ? $manifest['variants'] : [];
+        $out = [];
+        foreach ($variants as $id => $variant) {
+            $values = is_array($variant) && is_array($variant['values'] ?? null) ? $variant['values'] : [];
+            if (is_string($id) && array_is_list($values)) {
+                $out[$id] = array_values(array_filter($values, fn ($v) => is_string($v) && preg_match('/^[a-z0-9][a-z0-9_-]{0,23}$/', $v)));
+            }
+        }
+        // A toggle bound to an option publishes `on` / `off`.
+        foreach (is_array($editable) && is_array($editable['fields'] ?? null) ? $editable['fields'] : [] as $field) {
+            $option = is_array($field) && ($field['type'] ?? null) === 'toggle' && is_array($field['bind'] ?? null) ? ($field['bind']['option'] ?? null) : null;
+            if (is_string($option) && ! isset($out[$option])) {
+                $out[$option] = ['on', 'off'];
+            }
+        }
+
+        return $out;
     }
 
     /**

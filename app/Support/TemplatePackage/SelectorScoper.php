@@ -52,10 +52,30 @@ class SelectorScoper
     private const MAX_COMPOUNDS = 6;
 
     /**
+     * Facts the engine publishes as attributes. `data-inv-opt-<id>` sits on the invitation root; `data-inv-name-len`,
+     * `data-inv-guest-len` and `data-inv-has-photo` sit on the cover wrapper (`[data-inv-section="cover"]`). A package
+     * may read them only as an ancestor condition of a rule about its own `pkg-*` elements (see `fact()`).
+     * Value lists of the fixed facts; the options take theirs from the package's own `variants` and toggles.
+     */
+    private const FACTS = [
+        'data-inv-name-len' => ['short', 'mid', 'long'],
+        'data-inv-guest-len' => ['short', 'long'],
+        'data-inv-has-photo' => ['true', 'false'],
+    ];
+
+    /** Option ids as the CSS can name them (a dot cannot be written without an escape, and escapes are refused). */
+    private const OPTION_ID = '/^[a-z][a-z0-9_-]{0,31}$/';
+
+    /** Names that belong to the engine's fact namespace: if they are not exactly a known fact they are refused. */
+    private const FACT_NAMESPACE = '/^data-inv-(opt-|name-|guest-|has-)/';
+
+    /**
      * @param  array<string, string>  $classKinds  class name (or `#id`) => `system` (the element is a `<q-*>` block) or
      *                                             `wrapper` (the element contains one), as collected from the HTML AST
+     * @param  array<string, list<string>>  $options  the package's own `variants` (id => closed list of values): the only
+     *                                                `data-inv-opt-<id>="<value>"` a selector may mention
      */
-    public function __construct(private readonly string $slug, private readonly array $classKinds = []) {}
+    public function __construct(private readonly string $slug, private readonly array $classKinds = [], private readonly array $options = []) {}
 
     /** @return array{css: string, kind: string, kinds: list<string>, pseudo: bool, state: bool, subject: list<string>|null, subjectRoot: bool}|array{error: string} */
     public function scope(string $selector): array
@@ -75,16 +95,21 @@ class SelectorScoper
         $last = null;
         $firstRootish = false;
         $state = false;
+        $anyFacts = false;
+        $firstRootFacts = false;
 
         while (true) {
-            $compound = $this->compound($selector, $pos, $count === 0, false);
+            // Cover facts go in the first compound, or in the second when the first one only holds root facts.
+            $compound = $this->compound($selector, $pos, $count === 0, false, $count === 0 || ($count === 1 && $firstRootFacts));
             if (isset($compound['error'])) {
                 return $compound;
             }
             $count++;
             if ($count === 1) {
                 $firstRootish = $compound['rootish'];
+                $firstRootFacts = $compound['factKind'] === 'root';
             }
+            $anyFacts = $anyFacts || $compound['factKind'] !== null;
             if ($count > self::MAX_COMPOUNDS) {
                 return ['error' => 'más de ' . self::MAX_COMPOUNDS . ' compuestos'];
             }
@@ -113,6 +138,17 @@ class SelectorScoper
             }
         }
 
+        // A fact is a condition on the root, never the subject: it needs a package element to style after it, and that
+        // element can be neither a system block, the photo, the root nor a generic selector.
+        if ($anyFacts) {
+            if ($last['factKind'] !== null) {
+                return ['error' => 'un atributo de hecho (data-inv-opt-*, data-inv-name-len...) solo es una condición: debe ir seguido de un elemento del paquete'];
+            }
+            if (! $last['pkg'] || array_intersect($last['kinds'], ['system', 'photo', 'root', 'bare']) !== []) {
+                return ['error' => 'tras un atributo de hecho el sujeto de la regla debe ser un elemento del paquete (clase pkg-* o id pkg-*), nunca un bloque del sistema, la foto, la raíz ni un selector genérico'];
+            }
+        }
+
         if (! $firstRootish) {
             $out = '[data-inv-theme="' . $this->slug . '"] ' . $out;
         }
@@ -124,9 +160,9 @@ class SelectorScoper
     }
 
     /**
-     * @return array{css: string, kind: string, kinds: list<string>, rootish: bool, pseudo: bool, state: bool, subject: list<string>|null}|array{error: string}
+     * @return array{css: string, kind: string, kinds: list<string>, rootish: bool, pseudo: bool, state: bool, subject: list<string>|null, factKind: 'root'|'cover'|null, pkg: bool}|array{error: string}
      */
-    private function compound(string $s, int &$pos, bool $first, bool $nested): array
+    private function compound(string $s, int &$pos, bool $first, bool $nested, bool $coverOk = false): array
     {
         $n = strlen($s);
         $css = '';
@@ -142,6 +178,10 @@ class SelectorScoper
         $consumed = false;
         $nestedKinds = [];
         $state = false;
+        $facts = [];
+        $factKind = null;
+        $coverSection = false;
+        $otherQualifier = false;
         $plain = true; // only classes (no ids, attributes, pseudo-classes or pseudo-elements): the subject is "class-only"
 
         if (preg_match('/\G(\*|[a-zA-Z][a-zA-Z0-9-]*)/', $s, $m, 0, $pos)) {
@@ -189,11 +229,31 @@ class SelectorScoper
                 }
                 $pos += strlen($m[0]);
                 $ids[] = $m[1];
+                $otherQualifier = true;
                 $plain = false;
                 $hasQualifier = true;
                 $consumed = true;
                 $css .= $m[0];
             } elseif ($ch === '[') {
+                if (preg_match('/\G\[\s*((?i:data-inv-)[a-zA-Z0-9_-]*)/', $s, $nm, 0, $pos) && preg_match(self::FACT_NAMESPACE, strtolower($nm[1]))) {
+                    $fact = $this->fact($s, $pos);
+                    if (isset($fact['error'])) {
+                        return $fact;
+                    }
+                    if ($nested || ($fact['kind'] === 'root' && ! $first) || ($fact['kind'] === 'cover' && ! $coverOk)) {
+                        return ['error' => 'un atributo de hecho solo puede ir en el primer compuesto del selector (opciones: la raíz; name-len, guest-len y has-photo: la portada, también en el segundo si el primero solo lleva opciones), nunca dentro de :not()/:is() ni como sujeto'];
+                    }
+                    if ($factKind !== null && $factKind !== $fact['kind']) {
+                        return ['error' => 'las opciones (raíz) y los hechos de la portada son elementos distintos: van en compuestos distintos'];
+                    }
+                    $factKind = $fact['kind'];
+                    $facts[] = $fact['css'];
+                    $css .= $fact['css'];
+                    $plain = false;
+                    $consumed = true;
+
+                    continue;
+                }
                 $attr = $this->attribute($s, $pos);
                 if (is_array($attr)) {
                     return $attr;
@@ -201,6 +261,10 @@ class SelectorScoper
                 // The scope attribute itself is accepted verbatim: it makes the sanitizer a fixed point (idempotent).
                 if (preg_replace('/\s+/', '', $attr) === '[data-inv-theme="' . $this->slug . '"]') {
                     $hasScopeAttr = true;
+                } elseif (preg_replace('/\s+/', '', strtolower($attr)) === '[data-inv-section="cover"]' || preg_replace('/\s+/', '', strtolower($attr)) === "[data-inv-section='cover']") {
+                    $coverSection = true;
+                } else {
+                    $otherQualifier = true;
                 }
                 $css .= $attr;
                 // `data-inv-*` hooks sit on system elements (the section wrappers); any other attribute does not
@@ -225,6 +289,7 @@ class SelectorScoper
                     $rootish = true;
                     $css .= '[data-inv-theme="' . $this->slug . '"]';
                 } else {
+                    $otherQualifier = true;
                     $css .= $pseudo['css'];
                     array_push($nestedKinds, ...($pseudo['kinds'] ?? []));
                     $pseudoEl = $pseudoEl || str_starts_with($pseudo['css'], '::');
@@ -237,6 +302,26 @@ class SelectorScoper
 
         if (! $consumed) {
             return ['error' => 'compuesto vacío o carácter no permitido'];
+        }
+
+        if ($facts !== []) {
+            if ($factKind === 'root') {
+                // The compound of options is the root and nothing else: `[opt]`, `.inv-root[opt]`, `html[opt]`, `:root[opt]`...
+                $foreignClass = array_filter($classes, fn (string $c) => $c !== 'inv-root');
+                if ($coverSection || $foreignClass !== [] || $ids !== [] || $otherQualifier || ($type !== null && ! in_array($type, ['html', 'body'], true))) {
+                    return ['error' => 'el compuesto con una opción solo puede combinarse con .inv-root, html, body o :root'];
+                }
+                if (! $hasInvRoot && ! $hasScopeAttr && ! $rootish) {
+                    // The options live on the root, which is the element that carries the scope attribute.
+                    $css = '[data-inv-theme="' . $this->slug . '"]' . $css;
+                    $hasScopeAttr = true;
+                }
+            } elseif ($classes !== [] || $ids !== [] || $otherQualifier || $rootish || $hasInvRoot || $hasScopeAttr || $type !== null) {
+                // The cover facts sit on the cover wrapper: only `[data-inv-section="cover"]` may go with them.
+                return ['error' => 'el compuesto con un hecho de la portada solo puede combinarse con [data-inv-section="cover"]'];
+            }
+        } elseif ($coverSection) {
+            $coverSection = false;
         }
 
         if (($hasInvRoot || $hasScopeAttr) && $first && ! $nested) {
@@ -285,8 +370,45 @@ class SelectorScoper
         }
 
         $subject = $plain && ! $rootish && $type === null && $classes !== [] ? $classes : null;
+        $pkg = $ids !== [] || array_filter($classes, fn (string $c) => (bool) preg_match(self::PACKAGE_CLASS, $c)) !== [];
 
-        return ['css' => $css, 'kind' => $kind, 'kinds' => $kinds, 'rootish' => $rootish, 'pseudo' => $pseudoEl, 'state' => $state, 'subject' => $subject];
+        return ['css' => $css, 'kind' => $kind, 'kinds' => $kinds, 'rootish' => $rootish, 'pseudo' => $pseudoEl, 'state' => $state, 'subject' => $subject, 'factKind' => $factKind, 'pkg' => $pkg];
+    }
+
+    /**
+     * `[data-inv-opt-<id>="<v>"]`, `[data-inv-name-len="short|mid|long"]`, `[data-inv-guest-len="short|long"]`,
+     * `[data-inv-has-photo="true|false"]`. Exact match only (`=`), no flag, no presence-only form, a value from the closed
+     * list: of the fact, or (options) of the package's own `variants`. Returns the normalized selector text.
+     *
+     * @return array{css: string, kind: 'root'|'cover'}|array{error: string}
+     */
+    private function fact(string $s, int &$pos): array
+    {
+        $re = '/\G\[\s*((?i:data-inv-)[a-zA-Z0-9_-]+)\s*=\s*(?:"([a-z0-9_-]{1,24})"|\'([a-z0-9_-]{1,24})\'|([a-z0-9_-]{1,24}))\s*\]/';
+        if (! preg_match($re, $s, $m, 0, $pos)) {
+            return ['error' => 'atributo de hecho mal formado: solo [nombre="valor"] con = (sin ^=, $=, *=, ~=, |=, flags ni forma sin valor)'];
+        }
+        $name = strtolower($m[1]);
+        $value = $m[2] !== '' ? $m[2] : ($m[3] !== '' ? $m[3] : $m[4]);
+        $kind = 'cover';
+        if (isset(self::FACTS[$name])) {
+            $allowed = self::FACTS[$name];
+        } elseif (str_starts_with($name, 'data-inv-opt-')) {
+            $id = substr($name, strlen('data-inv-opt-'));
+            if (! preg_match(self::OPTION_ID, $id) || ! isset($this->options[$id])) {
+                return ['error' => "la opción «{$id}» no está declarada en variants del manifiesto de este paquete"];
+            }
+            $allowed = $this->options[$id];
+            $kind = 'root';
+        } else {
+            return ['error' => "atributo «{$name}» no es un hecho publicado por el motor"];
+        }
+        if (! in_array($value, $allowed, true)) {
+            return ['error' => "valor «{$value}» fuera de la lista cerrada de {$name}"];
+        }
+        $pos += strlen($m[0]);
+
+        return ['css' => '[' . $name . '="' . $value . '"]', 'kind' => $kind];
     }
 
     /** @return string|array{error: string} */

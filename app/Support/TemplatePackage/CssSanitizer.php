@@ -268,8 +268,9 @@ class CssSanitizer
      * @param  list<string>  $assets  paths present in the package (`assets/...`)
      * @param  list<string>  $families  font families declared in tokens.json
      * @param  array<string, string>  $classKinds  `system`/`wrapper` kinds of classes and `#ids` from the HTML AST
+     * @param  array<string, list<string>>  $options  the package's `variants` (id => values): the closed list a `[data-inv-opt-<id>="<v>"]` selector may use
      */
-    public function sanitize(string $css, string $slug, string $file, Report $report, array $assets = [], array $families = [], array $classKinds = []): ?string
+    public function sanitize(string $css, string $slug, string $file, Report $report, array $assets = [], array $families = [], array $classKinds = [], array $options = []): ?string
     {
         $this->report = $report;
         $this->file = $file;
@@ -286,7 +287,7 @@ class CssSanitizer
         $this->shortDurationLine = null;
         $this->stateRule = false;
         $this->errorsBefore = $report->errorCount();
-        $this->scoper = new SelectorScoper($slug, $classKinds);
+        $this->scoper = new SelectorScoper($slug, $classKinds, $options);
 
         if (! $this->precheck($css)) {
             return null;
