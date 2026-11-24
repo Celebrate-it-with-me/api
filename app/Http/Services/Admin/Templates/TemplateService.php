@@ -3,6 +3,7 @@
 namespace App\Http\Services\Admin\Templates;
 
 use App\Http\Services\Admin\AdminAudit;
+use App\Http\Services\Admin\Templates\Packages\ClassicSource;
 use App\Models\Events;
 use App\Models\InvitationTemplate;
 use App\Models\InvitationTemplateVersion as Version;
@@ -153,6 +154,16 @@ class TemplateService
             TemplateSchema::assertValid($version->sections, $version->theme);
 
             $template = InvitationTemplate::query()->lockForUpdate()->findOrFail($version->template_id);
+
+            // While the free Classic is drawn from its package, a new native version would silently point the template back
+            // to the native look (and, for one template only, leave the two in different sources). The source is changed on
+            // purpose, with its own audit: templates:classic-source native.
+            if (! $viaPackage && $version->package_id === null && in_array($template->slug, ClassicSource::TEMPLATES, true)
+                && $template->current_version_id !== null
+                && Version::query()->whereKey($template->current_version_id)->whereNotNull('package_id')->exists()) {
+                throw $this->conflict('classic_source_package', 'La Clásica se dibuja hoy desde su paquete: publicar una versión nativa la devolvería a la nativa sin aviso. Cambia el origen con «templates:classic-source native» y publica después.');
+            }
+
             $previous = $template->versions()->where('status', Version::PUBLISHED)->first();
 
             if ($previous) {

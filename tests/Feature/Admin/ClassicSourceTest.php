@@ -337,6 +337,45 @@ describe('the reason and the audit (CS-003)', function () {
     });
 });
 
+describe('publishing a native Classic version while the source is the package (CS-005)', function () {
+    function clsNativeDraft(string $type): Version
+    {
+        $native = Version::where('template_id', clsTemplate($type)->id)->whereNull('package_id')->where('status', 'published')->firstOrFail();
+
+        return Version::create(['template_id' => $native->template_id, 'version' => (int) Version::where('template_id', $native->template_id)->max('version') + 1, 'status' => 'draft', 'sections' => $native->sections, 'theme' => $native->theme, 'schema_version' => $native->schema_version]);
+    }
+
+    it('is refused with 409 classic_source_package and moves nothing, so the source can never turn mixed in silence', function () {
+        clsInstall(clsPackage());
+        clsSource('package');
+        $admin = User::factory()->create();
+        $admin->assignRole('superadmin');
+        $this->actingAsReauthed($admin);
+        $draft = clsNativeDraft('wedding');
+        $pointers = [clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id];
+
+        $this->postJson("/api/v1/admin/templates/versions/{$draft->id}/publish", ['reason' => 'Publicar nativa nueva'])->assertStatus(409)->assertJson(['code' => 'classic_source_package']);
+
+        expect([clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id])->toBe($pointers)
+            ->and($draft->fresh()->status)->toBe('draft')
+            ->and(app(ClassicSource::class)->current())->toBe('package')
+            ->and(AdminAuditLog::where('action', 'template.version_published')->count())->toBe(0);
+    });
+
+    it('is allowed once the source is native again, and it does not touch the other templates', function () {
+        clsInstall(clsPackage());
+        clsSource('package');
+        clsSource('native');
+        $admin = User::factory()->create();
+        $admin->assignRole('superadmin');
+        $this->actingAsReauthed($admin);
+        $draft = clsNativeDraft('wedding');
+
+        $this->postJson("/api/v1/admin/templates/versions/{$draft->id}/publish", ['reason' => 'Publicar nativa nueva'])->assertOk();
+        expect(clsTemplate('wedding')->current_version_id)->toBe($draft->id)->and(app(ClassicSource::class)->current())->toBe('native');
+    });
+});
+
 describe('the switch', function () {
     it('is native by default, and an unflipped install changes what the public sees in nothing', function () {
         $event = clsEvent('boda-camila');
