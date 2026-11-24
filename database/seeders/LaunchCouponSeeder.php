@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Coupon;
+use App\Models\LaunchOffer;
 use Illuminate\Database\Seeder;
 
 /**
@@ -19,7 +20,7 @@ class LaunchCouponSeeder extends Seeder
 
     public function run(): void
     {
-        Coupon::query()->firstOrCreate(['code' => self::CODE], [
+        $coupon = Coupon::query()->firstOrCreate(['code' => self::CODE], [
             'kind' => 'fixed_price',
             'value' => 7900,
             'is_founder' => true,
@@ -28,5 +29,13 @@ class LaunchCouponSeeder extends Seeder
             'is_active' => true,
             'notes' => 'Launch offer: full event for 79 USD (list price 99). Edit the limit in the admin.',
         ]);
+
+        // Tied to the launch offer when there is one (it shares its slots); the offer seeder does the same if it runs second.
+        if ($coupon->launch_offer_id === null) {
+            $offer = LaunchOffer::query()->first();
+            if ($offer) {
+                $coupon->update(['launch_offer_id' => $offer->id]);
+            }
+        }
     }
 }

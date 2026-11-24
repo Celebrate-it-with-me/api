@@ -3,6 +3,7 @@
 namespace Database\Seeders\Demo;
 
 use Database\Seeders\LaunchCouponSeeder;
+use Database\Seeders\LaunchOfferSeeder;
 use Illuminate\Database\Seeder;
 
 /**
@@ -25,6 +26,7 @@ class DemoSeeder extends Seeder
     {
         $this->call([
             LaunchCouponSeeder::class,
+            LaunchOfferSeeder::class,
             DemoUserSeeder::class,
             DemoEventSeeder::class,
         ]);

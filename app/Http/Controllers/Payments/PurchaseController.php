@@ -22,17 +22,18 @@ class PurchaseController extends Controller
     {
         $data = $request->validate(['code' => ['nullable', 'string', 'max:64']]);
 
-        return response()->json(['data' => $this->purchases->quote($event, $data['code'] ?? null)]);
+        return response()->json(['data' => $this->purchases->quote($event, $data['code'] ?? null, $request->user())]);
     }
 
     public function checkout(Request $request, Events $event): JsonResponse
     {
-        $data = $request->validate(['code' => ['nullable', 'string', 'max:64']]);
+        // `expectedAmountCents`: the price the screen showed; if it is no longer that, nothing is created (409 price_changed).
+        $data = $request->validate(['code' => ['nullable', 'string', 'max:64'], 'expectedAmountCents' => ['nullable', 'integer', 'min:0']]);
         $front = rtrim((string) config('app.frontend_app.url'), '/') . "/dashboard/events/{$event->id}/unlock";
         $locale = $request->getPreferredLanguage(['es', 'en']) ?? 'es';
 
         $result = $this->purchases->checkout(
-            $event, $request->user(), $data['code'] ?? null, $front . '?paid=1', $front . '?cancelled=1', ['locale' => $locale],
+            $event, $request->user(), $data['code'] ?? null, $front . '?paid=1', $front . '?cancelled=1', ['locale' => $locale], isset($data['expectedAmountCents']) ? (int) $data['expectedAmountCents'] : null,
         );
 
         return response()->json(['data' => ['purchaseId' => $result['purchase']->id, 'url' => $result['url']]], 201);
@@ -63,6 +64,7 @@ class PurchaseController extends Controller
             'amountCents' => $purchase?->amount_cents,
             'currency' => $purchase?->currency,
             'invoiceId' => $invoice,
+            'offer' => $this->purchases->offerSummary($this->purchases->fullPlan(), $event, null, $request->user()),
         ]]);
     }
 

@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\EventPlan;
 use App\Models\EventPurchase;
 use App\Models\Events;
+use App\Models\LaunchOffer;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,7 @@ class AdminAudit
         User::class => 'user',
         EventPurchase::class => 'purchase',
         Coupon::class => 'coupon',
+        LaunchOffer::class => 'launch_offer',
         EventPlan::class => 'plan',
         Module::class => 'module',
     ];
