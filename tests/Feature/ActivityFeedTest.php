@@ -218,7 +218,7 @@ describe('the dashboard feed', function () {
         $data = $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/dashboard-logs")->assertOk()->json('data');
 
         expect($data)->toHaveCount(10)
-            ->and(array_keys($data[0]))->toBe(['id', 'type', 'message', 'icon', 'color', 'createdAt'])
+            ->and(array_keys($data[0]))->toBe(['id', 'type', 'message', 'meta', 'icon', 'color', 'createdAt'])
             ->and($data[0]['message'])->toContain('G12');
     });
 
@@ -274,5 +274,39 @@ describe('messages of staff-side entries', function () {
         expect($entry)->not->toBeNull();
         app()->setLocale('es');
         expect($entry->message)->toBe("El invitado Tía Carmen fue agregado por {$owner->name}");
+    });
+});
+
+describe('the readable feed', function () {
+    it('gives each entry a stable type, a sentence in the user language and a safe meta', function () {
+        [$event, $owner] = feedEvent();
+        EventActivity::logActivity($event->id, 'guests_imported', $owner, $event, ['count' => 12, 'families' => 5]);
+        EventActivity::logActivity($event->id, 'guest_confirmed', null, null, ['name' => 'Rosa', 'companions' => 2, 'email' => 'r@x.test', 'phone' => '+13055550100', 'code' => 'AB1234']);
+        EventActivity::logActivity($event->id, 'invitation_cover_uploaded', $owner, $event, ['path' => 'secret/p.jpg']);
+
+        $url = "/api/v1/app/event/{$event->id}/dashboard-logs";
+        $es = $this->actingAs($owner)->getJson($url, ['Accept-Language' => 'es'])->assertOk()->json('data');
+        $en = $this->actingAs($owner)->getJson($url, ['Accept-Language' => 'en'])->assertOk()->json('data');
+
+        $byType = fn (array $rows, string $t) => collect($rows)->firstWhere('type', $t);
+        expect($byType($es, 'guests_imported')['meta'])->toBe(['module' => 'guests', 'name' => null, 'count' => 12])
+            ->and($byType($es, 'guest_confirmed')['meta'])->toBe(['module' => 'rsvp', 'name' => 'Rosa', 'count' => 2])
+            ->and($byType($es, 'invitation_cover_uploaded')['message'])->toContain('portada')
+            ->and($byType($en, 'invitation_cover_uploaded')['message'])->toContain('Cover photo')
+            ->and($byType($en, 'guest_confirmed')['message'])->toContain('Rosa')
+            ->and(json_encode($es))->not->toContain('r@x.test')->not->toContain('+13055550100')->not->toContain('AB1234')->not->toContain('secret/p.jpg');
+    });
+
+    it('leaves out the types with no readable sentence instead of "Activity logged"', function () {
+        [$event, $owner] = feedEvent();
+        EventActivity::logActivity($event->id, 'invitation_field_changed', $owner, $event, ['field' => 'x']);
+        EventActivity::logActivity($event->id, 'something_unknown', $owner, $event, []);
+        EventActivity::logActivity($event->id, 'comment_added', null, null, ['name' => 'Ana']);
+
+        $data = $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/dashboard-logs")->assertOk()->json('data');
+
+        expect(collect($data)->pluck('type')->all())->toBe(['comment_added'])
+            ->and($data[0]['meta']['module'])->toBe('comments');
+        expect((new EventActivity(['type' => 'x']))->meta)->toBe(['module' => null, 'name' => null, 'count' => null]);
     });
 });

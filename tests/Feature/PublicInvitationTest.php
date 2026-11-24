@@ -7,6 +7,8 @@ use App\Models\Events;
 use App\Models\EventType;
 use App\Models\Guest;
 use App\Models\GuestRsvpLog;
+use App\Models\InvitationTemplate;
+use App\Models\Rsvp;
 use App\Models\User;
 use Database\Seeders\EventPlanSeeder;
 use Database\Seeders\InvitationTemplateSeeder;
@@ -112,7 +114,7 @@ describe('GET invitation', function () {
         [$event] = invitationFixture();
         $event->update(['template_config' => [
             'sections' => [
-                ['type' => 'closing', 'order' => 0, 'title' => 'Hasta pronto'],
+                ['type' => 'comments', 'order' => 0, 'title' => 'Hasta pronto'],
                 ['type' => 'rsvp', 'enabled' => false],
             ],
             'theme' => ['preset' => 'sage'],
@@ -120,7 +122,7 @@ describe('GET invitation', function () {
 
         $data = $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data');
 
-        expect(collect($data['sections'])->pluck('type')->all())->toBe(['closing', 'cover', 'suggested_music', 'comments'])
+        expect(collect($data['sections'])->pluck('type')->all())->toBe(['comments', 'cover', 'suggested_music', 'closing'])
             ->and($data['sections'][0]['title'])->toBe('Hasta pronto')
             ->and($data['theme']['preset'])->toBe('sage')
             ->and($data['theme']['colors']['primary'])->toBe('#5f7a5b');
@@ -247,5 +249,86 @@ describe('the watermark by plan', function () {
         $service->refund($purchase->refresh(), 'test');
         $event->update(['status' => 'published']);
         $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk()->assertJsonPath('data.branding.watermark', true);
+    });
+});
+
+describe('GET invitation calendar block', function () {
+    it('brings the calendar data inside the rsvp section, without other guests', function () {
+        [$event] = invitationFixture('quinceanera', ['start_date' => '2027-03-20 18:30:00', 'end_date' => '2027-03-20 23:00:00', 'timezone' => 'America/New_York']);
+        Guest::factory()->create(['event_id' => $event->id, 'name' => 'Persona Ajena', 'code' => 'ZZ9999', 'parent_id' => null]);
+        EventLocation::factory()->create(['event_id' => $event->id, 'type' => 'reception', 'name' => 'Salon Rosa', 'address' => '1 Main St', 'city' => 'Miami', 'state' => 'FL', 'country' => 'US']);
+        EventLocation::factory()->create(['event_id' => $event->id, 'type' => 'ceremony', 'name' => 'Iglesia Central', 'address' => '2 Oak Ave', 'city' => 'Miami', 'state' => 'FL', 'country' => 'US']);
+
+        $response = $this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->assertOk();
+        $calendar = collect($response->json('data.sections'))->firstWhere('type', 'rsvp')['data']['calendar'];
+
+        expect($calendar)->toHaveKeys(['title', 'startsAt', 'endsAt', 'timezone', 'location', 'google', 'icsPath'])
+            ->and($calendar['title'])->toBe('Los XV de Valentina')
+            ->and($calendar['startsAt'])->toBe('2027-03-20T18:30:00')
+            ->and($calendar['endsAt'])->toBe('2027-03-20T23:00:00')
+            ->and($calendar['timezone'])->toBe('America/New_York')
+            ->and($calendar['location']['name'])->toBe('Iglesia Central')
+            ->and($calendar['location']['links'])->toHaveKeys(['google', 'apple', 'waze'])
+            ->and($calendar['google'])->toStartWith('https://calendar.google.com/calendar/render?')
+            ->and($calendar['google'])->toContain('location=Iglesia')
+            ->and($calendar['icsPath'])->toBe('calendar.ics');
+
+        expect($response->getContent())->not->toContain('Persona Ajena')->not->toContain('ZZ9999');
+
+        $ics = $this->get(INVITATION_URL . '/xv-de-valentina/AB1234/' . $calendar['icsPath'])->assertOk()->getContent();
+        expect($ics)->toContain('BEGIN:VCALENDAR')->toContain('END:VCALENDAR')
+            ->toContain('DTSTART;TZID=America/New_York:20270320T183000')
+            ->toContain('LOCATION:Iglesia Central\, 2 Oak Ave\, Miami\, FL');
+    });
+
+    it('has a null location without places and a default end', function () {
+        [$event] = invitationFixture('quinceanera', ['start_date' => '2027-03-20 18:30:00', 'end_date' => null]);
+
+        $calendar = collect($this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data.sections'))->firstWhere('type', 'rsvp')['data']['calendar'];
+
+        expect($calendar['location'])->toBeNull()->and($calendar['endsAt'])->toBe('2027-03-20T22:30:00')
+            ->and($calendar['google'])->not->toContain('location=');
+        $this->get(INVITATION_URL . '/xv-de-valentina/AB1234/calendar.ics')->assertOk()->assertDontSee('LOCATION:');
+    });
+
+    it('still brings it when the rsvp is closed, and the rsvp answer carries it too', function () {
+        [$event, $main] = invitationFixture();
+        $this->postJson(INVITATION_URL . '/xv-de-valentina/AB1234/rsvp', ['guest' => ['rsvpStatus' => 'attending']])
+            ->assertOk()->assertJsonPath('data.calendar.icsPath', 'calendar.ics');
+
+        Rsvp::query()->create(['event_id' => $event->id, 'title' => 'RSVP', 'description' => 'x', 'custom_fields' => '[]', 'confirmation_deadline' => now()->subDay()->toDateTimeString()]);
+        $rsvp = collect($this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data.sections'))->firstWhere('type', 'rsvp')['data'];
+
+        expect($rsvp['isOpen'])->toBeFalse()->and($rsvp['calendar'])->toHaveKey('google');
+    });
+
+    it('keeps the save the date stage calendar as it was and adds none to the rest', function () {
+        [$event] = invitationFixture();
+        $event->forceFill(['invitation_stage' => Events::STAGE_SAVE_THE_DATE])->save();
+
+        $sections = collect($this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data.sections'));
+
+        expect($sections->firstWhere('type', 'rsvp'))->toBeNull()
+            ->and($sections->firstWhere('type', 'save_the_date')['data']['calendar'])->toHaveKeys(['google', 'icsPath']);
+    });
+});
+
+describe('closing last', function () {
+    it('draws the closing last even when the template or the config puts it earlier', function () {
+        [$event] = invitationFixture();
+        $event->update(['template_config' => ['sections' => [['type' => 'closing', 'enabled' => true, 'order' => 1]]]]);
+
+        $types = collect($this->getJson(INVITATION_URL . '/xv-de-valentina/AB1234')->json('data.sections'))->pluck('type')->all();
+
+        expect(end($types))->toBe('closing')->and($types[0])->toBe('cover');
+    });
+
+    it('seeds the stock templates with the closing as the last section', function () {
+        $this->seed(InvitationTemplateSeeder::class);
+
+        foreach (InvitationTemplate::query()->get() as $template) {
+            $types = array_column($template->default_sections, 'type');
+            expect(end($types))->toBe('closing');
+        }
     });
 });

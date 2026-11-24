@@ -380,3 +380,17 @@ it('applies the drop-shadow() limit to the offsets, not to the colour channels',
     [, $codes] = css('.pkg-a{filter:drop-shadow(0 0 150px rgba(255,27,169,.5))}');
     expect($codes)->toContain('css_forbidden_property');
 });
+
+it('accepts the floating rsvp button hook for visual styling, refuses unknown hooks and keeps hiding it forbidden', function () {
+    [$out, $codes] = css('.inv-q--rsvp-fab{background:var(--inv-surface-alt);border-radius:1rem}.inv-q--rsvp-fab:hover{background:red}');
+    expect($codes)->toBe([])->and($out)->not->toBeNull()->and($out)->toContain('inv-q--rsvp-fab');
+
+    [$none, $noneCodes] = css('.inv-q--nada{color:red}');
+    expect($none)->toBeNull()->and($noneCodes)->not->toBeEmpty();
+
+    [$hidden, $hiddenCodes] = css('.inv-q--rsvp-fab{display:none}');
+    expect($hidden)->toBeNull()->and($hiddenCodes)->not->toBeEmpty();
+
+    [$still, $stillCodes] = css('.inv-q--rsvp{background:var(--inv-surface-alt)}.inv-q--cta:hover{background:red}');
+    expect($stillCodes)->toBe([])->and($still)->not->toBeNull();
+});

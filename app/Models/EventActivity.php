@@ -16,6 +16,22 @@ class EventActivity extends Model
     protected $table = 'event_activities';
 
     /**
+     * The types the organizer's feed shows, each with its module. Others (and the per-field edit log of the
+     * invitation editor, which would flood the feed) stay in the table but are not shown: a sentence must be readable.
+     */
+    public const FEED_TYPES = [
+        'event_created' => 'event', 'event_updated' => 'event', 'event_published' => 'event', 'event_unpublished' => 'event',
+        'event_archived' => 'event', 'event_restored' => 'event',
+        'guest_created' => 'guests', 'guest_updated' => 'guests', 'guest_deleted' => 'guests', 'guests_imported' => 'guests',
+        'guest_confirmed' => 'rsvp', 'guest_declined' => 'rsvp', 'guest_rsvp_changed' => 'rsvp', 'invitation_opened' => 'rsvp',
+        'menu_created' => 'menu', 'menu_updated' => 'menu', 'menu_deleted' => 'menu',
+        'menu_item_created' => 'menu', 'menu_item_updated' => 'menu', 'menu_item_deleted' => 'menu',
+        'invitation_template_changed' => 'invitation', 'invitation_template_undone' => 'invitation',
+        'invitation_cover_uploaded' => 'invitation', 'invitation_cover_removed' => 'invitation',
+        'comment_added' => 'comments', 'music_suggested' => 'music',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -86,6 +102,29 @@ class EventActivity extends Model
         }
 
         return $this->actor ? $this->actor->name : __('System');
+    }
+
+    /**
+     * What the app can show next to the sentence: the module, a name (guest, menu, template, event) and a count
+     * (guests imported, companions who come). Only these; never contact data, codes or ids of other people.
+     *
+     * @return array{module: ?string, name: ?string, count: ?int}
+     */
+    public function getMetaAttribute(): array
+    {
+        $payload = (array) $this->payload;
+        $name = $payload['name'] ?? $payload['title'] ?? $payload['template'] ?? $payload['event_name'] ?? null;
+        $count = match ($this->type) {
+            'guests_imported' => $payload['count'] ?? null,
+            'guest_confirmed' => $payload['companions'] ?? null,
+            default => null,
+        };
+
+        return [
+            'module' => self::FEED_TYPES[$this->type] ?? null,
+            'name' => is_string($name) && $name !== '' ? $name : null,
+            'count' => $count !== null ? (int) $count : null,
+        ];
     }
 
     /**
@@ -180,6 +219,8 @@ class EventActivity extends Model
                 'user' => $this->actorName(),
             ]),
             'invitation_template_undone' => __('Invitation template change undone by :user', ['user' => $this->actorName()]),
+            'invitation_cover_uploaded' => __('Cover photo of the invitation updated by :user', ['user' => $this->actorName()]),
+            'invitation_cover_removed' => __('Cover photo of the invitation removed by :user', ['user' => $this->actorName()]),
             'comment_added' => __('Guest :name left a comment.', ['name' => $this->payload['name'] ?? '']),
             'music_suggested' => __('Guest :name suggested the song ":song".', [
                 'name' => $this->payload['name'] ?? '',
@@ -208,6 +249,8 @@ class EventActivity extends Model
             'guest_rsvp_changed' => 'user-check',
             'invitation_opened' => 'eye',
             'invitation_template_changed', 'invitation_template_undone' => 'edit',
+            'invitation_cover_uploaded' => 'image',
+            'invitation_cover_removed' => 'image-off',
             'comment_added' => 'message-circle',
             'music_suggested' => 'music',
             'menu_created' => 'utensils',
