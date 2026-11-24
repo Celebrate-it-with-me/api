@@ -72,11 +72,11 @@ class PurchaseService
      *
      * @return array{amount: int, coupon: Coupon|null, offer: LaunchOffer|null, source: string}
      */
-    public function price(EventPlan $plan, ?Coupon $coupon, Events $event, ?LaunchOffer $offer): array
+    public function price(EventPlan $plan, ?Coupon $coupon, Events $event, ?LaunchOffer $offer, ?User $buyer = null): array
     {
         $list = (int) $plan->price_cents;
         $couponAmount = $coupon ? $coupon->apply($list) : null;
-        $offerAmount = $offer && $offer->isOpen($plan, $event->id) ? (int) $offer->price_cents : null;
+        $offerAmount = $offer && $offer->isOpen($plan, $event->id, $buyer?->id) ? (int) $offer->price_cents : null;
 
         // A code tied to the offer (LANZAMIENTO79) shares its slots: with the offer sold out, off, or for someone at her
         // hold cap, the code gives no discount at all and the buyer is told why (the screen shows "the offer ended").
@@ -97,12 +97,12 @@ class PurchaseService
     }
 
     /** What the screen shows about the offer: never reveals anything about other events beyond the public count. */
-    public function offerSummary(EventPlan $plan, Events $event, ?LaunchOffer $offer = null): array
+    public function offerSummary(EventPlan $plan, Events $event, ?LaunchOffer $offer = null, ?User $buyer = null): array
     {
         $offer ??= $this->launchOffer($plan);
 
         return [
-            'active' => (bool) $offer?->isOpen($plan, $event->id),
+            'active' => (bool) $offer?->isOpen($plan, $event->id, $buyer?->id),
             'priceCents' => $offer?->price_cents,
             'listPriceCents' => (int) $plan->price_cents,
             'slotsLeft' => $offer && $offer->is_active ? $offer->slotsLeft($event->id) : 0,
@@ -111,12 +111,12 @@ class PurchaseService
     }
 
     /** What the buyer would pay, with an optional code. */
-    public function quote(Events $event, ?string $code = null): array
+    public function quote(Events $event, ?string $code = null, ?User $buyer = null): array
     {
         $plan = $this->fullPlan();
         $coupon = $code ? $this->resolveCoupon($code) : null;
         $offer = $this->launchOffer($plan);
-        $price = $this->price($plan, $coupon, $event, $offer);
+        $price = $this->price($plan, $coupon, $event, $offer, $buyer);
         $this->assertChargeable($price['amount']);
 
         return [
@@ -127,7 +127,7 @@ class PurchaseService
             'maxGuests' => $plan->max_guests,
             'code' => $price['coupon']?->code,
             'source' => $price['source'],
-            'offer' => $this->offerSummary($plan, $event, $offer),
+            'offer' => $this->offerSummary($plan, $event, $offer, $buyer),
             'unlocked' => $this->isUnlocked($event),
         ];
     }
@@ -190,7 +190,7 @@ class PurchaseService
         $coupon = $code ? $this->resolveCoupon($code) : null;
         // A first look to decide whether a pending session can be reused; the price that is charged is decided again
         // below under the offer's lock.
-        $first = $this->price($plan, $coupon, $event, $this->launchOffer($plan));
+        $first = $this->price($plan, $coupon, $event, $this->launchOffer($plan), $user);
         $this->assertChargeable($first['amount']);
         $gateway = $this->gateway();
 
@@ -219,13 +219,13 @@ class PurchaseService
             $applied = null;
             $purchase = DB::transaction(function () use ($event, $user, $plan, $coupon, $gateway, $expectedAmountCents, &$applied) {
                 $offer = $this->launchOffer($plan, lock: true);
-                $price = $this->price($plan, $coupon, $event, $offer);
+                $price = $this->price($plan, $coupon, $event, $offer, $user);
                 $this->assertChargeable($price['amount']);
 
                 // The buyer saw one price and the slot is gone (or came back): tell her instead of charging another.
                 if ($expectedAmountCents !== null && $expectedAmountCents !== $price['amount']) {
                     throw new HttpResponseException(response()->json([
-                        'message' => 'The price changed.', 'code' => 'price_changed', 'data' => ['amountCents' => $price['amount'], 'offer' => $this->offerSummary($plan, $event, $offer)],
+                        'message' => 'The price changed.', 'code' => 'price_changed', 'data' => ['amountCents' => $price['amount'], 'offer' => $this->offerSummary($plan, $event, $offer, $user)],
                     ], 409));
                 }
 

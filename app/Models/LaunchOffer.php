@@ -44,14 +44,24 @@ class LaunchOffer extends Model
             ->count();
     }
 
+    /** Slots this account already holds with pending checkouts of OTHER events. */
+    public function heldByUser(int $userId, ?int $exceptEventId = null): int
+    {
+        return $this->purchases()->where('status', 'pending')->where('user_id', $userId)
+            ->where('created_at', '>', now()->subMinutes(self::HOLD_MINUTES))
+            ->when($exceptEventId, fn ($q) => $q->where('event_id', '!=', $exceptEventId))
+            ->count();
+    }
+
     public function slotsLeft(?int $exceptEventId = null): int
     {
         return max(0, (int) $this->total_slots - $this->usedSlots() - $this->heldSlots($exceptEventId));
     }
 
-    /** On, cheaper than the list price, and with a slot left for this event. */
-    public function isOpen(EventPlan $plan, ?int $forEventId = null): bool
+    /** On, cheaper than the list price, with a slot left for this event, and (given a buyer) she is under her hold cap. */
+    public function isOpen(EventPlan $plan, ?int $forEventId = null, ?int $forUserId = null): bool
     {
-        return $this->is_active && (int) $this->price_cents < (int) $plan->price_cents && $this->slotsLeft($forEventId) > 0;
+        return $this->is_active && (int) $this->price_cents < (int) $plan->price_cents && $this->slotsLeft($forEventId) > 0
+            && ($forUserId === null || $this->heldByUser($forUserId, $forEventId) < max(1, (int) config('services.payments.offer_max_holds_per_user', 2)));
     }
 }

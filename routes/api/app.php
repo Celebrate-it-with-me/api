@@ -204,7 +204,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
     // ========================================
     Route::prefix('event')->name('event.')->group(function () {
         // Event CRUD Operations
-        Route::post('', [EventsController::class, 'store'])->name('store');
+        Route::post('', [EventsController::class, 'store'])->middleware('throttle:event-create')->name('store');
         Route::get('filters', [EventsController::class, 'filterEvents'])->name('filters');
         Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');
 

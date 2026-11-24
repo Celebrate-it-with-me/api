@@ -62,6 +62,9 @@ return [
     'payments' => [
         'gateway' => env('PAYMENTS_GATEWAY', 'fake'),
         'webhook_secret' => env('PAYMENTS_WEBHOOK_SECRET'),
+        // Pending launch-offer checkouts one account may hold at once (each holds a slot for an hour): stops one account from
+        // draining the offer with abandoned checkouts. An organizer with 2-3 events is fine.
+        'offer_max_holds_per_user' => (int) env('PAYMENTS_OFFER_MAX_HOLDS_PER_USER', 2),
     ],
 
     // Stripe Checkout (docs/plans/stripe-checkout-contract-draft.md). Keys only from the environment, never in the repo.

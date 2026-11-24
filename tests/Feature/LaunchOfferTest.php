@@ -339,6 +339,69 @@ describe('checkout and money', function () {
     });
 });
 
+describe('hold cap per account (LO-001)', function () {
+    function ownedBy(User $owner): Events
+    {
+        $event = Events::factory()->draft()->create([
+            'event_type_id' => EventType::where('slug', 'quinceanera')->value('id'),
+            'event_plan_id' => EventPlan::where('slug', 'basic')->value('id'),
+        ]);
+        EventUserRole::create(['event_id' => $event->id, 'user_id' => $owner->id, 'role_id' => Role::where('name', 'owner')->value('id')]);
+
+        return $event;
+    }
+
+    it('lets one account hold only two slots with abandoned checkouts, and leaves the rest to others', function () {
+        $offer = makeOffer(['total_slots' => 10]);
+        [$one, $owner] = offerEvent();
+        $two = ownedBy($owner);
+        $three = ownedBy($owner);
+        $four = ownedBy($owner);
+
+        checkoutOf($this, $one, $owner)->assertCreated();
+        checkoutOf($this, $two, $owner)->assertCreated();
+        quoteOf($this, $three, $owner)->assertJsonPath('data.amountCents', 9900)->assertJsonPath('data.source', 'list')->assertJsonPath('data.offer.active', false);
+        checkoutOf($this, $three, $owner, ['expectedAmountCents' => 7900])->assertStatus(409)->assertJsonPath('code', 'price_changed')->assertJsonPath('data.amountCents', 9900);
+        $id = checkoutOf($this, $four, $owner)->assertCreated()->json('data.purchaseId');
+        expect(EventPurchase::find($id))->amount_cents->toBe(9900)->launch_offer_id->toBeNull()->and($offer->slotsLeft())->toBe(8);
+
+        // Somebody else still gets the offer, and the first two events keep reusing their own sessions.
+        [$other, $otherOwner] = offerEvent();
+        quoteOf($this, $other, $otherOwner)->assertJsonPath('data.amountCents', 7900)->assertJsonPath('data.offer.slotsLeft', 8);
+        quoteOf($this, $one, $owner)->assertJsonPath('data.amountCents', 7900);
+        expect(checkoutOf($this, $one, $owner)->assertCreated()->json('data.purchaseId'))->toBe(EventPurchase::where('event_id', $one->id)->value('id'));
+    });
+
+    it('frees the account\'s holds when she pays, cancels or the hour passes, and the code obeys the same cap', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        makeOffer(['total_slots' => 10]);
+        [$one, $owner] = offerEvent();
+        $two = ownedBy($owner);
+        $three = ownedBy($owner);
+        $first = checkoutOf($this, $one, $owner)->assertCreated()->json('data.purchaseId');
+        checkoutOf($this, $two, $owner)->assertCreated();
+
+        quoteOf($this, $three, $owner, 'LANZAMIENTO79')->assertStatus(422)->assertJsonPath('errors.code.0', 'launch_offer_exhausted');
+        payPurchase($this, $first); // paid: it is a sale, no longer a hold
+        quoteOf($this, $three, $owner)->assertJsonPath('data.amountCents', 7900);
+
+        checkoutOf($this, $three, $owner)->assertCreated();
+        $four = ownedBy($owner);
+        quoteOf($this, $four, $owner)->assertJsonPath('data.amountCents', 9900);
+        $this->travel(61)->minutes();
+        quoteOf($this, $four, $owner)->assertJsonPath('data.amountCents', 7900);
+    });
+
+    it('throttles the creation of events per account', function () {
+        $user = User::factory()->create();
+        for ($i = 0; $i < 20; $i++) {
+            $this->actingAs($user)->postJson('/api/v1/app/event', [])->assertStatus(422);
+        }
+        $this->actingAs($user)->postJson('/api/v1/app/event', [])->assertStatus(429);
+        $this->actingAs(User::factory()->create())->postJson('/api/v1/app/event', [])->assertStatus(422);
+    });
+});
+
 describe('offer and coupons', function () {
     it('never stacks: LANZAMIENTO79 gives 79 once, spends its use AND one slot of the offer', function () {
         $this->seed(LaunchCouponSeeder::class);

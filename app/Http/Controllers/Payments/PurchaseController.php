@@ -22,7 +22,7 @@ class PurchaseController extends Controller
     {
         $data = $request->validate(['code' => ['nullable', 'string', 'max:64']]);
 
-        return response()->json(['data' => $this->purchases->quote($event, $data['code'] ?? null)]);
+        return response()->json(['data' => $this->purchases->quote($event, $data['code'] ?? null, $request->user())]);
     }
 
     public function checkout(Request $request, Events $event): JsonResponse
@@ -64,7 +64,7 @@ class PurchaseController extends Controller
             'amountCents' => $purchase?->amount_cents,
             'currency' => $purchase?->currency,
             'invoiceId' => $invoice,
-            'offer' => $this->purchases->offerSummary($this->purchases->fullPlan(), $event),
+            'offer' => $this->purchases->offerSummary($this->purchases->fullPlan(), $event, null, $request->user()),
         ]]);
     }
 
