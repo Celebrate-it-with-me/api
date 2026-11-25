@@ -64,10 +64,40 @@ class BudgetService
             'totals' => $totals + [
                 'overCap' => $cap !== null && $totals['owed'] > $cap,
                 'capLeft' => $cap !== null ? round($cap - $totals['owed'], 2) : null,
+            ] + $this->capComparison($cap, $totals) + [
                 'overdueCount' => $items->filter(fn (BudgetItem $i) => $i->status() === BudgetItem::OVERDUE)->count(),
             ],
             'categories' => $categories,
             'uncategorized' => ['itemCount' => $loose->count(), 'totals' => $this->totals($loose)],
+        ];
+    }
+
+    /**
+     * How far the estimate, what is owed and what is paid go past the cap. Compared in cents (integers) so that
+     * 18,000.00 against 18,000.004 never flips by float noise; the amounts in dollars are derived from the cents.
+     * Without a cap nothing is "over": the flags are false and the amounts are zero.
+     *
+     * @param  array{estimated: float, owed: float, paid: float, remaining: float}  $totals
+     * @return array<string, bool|int|float>
+     */
+    public function capComparison(?float $cap, array $totals): array
+    {
+        $capCents = $cap !== null ? (int) round($cap * 100) : null;
+        $over = fn (float $amount): int => $capCents === null ? 0 : max(0, (int) round($amount * 100) - $capCents);
+
+        $estimated = $over($totals['estimated']);
+        $owed = $over($totals['owed']);
+        $paid = $over($totals['paid']);
+
+        return [
+            'estimatedOverCap' => $estimated > 0,
+            'estimatedOverByCents' => $estimated,
+            'estimatedOverBy' => $estimated / 100,
+            'overByCents' => $owed,
+            'overBy' => $owed / 100,
+            'paidOverCap' => $paid > 0,
+            'paidOverByCents' => $paid,
+            'paidOverBy' => $paid / 100,
         ];
     }
 
