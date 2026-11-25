@@ -335,7 +335,6 @@ class Events extends Model
             ->select('events.*')
             ->selectRaw("({$guests}) as guests_count")
             ->selectRaw("({$guests} and guests.rsvp_status != 'pending') as guests_responded_count")
-            ->selectRaw("({$guests} and guests.rsvp_status in ('attending', 'not-attending')) as guests_confirmed_count")
             ->selectRaw('(select count(*) from menus where menus.event_id = events.id) as menus_count')
             // `menus()->first()` is the menu with the lowest id.
             ->selectRaw('(select count(*) from menu_items where menu_items.menu_id = (select min(m.id) from menus m where m.event_id = events.id)) as first_menu_items_count')
@@ -368,7 +367,8 @@ class Events extends Model
     }
 
     /**
-     * Calculates the progress of the setup based on active and completed features.
+     * Calculates the progress of the setup based on active and completed features. It measures how much of the event
+     * is CONFIGURED (sections and data ready), never how many guests have answered: confirmations have their own numbers.
      *
      * @return float The setup progress as a proportion (0.0 to 1.0), rounded to two decimal places.
      */
@@ -392,6 +392,16 @@ class Events extends Model
         }
 
         return $totalWeight > 0 ? round($completedWeight / $totalWeight, 2) : 0.0;
+    }
+
+    /**
+     * The active modules of the setup that are not configured yet, by module key, so the app can say what is missing.
+     *
+     * @return list<string>
+     */
+    public function pendingSetupModules(): array
+    {
+        return array_values(array_filter(array_keys($this->getActiveFeatures()), fn (string $module) => ! $this->isFeatureCompleted($module)));
     }
 
     /**
@@ -456,44 +466,9 @@ class Events extends Model
         };
     }
 
+    /** The RSVP module is set up once the guest list exists; how many answered is shown by the stats, not by the setup. */
     private function isRsvpCompleted(): bool
     {
-        $totalGuestCount = $this->guestsTotal();
-
-        if ($totalGuestCount === 0) {
-            return false;
-        }
-
-        $confirmedGuests = $this->preloaded('guests_confirmed_count') ?? $this->guests()
-            ->whereIn('rsvp_status', ['attending', 'not-attending'])
-            ->count();
-
-        return $this->evaluateRsvpCompletion($totalGuestCount, $confirmedGuests);
-    }
-
-    /**
-     * Evaluates whether the RSVP process can be considered complete based on the total guest count and the number of confirmed guests.
-     *
-     * @param  int  $totalGuestCount  The total number of guests expected for the event.
-     * @param  int  $confirmedGuests  The number of guests who have confirmed their attendance.
-     * @return bool Returns true if the RSVP completion criteria are met, otherwise false.
-     */
-    private function evaluateRsvpCompletion(int $totalGuestCount, int $confirmedGuests): bool
-    {
-        if ($confirmedGuests < 1) {
-            return false;
-        }
-
-        $confirmationRate = $confirmedGuests / $totalGuestCount;
-
-        if ($totalGuestCount <= 10) {
-            return $confirmationRate >= 0.5;
-        }
-
-        if ($totalGuestCount <= 50) {
-            return $confirmationRate >= 0.3;
-        }
-
-        return $confirmationRate >= 0.2;
+        return $this->guestsTotal() > 0;
     }
 }

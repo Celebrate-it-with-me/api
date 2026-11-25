@@ -197,10 +197,15 @@ class AssistantService
         return ['mode' => $result->mode, 'monthsLeft' => $result->monthsLeft, 'daysLeft' => $result->daysLeft];
     }
 
-    /** @return array{done: int, total: int, ratio: float} */
+    /**
+     * Steps of the whole organizing plan that are done out of those that apply. `kind` says what it measures (the plan,
+     * not the guests' answers), so every screen that shows it uses one number and one label.
+     *
+     * @return array{done: int, total: int, ratio: float, kind: string}
+     */
     private function progress(AssistantResult $result): array
     {
-        return ['done' => $result->progressDone, 'total' => $result->progressTotal, 'ratio' => $result->ratio()];
+        return ['done' => $result->progressDone, 'total' => $result->progressTotal, 'ratio' => $result->ratio(), 'kind' => 'plan'];
     }
 
     private function iso(?CarbonInterface $date): ?string
