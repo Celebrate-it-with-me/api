@@ -42,7 +42,7 @@ it('writes the activity message in the language of the request, not in the langu
     $activity = EventActivity::query()->where('event_id', $event->id)->latest('id')->first();
 
     app()->setLocale('es');
-    expect($activity->message)->toBe('El evento Los XV de Yaquelin fue creado por Marisol');
+    expect($activity->message)->toBe('Marisol creó el evento Los XV de Yaquelin');
     app()->setLocale('en');
     expect($activity->message)->toBe('Event Los XV de Yaquelin has been created by Marisol');
 });

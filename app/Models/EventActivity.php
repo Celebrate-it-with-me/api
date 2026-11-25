@@ -128,6 +128,29 @@ class EventActivity extends Model
     }
 
     /**
+     * The pieces of the sentence, so the app can translate it with its own i18n instead of using `message`:
+     * who did it (`actor`, "Soporte" for staff impersonating) and the data the sentence needs, never contact data or ids.
+     *
+     * @return array{actor: string, name: ?string, template: ?string, song: ?string, count: ?int, companions: ?int, status: ?string}
+     */
+    public function getParamsAttribute(): array
+    {
+        $payload = (array) $this->payload;
+        $text = fn (string ...$keys): ?string => collect($keys)->map(fn ($k) => $payload[$k] ?? null)->first(fn ($v) => is_string($v) && $v !== '');
+        $number = fn (string $key): ?int => isset($payload[$key]) ? (int) $payload[$key] : null;
+
+        return [
+            'actor' => $this->actorName(),
+            'name' => $text('name', 'title', 'event_name'),
+            'template' => $text('template'),
+            'song' => $text('song'),
+            'count' => $number('count'),
+            'companions' => $number('companions'),
+            'status' => $this->type === 'guest_rsvp_changed' ? ($payload['to'] ?? null) : null,
+        ];
+    }
+
+    /**
      * Get the message attribute based on the activity type.
      *
      * This method dynamically generates a message based on the type of activity
