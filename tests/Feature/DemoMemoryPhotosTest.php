@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\SweetMemoriesImage;
-use Database\Seeders\Demo\DemoSeeder;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\Demo\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
