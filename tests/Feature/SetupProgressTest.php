@@ -30,8 +30,8 @@ it('pins setup progress and suggestions of the demo events', function () {
     $bySlug = fn (string $slug) => Events::where('custom_url_slug', $slug)->firstOrFail();
 
     $xv = $bySlug('xv-de-valentina');
-    expect($xv->calculateSetupProgress())->toBe(0.54)
-        ->and(suggestionNames($xv))->toBe(['Share Event', 'Invite Guests', 'Add Music Suggestions', 'Add Sweet Memories Images', 'Set Up Seating Arrangement', 'Set Up Budget']);
+    expect($xv->calculateSetupProgress())->toBe(0.65)
+        ->and(suggestionNames($xv))->toBe(['Share Event', 'Invite Guests', 'Add Music Suggestions', 'Set Up Seating Arrangement', 'Set Up Budget']);
 
     $wedding = $bySlug('boda-camila-y-andres');
     expect($wedding->calculateSetupProgress())->toBe(0.44)
