@@ -40,6 +40,8 @@
     "Music added by :name.": "Música agregada por :name.",
     "Cover photo of the invitation updated by :user": ":user actualizó la foto de portada de la invitación",
     "Cover photo of the invitation removed by :user": ":user quitó la foto de portada de la invitación",
+    "Picture of a section of the invitation updated by :user": ":user actualizó la foto de una sección de la invitación",
+    "Picture of a section of the invitation removed by :user": ":user quitó la foto de una sección de la invitación",
     "Activity logged.": "Actividad registrada.",
     "System": "Sistema",
     "This event has no background music.": "Este evento no tiene música de fondo."

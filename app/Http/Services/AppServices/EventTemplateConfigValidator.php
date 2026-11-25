@@ -129,7 +129,7 @@ class EventTemplateConfigValidator
                 if ($value !== null && (! is_string($value) || ! preg_match('/^\d{1,3}% \d{1,3}%$/', $value))) {
                     $this->errors["{$at}.focus"] = 'invalid_focus';
                 }
-            } elseif ($value !== null && ! $this->isPhoto($value)) {
+            } elseif ($value !== null && ! $this->isPhoto($value, $type)) {
                 // Photos are stored by the app: a relative path or one of the event's own uploads, never an address on
                 // another site.
                 $this->errors["{$at}.{$key}"] = 'invalid_type';
@@ -137,13 +137,13 @@ class EventTemplateConfigValidator
         }
     }
 
-    private function isPhoto(mixed $value): bool
+    private function isPhoto(mixed $value, string $section): bool
     {
         if (! is_string($value) || strlen($value) > 255) {
             return false;
         }
         if (str_starts_with($value, Invitation\CoverPhoto::PREFIX)) {
-            return $this->eventId !== null && Invitation\CoverPhoto::pathFor($value, $this->eventId) !== null;
+            return $this->eventId !== null && Invitation\CoverPhoto::pathFor($value, $this->eventId, $section) !== null;
         }
 
         return preg_match('#^/(?!/)[A-Za-z0-9._~/-]*$#', $value) === 1 && ! str_contains($value, '..');

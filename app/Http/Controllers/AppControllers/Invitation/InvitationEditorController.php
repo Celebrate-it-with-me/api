@@ -97,4 +97,19 @@ class InvitationEditorController extends Controller
 
         return response()->json(['data' => null]);
     }
+
+    public function storeImage(Request $request, Events $event, string $field): JsonResponse
+    {
+        $focus = $request->input('focus');
+        $photo = $this->editor->storeImage($event, $request->user(), $field, $request->file('photo'), is_string($focus) ? $focus : null);
+
+        return response()->json(['data' => $photo], 201);
+    }
+
+    public function destroyImage(Request $request, Events $event, string $field): JsonResponse
+    {
+        $this->editor->removeImage($event, $request->user(), $field);
+
+        return response()->json(['data' => null]);
+    }
 }

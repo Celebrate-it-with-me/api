@@ -140,7 +140,7 @@ class InvitationService
             'stage' => $event->invitation_stage,
             'locale' => $locale,
             'theme' => $this->themePayload($version['theme'], $config['theme'] ?? [], $package['package'] ?? null),
-            'sections' => $this->attachPackage($this->resolveSections($event, null, $version['sections'], $locale, $config), $package['sections'] ?? []),
+            'sections' => $this->attachPackage($this->resolveSections($event, null, $version['sections'], $locale, $config, $this->imageZones($version['package_id'] ?? null)), $package['sections'] ?? []),
             // Basic-plan watermark; the full event (paid, or on the premium plan) removes it. A refund puts the event back on basic.
             'branding' => ['watermark' => ! $unlocked],
         ];
@@ -518,6 +518,58 @@ class InvitationService
     }
 
     /**
+     * The image fields a package declares for image zones, by section type (`locations`, `closing`). A section whose
+     * template has no such field shows no picture, whatever the event keeps in its config.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function imageZones(?int $packageId): array
+    {
+        $zones = [];
+        foreach ($this->editableFields($packageId) as $field) {
+            $section = $field['bind']['section'] ?? null;
+            if (($field['type'] ?? null) === 'image' && ($field['bind']['setting'] ?? null) === 'image'
+                && in_array($section, Invitation\CoverPhoto::ZONE_SECTIONS, true) && ! isset($zones[$section])) {
+                $zones[$section] = $field;
+            }
+        }
+
+        return $zones;
+    }
+
+    /**
+     * `image` of a section with an image zone: `{url, thumbUrl, width, height, focus, alt}`. Only when the template
+     * declares the zone and the event holds a valid picture of its own for it (the plan was applied to the config by
+     * the caller); otherwise the key is absent and the section draws as it always did.
+     *
+     * @param  array<string, array<string, mixed>>  $zones
+     * @return array{image?: array<string, mixed>}
+     */
+    private function zoneImage(array $section, Events $event, array $zones, string $locale): array
+    {
+        $type = $section['type'];
+        $value = $section['settings']['image'] ?? null;
+        if (! isset($zones[$type]) || ! is_string($value)) {
+            return [];
+        }
+        $path = Invitation\CoverPhoto::pathFor($value, $event->id, $type);
+        $size = $path === null ? null : Invitation\CoverPhoto::dimensions($path);
+        if ($path === null || $size === null) {
+            return [];
+        }
+        $urls = app(Invitation\CoverPhoto::class)->urls($path);
+        $focus = $section['settings']['focus'] ?? null;
+        $alt = $this->localized($zones[$type]['alt'] ?? null, $locale);
+
+        return ['image' => $urls + [
+            'width' => $size['width'],
+            'height' => $size['height'],
+            'focus' => is_string($focus) && preg_match('/^\d{1,3}% \d{1,3}%$/', $focus) === 1 ? $focus : null,
+            'alt' => is_string($alt) ? $alt : '',
+        ]];
+    }
+
+    /**
      * The closing is always the last section of the page, whatever order a template or an old config carries: its
      * order becomes one past the highest of the others (decision of 2026-11-24; read-time, nothing is rewritten).
      *
@@ -537,7 +589,7 @@ class InvitationService
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function resolveSections(Events $event, ?Guest $guest, array $templateSections, string $locale, array $config): array
+    private function resolveSections(Events $event, ?Guest $guest, array $templateSections, string $locale, array $config, array $zones = []): array
     {
         if ($event->invitation_stage === Events::STAGE_SAVE_THE_DATE) {
             // The Save the date is the `save_the_date` module: locked, there is nothing to show yet.
@@ -561,7 +613,7 @@ class InvitationService
             ->filter(fn (array $section) => ! isset(self::SECTION_MODULES[$section['type']])
                 || $modules->isActive($event, self::SECTION_MODULES[$section['type']]))
             ->sortBy(fn (array $section) => $section['order'] ?? 99)
-            ->map(function (array $section) use ($event, $guest, $locale) {
+            ->map(function (array $section) use ($event, $guest, $locale, $zones) {
                 $data = $this->sectionData($section['type'], $event, $guest, $section, $locale);
 
                 // A section with nothing to show (no venue yet, no dress code) is left out.
@@ -575,7 +627,7 @@ class InvitationService
                     'text' => $this->localized($section['text'] ?? null, $locale),
                     // Always a JSON object, even for sections without data.
                     'data' => $data ?: (object) [],
-                ] + $this->settingsEntry($section, $locale);
+                ] + $this->settingsEntry($section, $locale) + $this->zoneImage($section, $event, $zones, $locale);
             })
             ->filter()
             ->values()
@@ -762,7 +814,7 @@ class InvitationService
      * The cover photo as an address: a photo the app stored (`upload:`) is served only when it belongs to this event,
      * and a path that starts with `/` (seeders, legacy) is kept as it is.
      */
-    public function coverImage(mixed $value, Events $event): ?string
+    public function coverImage(mixed $value, Events $event, ?string $section = null): ?string
     {
         if (! is_string($value) || $value === '') {
             return null;
@@ -770,7 +822,7 @@ class InvitationService
         if (! str_starts_with($value, Invitation\CoverPhoto::PREFIX)) {
             return $value;
         }
-        $path = Invitation\CoverPhoto::pathFor($value, $event->id);
+        $path = Invitation\CoverPhoto::pathFor($value, $event->id, $section);
 
         return $path === null ? null : Storage::disk(Invitation\CoverPhoto::DISK)->url($path);
     }

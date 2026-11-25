@@ -239,6 +239,9 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::middleware(['event.access:edit_event', 'throttle:invitation-cover-upload'])->group(function () {
                     Route::post('cover-photo', [InvitationEditorController::class, 'storeCover'])->name('cover.store');
                     Route::delete('cover-photo', [InvitationEditorController::class, 'destroyCover'])->name('cover.destroy');
+                    // The picture of an image zone (locations, closing) of the field the package declares; same limiter as the cover.
+                    Route::post('fields/{field}/image', [InvitationEditorController::class, 'storeImage'])->where('field', '[a-z][a-z0-9_]{0,31}')->name('image.store');
+                    Route::delete('fields/{field}/image', [InvitationEditorController::class, 'destroyImage'])->where('field', '[a-z][a-z0-9_]{0,31}')->name('image.destroy');
                 });
             });
             Route::post('publish', [EventLifecycleController::class, 'publish'])->middleware('email.verified')->name('publish');
