@@ -11,9 +11,11 @@ use Illuminate\Database\Seeder;
  * The launch offer: 79 USD (list 99) for the first 100 paid events, shown without a code.
  *
  * Idempotent and safe in production: it only creates the offer when the plan has none. If the admin changed it (price,
- * slots, switched it off) a second run leaves it exactly as it is. Running it IS what turns the offer on.
+ * slots, switched it off) a second run leaves it exactly as it is. Running it IS what turns the offer on, so in production
+ * (LO-010) it refuses to CREATE the offer unless LAUNCH_OFFER_CONFIRM=true is set: enabling it is a go-live decision, never a
+ * side effect of a routine seed. Local and testing environments are not affected.
  *
- *   php artisan db:seed --class='Database\Seeders\LaunchOfferSeeder' --force
+ *   LAUNCH_OFFER_CONFIRM=true php artisan db:seed --class='Database\Seeders\LaunchOfferSeeder' --force
  */
 class LaunchOfferSeeder extends Seeder
 {
@@ -25,6 +27,12 @@ class LaunchOfferSeeder extends Seeder
     {
         $plan = EventPlan::query()->where('slug', 'premium')->first();
         if (! $plan) {
+            return;
+        }
+
+        if (app()->environment('production') && ! config('services.payments.launch_offer_confirm') && ! LaunchOffer::query()->where('event_plan_id', $plan->id)->exists()) {
+            $this->command?->warn('Launch offer NOT created: running this seeder in production switches the offer on. Set LAUNCH_OFFER_CONFIRM=true to confirm.');
+
             return;
         }
 

@@ -15,6 +15,7 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\Demo\DemoSeeder;
 use Database\Seeders\LaunchCouponSeeder;
 use Database\Seeders\LaunchOfferSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Stripe\ApiRequestor;
@@ -101,7 +102,7 @@ describe('quote', function () {
         quoteOf($this, $event, $owner)->assertOk()
             ->assertJsonPath('data.amountCents', 7900)->assertJsonPath('data.listPriceCents', 9900)->assertJsonPath('data.source', 'offer')
             ->assertJsonPath('data.code', null)
-            ->assertJsonPath('data.offer', ['active' => true, 'priceCents' => 7900, 'listPriceCents' => 9900, 'slotsLeft' => 3, 'totalSlots' => 3]);
+            ->assertJsonPath('data.offer', ['active' => true, 'priceCents' => 7900, 'listPriceCents' => 9900, 'slotsLeft' => 3, 'totalSlots' => 3, 'reason' => null, 'holdMinutes' => 60]);
     });
 
     it('goes back to 99 when the slots run out', function () {
@@ -120,7 +121,7 @@ describe('quote', function () {
     it('is 99 when the offer is switched off or does not exist, and not below the list price when the offer price is not lower', function () {
         [$event, $owner] = offerEvent();
         quoteOf($this, $event, $owner)->assertOk()->assertJsonPath('data.amountCents', 9900)
-            ->assertJsonPath('data.offer', ['active' => false, 'priceCents' => null, 'listPriceCents' => 9900, 'slotsLeft' => 0, 'totalSlots' => 0]);
+            ->assertJsonPath('data.offer', ['active' => false, 'priceCents' => null, 'listPriceCents' => 9900, 'slotsLeft' => 0, 'totalSlots' => 0, 'reason' => 'inactive', 'holdMinutes' => 60]);
 
         $offer = makeOffer(['is_active' => false]);
         quoteOf($this, $event, $owner)->assertJsonPath('data.amountCents', 9900)->assertJsonPath('data.offer.active', false)->assertJsonPath('data.offer.slotsLeft', 0);
@@ -767,5 +768,183 @@ describe('admin', function () {
         $this->actingAs(superadmin())->putJson('/api/v1/admin/payments/launch-offer', ['totalSlots' => 1, 'reason' => 'no reauth at all'])->assertStatus(403);
 
         expect(LaunchOffer::first()->total_slots)->toBe(100)->and(AdminAuditLog::where('action', 'like', 'launch_offer%')->count())->toBe(0);
+    });
+});
+
+describe('reason the offer does not apply (OFR-005, OFR-006, OFR-007)', function () {
+    it('says why in the quote: null while open, then inactive, closed, exhausted and holds_full, with the hold time', function () {
+        [$event, $owner] = offerEvent();
+        quoteOf($this, $event, $owner)->assertJsonPath('data.offer.reason', 'inactive')->assertJsonPath('data.offer.holdMinutes', LaunchOffer::HOLD_MINUTES);
+
+        $offer = makeOffer(['total_slots' => 2]);
+        quoteOf($this, $event, $owner)->assertJsonPath('data.offer.reason', null)->assertJsonPath('data.offer.active', true);
+
+        $offer->update(['is_active' => false]);
+        quoteOf($this, $event, $owner)->assertJsonPath('data.offer.reason', 'inactive');
+
+        $offer->update(['is_active' => true, 'price_cents' => 9900]);
+        quoteOf($this, $event, $owner)->assertJsonPath('data.offer.reason', 'closed');
+
+        $offer->update(['price_cents' => 7900, 'used_adjustment' => 2]);
+        quoteOf($this, $event, $owner)->assertJsonPath('data.offer.reason', 'exhausted')->assertJsonPath('data.offer.slotsLeft', 0);
+        expect(LaunchOffer::REASONS)->toContain('inactive', 'closed', 'exhausted', 'holds_full');
+    });
+
+    it('says holds_full when slots remain but the account holds her maximum, and nobody else sees that', function () {
+        makeOffer(['total_slots' => 10]);
+        [$one, $owner] = offerEvent();
+        $two = ownedBy($owner);
+        $three = ownedBy($owner);
+        checkoutOf($this, $one, $owner)->assertCreated();
+        checkoutOf($this, $two, $owner)->assertCreated();
+
+        $quote = quoteOf($this, $three, $owner)->assertJsonPath('data.offer.reason', 'holds_full')->assertJsonPath('data.offer.slotsLeft', 8)->assertJsonPath('data.offer.active', false);
+        // Only the bounded summary: no ids, no purchases, no other accounts.
+        expect(array_keys($quote->json('data.offer')))->toBe(['active', 'priceCents', 'listPriceCents', 'slotsLeft', 'totalSlots', 'reason', 'holdMinutes']);
+
+        [$other, $otherOwner] = offerEvent();
+        quoteOf($this, $other, $otherOwner)->assertJsonPath('data.offer.reason', null);
+    });
+
+    it('carries the reason in the 409 price_changed when the offer closed for holds_full', function () {
+        makeOffer(['total_slots' => 10]);
+        [$one, $owner] = offerEvent();
+        $two = ownedBy($owner);
+        $three = ownedBy($owner);
+        checkoutOf($this, $one, $owner)->assertCreated();
+        checkoutOf($this, $two, $owner)->assertCreated();
+
+        checkoutOf($this, $three, $owner, ['expectedAmountCents' => 7900])->assertStatus(409)
+            ->assertJsonPath('code', 'price_changed')->assertJsonPath('data.amountCents', 9900)
+            ->assertJsonPath('data.offer.reason', 'holds_full')->assertJsonPath('data.offer.holdMinutes', 60);
+    });
+
+    it('carries the reason exhausted in the 409 price_changed when the last slot went to someone else', function () {
+        makeOffer(['total_slots' => 1]);
+        [$a, $ownerA] = offerEvent();
+        [$b, $ownerB] = offerEvent();
+        checkoutOf($this, $a, $ownerA)->assertCreated();
+
+        checkoutOf($this, $b, $ownerB, ['expectedAmountCents' => 7900])->assertStatus(409)->assertJsonPath('data.offer.reason', 'exhausted');
+    });
+
+    it('carries the reason in the purchase status summary too', function () {
+        makeOffer(['is_active' => false]);
+        [$event, $owner] = offerEvent();
+
+        $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/purchase/status")->assertOk()->assertJsonPath('data.offer.reason', 'inactive');
+    });
+});
+
+describe('coupon list shows the shared offer slots (ADM-004)', function () {
+    it('flags the code tied to the offer with the shared count, and leaves the others plain', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        $offer = makeOffer(['total_slots' => 100, 'used_adjustment' => 5]);
+        [$event, $owner] = offerEvent();
+        payPurchase($this, checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId'));
+        Coupon::create(['code' => 'PLAIN10', 'kind' => 'percent_off', 'value' => 10]);
+
+        $rows = collect($this->actingAsReauthed(superadmin())->getJson('/api/v1/admin/payments/coupons')->assertOk()->json('data'))->keyBy('code');
+
+        expect($rows['LANZAMIENTO79'])->sharesOfferSlots->toBeTrue()->offerSlotsUsed->toBe(6)->offerSlotsTotal->toBe(100)->launch_offer_id->toBe($offer->id)
+            ->and($rows['LANZAMIENTO79']['times_used'])->toBe(0)
+            ->and($rows['PLAIN10'])->sharesOfferSlots->toBeFalse()->offerSlotsUsed->toBeNull()->offerSlotsTotal->toBeNull();
+    });
+
+    it('answers the same fields when a coupon is created or updated', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        makeOffer(['total_slots' => 100]);
+        $admin = superadmin();
+
+        $this->actingAsReauthed($admin)->postJson('/api/v1/admin/payments/coupons', ['code' => 'NEWONE', 'kind' => 'percent_off', 'value' => 5, 'reason' => 'A new code'])
+            ->assertCreated()->assertJsonPath('data.sharesOfferSlots', false)->assertJsonPath('data.offerSlotsTotal', null);
+        $id = Coupon::where('code', 'LANZAMIENTO79')->value('id');
+        $this->actingAsReauthed($admin)->patchJson("/api/v1/admin/payments/coupons/{$id}", ['maxUses' => 50, 'reason' => 'Lower the cap'])
+            ->assertOk()->assertJsonPath('data.sharesOfferSlots', true)->assertJsonPath('data.offerSlotsTotal', 100)->assertJsonPath('data.offerSlotsUsed', 0);
+    });
+});
+
+describe('hardening (LO-004, LO-005, LO-007, LO-008, LO-010)', function () {
+    it('LO-004: decides the oversold flag inside the activation transaction with the offer row locked', function () {
+        makeOffer(['total_slots' => 1]);
+        [$a, $ownerA] = offerEvent();
+        [$b, $ownerB] = offerEvent();
+        $first = checkoutOf($this, $a, $ownerA)->assertCreated()->json('data.purchaseId');
+        $this->travel(61)->minutes();
+        $second = checkoutOf($this, $b, $ownerB)->assertCreated()->json('data.purchaseId');
+
+        $statements = [];
+        DB::listen(function ($q) use (&$statements) {
+            $statements[] = ['sql' => strtolower($q->sql), 'tx' => DB::transactionLevel()];
+        });
+        payPurchase($this, $first);
+        payPurchase($this, $second);
+
+        $locks = array_filter($statements, fn ($s) => str_contains($s['sql'], 'from "launch_offers"') && str_contains($s['sql'], 'for update'));
+        // Exactly one purchase is flagged (the one that went over), no matter the order they confirm in, and the lock was taken inside a transaction.
+        expect($locks)->not->toBeEmpty()->and(collect($locks)->every(fn ($s) => $s['tx'] > 0))->toBeTrue()
+            ->and(EventPurchase::whereIn('id', [$first, $second])->where('needs_review', true)->count())->toBe(1)
+            ->and(EventPurchase::find($first)->needs_review)->toBeFalse()
+            ->and(EventPurchase::find($second)->needs_review)->toBeTrue();
+    });
+
+    it('LO-005: a refund frees the slot and buying again takes it once (documented rule, unchanged)', function () {
+        $offer = makeOffer(['total_slots' => 5]);
+        [$event, $owner] = offerEvent();
+        $id = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        payPurchase($this, $id);
+        expect($offer->usedSlots())->toBe(1);
+
+        app(PurchaseService::class)->refund(EventPurchase::find($id), 'asked');
+        expect($offer->usedSlots())->toBe(0)->and(EventPurchase::find($id)->status)->toBe('refunded');
+
+        $again = checkoutOf($this, $event, $owner)->assertCreated()->json('data.purchaseId');
+        payPurchase($this, $again);
+
+        expect($again)->not->toBe($id)->and($offer->usedSlots())->toBe(1)->and($offer->paidCount())->toBe(1)
+            ->and(EventPurchase::where('launch_offer_id', $offer->id)->count())->toBe(2);
+    });
+
+    it('LO-007: caps the total, the used count and the outside-the-platform correction', function () {
+        $admin = superadmin();
+        makeOffer(['total_slots' => 100]);
+        $put = fn (array $b) => $this->actingAsReauthed($admin)->putJson('/api/v1/admin/payments/launch-offer', $b + ['reason' => 'Adjusting slots']);
+
+        $put(['totalSlots' => 10001])->assertStatus(422)->assertJsonValidationErrors('totalSlots');
+        $put(['slotsUsed' => 10001])->assertStatus(422)->assertJsonValidationErrors('slotsUsed');
+        $put(['totalSlots' => 5000, 'slotsUsed' => 1001])->assertStatus(422)->assertJsonPath('errors.slotsUsed.0', 'adjustment_too_large');
+        expect(LaunchOffer::first())->total_slots->toBe(100)->used_adjustment->toBe(0);
+
+        $put(['totalSlots' => 5000, 'slotsUsed' => 1000])->assertOk()->assertJsonPath('data.slotsAdjustment', 1000)->assertJsonPath('data.slotsLeft', 4000);
+    });
+
+    it('LO-008: deleting an offer that has purchases or a tied code is refused by the database', function () {
+        $this->seed(LaunchCouponSeeder::class);
+        $offer = makeOffer();
+        [$event, $owner] = offerEvent();
+        checkoutOf($this, $event, $owner)->assertCreated();
+
+        expect(fn () => DB::transaction(fn () => DB::table('launch_offers')->where('id', $offer->id)->delete()))->toThrow(QueryException::class);
+        expect(EventPurchase::whereNotNull('launch_offer_id')->count())->toBe(1)->and(Coupon::where('code', 'LANZAMIENTO79')->value('launch_offer_id'))->toBe($offer->id);
+
+        // The plan cascade cannot reach it either: the offer (and its purchases) stay.
+        expect(fn () => DB::transaction(fn () => DB::table('event_plans')->where('id', $offer->event_plan_id)->delete()))->toThrow(QueryException::class);
+        expect(LaunchOffer::count())->toBe(1);
+    });
+
+    it('LO-010: in production the seeder refuses to switch the offer on without LAUNCH_OFFER_CONFIRM', function () {
+        $this->app->detectEnvironment(fn () => 'production');
+        (new LaunchOfferSeeder)->run();
+        expect(LaunchOffer::count())->toBe(0);
+
+        config(['services.payments.launch_offer_confirm' => true]);
+        (new LaunchOfferSeeder)->run();
+        expect(LaunchOffer::count())->toBe(1)->and(LaunchOffer::first()->is_active)->toBeTrue();
+
+        // An existing (edited) offer is never touched, with or without the flag.
+        LaunchOffer::first()->update(['is_active' => false]);
+        config(['services.payments.launch_offer_confirm' => false]);
+        (new LaunchOfferSeeder)->run();
+        expect(LaunchOffer::first()->is_active)->toBeFalse();
     });
 });
