@@ -194,9 +194,11 @@ return [
     */
 
     'attributes' => [
+        'allowBelowUsed' => 'allow below the amount used',
         'commitments.*.resolution' => 'commitment resolution',
         'companions.*.menuItemIds' => 'companion dishes',
         'companions.*.menuItemIds.*' => 'companion dish',
+        'expectedAmountCents' => 'expected amount',
         'format' => 'format',
         'guest.menuItemIds' => 'guest dishes',
         'guest.menuItemIds.*' => 'guest dish',
@@ -207,6 +209,8 @@ return [
         'ack_third_party_marks' => 'third-party marks acknowledgement',
         'package' => 'package',
         'remember' => 'remember me',
+        'slotsUsed' => 'slots used',
+        'totalSlots' => 'total slots',
         'visibility' => 'visibility',
         'preset' => 'preset',
         'package_id' => 'package',

@@ -29,6 +29,8 @@ class RouteServiceProvider extends ServiceProvider
         'status' => [120, 1],
         'og-share' => [60, 1],
         'template-assets' => [600, 1],
+        // Creating events: a normal organizer makes a handful; 20 an hour per account is far above that and stops mass creation.
+        'event-create' => [20, 60],
         'invitation-show' => [60, 1],
         'invitation-access' => [60, 1],
         'invitation-rsvp' => [20, 1],
