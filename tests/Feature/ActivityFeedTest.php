@@ -60,7 +60,7 @@ describe('guest answers', function () {
             ->and($activity->payload)->toMatchArray(['name' => 'Rosa Fernández', 'companions' => 2]);
 
         app()->setLocale('es');
-        expect($activity->message)->toBe('El invitado Rosa Fernández confirmó su asistencia con 2 acompañantes');
+        expect($activity->message)->toBe('Rosa Fernández confirmó su asistencia con 2 acompañantes');
         app()->setLocale('en');
         expect($activity->message)->toBe('Guest Rosa Fernández has confirmed their attendance with 2 companions');
     });
@@ -82,7 +82,7 @@ describe('guest answers', function () {
         $activity = feedOf($event)->sole();
         expect($activity->type)->toBe('guest_declined');
         app()->setLocale('es');
-        expect($activity->message)->toBe('El invitado Rosa Fernández declinó la invitación.');
+        expect($activity->message)->toBe('Rosa Fernández declinó la invitación');
         expect($activity->icon)->toBe('user-x')->and($activity->color)->toBe('red');
     });
 
@@ -98,7 +98,7 @@ describe('guest answers', function () {
         expect($last->type)->toBe('guest_rsvp_changed')
             ->and($last->payload)->toMatchArray(['from' => 'attending', 'to' => 'not-attending']);
         app()->setLocale('es');
-        expect($last->message)->toBe('El invitado Rosa Fernández cambió su respuesta a «no asiste».');
+        expect($last->message)->toBe('Rosa Fernández cambió su respuesta a «no asiste»');
         app()->setLocale('en');
         expect($last->message)->toBe('Guest Rosa Fernández changed their answer to "not attending".');
     });
@@ -136,7 +136,7 @@ describe('first opening', function () {
         expect($activity->type)->toBe('invitation_opened')->and($activity->payload)->toBe(['name' => 'Rosa Fernández'])
             ->and($guest->fresh()->invitation_opened_at)->not->toBeNull();
         app()->setLocale('es');
-        expect($activity->message)->toBe('El invitado Rosa Fernández abrió su invitación.');
+        expect($activity->message)->toBe('Rosa Fernández abrió su invitación');
     });
 
     it('writes nothing on a revalidation (304) nor on a warm repeat visit', function () {
@@ -191,8 +191,8 @@ describe('guest comments and songs', function () {
         $feed = feedOf($event);
         expect($feed->pluck('type')->all())->toBe(['comment_added', 'music_suggested']);
         app()->setLocale('es');
-        expect($feed[0]->message)->toBe('El invitado Rosa Fernández dejó un comentario.')
-            ->and($feed[1]->message)->toBe('El invitado Rosa Fernández sugirió la canción «Vivir mi vida».');
+        expect($feed[0]->message)->toBe('Rosa Fernández dejó un comentario')
+            ->and($feed[1]->message)->toBe('Rosa Fernández sugirió la canción «Vivir mi vida»');
         // The text of the comment stays out of the feed.
         expect(json_encode($feed[0]->payload))->not->toContain('lindo');
     });
@@ -218,7 +218,7 @@ describe('the dashboard feed', function () {
         $data = $this->actingAs($owner)->getJson("/api/v1/app/event/{$event->id}/dashboard-logs")->assertOk()->json('data');
 
         expect($data)->toHaveCount(10)
-            ->and(array_keys($data[0]))->toBe(['id', 'type', 'message', 'meta', 'icon', 'color', 'createdAt'])
+            ->and(array_keys($data[0]))->toBe(['id', 'type', 'message', 'params', 'meta', 'icon', 'color', 'createdAt', 'occurredAt'])
             ->and($data[0]['message'])->toContain('G12');
     });
 
@@ -259,8 +259,8 @@ describe('messages of staff-side entries', function () {
         $undone = EventActivity::logActivity($event->id, 'invitation_template_undone', $owner, $event, ['from' => 2, 'to' => 1, 'template' => 'Clásica']);
 
         app()->setLocale('es');
-        expect($changed->message)->toBe('La plantilla de la invitación cambió a Jardín, por Marisol')
-            ->and($undone->message)->toBe('El cambio de plantilla se deshizo, por Marisol');
+        expect($changed->message)->toBe('Marisol cambió la plantilla a Jardín')
+            ->and($undone->message)->toBe('Marisol deshizo el cambio de plantilla');
         app()->setLocale('en');
         expect($changed->message)->toBe('Invitation template changed to Jardín by Marisol');
     });
@@ -273,7 +273,7 @@ describe('messages of staff-side entries', function () {
         $entry = feedOf($event)->firstWhere('type', 'guest_created');
         expect($entry)->not->toBeNull();
         app()->setLocale('es');
-        expect($entry->message)->toBe("El invitado Tía Carmen fue agregado por {$owner->name}");
+        expect($entry->message)->toBe("{$owner->name} agregó al invitado Tía Carmen");
     });
 });
 

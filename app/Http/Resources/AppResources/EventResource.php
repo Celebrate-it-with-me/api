@@ -44,7 +44,10 @@ class EventResource extends JsonResource
             // The plan's guest limit (people, with companions), or null when it has none.
             'guestLimit' => app(GuestLimit::class)->limitFor($this->resource),
             'rsvpResponse' => $this->rsvpResponse(),
+            // How much of the event is configured (not how many guests answered) and which modules are still missing.
             'setupProgress' => $this->calculateSetupProgress(),
+            'setupProgressKind' => 'configuration',
+            'setupPending' => $this->pendingSetupModules(),
         ];
     }
 
