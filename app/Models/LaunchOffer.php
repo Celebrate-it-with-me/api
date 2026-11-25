@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Launch offer: a reduced price for the first `total_slots` paid events, no code needed. A slot is consumed when a purchase
  * made with the offer is PAID and is freed when it is refunded, charged back or never completes; the number used is always
  * derived from the purchases, never stored.
+ *
+ * LO-005 (decided, rule unchanged): a refund (only allowed while the invitation is unpublished) or a lost chargeback frees the slot,
+ * and the same buyer may buy again at the offer price while slots remain. She pays the offer price each time and the platform
+ * refunds in full, so nothing is gained; the slot returns to the pool for others. Penalising it (keeping the slot after a refund)
+ * is a product decision, not made here.
  */
 class LaunchOffer extends Model
 {
