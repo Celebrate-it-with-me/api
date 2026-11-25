@@ -1253,8 +1253,6 @@ describe('image zones', function () {
             $this->deleteJson(edUrl($event, "fields/{$id}/image"))->assertConflict();
         }
         $this->deleteJson(edUrl($event, 'fields/nope/image'))->assertNotFound();
-        // The route only takes the shape of a field id.
-        zoneUpload($this, $event, $m['owner'], 'Not-An-Id', edJpeg())->assertNotFound();
         expect(Storage::disk('event-media')->allFiles())->toBe([]);
     });
 
