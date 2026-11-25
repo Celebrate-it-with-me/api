@@ -5,6 +5,8 @@ namespace App\Http\Resources\AppResources;
 use App\Http\Resources\UserResource;
 use App\Http\Services\AppServices\EventModules;
 use App\Http\Services\AppServices\GuestLimit;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -58,13 +60,13 @@ class EventResource extends JsonResource
     }
 
     /** Dates are stored as wall-clock time of the event zone: read them as that and write the zone's offset. */
-    private function isoInEventZone(?\Carbon\CarbonInterface $date): ?string
+    private function isoInEventZone(?CarbonInterface $date): ?string
     {
         if (! $date) {
             return null;
         }
 
-        return \Carbon\Carbon::parse($date->format('Y-m-d H:i:s'), $this->timezone ?: 'America/New_York')->toIso8601String();
+        return Carbon::parse($date->format('Y-m-d H:i:s'), $this->timezone ?: 'America/New_York')->toIso8601String();
     }
 
     private function publicUrl(): ?string
