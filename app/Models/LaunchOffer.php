@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Launch offer: a reduced price for the first `total_slots` paid events, no code needed. A slot is consumed when a purchase
  * made with the offer is PAID and is freed when it is refunded, charged back or never completes; the number used is always
  * derived from the purchases, never stored.
+ *
+ * LO-005 (decided, rule unchanged): a refund (only allowed while the invitation is unpublished) or a lost chargeback frees the slot,
+ * and the same buyer may buy again at the offer price while slots remain. She pays the offer price each time and the platform
+ * refunds in full, so nothing is gained; the slot returns to the pool for others. Penalising it (keeping the slot after a refund)
+ * is a product decision, not made here.
  */
 class LaunchOffer extends Model
 {
@@ -58,10 +63,28 @@ class LaunchOffer extends Model
         return max(0, (int) $this->total_slots - $this->usedSlots() - $this->heldSlots($exceptEventId));
     }
 
+    /** Why the offer does not apply (see {@see self::closedReason()}); the values are a closed list the screens can map to a text. */
+    public const REASONS = ['inactive', 'closed', 'exhausted', 'holds_full'];
+
+    /**
+     * Why the offer does not apply to this event and buyer, or null when it does. Bounded values, never ids or other buyers' data:
+     * `inactive` (switched off), `closed` (not cheaper than the list price any more), `exhausted` (no slot left, counting holds)
+     * and `holds_full` (slots remain but this account already holds her maximum with other events' open payments).
+     */
+    public function closedReason(EventPlan $plan, ?int $forEventId = null, ?int $forUserId = null): ?string
+    {
+        return match (true) {
+            ! $this->is_active => 'inactive',
+            (int) $this->price_cents >= (int) $plan->price_cents => 'closed',
+            $this->slotsLeft($forEventId) <= 0 => 'exhausted',
+            $forUserId !== null && $this->heldByUser($forUserId, $forEventId) >= max(1, (int) config('services.payments.offer_max_holds_per_user', 2)) => 'holds_full',
+            default => null,
+        };
+    }
+
     /** On, cheaper than the list price, with a slot left for this event, and (given a buyer) she is under her hold cap. */
     public function isOpen(EventPlan $plan, ?int $forEventId = null, ?int $forUserId = null): bool
     {
-        return $this->is_active && (int) $this->price_cents < (int) $plan->price_cents && $this->slotsLeft($forEventId) > 0
-            && ($forUserId === null || $this->heldByUser($forUserId, $forEventId) < max(1, (int) config('services.payments.offer_max_holds_per_user', 2)));
+        return $this->closedReason($plan, $forEventId, $forUserId) === null;
     }
 }

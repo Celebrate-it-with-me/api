@@ -96,7 +96,11 @@ class PurchaseService
         return ['amount' => $list, 'coupon' => null, 'offer' => null, 'source' => 'list'];
     }
 
-    /** What the screen shows about the offer: never reveals anything about other events beyond the public count. */
+    /**
+     * What the screen shows about the offer: never reveals anything about other events beyond the public count.
+     * `reason` is null while the offer applies and otherwise one of `LaunchOffer::REASONS` (`inactive` also when there is no
+     * offer at all); `holdMinutes` is how long an open payment holds a slot, so the screens do not hard-code it.
+     */
     public function offerSummary(EventPlan $plan, Events $event, ?LaunchOffer $offer = null, ?User $buyer = null): array
     {
         $offer ??= $this->launchOffer($plan);
@@ -107,6 +111,8 @@ class PurchaseService
             'listPriceCents' => (int) $plan->price_cents,
             'slotsLeft' => $offer && $offer->is_active ? $offer->slotsLeft($event->id) : 0,
             'totalSlots' => $offer ? (int) $offer->total_slots : 0,
+            'reason' => $offer ? $offer->closedReason($plan, $event->id, $buyer?->id) : 'inactive',
+            'holdMinutes' => LaunchOffer::HOLD_MINUTES,
         ];
     }
 
@@ -379,11 +385,14 @@ class PurchaseService
                 Coupon::query()->whereKey($purchase->coupon_id)->increment('times_used');
             }
 
-            // Paid on the launch offer: the slot is now consumed (it is counted from the paid purchases). Whether it went
-            // over the cap is looked at once the payment is committed.
+            // Paid on the launch offer: the slot is now consumed (it is counted from the paid purchases). LO-004: whether this
+            // payment went over the cap is decided HERE, in the same transaction, with the offer's row locked: two payments
+            // confirming together are serialized, so exactly the one that exceeds the cap is flagged (never both, never neither,
+            // and nothing depends on a hook that a dying process could skip). Lock order: purchase, then offer; the checkout
+            // never waits for a purchase row, so there is no cycle.
             if ($purchase->launch_offer_id) {
-                $purchaseId = $purchase->id;
-                DB::afterCommit(fn () => $this->flagOversold($purchaseId));
+                LaunchOffer::query()->lockForUpdate()->find($purchase->launch_offer_id);
+                $this->flagOversold($purchase->id);
             }
 
             return $purchase->refresh();
@@ -393,7 +402,7 @@ class PurchaseService
     /**
      * Two payments the checkout could not tell apart (a hold that expired while the buyer was still paying) can exceed the
      * cap. The money is real and the price shown was honoured: nothing is refunded or blocked, the purchase is only flagged
-     * for a person and logged.
+     * for a person and logged. Runs inside the `activate` transaction with the offer row locked (LO-004).
      */
     private function flagOversold(int $purchaseId): void
     {

@@ -17,6 +17,7 @@ class InstallClassicPackage extends Command
     protected $signature = 'templates:install-classic
         {path : The classic package: a .zip, or the folder dev-packages/classic/<version> (package.json and ast.json at its root are left out)}
         {--actor= : Email of the staff member who runs it (goes to the audit log; the operating system user is always recorded)}
+        {--content-hash= : Expected content hash of the build (64 hex characters: the `content_hash` the build is known to have). When given, a package with another content is refused}
         {--reason= : Why (5 to 500 characters, goes to the audit log)}';
 
     protected $description = 'Install the reserved classic template package from the trusted console (idempotent; does not switch the source)';
@@ -38,6 +39,13 @@ class InstallClassicPackage extends Command
             return self::INVALID;
         }
 
+        $expected = $this->option('content-hash');
+        if ($expected !== null && preg_match('/^[0-9a-f]{64}$/i', trim((string) $expected)) !== 1) {
+            $this->error('--content-hash debe ser un hash de 64 caracteres hexadecimales.');
+
+            return self::INVALID;
+        }
+
         $path = rtrim((string) $this->argument('path'), '/');
         $temp = null;
         if (is_dir($path)) {
@@ -55,7 +63,7 @@ class InstallClassicPackage extends Command
         }
 
         try {
-            $result = $classic->install($path, $reason, $actor);
+            $result = $classic->install($path, $reason, $actor, $expected !== null ? trim((string) $expected) : null);
         } catch (HttpResponseException $e) {
             $this->error((string) $e->getResponse()->getContent());
 

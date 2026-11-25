@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -110,6 +111,12 @@ class AdminPaymentController extends Controller
         return response()->json(['data' => ['id' => $purchase->id, 'needsReview' => false]]);
     }
 
+    /** LO-007: ceilings of the launch offer's editable numbers. */
+    public const OFFER_MAX_SLOTS = 10000;
+
+    /** Slots the admin may add on top of the paid purchases (sales made outside the platform). */
+    public const OFFER_MAX_ADJUSTMENT = 1000;
+
     public function updatePrice(Request $request): JsonResponse
     {
         $data = $request->validate(['priceCents' => ['required', 'integer', 'min:0', 'max:1000000'], 'reason' => AdminAudit::reasonRule()]);
@@ -142,8 +149,9 @@ class AdminPaymentController extends Controller
             'isActive' => ['sometimes', 'boolean'],
             // An offer is a discount (below the list price) but not a typo: at least half of it, and never under Stripe's 50 cents.
             'priceCents' => ['sometimes', 'integer', 'min:' . max(PurchaseService::MIN_CHARGE_CENTS, (int) ceil($plan->price_cents / 2)), 'lt:' . max(1, (int) $plan->price_cents)],
-            'totalSlots' => ['sometimes', 'integer', 'min:0', 'max:100000'],
-            'slotsUsed' => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            // LO-007: realistic ceilings (the offer is a launch of hundreds, not millions); the outside-the-platform correction is smaller still.
+            'totalSlots' => ['sometimes', 'integer', 'min:0', 'max:' . self::OFFER_MAX_SLOTS],
+            'slotsUsed' => ['sometimes', 'integer', 'min:0', 'max:' . self::OFFER_MAX_SLOTS],
             // Lowering the total under what is already used (or setting used above the total) must be said on purpose.
             'allowBelowUsed' => ['sometimes', 'boolean'],
             'reason' => AdminAudit::reasonRule(),
@@ -167,6 +175,9 @@ class AdminPaymentController extends Controller
                         throw ValidationException::withMessages(['slotsUsed' => ['below_paid_purchases']]);
                     }
                     $offer->used_adjustment = $data['slotsUsed'] - $offer->paidCount();
+                    if ($offer->used_adjustment > self::OFFER_MAX_ADJUSTMENT) {
+                        throw ValidationException::withMessages(['slotsUsed' => ['adjustment_too_large']]);
+                    }
                 }
                 if (! ($data['allowBelowUsed'] ?? false) && (int) $offer->total_slots < $offer->usedSlots()) {
                     throw ValidationException::withMessages(['totalSlots' => ['below_used_slots']]);
@@ -233,7 +244,26 @@ class AdminPaymentController extends Controller
 
     public function coupons(): JsonResponse
     {
-        return response()->json(['data' => Coupon::query()->latest('id')->get()]);
+        $offers = LaunchOffer::query()->get()->keyBy('id');
+
+        return response()->json(['data' => Coupon::query()->latest('id')->get()->map(fn (Coupon $c) => $this->couponPayload($c, $offers))->values()]);
+    }
+
+    /**
+     * A coupon as the admin list shows it. A code tied to the launch offer shares its slots, so its own `times_used` says nothing
+     * about them: `sharesOfferSlots` flags it and `offerSlotsUsed` / `offerSlotsTotal` carry the shared count (both null otherwise).
+     *
+     * @param  Collection<int, LaunchOffer>|null  $offers
+     */
+    private function couponPayload(Coupon $coupon, $offers = null): array
+    {
+        $offer = $coupon->launch_offer_id ? ($offers?->get($coupon->launch_offer_id) ?? LaunchOffer::query()->find($coupon->launch_offer_id)) : null;
+
+        return $coupon->toArray() + [
+            'sharesOfferSlots' => $offer !== null,
+            'offerSlotsUsed' => $offer?->usedSlots(),
+            'offerSlotsTotal' => $offer ? (int) $offer->total_slots : null,
+        ];
     }
 
     public function storeCoupon(Request $request): JsonResponse
@@ -261,7 +291,7 @@ class AdminPaymentController extends Controller
             'after' => $coupon->only(['code', 'kind', 'value', 'is_founder', 'max_uses', 'expires_at']),
         ]);
 
-        return response()->json(['data' => $coupon], 201);
+        return response()->json(['data' => $this->couponPayload($coupon)], 201);
     }
 
     public function updateCoupon(Request $request, Coupon $coupon): JsonResponse
@@ -290,6 +320,6 @@ class AdminPaymentController extends Controller
             'reason' => $data['reason'], 'before' => $before, 'after' => $coupon->only($fields),
         ]);
 
-        return response()->json(['data' => $coupon]);
+        return response()->json(['data' => $this->couponPayload($coupon)]);
     }
 }

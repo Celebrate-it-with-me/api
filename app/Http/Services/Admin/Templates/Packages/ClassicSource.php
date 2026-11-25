@@ -41,7 +41,7 @@ class ClassicSource
      *
      * @return array{status: 'installed'|'unchanged', package: TemplatePackage, missingModules: list<string>}
      */
-    public function install(string $zipPath, string $reason, ?User $actor = null): array
+    public function install(string $zipPath, string $reason, ?User $actor = null, ?string $expectedContentHash = null): array
     {
         self::assertReason($reason);
         // Parked and audited in the very transaction that creates the package: no half installed state is ever visible.
@@ -53,7 +53,7 @@ class ClassicSource
                 'actor' => $actor,
                 'after' => ['slug' => $package->slug, 'version' => $package->semver, 'contentHash' => $package->content_hash, 'versions' => $parkedNew, 'console' => self::console()],
             ]);
-        });
+        }, $expectedContentHash);
         $package = $result['package'];
 
         // An older half installation (before this guarantee) is finished by running the command again.
