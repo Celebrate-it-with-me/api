@@ -55,11 +55,12 @@ class PackageInstaller
      * an admin install, with the reserved slug and the engine fonts allowed. It is idempotent: the same version with the
      * same content is a no-op; the same version with other content is refused (bump the version). The admin endpoints can
      * never reach this: they validate with a context that refuses the reserved slugs. `$within` runs inside the same
-     * transaction that creates the package and its drafts, so there is never a half installed package.
+     * transaction that creates the package and its drafts, so there is never a half installed package. `$expectedContentHash`
+     * (CS-008) pins the build: the validated content hash must equal it, or nothing is installed.
      *
      * @return array{status: 'installed'|'unchanged', package: TemplatePackage}
      */
-    public function installTrusted(string $zipPath, string $reason, string $onlySlug, ?callable $within = null): array
+    public function installTrusted(string $zipPath, string $reason, string $onlySlug, ?callable $within = null, ?string $expectedContentHash = null): array
     {
         $manifest = $this->peekManifest($zipPath);
         if (($manifest['slug'] ?? null) !== $onlySlug || ! is_string($manifest['version'] ?? null)) {
@@ -77,6 +78,18 @@ class PackageInstaller
             $existing = TemplatePackage::query()->where('slug', $onlySlug)->where('semver', $manifest['version'])->first();
             [$summary, $meta] = $this->stage->stageTrusted($zipPath, $existing ? $onlySlug : null);
             $token = $summary['stageToken'];
+
+            // CS-008: what the validator actually built must be the slug and version that were announced (the manifest is read twice
+            // above), and, when the operator states the content hash of the build they expect, exactly that build.
+            $built = $meta['build']['json']['manifest'] ?? [];
+            if ($meta['valid'] && (($built['slug'] ?? null) !== $onlySlug || ($built['version'] ?? null) !== $manifest['version'])) {
+                $this->stage->discard($token);
+                throw new \RuntimeException("El manifiesto validado no es «{$onlySlug}» {$manifest['version']}: no se instala.");
+            }
+            if ($meta['valid'] && $expectedContentHash !== null && ! hash_equals(strtolower(trim($expectedContentHash)), (string) ($meta['build']['contentHash'] ?? ''))) {
+                $this->stage->discard($token);
+                throw new \RuntimeException('El hash de contenido del paquete no coincide con el esperado: no se instala.');
+            }
 
             if (! $meta['valid']) {
                 $this->stage->discard($token);

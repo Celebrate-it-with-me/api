@@ -65,6 +65,9 @@ return [
         // Pending launch-offer checkouts one account may hold at once (each holds a slot for an hour): stops one account from
         // draining the offer with abandoned checkouts. An organizer with 2-3 events is fine.
         'offer_max_holds_per_user' => (int) env('PAYMENTS_OFFER_MAX_HOLDS_PER_USER', 2),
+        // LO-010: running LaunchOfferSeeder in production switches the launch offer ON. It only does so with LAUNCH_OFFER_CONFIRM=true
+        // in the environment (a deliberate go-live step); without it the seeder refuses to create the offer there.
+        'launch_offer_confirm' => (bool) env('LAUNCH_OFFER_CONFIRM', false),
     ],
 
     // Stripe Checkout (docs/plans/stripe-checkout-contract-draft.md). Keys only from the environment, never in the repo.

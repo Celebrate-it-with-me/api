@@ -237,3 +237,63 @@ it('cannot be declared on a q-* block or on the root of a layout either', functi
     $r = PackageBuilder::good()->with('sections/closing.html', '<q-closing data-inv-has-photo="true"></q-closing>')->validate();
     expect(PackageBuilder::errors($r))->not->toBe([]);
 });
+
+// CS-009: the output with cover facts is a fixed point too ---------------------------------------------------------------
+
+it('is idempotent with cover facts and with root options together, and with the cover wrapper', function (string $selector) {
+    [$once, $codes] = factcss($selector . '{color:#222}');
+    expect($codes)->toBe([])->and($once)->not->toBeNull();
+    [$twice, $codes] = factcss($once);
+    expect($codes)->toBe([])->and($twice)->toBe($once);
+})->with([
+    'name length' => ['[data-inv-name-len="long"] .pkg-a'],
+    'guest length' => ['[data-inv-guest-len="short"] .pkg-a > .pkg-b'],
+    'has photo' => ['[data-inv-has-photo="true"] .pkg-a'],
+    'two facts' => ['[data-inv-has-photo="true"][data-inv-name-len="mid"] .pkg-a'],
+    'cover wrapper' => ['[data-inv-section="cover"][data-inv-name-len="mid"] .pkg-a'],
+    'option then cover fact' => ['[data-inv-opt-tone="soft"] [data-inv-name-len="long"] .pkg-a'],
+]);
+
+it('still refuses a cover fact as the third compound or after a non-root compound, now that the scope may come first', function (string $selector) {
+    [$out, $codes] = factcss($selector . '{color:#222}');
+    expect($out)->toBeNull()->and($codes)->toBe(['css_selector_forbidden']);
+})->with([
+    'third compound' => ['.pkg-b .pkg-c [data-inv-name-len="long"] .pkg-a'],
+    'after a package element' => ['.pkg-b [data-inv-name-len="long"] .pkg-a'],
+    'scope, then a package element, then the fact' => ['[data-inv-theme="botanical"] .pkg-b [data-inv-name-len="long"] .pkg-a'],
+    'as the subject' => ['[data-inv-theme="botanical"] [data-inv-name-len="long"]'],
+]);
+
+// CS-011: engine hooks are matched by exact value only -----------------------------------------------------------------
+
+it('closes the substring, prefix and presence operators on the engine hooks (data-inv-*, data-q, data-q-*)', function (string $selector) {
+    [$out, $codes] = factcss($selector . '{color:#222}');
+    expect($out)->toBeNull()->and($codes)->toBe(['css_selector_forbidden']);
+})->with([
+    'future fact, prefix' => ['[data-inv-future-fact^="a"] .pkg-a'],
+    'future fact, suffix' => ['[data-inv-future-fact$="a"] .pkg-a'],
+    'future fact, contains' => ['[data-inv-future-fact*="a"] .pkg-a'],
+    'future fact, word' => ['[data-inv-future-fact~="a"] .pkg-a'],
+    'future fact, dash match' => ['[data-inv-future-fact|="a"] .pkg-a'],
+    'future fact, presence' => ['[data-inv-future-fact] .pkg-a'],
+    'future fact, flag' => ['[data-inv-future-fact="a" i] .pkg-a'],
+    'section, prefix' => ['[data-inv-section^="co"] .pkg-a'],
+    'stage, contains' => ['[data-inv-stage*="save"] .pkg-a'],
+    'data-q, prefix' => ['[data-q^="rs"] .pkg-a'],
+    'data-q, presence' => ['[data-q] .pkg-a'],
+    'data-q-x, suffix' => ['[data-q-kind$="x"] .pkg-a'],
+    'the fixed facts keep their own closed grammar' => ['[data-inv-name-len^="lo"] .pkg-a'],
+    'the options too' => ['[data-inv-opt-tone*="so"] .pkg-a'],
+]);
+
+it('keeps the exact-value engine hooks and the other data-* and aria-* operators as they were', function (string $selector) {
+    [$out, $codes] = factcss($selector . '{color:#222}');
+    expect($codes)->toBe([])->and($out)->not->toBeNull();
+})->with([
+    'stage' => ['[data-inv-stage="save_the_date"] .pkg-a'],
+    'section' => ['[data-inv-section="cover"] .pkg-a'],
+    'parity' => ['[data-inv-parity="odd"] .pkg-a'],
+    'data-q exact' => ['[data-q="rsvp"] .pkg-a'],
+    'a package attribute, prefix' => ['.pkg-a[data-guest-kind^="vip"]'],
+    'aria, contains' => ['.pkg-a[aria-label*="x"]'],
+]);

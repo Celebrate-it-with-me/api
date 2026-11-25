@@ -100,7 +100,8 @@ class SelectorScoper
 
         while (true) {
             // Cover facts go in the first compound, or in the second when the first one only holds root facts.
-            $compound = $this->compound($selector, $pos, $count === 0, false, $count === 0 || ($count === 1 && $firstRootFacts));
+            // CS-009: a first compound that is only the scope itself (what this class emits) also counts, so the output is a fixed point.
+            $compound = $this->compound($selector, $pos, $count === 0, false, $count === 0 || ($count === 1 && ($firstRootFacts || $firstRootish)));
             if (isset($compound['error'])) {
                 return $compound;
             }
@@ -421,6 +422,17 @@ class SelectorScoper
         $name = strtolower($m[1]);
         if (! (str_starts_with($name, 'data-') || str_starts_with($name, 'aria-') || in_array($name, self::ATTRS, true))) {
             return ['error' => "atributo «{$name}» fuera de la lista blanca"];
+        }
+        // CS-011: the engine's own hooks (`data-inv-*`, `data-q`, `data-q-*`) are matched by exact value only. The substring and prefix
+        // operators (`^= $= *= ~= |=`), the presence-only form and the flag would let a rule probe values the engine may one day put
+        // there (a guest's name, say) one character at a time through a conditional `url()`. The facts (`data-inv-opt-*`, `name-len`,
+        // `guest-len`, `has-photo`) never get here: `fact()` already closes them to `=` and a list of values.
+        $engineHook = str_starts_with($name, 'data-inv-') || $name === 'data-q' || str_starts_with($name, 'data-q-');
+        if ($engineHook && ($m[2] ?? '') !== '=') {
+            return ['error' => "el atributo del motor «{$name}» solo admite [nombre=\"valor\"] con = (sin ^=, \$=, *=, ~=, |=, flags ni forma sin valor)"];
+        }
+        if ($engineHook && preg_match('/^\[[^\]]*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s\]]+)\s+[iIsS]\s*\]$/', $m[0])) {
+            return ['error' => "el atributo del motor «{$name}» no admite flags"];
         }
         $pos += strlen($m[0]);
 
