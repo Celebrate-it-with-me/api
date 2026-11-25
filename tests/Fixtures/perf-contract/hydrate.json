@@ -120,7 +120,12 @@
             "guestsCount": 9,
             "guestLimit": 300,
             "rsvpResponse": 6,
-            "setupProgress": 0.84
+            "setupProgress": 0.84,
+            "setupProgressKind": "configuration",
+            "setupPending": [
+                "seating",
+                "locations"
+            ]
         },
         {
             "id": 9202,
@@ -242,7 +247,13 @@
             "guestsCount": 2,
             "guestLimit": 30,
             "rsvpResponse": 1,
-            "setupProgress": 0.44
+            "setupProgress": 0.44,
+            "setupProgressKind": "configuration",
+            "setupPending": [
+                "save_the_date",
+                "budget",
+                "locations"
+            ]
         },
         {
             "id": 9203,
@@ -364,7 +375,17 @@
             "guestsCount": 1,
             "guestLimit": 300,
             "rsvpResponse": 1,
-            "setupProgress": 0.32
+            "setupProgress": 0.32,
+            "setupProgressKind": "configuration",
+            "setupPending": [
+                "menus",
+                "memories",
+                "suggested_music",
+                "comments",
+                "seating",
+                "budget",
+                "locations"
+            ]
         }
     ],
     "activeEvent": {
@@ -487,7 +508,12 @@
         "guestsCount": 9,
         "guestLimit": 300,
         "rsvpResponse": 6,
-        "setupProgress": 0.84
+        "setupProgress": 0.84,
+        "setupProgressKind": "configuration",
+        "setupPending": [
+            "seating",
+            "locations"
+        ]
     },
     "menus": [
         {
