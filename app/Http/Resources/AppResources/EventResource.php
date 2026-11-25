@@ -24,6 +24,9 @@ class EventResource extends JsonResource
             'eventType' => $this->event_type_id,
             'startDate' => $this->start_date?->format('m/d/Y H:i'),
             'endDate' => $this->end_date?->format('m/d/Y H:i'),
+            // The same moments as unambiguous ISO 8601 with the event zone's offset (startDate/endDate stay for compatibility).
+            'startsAt' => $this->isoInEventZone($this->start_date),
+            'endsAt' => $this->isoInEventZone($this->end_date),
             'locale' => $this->locale,
             'currency' => $this->currency,
             'timezone' => $this->timezone,
@@ -32,6 +35,9 @@ class EventResource extends JsonResource
             'status' => $this->status,
             'invitationStage' => $this->invitation_stage,
             'customUrlSlug' => $this->custom_url_slug,
+            // The address to share: the public invitation page of the event (it asks each guest for the code); null without a slug.
+            'publicUrl' => $this->publicUrl(),
+
             'publishedAt' => $this->published_at?->toIso8601String(),
             // The UI locks the address field and explains why: links may already be out.
             'slugLocked' => $this->isSlugLocked(),
@@ -49,6 +55,23 @@ class EventResource extends JsonResource
             'setupProgressKind' => 'configuration',
             'setupPending' => $this->pendingSetupModules(),
         ];
+    }
+
+    /** Dates are stored as wall-clock time of the event zone: read them as that and write the zone's offset. */
+    private function isoInEventZone(?\Carbon\CarbonInterface $date): ?string
+    {
+        if (! $date) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($date->format('Y-m-d H:i:s'), $this->timezone ?: 'America/New_York')->toIso8601String();
+    }
+
+    private function publicUrl(): ?string
+    {
+        $base = rtrim((string) config('app.frontend_app.url'), '/');
+
+        return $this->custom_url_slug && $base !== '' ? $base . '/i/' . rawurlencode($this->custom_url_slug) : null;
     }
 
     private function getEventGuestsCount(): int
