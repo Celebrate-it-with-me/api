@@ -78,8 +78,8 @@ it('uses the unified filter names of the server', function (string $expr, bool $
 
 // --- the 21 blocks -------------------------------------------------------------------------------------------------------
 
-it('has the 22 blocks of the catalog, including closing, save-the-date, comments, tables and suggested-music', function () {
-    expect(array_keys(BlockCatalog::BLOCKS))->toHaveCount(22)->toContain('closing', 'save-the-date', 'comments', 'tables', 'suggested-music');
+it('has the 23 blocks of the catalog, including closing, save-the-date, comments, tables and suggested-music', function () {
+    expect(array_keys(BlockCatalog::BLOCKS))->toHaveCount(23)->toContain('closing', 'save-the-date', 'comments', 'tables', 'suggested-music');
 });
 
 it('accepts the frame prop on the blocks that draw a section', function () {
