@@ -103,6 +103,42 @@ function clsPayload(string $slug): array
     return test()->getJson("/api/v1/app/invitation/{$slug}/PKG123")->assertOk()->json('data');
 }
 
+describe('install: trust of the build (CS-008)', function () {
+    it('installs only the build whose content hash was announced, and refuses any other without touching anything', function () {
+        $wrong = str_repeat('a', 64);
+        $call = fn (string $hash) => Artisan::call('templates:install-classic', ['path' => clsPackage()->zip(), '--reason' => 'Instalar la Clásica', '--content-hash' => $hash]);
+
+        expect($call($wrong))->toBe(1)->and(Artisan::output())->toContain('no coincide con el esperado');
+        expect(TemplatePackage::count())->toBe(0)->and(AdminAuditLog::where('action', 'template.classic_package_installed')->count())->toBe(0);
+
+        clsInstall(clsPackage());
+        $hash = TemplatePackage::where('slug', 'classic')->value('content_hash');
+        expect($call(strtoupper($hash)))->toBe(0)->and(Artisan::output())->toContain('Ya estaba instalado, sin cambios')
+            ->and($call($wrong))->toBe(1)->and(TemplatePackage::count())->toBe(1);
+    });
+
+    it('refuses a hash that is not 64 hexadecimal characters before reading anything', function (string $bad) {
+        expect(Artisan::call('templates:install-classic', ['path' => clsPackage()->zip(), '--reason' => 'Instalar la Clásica', '--content-hash' => $bad]))->toBe(2)
+            ->and(TemplatePackage::count())->toBe(0);
+    })->with(['short' => 'abc123', 'not hex' => str_repeat('z', 64)]);
+
+    it('re-affirms that the manifest the validator built is classic, even if the first read said so', function () {
+        $real = app(PackageStage::class);
+        $this->instance(PackageStage::class, Mockery::mock(PackageStage::class, function ($m) use ($real) {
+            $m->shouldReceive('stageTrusted')->andReturnUsing(function (...$args) use ($real) {
+                [$summary, $meta] = $real->stageTrusted(...$args);
+                $meta['build']['json']['manifest']['slug'] = 'botanical'; // what a divergent second read would look like
+
+                return [$summary, $meta];
+            });
+            $m->shouldReceive('discard')->once();
+        }));
+
+        expect(clsInstall(clsPackage()))->toBe(1)->and(Artisan::output())->toContain('El manifiesto validado no es «classic»');
+        expect(TemplatePackage::count())->toBe(0);
+    });
+});
+
 describe('install', function () {
     it('installs the reserved classic package from the console as new, immutable versions and leaves the public untouched', function () {
         $native = [clsTemplate('quinceanera')->current_version_id, clsTemplate('wedding')->current_version_id];
