@@ -1495,6 +1495,31 @@ describe('template picker: tags, description and palettes', function () {
     });
 });
 
+describe('activePreset in the template list', function () {
+    it('is the saved palette only on the current template, null otherwise or without a saved palette', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('galeria', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $get = fn () => collect($this->actingAs($m['owner'])->getJson(edUrl($event, 'templates'))->assertOk()->json('data'));
+
+        expect($get()->every(fn ($t) => array_key_exists('activePreset', $t) && $t['activePreset'] === null))->toBeTrue();
+
+        edPatch($this, $event, $m['owner'], ['look_preset' => 'rosa'])->assertOk();
+        $list = $get();
+        expect($list->firstWhere('slug', 'festival-quinceanera')['activePreset'])->toBe('rosa')
+            ->and($list->firstWhere('slug', 'galeria-quinceanera')['activePreset'])->toBeNull()
+            ->and($list->where('current', false)->pluck('activePreset')->filter()->all())->toBe([]);
+    });
+
+    it('does not leak to another event (404)', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event] = edEvent(['template_id' => edTemplateId('festival')]);
+        [, $other] = edEvent(['template_id' => edTemplateId('festival'), 'custom_url_slug' => 'otro']);
+
+        $this->actingAs($other['owner'])->getJson(edUrl($event, 'templates'))->assertNotFound();
+    });
+});
+
 describe('PUT invitation/template with preset', function () {
     function tpPut($test, Events $event, User $user, array $body)
     {

@@ -85,9 +85,11 @@ class InvitationEditor
     {
         $unlocked = $this->purchases->isUnlocked($event);
         $current = $this->invitations->templateFor($event)->id;
+        $saved = $event->template_config['theme']['preset'] ?? null;
+        $saved = is_string($saved) && $saved !== '' ? $saved : null;
 
         return $this->catalog->availableFor($user, $event)
-            ->map(function (InvitationTemplate $t) use ($unlocked, $current) {
+            ->map(function (InvitationTemplate $t) use ($unlocked, $current, $saved) {
                 $package = $this->livePackage($t->currentVersion?->package);
                 $manifest = (array) ($package?->manifest ?? []);
 
@@ -106,6 +108,7 @@ class InvitationEditor
                     'missingModules' => ModuleSupport::missingFor($package),
                     'hasPresets' => $package !== null && count((array) ($package->tokens['presets'] ?? [])) > 1,
                     'presets' => $this->presets($package),
+                    'activePreset' => $t->id === $current ? $saved : null,
                 ];
             })
             ->sortBy(fn (array $t) => [$t['current'] ? 0 : 1, $t['tier'] === InvitationTemplate::TIER_FREE ? 0 : 1, $t['id']])
