@@ -15,6 +15,16 @@ class BlockCatalog
     ];
 
     /**
+     * Sections whose `editable.json` may carry an `image` field (`bind: {section, setting: "image"}`): the cover (its own
+     * photo, `<q-cover-photo>`) and the two image zones (`<q-section-image>`, one per section). Closed list: widen it with a
+     * minor change and the block's scope.
+     */
+    public const IMAGE_ZONE_SECTIONS = ['cover', 'locations', 'closing'];
+
+    /** Sections that may hold a `<q-section-image>` (the cover has its own photo block). */
+    public const ZONE_SECTIONS = ['locations', 'closing'];
+
+    /**
      * Sections whose behavior lives in a system block: a package that designs `sections/<type>.html` without the block
      * gets a `section_without_block` warning (the file would be a design without functionality). Section type => block.
      */
@@ -33,8 +43,8 @@ class BlockCatalog
     public const MODULE_BLOCK_BY_MODULE = ['comments' => 'comments', 'seating' => 'tables', 'suggested_music' => 'suggested-music'];
 
     /**
-     * The 22 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
-     * occurrences per package file; `scope` = where it may appear (`any`, `layout`, `section:<type>`). All blocks are
+     * The 23 system blocks. Prop types: ['enum', [values]], ['int', min, max], ['bool'], ['pattern', regex]. `max` =
+     * occurrences per package file; `scope` = where it may appear (`any`, `layout`, `section:<type>[|<type>...]`). All blocks are
      * leaves in v1 (no children). `frame` is shared by the blocks that draw a section: `full` = heading, ornament and
      * panel of the engine, `no-title` = without the heading (the package writes its own), `bare` = only the content.
      */
@@ -61,6 +71,8 @@ class BlockCatalog
         'tables' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['inline', 'card']]], 'max' => 1, 'scope' => 'any'],
         'suggested-music' => ['props' => ['frame' => self::FRAME, 'variant' => ['enum', ['list', 'cards']]], 'max' => 1, 'scope' => 'any'],
         'sections' => ['props' => [], 'max' => 1, 'scope' => 'layout'],
+        // The picture the template places in an image zone of a section; the organizer's file never reaches the package.
+        'section-image' => ['props' => ['aspect' => ['enum', ['16:10', '4:3', '1:1', '3:4', '4:5', '21:9']], 'fit' => ['enum', ['cover', 'contain']], 'priority' => ['bool']], 'max' => 1, 'scope' => 'section:locations|closing'],
     ];
 
     private const FRAME = ['enum', ['full', 'no-title', 'bare']];

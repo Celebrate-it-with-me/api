@@ -28,6 +28,7 @@ class EventActivity extends Model
         'menu_item_created' => 'menu', 'menu_item_updated' => 'menu', 'menu_item_deleted' => 'menu',
         'invitation_template_changed' => 'invitation', 'invitation_template_undone' => 'invitation',
         'invitation_cover_uploaded' => 'invitation', 'invitation_cover_removed' => 'invitation',
+        'invitation_image_uploaded' => 'invitation', 'invitation_image_removed' => 'invitation',
         'comment_added' => 'comments', 'music_suggested' => 'music',
     ];
 
@@ -244,6 +245,8 @@ class EventActivity extends Model
             'invitation_template_undone' => __('Invitation template change undone by :user', ['user' => $this->actorName()]),
             'invitation_cover_uploaded' => __('Cover photo of the invitation updated by :user', ['user' => $this->actorName()]),
             'invitation_cover_removed' => __('Cover photo of the invitation removed by :user', ['user' => $this->actorName()]),
+            'invitation_image_uploaded' => __('Picture of a section of the invitation updated by :user', ['user' => $this->actorName()]),
+            'invitation_image_removed' => __('Picture of a section of the invitation removed by :user', ['user' => $this->actorName()]),
             'comment_added' => __('Guest :name left a comment.', ['name' => $this->payload['name'] ?? '']),
             'music_suggested' => __('Guest :name suggested the song ":song".', [
                 'name' => $this->payload['name'] ?? '',
@@ -272,8 +275,8 @@ class EventActivity extends Model
             'guest_rsvp_changed' => 'user-check',
             'invitation_opened' => 'eye',
             'invitation_template_changed', 'invitation_template_undone' => 'edit',
-            'invitation_cover_uploaded' => 'image',
-            'invitation_cover_removed' => 'image-off',
+            'invitation_cover_uploaded', 'invitation_image_uploaded' => 'image',
+            'invitation_cover_removed', 'invitation_image_removed' => 'image-off',
             'comment_added' => 'message-circle',
             'music_suggested' => 'music',
             'menu_created' => 'utensils',

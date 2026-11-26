@@ -170,6 +170,9 @@ class DemoEventSeeder extends Seeder
             'max_pictures' => 20,
         ]));
 
+        // Sample party photos with years that fit a girl turning fifteen (not a leftover screenshot).
+        (new DemoMemoryPhotos)->seed($event, $this->now);
+
         DB::table('event_config_comment')->insert($this->row([
             'event_id' => $event,
             'title' => 'Mensajes para Valentina',

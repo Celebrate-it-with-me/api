@@ -41,10 +41,13 @@ class SelectorScoper
      * The closed list of system hooks a package stylesheet may target (visual properties only): the root, one class per
      * block (`inv-q--<block>`) and the parts of the cover photo (`inv-q-photo__*`). Any other `inv-*` class stays forbidden.
      */
-    private const SYSTEM_CLASS = '/^inv-(root|q--(rsvp|rsvp-fab|gallery|music|countdown|locations|itinerary|dress-code|padrinos|date|names|cover-photo|language-switch|cta|seats|address|guest|closing|save-the-date|comments|tables|suggested-music|sections)|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
+    private const SYSTEM_CLASS = '/^inv-(root|q--(rsvp|rsvp-fab|gallery|music|countdown|locations|itinerary|dress-code|padrinos|date|names|cover-photo|section-image|language-switch|cta|seats|address|guest|closing|save-the-date|comments|tables|suggested-music|sections)|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
 
     /** The cover photo and its parts: decoration, so their size, layout and mask can be designed. */
     private const PHOTO_CLASS = '/^inv-(q--cover-photo|q-photo__[a-z0-9]+(?:-[a-z0-9]+)*)$/';
+
+    /** The picture of an image zone: decoration with a narrower list than the photo (no position, z-index or transform). */
+    private const ZONE_CLASS = '/^inv-q--section-image$/';
 
     /** The only classes a package owns. */
     private const PACKAGE_CLASS = '/^pkg-[a-z0-9_-]{1,59}$/';
@@ -53,7 +56,7 @@ class SelectorScoper
 
     /**
      * Facts the engine publishes as attributes. `data-inv-opt-<id>` sits on the invitation root; `data-inv-name-len`,
-     * `data-inv-guest-len` and `data-inv-has-photo` sit on the cover wrapper (`[data-inv-section="cover"]`). A package
+     * `data-inv-guest-len` and `data-inv-has-photo` sit on the cover wrapper (`[data-inv-section="cover"]`); `data-inv-has-image` on the wrapper of an image zone (`locations`, `closing`). A package
      * may read them only as an ancestor condition of a rule about its own `pkg-*` elements (see `fact()`).
      * Value lists of the fixed facts; the options take theirs from the package's own `variants` and toggles.
      */
@@ -61,6 +64,8 @@ class SelectorScoper
         'data-inv-name-len' => ['short', 'mid', 'long'],
         'data-inv-guest-len' => ['short', 'long'],
         'data-inv-has-photo' => ['true', 'false'],
+        // The image zones (locations, closing): `true` when the organizer's picture is drawn. `has-photo` stays the cover's.
+        'data-inv-has-image' => ['true', 'false'],
     ];
 
     /** Option ids as the CSS can name them (a dot cannot be written without an escape, and escapes are refused). */
@@ -145,7 +150,7 @@ class SelectorScoper
             if ($last['factKind'] !== null) {
                 return ['error' => 'un atributo de hecho (data-inv-opt-*, data-inv-name-len...) solo es una condición: debe ir seguido de un elemento del paquete'];
             }
-            if (! $last['pkg'] || array_intersect($last['kinds'], ['system', 'photo', 'root', 'bare']) !== []) {
+            if (! $last['pkg'] || array_intersect($last['kinds'], ['system', 'photo', 'zone', 'root', 'bare']) !== []) {
                 return ['error' => 'tras un atributo de hecho el sujeto de la regla debe ser un elemento del paquete (clase pkg-* o id pkg-*), nunca un bloque del sistema, la foto, la raíz ni un selector genérico'];
             }
         }
@@ -262,7 +267,7 @@ class SelectorScoper
                 // The scope attribute itself is accepted verbatim: it makes the sanitizer a fixed point (idempotent).
                 if (preg_replace('/\s+/', '', $attr) === '[data-inv-theme="' . $this->slug . '"]') {
                     $hasScopeAttr = true;
-                } elseif (preg_replace('/\s+/', '', strtolower($attr)) === '[data-inv-section="cover"]' || preg_replace('/\s+/', '', strtolower($attr)) === "[data-inv-section='cover']") {
+                } elseif (preg_match('/^\[data-inv-section=(?:"(?:cover|locations|closing)"|\'(?:cover|locations|closing)\')\]$/', preg_replace('/\s+/', '', strtolower($attr)))) {
                     $coverSection = true;
                 } else {
                     $otherQualifier = true;
@@ -319,7 +324,7 @@ class SelectorScoper
                 }
             } elseif ($classes !== [] || $ids !== [] || $otherQualifier || $rootish || $hasInvRoot || $hasScopeAttr || $type !== null) {
                 // The cover facts sit on the cover wrapper: only `[data-inv-section="cover"]` may go with them.
-                return ['error' => 'el compuesto con un hecho de la portada solo puede combinarse con [data-inv-section="cover"]'];
+                return ['error' => 'el compuesto con un hecho de la portada solo puede combinarse con [data-inv-section="cover"], [data-inv-section="locations"] o [data-inv-section="closing"]'];
             }
         } elseif ($coverSection) {
             $coverSection = false;
@@ -337,6 +342,8 @@ class SelectorScoper
         foreach ($classes as $c) {
             if ($c !== 'inv-root' && preg_match(self::PHOTO_CLASS, $c)) {
                 $kinds[] = 'photo';
+            } elseif ($c !== 'inv-root' && preg_match(self::ZONE_CLASS, $c)) {
+                $kinds[] = 'zone';
             } elseif ($c !== 'inv-root' && preg_match(self::SYSTEM_CLASS, $c)) {
                 $kinds[] = 'system';
             } elseif (isset($this->classKinds[$c])) {
@@ -362,7 +369,7 @@ class SelectorScoper
         if ($kinds === []) {
             $kinds = ['free'];
         }
-        $rank = ['free' => 0, 'bare' => 1, 'root' => 2, 'wrapper' => 3, 'photo' => 4, 'system' => 5];
+        $rank = ['free' => 0, 'bare' => 1, 'root' => 2, 'wrapper' => 3, 'photo' => 4, 'zone' => 5, 'system' => 6];
         $kind = 'free';
         foreach ($kinds as $k) {
             if ($rank[$k] > $rank[$kind]) {

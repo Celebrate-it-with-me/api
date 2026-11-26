@@ -96,13 +96,15 @@ class EventPurger
                 ...$paths('save_the_date', ['image_url']),
             ],
             'default' => $paths('theme_assets', ['file_path'], 'event_theme_id', 'event_themes'),
+            // The cover photo and the image zones of the invitation live in their own folder, not in a table: the folder goes whole.
+            'event-media' => [],
         ];
     }
 
     /** @param array<string, list<string>> $files */
     private function deleteFiles(array $files, int $eventId): void
     {
-        $directories = ['sweet-memories' => ["images/event/{$eventId}"], 'public' => ["sound/background-music/{$eventId}"], 'default' => []];
+        $directories = ['sweet-memories' => ["images/event/{$eventId}"], 'public' => ["sound/background-music/{$eventId}"], 'default' => [], 'event-media' => ["images/event/{$eventId}"]];
 
         foreach ($files as $disk => $paths) {
             try {

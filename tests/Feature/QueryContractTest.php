@@ -21,7 +21,11 @@ use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-beforeEach(fn () => $this->seed(DatabaseSeeder::class));
+beforeEach(function () {
+    $this->seed(DatabaseSeeder::class);
+    // The snapshots carry the public address: do not depend on the machine's APP_FRONT_URL.
+    config(['app.frontend_app.url' => 'http://dev.app.cwm.com']);
+});
 
 /** Ids of the seeded plans and types depend on the sequence: replace them with their slug. */
 function contractNormalize(mixed $data, array $types, array $plans): mixed
