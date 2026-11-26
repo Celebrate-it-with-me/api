@@ -82,12 +82,23 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
+            $tooMany = fn (Request $request, array $headers) => response()->json([
+                'message' => __('errors.too_many_attempts'),
+                'code' => 'too_many_attempts',
+            ], 429, $headers);
+
+            // A signed-in user's reads (GET/HEAD) have their own, larger counter: one visit to the Inicio is ~14 reads,
+            // so 120 a minute was spent by 4-8 reloads or event switches (B3). Writes keep the 120 counter they had
+            // (same key), anonymous traffic stays per IP at 120, and every route-specific limit still applies on top.
+            if ($request->user() !== null && $request->isMethodSafe()) {
+                return Limit::perMinute((int) config('app.api_read_rate_limit_per_minute', 300))
+                    ->by('api-read|user:' . $request->user()->id)
+                    ->response($tooMany);
+            }
+
             return Limit::perMinute((int) config('app.api_rate_limit_per_minute', 120))
                 ->by($request->user()?->id ?: $request->ip())
-                ->response(fn (Request $request, array $headers) => response()->json([
-                    'message' => __('errors.too_many_attempts'),
-                    'code' => 'too_many_attempts',
-                ], 429, $headers));
+                ->response($tooMany);
         });
 
         // Unnamed `throttle:N,M` shares one counter per IP/user across ALL such routes (the signature has no route),
