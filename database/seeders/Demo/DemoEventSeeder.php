@@ -191,6 +191,8 @@ class DemoEventSeeder extends Seeder
             'Con mucho cariño desde la distancia. ¡Feliz cumpleaños número 15!',
         ]);
 
+        $this->activity($event, $owner, $guestIds);
+
         DB::table('event_collaboration_invites')->insert($this->row([
             'event_id' => $event,
             'email' => 'tia.elena@example.com',
@@ -648,6 +650,39 @@ class DemoEventSeeder extends Seeder
                 'is_pinned' => $i === 0,
                 'is_favorite' => $i === 1,
             ]));
+        }
+    }
+
+    /**
+     * A few rows of "Actividad reciente", in the same shape the app writes them (EventActivityLogger): guests are
+     * the actor of their own RSVP and opening, the owner of the import. Dates match the guests' `rsvp_status_date`.
+     */
+    private function activity(int $event, int $ownerId, array $guests): void
+    {
+        $guest = fn (string $name) => collect($guests)->firstWhere('name', $name)['id'];
+        $companions = fn (string $name) => collect($guests)->where('parent', $guest($name))->count();
+
+        // type, actor alias, actor id, payload, when
+        $rows = [
+            ['guests_imported', 'user', $ownerId, ['count' => 24, 'families' => 24], $this->now->copy()->subDays(14)->setTime(18, 20)],
+            ['guest_declined', 'guest', $guest('Javier Montes'), ['name' => 'Javier Montes'], $this->now->copy()->subDays(3)],
+            ['guest_confirmed', 'guest', $guest('Héctor Fernández'), ['name' => 'Héctor Fernández', 'companions' => $companions('Héctor Fernández')], $this->now->copy()->subDays(2)],
+            ['guest_confirmed', 'guest', $guest('Rosa Fernández'), ['name' => 'Rosa Fernández', 'companions' => $companions('Rosa Fernández')], $this->now->copy()->subDay()],
+            ['invitation_opened', 'guest', $guest('Fernando Vidal'), ['name' => 'Fernando Vidal'], $this->now->copy()->subHours(5)],
+        ];
+
+        foreach ($rows as [$type, $actorType, $actorId, $payload, $when]) {
+            DB::table('event_activities')->insert([
+                'event_id' => $event,
+                'type' => $type,
+                'actor_type' => $actorType, // morph map alias (Relation::enforceMorphMap)
+                'actor_id' => $actorId,
+                'target_type' => null,
+                'target_id' => null,
+                'payload' => json_encode($payload),
+                'created_at' => $when,
+                'updated_at' => $when,
+            ]);
         }
     }
 

@@ -2,6 +2,7 @@
 
 use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\AppServices\Hydrate\HydrationService;
+use App\Models\EventActivity;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -128,6 +129,21 @@ describe('demo data', function () {
 
         expect(Events::count())->toBe(3)
             ->and(User::whereIn('email', ['marisol@cwm.test', 'carlos@cwm.test', 'lucia@cwm.test', 'daniel@cwm.test'])->count())->toBe(4);
+    });
+
+    it('gives Valentina a recent activity the dashboard can put into words', function () {
+        $xv = Events::where('custom_url_slug', 'xv-de-valentina')->first();
+        $owner = User::where('email', 'marisol@cwm.test')->first();
+
+        $feed = $this->actingAs($owner)->getJson("/api/v1/app/event/{$xv->id}/dashboard-logs")->assertOk()->json('data');
+
+        expect($feed)->toHaveCount(5)
+            ->and(collect($feed)->pluck('type')->all())->toBe(['invitation_opened', 'guest_confirmed', 'guest_confirmed', 'guest_declined', 'guests_imported'])
+            ->and($feed[0]['params']['name'])->toBe('Fernando Vidal')
+            ->and($feed[1]['params'])->toMatchArray(['name' => 'Rosa Fernández', 'companions' => 1])
+            ->and($feed[2]['params'])->toMatchArray(['name' => 'Héctor Fernández', 'companions' => 2])
+            ->and($feed[4]['params'])->toMatchArray(['actor' => $owner->name, 'count' => 24]);
+        expect(EventActivity::where('event_id', '!=', $xv->id)->count())->toBe(0);
     });
 
     it('does not repeat guest codes inside an event', function () {
