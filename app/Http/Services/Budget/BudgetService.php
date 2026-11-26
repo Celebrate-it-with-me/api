@@ -8,7 +8,9 @@ use App\Models\BudgetPayment;
 use App\Models\EventBudget;
 use App\Models\Events;
 use App\Observers\BudgetItemObserver;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The budget of an event. The math lives here, never in the screens: what each item owes, what has been paid,
@@ -18,22 +20,67 @@ class BudgetService
 {
     public function __construct(private readonly BudgetCatalog $catalog) {}
 
-    /** The event's budget; the first time, it is created with the starting categories for its kind of event. */
+    /** The event's budget if it was already created, without writing anything (the read path of a viewer). */
+    public function existingFor(Events $event): ?EventBudget
+    {
+        return EventBudget::query()->where('event_id', $event->id)->first();
+    }
+
+    /**
+     * The event's budget; the first time, it is created with the starting categories for its kind of event.
+     * The budget and its categories are written in one transaction, so a failure never leaves a budget without
+     * categories. Two first loads at once (two tabs, the home and the budget screen) race on the UNIQUE
+     * `event_budgets.event_id`: the loser rolls back and reads the winner's budget instead of failing with a 500.
+     */
     public function budgetFor(Events $event): EventBudget
     {
-        $budget = EventBudget::query()->where('event_id', $event->id)->first();
+        return $this->existingFor($event) ?? $this->createFor($event);
+    }
 
-        if ($budget) {
-            return $budget;
+    private function createFor(Events $event): EventBudget
+    {
+        try {
+            return DB::transaction(function () use ($event) {
+                $budget = EventBudget::query()->create(['event_id' => $event->id, 'budget_cap' => null]);
+
+                foreach ($this->starterCategories($event) as $order => $entry) {
+                    $budget->categories()->create(['name' => $entry['name'], 'slug' => $entry['slug'], 'sort_order' => $order + 1, 'is_default' => true]);
+                }
+
+                return $budget;
+            });
+        } catch (UniqueConstraintViolationException) {
+            return EventBudget::query()->where('event_id', $event->id)->firstOrFail();
         }
+    }
 
-        $budget = EventBudget::query()->create(['event_id' => $event->id, 'budget_cap' => null]);
+    /** @return list<array{name: string, slug: string}> */
+    private function starterCategories(Events $event): array
+    {
+        return array_values($this->catalog->entries($event->eventType?->slug, $event->locale ?? 'es'));
+    }
 
-        foreach ($this->catalog->entries($event->eventType?->slug, $event->locale ?? 'es') as $order => $entry) {
-            $budget->categories()->create(['name' => $entry['name'], 'slug' => $entry['slug'], 'sort_order' => $order + 1, 'is_default' => true]);
-        }
+    /**
+     * The summary of a budget that does not exist yet, with the same shape as `summary()` and nothing persisted:
+     * what a member who cannot edit (a viewer) sees before an owner or editor opens the budget. `id` is null and
+     * so are the ids of the starting categories, which only exist once the budget is created.
+     *
+     * @return array<string, mixed>
+     */
+    public function draftSummary(Events $event): array
+    {
+        $totals = $this->totals(collect());
 
-        return $budget;
+        return [
+            'id' => null,
+            'currency' => $event->currency ?: 'USD',
+            'cap' => null,
+            'totals' => $totals + ['overCap' => false, 'capLeft' => null] + $this->capComparison(null, $totals) + ['overdueCount' => 0],
+            'categories' => array_map(fn (array $entry, int $order) => [
+                'id' => null, 'name' => $entry['name'], 'sortOrder' => $order + 1, 'itemCount' => 0, 'totals' => $totals,
+            ], $this->starterCategories($event), array_keys($this->starterCategories($event))),
+            'uncategorized' => ['itemCount' => 0, 'totals' => $totals],
+        ];
     }
 
     /** @return Collection<int, BudgetItem> */
@@ -182,19 +229,19 @@ class BudgetService
     }
 
     /** The budget as a spreadsheet: one row per item, in the event's language. @return list<list<string|float>> */
-    public function exportRows(Events $event, EventBudget $budget): array
+    public function exportRows(Events $event, ?EventBudget $budget): array
     {
         $english = ($event->locale ?? 'es') === 'en';
         $statuses = $english
             ? ['unpaid' => 'Unpaid', 'partial' => 'Partial', 'paid' => 'Paid', 'overdue' => 'Overdue']
             : ['unpaid' => 'Sin pagar', 'partial' => 'Parcial', 'paid' => 'Pagado', 'overdue' => 'Vencido'];
-        $names = $budget->categories()->pluck('name', 'id');
+        $names = $budget ? $budget->categories()->pluck('name', 'id') : collect();
 
         $rows = [$english
             ? ['Category', 'Item', 'Vendor', 'Phone', 'Estimated', 'Agreed', 'Paid', 'Remaining', 'Status', 'Due date']
             : ['Categoría', 'Concepto', 'Proveedor', 'Teléfono', 'Estimado', 'Acordado', 'Pagado', 'Pendiente', 'Estado', 'Fecha límite']];
 
-        foreach ($this->items($budget) as $item) {
+        foreach ($budget ? $this->items($budget) : [] as $item) {
             $rows[] = [
                 $names[$item->category_id] ?? '',
                 $item->title,
