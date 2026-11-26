@@ -28,21 +28,39 @@ final class CoverPhoto
 
     private const SHARE_MAX_BYTES = 300_000;
 
-    private const PATH = '#^images/event/(\d+)/cover/([0-9a-z]{26})-(\d{2,5})x(\d{2,5})\.webp$#';
+    /** Folder of the cover photo; the image zones use `zone-<section>` (see ZONE_SECTIONS). */
+    public const COVER_FOLDER = 'cover';
+
+    /** The sections that can hold an image zone: each has a folder of its own, `zone-<section>`. */
+    public const ZONE_SECTIONS = ['locations', 'closing'];
+
+    private const PATH = '#^images/event/(\d+)/(cover|zone-(?:locations|closing))/([0-9a-z]{26})-(\d{2,5})x(\d{2,5})\.webp$#';
 
     private const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
     public function __construct(private readonly ImageManager $images) {}
 
-    /** The stored path of an `upload:` value, only when it is in the folder of this event. */
-    public static function pathFor(string $value, int $eventId): ?string
+    /**
+     * The stored path of an `upload:` value, only when it is in the folder of this event. With `$section`, also only when
+     * it is in the folder of that section (`cover`, or `zone-<section>`): a picture of one zone cannot be bound to another.
+     */
+    public static function pathFor(string $value, int $eventId, ?string $section = null): ?string
     {
         if (! str_starts_with($value, self::PREFIX)) {
             return null;
         }
         $path = substr($value, strlen(self::PREFIX));
+        if (preg_match(self::PATH, $path, $m) !== 1 || (int) $m[1] !== $eventId) {
+            return null;
+        }
 
-        return preg_match(self::PATH, $path, $m) === 1 && (int) $m[1] === $eventId ? $path : null;
+        return $section === null || $m[2] === self::folderFor($section) ? $path : null;
+    }
+
+    /** The folder a section's picture lives in: the cover's own, or `zone-<section>`. */
+    public static function folderFor(string $section): string
+    {
+        return $section === 'cover' ? self::COVER_FOLDER : 'zone-' . $section;
     }
 
     public static function thumbPath(string $path): string
@@ -59,7 +77,7 @@ final class CoverPhoto
     /** @return array{width: int, height: int}|null the size of the stored photo, kept in its name */
     public static function dimensions(string $path): ?array
     {
-        return preg_match(self::PATH, $path, $m) === 1 ? ['width' => (int) $m[3], 'height' => (int) $m[4]] : null;
+        return preg_match(self::PATH, $path, $m) === 1 ? ['width' => (int) $m[4], 'height' => (int) $m[5]] : null;
     }
 
     /**
@@ -67,8 +85,11 @@ final class CoverPhoto
      *
      * @throws ValidationException `errors.photo[0]` = required | not_an_image | unsupported_type | too_large | too_small | too_many_pixels | corrupt
      */
-    public function store(int $eventId, ?UploadedFile $file, int $minWidth = 0, ?string $focus = null): array
+    public function store(int $eventId, ?UploadedFile $file, int $minWidth = 0, ?string $focus = null, string $section = 'cover'): array
     {
+        if ($section !== 'cover' && ! in_array($section, self::ZONE_SECTIONS, true)) {
+            throw new \InvalidArgumentException('Unknown image zone.');
+        }
         $max = (int) config('invitation.cover.max_bytes');
 
         if ($file === null) {
@@ -127,7 +148,7 @@ final class CoverPhoto
         }
 
         // A new name every time: nothing is overwritten, an old cache cannot show the previous photo, and names cannot be guessed.
-        $path = sprintf('images/event/%d/cover/%s-%dx%d.webp', $eventId, strtolower((string) Str::ulid()), $width, $height);
+        $path = sprintf('images/event/%d/%s/%s-%dx%d.webp', $eventId, self::folderFor($section), strtolower((string) Str::ulid()), $width, $height);
         $disk = Storage::disk(self::DISK);
         $options = ['visibility' => 'public', 'ContentType' => 'image/webp', 'CacheControl' => 'public, max-age=31536000, immutable'];
         $disk->put($path, $coverBytes, $options);
@@ -137,8 +158,10 @@ final class CoverPhoto
             $disk->delete($path);
             throw $e;
         }
-        // The preview image is a convenience: when it cannot be made now, it is made on the first request that needs it.
-        $this->makeShare($path, $focus);
+        // The preview image is a convenience (only the cover has one): when it cannot be made now, it is made on the first request that needs it.
+        if ($section === 'cover') {
+            $this->makeShare($path, $focus);
+        }
 
         return ['path' => $path, 'width' => $width, 'height' => $height, 'bytes' => strlen($coverBytes)];
     }

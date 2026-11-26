@@ -132,6 +132,7 @@ class TemplatePackageValidator
         $seenIds = [];
         $presentBlocks = [];
         $warnedSectionBlocks = [];
+        $zoneBlocks = [];
         $firstFold = [];
         foreach ($files as $path => $bytes) {
             if (! str_ends_with($path, '.html')) {
@@ -160,6 +161,9 @@ class TemplatePackageValidator
                     $report->warning($path, 'section_without_block', 'Esta sección no incluye su bloque <q-' . BlockCatalog::SECTION_BLOCKS[$type] . '>: sin él no hay funcionalidad.');
                 }
                 $presentBlocks += array_fill_keys(array_keys($built['blocks']), true);
+                if ($kind === 'section' && isset($built['blocks']['section-image'])) {
+                    $zoneBlocks[$type] = $path;
+                }
                 $artifacts['ast'][$path] = $built['ast'];
                 $classKinds = $this->mergeKinds($classKinds, $built['classKinds']);
                 $offset = count($htmlNodes);
@@ -179,6 +183,8 @@ class TemplatePackageValidator
                 }
             }
         }
+
+        $this->zoneCrossChecks($json['editable.json'] ?? null, $zoneBlocks, $report);
 
         foreach (BlockCatalog::MODULE_BLOCKS as $block) {
             if (! isset($presentBlocks[$block]) && ! isset($warnedSectionBlocks[$block])) {
@@ -212,6 +218,30 @@ class TemplatePackageValidator
             if (str_starts_with($path, 'assets/') && in_array($ext, ['webp', 'png', 'jpg', 'jpeg', 'woff2'], true)) {
                 $artifacts['blobs'][$path] = $bytes;
             }
+        }
+    }
+
+    /**
+     * An image zone is two halves: the field of `editable.json` and the `<q-section-image>` of the section file. One
+     * without the other is a dead field or a block that never shows anything: warnings, never errors (an older package
+     * keeps installing).
+     *
+     * @param  array<string, string>  $zoneBlocks  section type => file that holds the block
+     */
+    private function zoneCrossChecks(mixed $editable, array $zoneBlocks, Report $report): void
+    {
+        $declared = [];
+        foreach (is_array($editable) && is_array($editable['fields'] ?? null) ? $editable['fields'] : [] as $field) {
+            $bind = is_array($field) && is_array($field['bind'] ?? null) ? $field['bind'] : [];
+            if (($field['type'] ?? null) === 'image' && ($bind['setting'] ?? null) === 'image' && in_array($bind['section'] ?? null, BlockCatalog::ZONE_SECTIONS, true)) {
+                $declared[$bind['section']] = true;
+            }
+        }
+        foreach (array_diff_key($declared, $zoneBlocks) as $type => $_) {
+            $report->warning('editable.json', 'editable_zone_without_block', "El campo de imagen de «{$type}» no se verá: sections/{$type}.html no incluye <q-section-image>.", null, (string) $type);
+        }
+        foreach (array_diff_key($zoneBlocks, $declared) as $type => $path) {
+            $report->warning($path, 'zone_image_without_field', "<q-section-image> no dibujará nada: editable.json no declara un campo de imagen para «{$type}» (bind: section {$type}, setting image).", null, (string) $type);
         }
     }
 
@@ -359,10 +389,10 @@ class TemplatePackageValidator
         return is_string($text) && ($text !== '' || ! $required) && mb_strlen($text) <= $max && ! preg_match('/[<>\x00-\x1F\x7F]/', $text);
     }
 
-    /** `{es, en}` of plain texts up to `$max` characters each. */
-    private function plainPair(mixed $pair, int $max): bool
+    /** `{es, en}` of plain texts up to `$max` characters each (`$mayBeEmpty`: an empty text is a valid answer, as in a decorative `alt`). */
+    private function plainPair(mixed $pair, int $max, bool $mayBeEmpty = false): bool
     {
-        return is_array($pair) && $this->plain($pair['es'] ?? null, $max) && $this->plain($pair['en'] ?? null, $max);
+        return is_array($pair) && $this->plain($pair['es'] ?? null, $max, ! $mayBeEmpty) && $this->plain($pair['en'] ?? null, $max, ! $mayBeEmpty);
     }
 
     /**
@@ -704,6 +734,7 @@ class TemplatePackageValidator
         $variants = is_array($manifest['variants'] ?? null) ? $manifest['variants'] : [];
         $this->currentEditableIds = array_values(array_filter(array_column(array_filter($fields, 'is_array'), 'id'), 'is_string'));
         $seen = [];
+        $imageSections = [];
         foreach ($fields as $i => $field) {
             if (! is_array($field)) {
                 $report->error($f, 'editable_invalid', "fields.{$i} debe ser un objeto.");
@@ -729,6 +760,9 @@ class TemplatePackageValidator
                 if (isset($field[$key]) && (! is_string($field[$key]) || ! preg_match($re, $field[$key]))) {
                     $report->error($f, 'editable_invalid', "fields.{$i}.{$key} inválido.");
                 }
+            }
+            if (isset($field['alt']) && (! $this->plainPair($field['alt'], 160, true) || $type !== 'image')) {
+                $report->error($f, 'editable_invalid', "fields.{$i}.alt: solo en campos de imagen, es y en, texto plano de hasta 160 caracteres.");
             }
             if (isset($field['minWidth']) && (! is_int($field['minWidth']) || $field['minWidth'] < 1 || $field['minWidth'] > 8000)) {
                 $report->error($f, 'editable_invalid', "fields.{$i}.minWidth debe ser un entero entre 1 y 8000.");
@@ -770,6 +804,13 @@ class TemplatePackageValidator
                     $report->error($f, 'editable_bind_unknown', "fields.{$i}: choices debe usar valores de la variante «{$bind['option']}» del manifiesto.");
                 }
             }
+            if ($type === 'image' && is_array($bind) && isset($bind['section'], $bind['setting'])) {
+                $key = (string) $bind['section'];
+                if (isset($imageSections[$key])) {
+                    $report->error($f, 'editable_image_duplicate', "fields.{$i}: la sección «{$key}» ya tiene un campo de imagen; es una imagen por sección.", null, $key);
+                }
+                $imageSections[$key] = true;
+            }
             if ($type === 'text') {
                 foreach (['es', 'en'] as $lang) {
                     if (isset($field['max'][$lang]) && (! is_int($field['max'][$lang]) || $field['max'][$lang] < 1 || $field['max'][$lang] > 1000)) {
@@ -792,7 +833,8 @@ class TemplatePackageValidator
                 return false;
             }
             if (isset($bind['setting'])) {
-                return $type === 'image' && $bind['setting'] === 'image' && $keys === (isset($bind['focus']) ? ['focus', 'section', 'setting'] : ['section', 'setting'])
+                // An image only where the engine has a place to draw it: the cover, or an image zone.
+                return $type === 'image' && in_array($section, BlockCatalog::IMAGE_ZONE_SECTIONS, true) && $bind['setting'] === 'image' && $keys === (isset($bind['focus']) ? ['focus', 'section', 'setting'] : ['section', 'setting'])
                     && (! isset($bind['focus']) || $bind['focus'] === 'focus');
             }
 
@@ -1036,7 +1078,7 @@ class TemplatePackageValidator
     /** @param array<string, string> $a @param array<string, string> $b */
     private function mergeKinds(array $a, array $b): array
     {
-        $rank = ['wrapper' => 0, 'photo' => 1, 'system' => 2];
+        $rank = ['wrapper' => 0, 'photo' => 1, 'zone' => 2, 'system' => 3];
         foreach ($b as $k => $kind) {
             if (! isset($a[$k]) || $rank[$kind] > $rank[$a[$k]]) {
                 $a[$k] = $kind;

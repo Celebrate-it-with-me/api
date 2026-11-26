@@ -110,6 +110,16 @@ class CssSanitizer
         'opacity', 'inline-size', 'block-size', 'transform', 'translate', 'rotate', 'scale', 'position', 'top', 'right', 'bottom', 'left', 'inset', 'z-index',
     ];
 
+    /**
+     * What the picture of an image zone (`inv-q--section-image`, or a `pkg-*` class on `<q-section-image>`) may carry besides
+     * the visual properties: its size inside the flow, its crop and a soft edge. No position, z-index, transform, display,
+     * overflow, pointer-events or animation: the picture stays in the flow and can never sit over a control.
+     */
+    private const ZONE_EXTRA = [
+        'width', 'max-width', 'inline-size', 'max-inline-size', 'min-height', 'min-block-size', 'aspect-ratio', 'object-fit',
+        'object-position', 'opacity', 'mask-image', 'mask-size', 'mask-position', 'mask-repeat', 'clip-path', 'filter',
+    ];
+
     /** Extra properties for tag-only / universal subjects (they may match any element, so no hiding or layout escape). */
     private const BARE_EXTRA = [
         'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'box-sizing', 'object-fit', 'object-position',
@@ -121,7 +131,7 @@ class CssSanitizer
     ];
 
     /** Subjects that can reach a system block (or the whole page): the stricter checks apply to them. */
-    private const RESTRICTED = ['root', 'bare', 'wrapper', 'photo', 'system'];
+    private const RESTRICTED = ['root', 'bare', 'wrapper', 'photo', 'zone', 'system'];
 
     /** What the page root (`.inv-root`, `body`, `html`, `:root`) may carry: color, background and typography. */
     private const ROOT_SAFE = [
@@ -834,7 +844,7 @@ class CssSanitizer
         if (! $infinite) {
             return;
         }
-        $reach = $this->pseudoRule ? array_intersect($kinds, ['system']) : array_intersect($kinds, ['system', 'wrapper', 'root', 'bare', 'photo']);
+        $reach = $this->pseudoRule ? array_intersect($kinds, ['system']) : array_intersect($kinds, ['system', 'wrapper', 'root', 'bare', 'photo', 'zone']);
         if ($reach !== [] || $fullscreen) {
             $this->report->error($this->file, 'animation_too_fast', 'Una animación infinita no puede aplicarse a un bloque del sistema, a lo que lo contiene, a la raíz, a un selector genérico ni a un elemento a pantalla completa; úsala en ::before/::after o en un elemento decorativo pkg-* pequeño.', $line);
 
@@ -897,6 +907,7 @@ class CssSanitizer
 
         if ((in_array('system', $kinds, true) && ! in_array($base, self::SYSTEM_SAFE, true))
             || (in_array('photo', $kinds, true) && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::PHOTO_EXTRA, true))
+            || (in_array('zone', $kinds, true) && ! in_array($base, self::SYSTEM_SAFE, true) && ! in_array($base, self::ZONE_EXTRA, true))
             || (in_array('root', $kinds, true) && ! in_array($base, self::ROOT_SAFE, true))) {
             $this->report->error($this->file, 'css_forbidden_property', in_array('root', $kinds, true)
                 ? 'La raíz de la invitación (.inv-root, body, html, :root) solo admite color, fondo y tipografía.'
@@ -1013,6 +1024,9 @@ class CssSanitizer
                 }
             }
         }
+        if (in_array('zone', $kinds, true)) {
+            $this->zoneCheck($d, $base, $text, $fns, $deny);
+        }
         if (in_array($base, ['letter-spacing', 'word-spacing'], true)) {
             foreach ($this->sizes($value) as $size) {
                 if (abs($size->getSize()) > (in_array(strtolower((string) $size->getUnit()), ['em', 'rem'], true) ? 2 : 20)) {
@@ -1032,6 +1046,69 @@ class CssSanitizer
                 if (abs($size->getSize()) > (in_array(strtolower((string) $size->getUnit()), ['em', 'rem'], true) ? 8 : 100)) {
                     $deny('Sombra o contorno desmesurado: cubriría a los bloques vecinos.');
                     break;
+                }
+            }
+        }
+    }
+
+    /**
+     * The values an image zone may take (the property list is already closed): a picture that stays inside its column, a
+     * bounded height, a filter that does not turn it into a hole, and nothing that loads another file.
+     *
+     * @param  list<string>  $fns
+     * @param  callable(string): mixed  $deny
+     */
+    private function zoneCheck(Declaration $d, string $base, string $text, array $fns, callable $deny): void
+    {
+        if (in_array($base, ['width', 'max-width', 'inline-size', 'max-inline-size', 'min-height', 'min-block-size'], true)) {
+            if (array_intersect($fns, ['calc', 'var', 'env', 'attr', 'min', 'max', 'clamp']) !== []) {
+                $deny('El tamaño de una zona de imagen solo admite valores literales (sin calc(), var(), min(), max() ni clamp()).');
+
+                return;
+            }
+            $height = in_array($base, ['min-height', 'min-block-size'], true);
+            foreach ($this->sizes($d->getValue()) as $size) {
+                $v = $size->getSize();
+                $limit = match (strtolower((string) $size->getUnit())) {
+                    'px' => $height ? 800 : 1200,
+                    'em', 'rem' => $height ? 50 : 75,
+                    '%' => $height ? 0 : 100,
+                    'vw' => $height ? 0 : 100,
+                    'vh', 'svh', 'dvh', 'lvh' => $height ? 70 : 0,
+                    default => 0,
+                };
+                if ($v < 0 || $v > $limit) {
+                    $deny($height
+                        ? 'La altura mínima de una zona de imagen llega a 70 svh (800 px, 50 rem) como máximo.'
+                        : 'El ancho de una zona de imagen llega a 100 % o 100 vw (1200 px, 75 rem) como máximo.');
+
+                    return;
+                }
+            }
+        }
+        if ($base === 'filter') {
+            if (str_contains($text, 'url(') || preg_match('/\b(?:var|calc|env|attr)\(/', $text)) {
+                $deny('El filtro de una zona de imagen no puede cargar otro archivo ni usar var() o calc().');
+
+                return;
+            }
+            if (preg_match_all('/blur\(\s*([0-9.]+)\s*(px|rem|em)?\s*\)/', $text, $m, PREG_SET_ORDER)) {
+                foreach ($m as $blur) {
+                    $px = (float) $blur[1] * (($blur[2] ?? 'px') === 'px' ? 1 : 16);
+                    if ($px > 8) {
+                        $deny('blur() de una zona de imagen llega a 8 px como máximo.');
+
+                        return;
+                    }
+                }
+            }
+            if (preg_match_all('/brightness\(\s*([0-9.]+)(%?)\s*\)/', $text, $m, PREG_SET_ORDER)) {
+                foreach ($m as $b) {
+                    if ((float) $b[1] / ($b[2] === '%' ? 100 : 1) < 0.4) {
+                        $deny('brightness() de una zona de imagen no baja de 0,4.');
+
+                        return;
+                    }
                 }
             }
         }

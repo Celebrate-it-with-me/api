@@ -38,7 +38,7 @@ final class JsonPruner
                 'schema' => true,
                 'groups' => ['*' => ['id' => true, 'label' => self::LABEL]],
                 'fields' => ['*' => [
-                    'id' => true, 'type' => true, 'group' => true, 'label' => self::LABEL, 'help' => self::LABEL,
+                    'id' => true, 'type' => true, 'group' => true, 'label' => self::LABEL, 'help' => self::LABEL, 'alt' => self::LABEL,
                     'bind' => ['section' => true, 'setting' => true, 'focus' => true, 'field' => true, 'theme' => true, 'option' => true],
                     'aspect' => true, 'minWidth' => true, 'required' => true, 'plan' => true, 'fallbackSlot' => true,
                     'multiline' => true, 'max' => self::LABEL, 'default' => true,

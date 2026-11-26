@@ -132,7 +132,13 @@ class InvitationEditor
         }
         $photo = $this->coverOverride($config);
         if ($photo !== null) {
-            $keeps[] = ['kind' => 'cover_photo', 'editable' => collect($targetFields)->contains(fn ($f) => ($f['type'] ?? null) === 'image')];
+            $keeps[] = ['kind' => 'cover_photo', 'editable' => collect($targetFields)->contains(fn ($f) => ($f['type'] ?? null) === 'image' && ($f['bind']['section'] ?? null) === 'cover')];
+        }
+        // The picture of an image zone stays with the event; the new template shows it only when it has the zone.
+        foreach (CoverPhoto::ZONE_SECTIONS as $zone) {
+            if ($this->coverOverride($config, ['bind' => ['section' => $zone, 'setting' => 'image']]) !== null) {
+                $keeps[] = ['kind' => 'section_image', 'section' => $zone, 'editable' => collect($targetFields)->contains(fn ($f) => ($f['type'] ?? null) === 'image' && ($f['bind']['section'] ?? null) === $zone)];
+            }
         }
 
         $resets = [];
@@ -582,6 +588,107 @@ class InvitationEditor
         $event->refresh()->unsetRelation('template');
     }
 
+    // ---------------------------------------------------------------- image zones
+
+    /**
+     * Uploads the picture of an image zone (`locations`, `closing`): the field is one of the active package's image
+     * fields, and the file goes through the same checks and re-encoding as the cover photo, into the zone's own folder.
+     *
+     * @return array{url: string, thumbUrl: string, width: int, height: int, focus: ?string, bytes: int}
+     */
+    public function storeImage(Events $event, User $actor, string $fieldId, ?UploadedFile $file, ?string $focus): array
+    {
+        $this->assertWritable($event);
+        $field = $this->zoneField($this->context($event)['fields'], $fieldId);
+        $section = (string) $field['bind']['section'];
+        if (($field['plan'] ?? 'free') === 'full' && ! $this->purchases->isUnlocked($event)) {
+            throw InvitationError::forbidden('plan_required', 'Esta personalización es parte del evento completo.');
+        }
+        if ($focus !== null && preg_match('/^\d{1,3}% \d{1,3}%$/', $focus) !== 1) {
+            throw ValidationException::withMessages(['focus' => ['invalid_focus']]);
+        }
+
+        $stored = $this->cover->store($event->id, $file, (int) ($field['minWidth'] ?? 0), $focus, $section);
+        $previous = null;
+        try {
+            DB::transaction(function () use ($event, $field, $stored, $focus, &$previous) {
+                $row = Events::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
+                $previous = $this->coverOverride($row->template_config ?? [], $field);
+                $config = $this->binding->merge($row->template_config ?? [], $this->binding->fragment($field, CoverPhoto::PREFIX . $stored['path']));
+                $config = $this->binding->merge($config, $this->binding->focusFragment($field, $focus));
+                if (strlen((string) json_encode($config)) > self::CONFIG_MAX_BYTES) {
+                    throw ValidationException::withMessages(['fields' => ['config_too_large']]);
+                }
+                $row->template_config = $config;
+                $row->save();
+            });
+        } catch (\Throwable $e) {
+            $this->cover->delete($stored['path']);
+            throw $e;
+        }
+
+        // Only now, with the new picture saved, the old one goes.
+        if (is_string($previous) && ($old = CoverPhoto::pathFor($previous, $event->id, $section)) !== null) {
+            $this->cover->delete($old);
+        }
+        $event->refresh()->unsetRelation('template');
+        // Only the id of the field, never the path.
+        EventActivityLogger::log($event->id, 'invitation_image_uploaded', $actor, $event, ['field' => $fieldId]);
+
+        return $this->cover->urls($stored['path']) + [
+            'width' => $stored['width'],
+            'height' => $stored['height'],
+            'focus' => $focus,
+            'bytes' => $stored['bytes'],
+        ];
+    }
+
+    /** Removes the picture of an image zone (files and values). Nothing to remove is not an error. */
+    public function removeImage(Events $event, User $actor, string $fieldId): void
+    {
+        $this->assertWritable($event);
+        $field = $this->zoneField($this->context($event)['fields'], $fieldId);
+        $section = (string) $field['bind']['section'];
+        $previous = null;
+
+        DB::transaction(function () use ($event, $field, &$previous) {
+            $row = Events::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
+            $config = $row->template_config ?? [];
+            $previous = $this->coverOverride($config, $field);
+            $config = $this->binding->merge($config, $this->binding->fragment($field, null));
+            $config = $this->binding->merge($config, $this->binding->focusFragment($field, null));
+            $row->template_config = $config === [] ? null : $config;
+            $row->save();
+        });
+
+        if (is_string($previous) && ($old = CoverPhoto::pathFor($previous, $event->id, $section)) !== null) {
+            $this->cover->delete($old);
+            EventActivityLogger::log($event->id, 'invitation_image_removed', $actor, $event, ['field' => $fieldId]);
+        }
+        $event->refresh()->unsetRelation('template');
+    }
+
+    /**
+     * The image field of an image zone by id, among the fields of the package the event draws. Unknown id: 404; a field
+     * that is not a zone image (the cover has its own endpoints): 409.
+     *
+     * @param  list<array<string, mixed>>  $fields
+     * @return array<string, mixed>
+     */
+    private function zoneField(array $fields, string $id): array
+    {
+        $field = collect($fields)->first(fn ($f) => ($f['id'] ?? null) === $id);
+        if ($field === null) {
+            throw InvitationError::notFound('field_not_found', 'Ese campo no existe en la plantilla.');
+        }
+        if (($field['type'] ?? null) !== 'image' || ($field['bind']['setting'] ?? null) !== 'image'
+            || ! in_array($field['bind']['section'] ?? null, CoverPhoto::ZONE_SECTIONS, true)) {
+            throw InvitationError::conflict('package_no_image_field', 'Ese campo no es una zona de imagen.');
+        }
+
+        return $field;
+    }
+
     /** @param list<array<string, mixed>> $fields */
     private function coverField(array $fields): ?array
     {
@@ -593,8 +700,9 @@ class InvitationEditor
     private function coverOverride(array $config, ?array $field = null): ?string
     {
         $setting = $field['bind']['setting'] ?? 'image';
+        $type = $field['bind']['section'] ?? 'cover';
         foreach ((array) ($config['sections'] ?? []) as $section) {
-            if (($section['type'] ?? null) === 'cover' && is_string($section['settings'][$setting] ?? null)) {
+            if (($section['type'] ?? null) === $type && is_string($section['settings'][$setting] ?? null)) {
                 return $section['settings'][$setting];
             }
         }
@@ -885,8 +993,8 @@ class InvitationEditor
             if ($stored === null) {
                 return [null, null, true];
             }
-            $url = $this->invitations->coverImage($stored, $event);
-            $path = CoverPhoto::pathFor($stored, $event->id);
+            $url = $this->invitations->coverImage($stored, $event, $bind['section'] ?? null);
+            $path = CoverPhoto::pathFor($stored, $event->id, $bind['section'] ?? null);
             $size = $path ? CoverPhoto::dimensions($path) : null;
 
             return [[

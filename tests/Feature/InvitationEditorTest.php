@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Services\Account\EventPurger;
 use App\Http\Services\AppServices\EventTemplateConfigValidator;
 use App\Http\Services\AppServices\Invitation\CoverPhoto;
 use App\Http\Services\AppServices\InvitationService;
 use App\Models\EventActivity;
+use App\Models\EventLocation;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -1109,5 +1111,353 @@ describe('wave 9 follow-up', function () {
         foreach (['previews/x.webp', 'previews/festival-1.0.0-zzzzzzzzzzzzzzzz.webp', 'previews/../festival-1.0.0-0123456789abcdef.webp', 'previews/festival-1.0.0-0123456789abcdef.png', 'previews//a-1.0.0-0123456789abcdef.webp'] as $bad) {
             $this->get("/template-assets/{$bad}")->assertNotFound();
         }
+    });
+});
+
+describe('image zones', function () {
+    /** A free package with the cover photo plus an image zone in the closing (paid) and in locations (free), as a template would declare them. */
+    function zoneBuilder(string $slug = 'zonas', string $closingPlan = 'full'): PackageBuilder
+    {
+        return edBuilder($slug, 'free')
+            ->with('sections/locations.html', '<div class="pkg-loc"><q-section-image class="pkg-pic" aspect="16:10" fit="cover"></q-section-image><q-locations></q-locations></div>')
+            ->with('sections/closing.html', '<div class="pkg-closing"><q-section-image aspect="21:9"></q-section-image><h2>{{ section.title }}</h2></div>')
+            ->json('editable.json', function (array $e) use ($closingPlan) {
+                $e['fields'][] = ['id' => 'closing_image', 'type' => 'image', 'group' => 'cover', 'label' => ['es' => 'Foto del cierre', 'en' => 'Closing photo'], 'bind' => ['section' => 'closing', 'setting' => 'image', 'focus' => 'focus'], 'minWidth' => 600, 'aspect' => '21:9', 'plan' => $closingPlan, 'alt' => ['es' => 'Una pareja bailando', 'en' => 'A couple dancing']];
+                $e['fields'][] = ['id' => 'locations_image', 'type' => 'image', 'group' => 'cover', 'label' => ['es' => 'Foto del lugar', 'en' => 'Venue photo'], 'bind' => ['section' => 'locations', 'setting' => 'image', 'focus' => 'focus'], 'minWidth' => 600, 'aspect' => '16:10', 'plan' => 'free', 'alt' => ['es' => '', 'en' => '']];
+
+                return $e;
+            });
+    }
+
+    function zoneEvent(string $plan = 'premium', string $closingPlan = 'full'): array
+    {
+        edInstall(zoneBuilder('zonas', $closingPlan));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('zonas')]);
+        edPlan($event, $plan);
+        EventLocation::create(['event_id' => $event->id, 'type' => 'reception', 'name' => 'Salón Jardín', 'address' => '1 Main St', 'city' => 'Miami', 'country' => 'US']);
+
+        return [$event, $m];
+    }
+
+    function zoneUpload($test, Events $event, User $user, string $field, string|UploadedFile $file, array $extra = [])
+    {
+        $upload = $file instanceof UploadedFile ? $file : UploadedFile::fake()->createWithContent('foto.jpg', $file);
+
+        return $test->actingAs($user)->post(edUrl($event, "fields/{$field}/image"), ['photo' => $upload] + $extra, ['Accept' => 'application/json']);
+    }
+
+    /** The section of a public payload; fails loudly when it is not there, so a missing section never passes as "no image". */
+    function zoneSection(array $payload, string $type): array
+    {
+        $section = collect($payload['data']['sections'])->firstWhere('type', $type);
+        expect($section)->not->toBeNull("section {$type} is not in the invitation");
+
+        return $section;
+    }
+
+    /** Turns the closing and locations on for the event, keeping what its config holds. */
+    function zoneEnable(Events $event): void
+    {
+        $config = $event->fresh()->template_config ?? [];
+        $sections = collect($config['sections'] ?? [])->keyBy('type');
+        foreach (['locations' => 2, 'closing' => 9] as $type => $order) {
+            $sections[$type] = ($sections[$type] ?? ['type' => $type]) + ['enabled' => true, 'order' => $order];
+        }
+        $config['sections'] = $sections->values()->all();
+        $event->update(['template_config' => $config]);
+    }
+
+    it('stores the picture in the folder of its zone and serves it in the editor', function () {
+        [$event, $m] = zoneEvent();
+
+        $res = zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg(1800, 900), ['focus' => '30% 60%'])->assertCreated();
+
+        $data = $res->json('data');
+        expect($data)->toMatchArray(['width' => 1440, 'height' => 720, 'focus' => '30% 60%'])
+            ->and($data['url'])->toContain("images/event/{$event->id}/zone-closing/")->and($data['thumbUrl'])->toEndWith('-thumb.webp');
+        $settings = collect($event->fresh()->template_config['sections'])->firstWhere('type', 'closing')['settings'];
+        expect($settings['image'])->toStartWith("upload:images/event/{$event->id}/zone-closing/")->and($settings['focus'])->toBe('30% 60%');
+        $path = substr($settings['image'], 7);
+        $disk = Storage::disk('event-media');
+        // No share image: only the cover has one.
+        expect($disk->exists($path))->toBeTrue()->and($disk->exists(CoverPhoto::thumbPath($path)))->toBeTrue()->and($disk->exists(CoverPhoto::sharePath($path)))->toBeFalse();
+
+        $fields = collect($this->getJson(edUrl($event))->json('data.fields'));
+        expect($fields->firstWhere('id', 'closing_image')['value'])->toMatchArray(['width' => 1440, 'height' => 720, 'focus' => '30% 60%'])
+            // Z3: the cover field no longer shows the zone's picture, nor the other way round.
+            ->and($fields->firstWhere('id', 'cover_photo')['value'])->toBeNull()
+            ->and($fields->firstWhere('id', 'locations_image')['value'])->toBeNull();
+        expect(EventActivity::where('event_id', $event->id)->where('type', 'invitation_image_uploaded')->first()->payload)->toBe(['field' => 'closing_image']);
+    });
+
+    it('drops EXIF and GPS from a zone picture and applies the orientation', function () {
+        [$event, $m] = zoneEvent();
+        $source = edJpeg(900, 1200, 6, true);
+        expect(@exif_read_data('data://image/jpeg;base64,' . base64_encode($source), 'GPS', true)['GPS'] ?? null)->not->toBeNull('the fixture must carry GPS');
+
+        $res = zoneUpload($this, $event, $m['owner'], 'locations_image', $source)->assertCreated();
+
+        expect($res->json('data.width'))->toBe(1200)->and($res->json('data.height'))->toBe(900);
+        $bytes = Storage::disk('event-media')->get(substr(collect($event->fresh()->template_config['sections'])->firstWhere('type', 'locations')['settings']['image'], 7));
+        expect(str_contains($bytes, 'EXIF'))->toBeFalse()->and(str_contains($bytes, 'GPS'))->toBeFalse()->and(str_contains($bytes, 'Exif'))->toBeFalse()
+            ->and(substr($bytes, 8, 4))->toBe('WEBP');
+        // A trailer after the image does not survive either.
+        $trailer = edJpeg(900, 700) . 'SECRET-TRAILER-LAT-25.7617';
+        $other = zoneUpload($this, $event, $m['owner'], 'locations_image', $trailer)->assertCreated();
+        $bytes = Storage::disk('event-media')->get(substr(collect($event->fresh()->template_config['sections'])->firstWhere('type', 'locations')['settings']['image'], 7));
+        expect(str_contains($bytes, 'SECRET-TRAILER'))->toBeFalse()->and($other->json('data.width'))->toBe(900);
+    });
+
+    it('answers the same code per kind of bad file as the cover and keeps the picture she had', function () {
+        [$event, $m] = zoneEvent();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+        $before = $event->fresh()->template_config;
+        $tooWide = (function () {
+            $im = imagecreatetruecolor(8001, 10);
+            ob_start();
+            imagepng($im, null, 9);
+
+            return (string) ob_get_clean();
+        })();
+        $tiny = (function () {
+            $im = imagecreatetruecolor(100, 100);
+            ob_start();
+            imagejpeg($im);
+
+            return (string) ob_get_clean();
+        })();
+        $cases = [
+            'not_an_image' => UploadedFile::fake()->createWithContent('a.jpg', 'texto'),
+            'unsupported_type' => UploadedFile::fake()->createWithContent('a.svg', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+            'corrupt' => UploadedFile::fake()->createWithContent('a.jpg', "\xFF\xD8\xFF\xE0" . random_bytes(300)),
+            'too_many_pixels' => UploadedFile::fake()->createWithContent('a.png', $tooWide),
+            'too_small' => UploadedFile::fake()->createWithContent('a.jpg', $tiny),
+            'too_large' => UploadedFile::fake()->create('big.jpg', 11 * 1024, 'image/jpeg'),
+            'required' => UploadedFile::fake()->create('empty.jpg', 0),
+        ];
+        foreach ($cases as $code => $file) {
+            $res = zoneUpload($this, $event, $m['owner'], 'closing_image', $file)->assertUnprocessable();
+            expect($res->json('errors.photo.0'))->toBe($code, json_encode($res->json()));
+        }
+        $this->actingAs($m['owner'])->post(edUrl($event, 'fields/closing_image/image'), [], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonPath('errors.photo.0', 'required');
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg(), ['focus' => 'arriba'])->assertUnprocessable()->assertJsonPath('errors.focus.0', 'invalid_focus');
+        expect($event->fresh()->template_config)->toEqual($before)->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+    });
+
+    it('refuses a field that is unknown (404) or not a zone: the cover, a text, a color (409)', function () {
+        [$event, $m] = zoneEvent();
+
+        zoneUpload($this, $event, $m['owner'], 'nope', edJpeg())->assertNotFound()->assertJson(['code' => 'field_not_found']);
+        foreach (['cover_photo', 'cover_text', 'color_primary', 'ornaments'] as $id) {
+            zoneUpload($this, $event, $m['owner'], $id, edJpeg())->assertConflict()->assertJson(['code' => 'package_no_image_field']);
+            $this->deleteJson(edUrl($event, "fields/{$id}/image"))->assertConflict();
+        }
+        $this->deleteJson(edUrl($event, 'fields/nope/image'))->assertNotFound();
+        expect(Storage::disk('event-media')->allFiles())->toBe([]);
+    });
+
+    it('asks for the full event on a paid zone and lets the free one through', function () {
+        [$event, $m] = zoneEvent('basic');
+
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertForbidden()->assertJson(['code' => 'plan_required']);
+        zoneUpload($this, $event, $m['owner'], 'locations_image', edJpeg())->assertCreated();
+        expect(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+    });
+
+    it('is closed to a viewer, a stranger, an archived event and a guest, and limits uploads with the cover limiter', function () {
+        [$event, $m] = zoneEvent();
+
+        zoneUpload($this, $event, $m['viewer'], 'closing_image', edJpeg())->assertForbidden();
+        zoneUpload($this, $event, $m['stranger'], 'closing_image', edJpeg())->assertNotFound();
+        $this->actingAs($m['viewer'])->deleteJson(edUrl($event, 'fields/closing_image/image'))->assertForbidden();
+        $this->actingAs($m['stranger'])->deleteJson(edUrl($event, 'fields/closing_image/image'))->assertNotFound();
+        auth()->forgetGuards();
+        $this->post(edUrl($event, 'fields/closing_image/image'), [], ['Accept' => 'application/json'])->assertUnauthorized();
+        $event->update(['status' => 'archived']);
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertUnprocessable()->assertJsonPath('errors.status.0', 'event_archived');
+        $event->update(['status' => 'draft']);
+        $created = 0;
+        $limited = false;
+        for ($i = 0; $i < 14 && ! $limited; $i++) {
+            $res = zoneUpload($this, $event, $m['owner'], 'locations_image', edJpeg(700, 900));
+            $limited = $res->status() === 429;
+            $created += $res->status() === 201 ? 1 : 0;
+        }
+        // Ten a minute per user, counted with the cover: the cover endpoint is closed by the same counter.
+        expect($limited)->toBeTrue()->and($created)->toBeLessThan(10)->and($created)->toBeGreaterThan(4);
+        edUpload($this, $event, $m['owner'], edJpeg(700, 900))->assertTooManyRequests();
+    });
+
+    it('never lets one event write or remove the picture of another (IDOR by field)', function () {
+        [$mine, $m] = zoneEvent();
+        [$theirs, $other] = edEvent(['template_id' => edTemplateId('zonas'), 'custom_url_slug' => 'otro-evento']);
+        edPlan($theirs, 'premium');
+        zoneUpload($this, $theirs, $other['owner'], 'closing_image', edJpeg())->assertCreated();
+        $theirPath = substr(collect($theirs->fresh()->template_config['sections'])->firstWhere('type', 'closing')['settings']['image'], 7);
+
+        // My owner on THEIR event: no access, nothing changes.
+        zoneUpload($this, $theirs, $m['owner'], 'closing_image', edJpeg())->assertNotFound();
+        $this->actingAs($m['owner'])->deleteJson(edUrl($theirs, 'fields/closing_image/image'))->assertNotFound();
+        expect(Storage::disk('event-media')->exists($theirPath))->toBeTrue();
+
+        // A path of the other event written by hand is refused by the config validator, wherever it is put.
+        $ulid = strtolower((string) Str::ulid());
+        $package = new TemplatePackage(['editable' => ['fields' => [['id' => 'z', 'type' => 'image', 'bind' => ['section' => 'closing', 'setting' => 'image', 'focus' => 'focus'], 'plan' => 'free']]]]);
+        $validator = new EventTemplateConfigValidator;
+        $foreign = ['sections' => [['type' => 'closing', 'settings' => ['image' => "upload:images/event/{$theirs->id}/zone-closing/{$ulid}-700x900.webp"]]]];
+        expect(fn () => $validator->validate($foreign, $package, true, $mine->id))->toThrow(ValidationException::class);
+        // The folder of one zone cannot be bound to another section, nor the cover's folder to a zone.
+        foreach (["upload:images/event/{$mine->id}/zone-locations/{$ulid}-700x900.webp", "upload:images/event/{$mine->id}/cover/{$ulid}-700x900.webp"] as $value) {
+            $c = ['sections' => [['type' => 'closing', 'settings' => ['image' => $value]]]];
+            expect(fn () => $validator->validate($c, $package, true, $mine->id))->toThrow(ValidationException::class);
+        }
+        $own = ['sections' => [['type' => 'closing', 'settings' => ['image' => "upload:images/event/{$mine->id}/zone-closing/{$ulid}-700x900.webp"]]]];
+        $validator->validate($own, $package, true, $mine->id);
+        // No folder outside the two zones.
+        foreach (['zone-rsvp', 'zone-dress_code', 'zone-', 'zones-closing', 'zone-closing/../cover'] as $folder) {
+            expect(CoverPhoto::pathFor("upload:images/event/{$mine->id}/{$folder}/{$ulid}-700x900.webp", $mine->id))->toBeNull();
+        }
+    });
+
+    it('only accepts an image setting for a field the package declares, and not through the PATCH of fields', function () {
+        [$event, $m] = zoneEvent();
+        $this->actingAs($m['owner']);
+
+        // The picture comes only through the upload endpoint: the PATCH takes the focus and nothing else.
+        $this->patchJson(edUrl($event), ['fields' => ['closing_image' => ['image' => 'upload:images/event/1/zone-closing/x.webp']]])->assertUnprocessable();
+        $this->patchJson(edUrl($event), ['fields' => ['closing_image' => ['focus' => '10% 20%']]])->assertOk();
+        expect(collect($event->fresh()->template_config['sections'])->firstWhere('type', 'closing')['settings'])->toBe(['focus' => '10% 20%']);
+    });
+
+    it('replaces the picture, deleting the old files only after the new one is saved, and removes it idempotently', function () {
+        [$event, $m] = zoneEvent();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg(), ['focus' => '10% 10%'])->assertCreated();
+        $first = substr(collect($event->fresh()->template_config['sections'])->firstWhere('type', 'closing')['settings']['image'], 7);
+
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg(800, 1000))->assertCreated();
+        $second = substr(collect($event->fresh()->template_config['sections'])->firstWhere('type', 'closing')['settings']['image'], 7);
+        expect($second)->not->toBe($first)->and(Storage::disk('event-media')->exists($first))->toBeFalse()->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+
+        $this->actingAs($m['owner'])->deleteJson(edUrl($event, 'fields/closing_image/image'))->assertOk()->assertExactJson(['data' => null]);
+        $this->deleteJson(edUrl($event, 'fields/closing_image/image'))->assertOk();
+        expect($event->fresh()->template_config)->toBeNull()->and(Storage::disk('event-media')->allFiles())->toBe([])
+            ->and(EventActivity::where('event_id', $event->id)->where('type', 'invitation_image_removed')->count())->toBe(1);
+    });
+
+    it('keeps the cover and the zones apart: removing one leaves the others', function () {
+        [$event, $m] = zoneEvent();
+        edUpload($this, $event, $m['owner'], edJpeg())->assertCreated();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+        zoneUpload($this, $event, $m['owner'], 'locations_image', edJpeg())->assertCreated();
+
+        $this->deleteJson(edUrl($event, 'fields/closing_image/image'))->assertOk();
+        $this->deleteJson(edUrl($event, 'cover-photo'))->assertOk();
+
+        $sections = collect($event->fresh()->template_config['sections']);
+        expect($sections->pluck('type')->all())->toBe(['locations'])
+            ->and(Storage::disk('event-media')->allFiles())->toHaveCount(2);
+    });
+
+    it('leaves nothing behind when the config grows too big', function () {
+        [$event, $m] = zoneEvent();
+        $event->update(['template_config' => ['sections' => [['type' => 'cover', 'title' => ['es' => str_repeat('a', 16300)]]]]]);
+
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertUnprocessable()->assertJsonPath('errors.fields.0', 'config_too_large');
+
+        expect(Storage::disk('event-media')->allFiles())->toBe([]);
+    });
+
+    it('carries section.image in the public invitation only when the template declares the zone and the plan allows it', function () {
+        [$event, $m] = zoneEvent();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg(1800, 900), ['focus' => '30% 60%'])->assertCreated();
+        zoneUpload($this, $event, $m['owner'], 'locations_image', edJpeg(1200, 800))->assertCreated();
+        zoneEnable($event);
+        $this->postJson("/api/v1/app/event/{$event->id}/publish")->assertOk();
+
+        $payload = $this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->assertOk()->json();
+        $closing = zoneSection($payload, 'closing');
+        expect($closing['image'])->toMatchArray(['width' => 1440, 'height' => 720, 'focus' => '30% 60%', 'alt' => 'Una pareja bailando'])
+            ->and($closing['image']['url'])->toContain("images/event/{$event->id}/zone-closing/")
+            ->and(array_keys($closing['image']))->toBe(['url', 'thumbUrl', 'width', 'height', 'focus', 'alt'])
+            // The path of the file never travels in a setting.
+            ->and(json_encode($payload))->not->toContain('upload:')
+            ->and(zoneSection($payload, 'cover')['data']['image'])->toBeNull()
+            ->and(zoneSection($payload, 'rsvp'))->not->toHaveKey('image');
+        $locations = zoneSection($payload, 'locations');
+        expect($locations['image']['alt'])->toBe('')->and($locations['image']['focus'])->toBeNull();
+
+        // English reads the English text.
+        expect(zoneSection($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234?lang=en')->json(), 'closing')['image']['alt'])->toBe('A couple dancing');
+    });
+
+    it('hides a paid zone when the event goes back to basic, and shows nothing for a missing or foreign file', function () {
+        [$event, $m] = zoneEvent();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+        zoneEnable($event);
+        $this->postJson("/api/v1/app/event/{$event->id}/publish")->assertOk();
+        expect(zoneSection($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->json(), 'closing'))->toHaveKey('image');
+
+        // A refund puts the draft back on basic: the paid field is not shown (the event is not fixed to a version).
+        $event->refresh()->update(['template_version_id' => null]);
+        edPlan($event, 'basic');
+        expect(zoneSection($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->json(), 'closing'))->not->toHaveKey('image');
+
+        // A path of another event, a malformed one, or the cover's folder on a zone: no image, no error.
+        $ulid = strtolower((string) Str::ulid());
+        foreach (["upload:images/event/999999/zone-closing/{$ulid}-700x900.webp", 'upload:../../etc/passwd', "upload:images/event/{$event->id}/cover/{$ulid}-700x900.webp", 'https://evil.test/a.jpg', 12] as $value) {
+            $event->update(['template_config' => ['sections' => [['type' => 'closing', 'enabled' => true, 'order' => 9, 'settings' => ['image' => $value]]]]]);
+            edPlan($event, 'premium');
+            expect(zoneSection($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->json(), 'closing'))->not->toHaveKey('image');
+        }
+    });
+
+    it('does not show a stored picture when the template has no field for the zone, and brings it back with one that has', function () {
+        [$event, $m] = zoneEvent();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+        zoneEnable($event);
+        edInstall(edBuilder('sinzona', 'free'));
+        $event->update(['template_id' => edTemplateId('sinzona'), 'template_version_id' => null, 'status' => 'published']);
+
+        expect(zoneSection($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->json(), 'closing'))->not->toHaveKey('image');
+
+        $event->update(['template_id' => edTemplateId('zonas')]);
+        expect(zoneSection($this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->json(), 'closing'))->toHaveKey('image');
+    });
+
+    it('does not serve the invitation of an event that is not published', function () {
+        [$event, $m] = zoneEvent();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+        auth()->forgetGuards();
+
+        $this->getJson('/api/v1/app/invitation/xv-de-valentina/ED1234')->assertNotFound();
+    });
+
+    it('tells in the impact of a template change that the zone picture is kept, and whether the new one has the zone', function () {
+        [$event, $m] = zoneEvent();
+        edInstall(edBuilder('sinzona', 'free'));
+        edInstall(zoneBuilder('otrazona'));
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+
+        $without = $this->getJson(edUrl($event, 'templates/' . edTemplateId('sinzona') . '/impact'))->assertOk()->json('data.keeps');
+        $with = $this->getJson(edUrl($event, 'templates/' . edTemplateId('otrazona') . '/impact'))->assertOk()->json('data.keeps');
+
+        expect($without)->toContain(['kind' => 'section_image', 'section' => 'closing', 'editable' => false])
+            ->and($with)->toContain(['kind' => 'section_image', 'section' => 'closing', 'editable' => true]);
+    });
+
+    it('deletes every file of an event, the cover and the zones, when the event is purged', function () {
+        [$event, $m] = zoneEvent();
+        edUpload($this, $event, $m['owner'], edJpeg())->assertCreated();
+        zoneUpload($this, $event, $m['owner'], 'closing_image', edJpeg())->assertCreated();
+        zoneUpload($this, $event, $m['owner'], 'locations_image', edJpeg())->assertCreated();
+        [$other, $o] = edEvent(['template_id' => edTemplateId('zonas'), 'custom_url_slug' => 'otro']);
+        zoneUpload($this, $other, $o['owner'], 'locations_image', edJpeg())->assertCreated();
+        expect(Storage::disk('event-media')->allFiles())->not->toBe([]);
+
+        app(EventPurger::class)->purge($event);
+
+        $left = Storage::disk('event-media')->allFiles();
+        expect($left)->not->toBe([])
+            ->and(collect($left)->every(fn ($f) => str_contains($f, "images/event/{$other->id}/")))->toBeTrue();
     });
 });

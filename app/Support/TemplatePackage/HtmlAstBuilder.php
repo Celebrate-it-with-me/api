@@ -467,8 +467,9 @@ class HtmlAstBuilder
         if ($spec['scope'] === 'layout' && $this->kind !== 'layout') {
             $this->report->error($this->file, 'block_scope', "<q-{$name}> solo puede ir en layout.html.", $line);
         }
-        if (str_starts_with($spec['scope'], 'section:') && $this->sectionType !== substr($spec['scope'], 8)) {
-            $this->report->error($this->file, 'block_scope', "<q-{$name}> solo puede ir en sections/" . substr($spec['scope'], 8) . '.html.', $line);
+        if (str_starts_with($spec['scope'], 'section:') && ! in_array($this->sectionType, explode('|', substr($spec['scope'], 8)), true)) {
+            $files = implode(' o ', array_map(fn (string $t) => "sections/{$t}.html", explode('|', substr($spec['scope'], 8))));
+            $this->report->error($this->file, 'block_scope', "<q-{$name}> solo puede ir en {$files}.", $line);
         }
         $this->blockCounts[$name] = ($this->blockCounts[$name] ?? 0) + 1;
         if ($this->blockCounts[$name] > $spec['max']) {
@@ -537,7 +538,10 @@ class HtmlAstBuilder
         // The cover photo is decoration (its size and mask can be designed); every other block is a system control.
         $names = $self ? [substr($el->localName, 2)] : $this->blockNames($el);
         $photoOnly = $names === ['cover-photo'];
-        $kind = $self ? ($photoOnly ? 'photo' : 'system') : ($photoOnly ? 'photo' : 'wrapper');
+        // The image zone is decoration too, but with a narrower list than the photo (no position, z-index or transform):
+        // the block itself is `zone`; what only wraps it is a plain container.
+        $zoneOnly = $names === ['section-image'];
+        $kind = $self ? ($photoOnly ? 'photo' : ($zoneOnly ? 'zone' : 'system')) : ($photoOnly ? 'photo' : 'wrapper');
         foreach (explode(' ', (string) ($attrs['class'] ?? '')) as $c) {
             if ($c !== '') {
                 $this->classKinds[$c] = $this->stricter($this->classKinds[$c] ?? null, $kind);
@@ -554,10 +558,10 @@ class HtmlAstBuilder
         return array_values(array_filter(explode(' ', (string) ($attrs['class'] ?? '')), fn (string $c) => $c !== ''));
     }
 
-    /** The more restrictive of two kinds (system > photo > wrapper). */
+    /** The more restrictive of two kinds (system > zone > photo > wrapper). */
     private function stricter(?string $a, string $b): string
     {
-        $rank = ['wrapper' => 0, 'photo' => 1, 'system' => 2];
+        $rank = ['wrapper' => 0, 'photo' => 1, 'zone' => 2, 'system' => 3];
 
         return $a !== null && $rank[$a] > $rank[$b] ? $a : $b;
     }

@@ -132,6 +132,7 @@ describe('route classification', function () {
             'POST api/v1/app/event/{event}/whatsapp/send', 'POST api/v1/app/event/{event}/whatsapp/messages/{message}/retry',
             'PATCH api/v1/app/event/{event}/invitation', 'PATCH api/v1/app/event/{event}/invitation/sections', 'PUT api/v1/app/event/{event}/invitation/template',
             'POST api/v1/app/event/{event}/invitation/cover-photo', 'DELETE api/v1/app/event/{event}/invitation/cover-photo',
+            'POST api/v1/app/event/{event}/invitation/fields/{field}/image', 'DELETE api/v1/app/event/{event}/invitation/fields/{field}/image',
             'POST api/v1/app/announcements/{announcement}/dismiss',
             'POST api/v1/app/event/{event}/assistant/tasks/{key}/done', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/snooze', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/hide', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/not-applicable', 'POST api/v1/app/event/{event}/assistant/tasks/{key}/reset',
             'POST api/v1/app/event/{event}/assistant/custom-tasks',
