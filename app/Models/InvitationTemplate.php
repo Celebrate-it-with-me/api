@@ -18,6 +18,8 @@ class InvitationTemplate extends Model
         'event_type_id',
         'tier',
         'preview_image',
+        'description',
+        'tags',
         'default_sections',
         'theme_defaults',
         'is_active',
@@ -27,6 +29,8 @@ class InvitationTemplate extends Model
     protected $casts = [
         'default_sections' => 'array',
         'theme_defaults' => 'array',
+        'description' => 'array',
+        'tags' => 'array',
         'is_active' => 'boolean',
     ];
 
