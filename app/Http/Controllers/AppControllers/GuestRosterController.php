@@ -82,6 +82,8 @@ class GuestRosterController extends Controller
     public function update(RosterGuestRequest $request, Events $event, Guest $guest): JsonResponse
     {
         $guest->update($request->person());
+        // A renamed guest must not keep showing with the old name in the dashboard's recent answers.
+        $this->roster->forgetStats($event);
 
         return response()->json(['data' => $this->roster->row($event, $this->main($guest)->load('companions'))]);
     }

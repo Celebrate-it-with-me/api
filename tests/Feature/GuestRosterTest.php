@@ -10,6 +10,7 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -211,6 +212,38 @@ it('refreshes the recent answers when a family answers, is edited or is imported
     expect($recent())->toBe(['Ana']);
     $this->actingAs($u['owner'])->postJson("$base/rsvp/guests/{$ana->id}/revert-confirmation")->assertOk();
     expect($recent())->toBe([]);
+
+    // Edited: the new name shows at once, not after the 10-minute cache.
+    $this->actingAs($u['owner'])->putJson("$base/organizer/rsvp/{$ana->id}/confirm", ['guest' => ['rsvp_status' => 'attending']])->assertOk();
+    expect($recent())->toBe(['Ana']);
+    $this->actingAs($u['owner'])->putJson("$base/roster/{$ana->id}", ['name' => 'Ana B.'])->assertOk();
+    expect($recent())->toBe(['Ana B.']);
+
+    // Imported: the counts move at once too (imported families are pending, so `recent` keeps its rows).
+    $total = fn () => $this->actingAs($u['owner'])->getJson("$base/rsvp/stats")->json('data.totals.guests');
+    $before = $total();
+    $this->actingAs($u['owner'])->postJson("$base/roster/import", ['rows' => [['name' => 'Beto'], ['name' => 'Carla']]])->assertCreated();
+    expect($total())->toBe($before + 2)->and($recent())->toBe(['Ana B.']);
+});
+
+it('leaves out the recent answers for a role that cannot see the guest list', function () {
+    [$event, $u] = rosterEvent();
+    family($event, 'Ana', 'attending');
+    $url = "/api/v1/app/event/{$event->id}/rsvp/stats";
+
+    // Today every event role has view_guests; take it away from the viewer to stand for a future role without it.
+    $viewer = Role::findByName('viewer', 'web');
+    $viewer->revokePermissionTo('view_guests');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    // The viewer reads first, so the shared cache is filled by a filtered request: the owner must still get names.
+    $forViewer = $this->actingAs($u['viewer'])->getJson($url)->assertOk()->json('data');
+    $forOwner = $this->actingAs($u['owner'])->getJson($url)->assertOk()->json('data');
+
+    expect($forViewer['recent'])->toBe([])
+        ->and($forViewer['attending'])->toBe($forOwner['attending'])
+        ->and($forViewer['response_rate'])->toBe($forOwner['response_rate'])
+        ->and(array_column($forOwner['recent'], 'name'))->toBe(['Ana']);
 });
 
 it('accepts the hyphenated status when confirming companions in bulk', function () {
