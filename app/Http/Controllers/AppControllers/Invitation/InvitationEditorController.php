@@ -44,7 +44,13 @@ class InvitationEditorController extends Controller
             throw ValidationException::withMessages(['template_id' => ['invalid']]);
         }
 
-        return response()->json(['data' => $this->editor->applyTemplate($event, $request->user(), $id, $request->boolean('undo'))]);
+        $withPreset = $request->exists('preset');
+        $preset = $request->input('preset');
+        if ($withPreset && $preset !== null && (! is_string($preset) || $preset === '' || strlen($preset) > 64)) {
+            throw ValidationException::withMessages(['preset' => ['invalid_choice']]);
+        }
+
+        return response()->json(['data' => $this->editor->applyTemplate($event, $request->user(), $id, $request->boolean('undo'), $withPreset, $preset)]);
     }
 
     public function saveFields(Request $request, Events $event): JsonResponse
