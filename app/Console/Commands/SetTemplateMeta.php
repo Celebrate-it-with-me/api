@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\InvitationTemplate;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Validator;
 
 /**
  * Loads the picker description (es/en) and style tags of a template into its row. The texts come from the owner, not
@@ -40,17 +39,22 @@ class SetTemplateMeta extends Command
         $en = $this->option('description-en');
         $tags = array_values(array_unique(array_map('strval', (array) $this->option('tag'))));
 
-        $v = Validator::make(
-            ['es' => $es, 'en' => $en, 'tags' => $tags],
-            [
-                'es' => ['nullable', 'string', 'max:' . self::DESCRIPTION_MAX, 'not_regex:/[<>]/'],
-                'en' => ['nullable', 'string', 'max:' . self::DESCRIPTION_MAX, 'not_regex:/[<>]/'],
-                'tags' => ['array', 'max:' . self::TAGS_MAX],
-                'tags.*' => ['string', 'max:' . self::TAG_MAX, 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/'],
-            ],
-        );
-        if ($v->fails()) {
-            foreach ($v->errors()->all() as $message) {
+        $errors = [];
+        foreach (['es' => $es, 'en' => $en] as $lang => $text) {
+            if ($text !== null && (mb_strlen($text) > self::DESCRIPTION_MAX || preg_match('/[<>]/', $text) === 1)) {
+                $errors[] = "description-{$lang}: max " . self::DESCRIPTION_MAX . ' characters, plain text only.';
+            }
+        }
+        if (count($tags) > self::TAGS_MAX) {
+            $errors[] = 'tag: at most ' . self::TAGS_MAX . ' tags.';
+        }
+        foreach ($tags as $tag) {
+            if (mb_strlen($tag) > self::TAG_MAX || preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $tag) !== 1) {
+                $errors[] = "tag '{$tag}': lowercase letters, digits and dashes, max " . self::TAG_MAX . ' characters.';
+            }
+        }
+        if ($errors !== []) {
+            foreach ($errors as $message) {
                 $this->error($message);
             }
 
