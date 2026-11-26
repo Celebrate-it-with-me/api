@@ -7,6 +7,7 @@ use App\Models\Guest;
 use App\Models\Rsvp;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class RsvpServices
@@ -187,6 +188,30 @@ class RsvpServices
                 'responded' => $respondedGuests,
             ],
             'response_rate' => $responseRate,
+            'recent' => $this->recentResponses($event),
         ];
+    }
+
+    /**
+     * The last answers of the main guests (no companions, no pending), newest first, for the dashboard.
+     *
+     * @return list<array{name: string, status: string, statusDate: string}>
+     */
+    private function recentResponses(Events $event): array
+    {
+        return Guest::query()
+            ->where('event_id', $event->id)
+            ->whereNull('parent_id')
+            ->where('rsvp_status', '!=', self::STATUS_PENDING)
+            ->whereNotNull('rsvp_status_date')
+            ->orderByDesc('rsvp_status_date')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get(['name', 'rsvp_status', 'rsvp_status_date'])
+            ->map(fn (Guest $g) => [
+                'name' => $g->name,
+                'status' => $g->rsvp_status,
+                'statusDate' => Carbon::parse($g->rsvp_status_date)->toIso8601String(),
+            ])->all();
     }
 }
