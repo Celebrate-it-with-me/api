@@ -20,6 +20,7 @@ use App\Models\TemplatePackage;
 use App\Models\Timeline;
 use App\Support\InvitationCache;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,22 @@ class InvitationService
     private const GALLERY_DEFAULT_PHOTOS = 12;
 
     private const MUSIC_TITLE_MAX = 60;
+
+    /**
+     * The free template each kind of event falls back to, looked up once per instance (one request): one invitation
+     * asks for it several times (version, version id, editable fields). Keyed by event type id ('' for none).
+     *
+     * @var array<string, InvitationTemplate>
+     */
+    private array $fallbackTemplates = [];
+
+    /**
+     * The places of each event, read once per instance (one request): one invitation reads them for the calendar
+     * link, the calendar data and the place line. Keyed by event id.
+     *
+     * @var array<int, Collection<int, EventLocation>>
+     */
+    private array $places = [];
 
     /** The catalog module that owns each public section; a section whose module is not active for the event is left out. */
     private const SECTION_MODULES = [
@@ -357,6 +374,11 @@ class InvitationService
             return $own;
         }
 
+        return $this->fallbackTemplates[(string) $event->event_type_id] ??= $this->fallbackTemplate($event);
+    }
+
+    private function fallbackTemplate(Events $event): InvitationTemplate
+    {
         $free = InvitationTemplate::query()
             ->where('is_active', true)
             ->where('tier', InvitationTemplate::TIER_FREE);
@@ -707,7 +729,7 @@ class InvitationService
     {
         $order = array_flip(EventLocation::TYPES);
 
-        return EventLocation::query()->where('event_id', $event->id)->orderBy('id')->get()
+        return $this->placesOf($event)
             ->sortBy([fn ($a, $b) => ($order[$a->type] ?? 99) <=> ($order[$b->type] ?? 99), fn ($a, $b) => $a->id <=> $b->id])
             ->first();
     }
@@ -886,14 +908,20 @@ class InvitationService
         ])->all()];
     }
 
-    /** @return array<string, mixed>|null */
-    private function locationsData(Events $event): ?array
+    /** The event's places with their pictures, oldest first; read once per instance (see `$places`). */
+    private function placesOf(Events $event): Collection
     {
-        $locations = EventLocation::query()
+        return $this->places[$event->id] ??= EventLocation::query()
             ->with('eventLocationImages')
             ->where('event_id', $event->id)
             ->orderBy('id')
             ->get();
+    }
+
+    /** @return array<string, mixed>|null */
+    private function locationsData(Events $event): ?array
+    {
+        $locations = $this->placesOf($event);
 
         if ($locations->isEmpty()) {
             return null;
