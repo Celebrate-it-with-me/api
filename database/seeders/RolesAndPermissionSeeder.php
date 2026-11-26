@@ -41,6 +41,8 @@ class RolesAndPermissionSeeder extends Seeder
         'view_suggested_music', 'add_song', 'delete_song', 'manage_playlist',
         // Other event sections
         'view_save_the_date', 'view_event_comments',
+        // Money: budget, payments and what padrinos committed/paid. Owner and editor; never a viewer (owner's decision 2026-11-26).
+        'view_budget',
         // Collaboration
         'manage_collaborators',
         // Account pages (shown inside the event area)

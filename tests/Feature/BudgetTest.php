@@ -14,6 +14,7 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -28,7 +29,7 @@ function budgetEvent(string $type = 'quinceanera', array $extra = []): array
         'currency' => 'USD',
     ], $extra));
     $users = [];
-    foreach (['owner', 'viewer'] as $role) {
+    foreach (['owner', 'editor', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();
         EventUserRole::create(['event_id' => $event->id, 'user_id' => $users[$role]->id, 'role_id' => Role::where('name', $role)->value('id')]);
     }
@@ -177,8 +178,10 @@ describe('access', function () {
         [, $u, $url] = budgetEvent();
         $item = addItem($this, $u['owner'], $url);
 
-        $this->actingAs($u['viewer'])->getJson($url)->assertOk();
-        $this->actingAs($u['viewer'])->getJson("$url/items")->assertOk();
+        // The viewer never sees money (view_budget, owner's decision 2026-11-26): not even to read.
+        $this->actingAs($u['viewer'])->getJson($url)->assertForbidden()->assertJsonPath('code', 'forbidden');
+        $this->actingAs($u['viewer'])->getJson("$url/items")->assertForbidden();
+        $this->actingAs($u['viewer'])->get("$url/export")->assertForbidden();
         $this->actingAs($u['viewer'])->putJson($url, ['cap' => 1])->assertForbidden();
         $this->actingAs($u['viewer'])->postJson("$url/items", ['title' => 'X', 'estimatedCost' => 1])->assertForbidden();
         $this->actingAs($u['viewer'])->postJson("$url/items/{$item['id']}/payments", ['amount' => 1, 'paidOn' => '2027-01-01'])->assertForbidden();
@@ -248,9 +251,39 @@ describe('export and reminders', function () {
     });
 });
 
+describe('who sees the money', function () {
+    it('lets owner and editor read and change the budget, and keeps the viewer out of every read', function () {
+        [, $u, $url] = budgetEvent();
+        $item = addItem($this, $u['owner'], $url);
+
+        foreach (['owner', 'editor'] as $role) {
+            $this->actingAs($u[$role])->getJson($url)->assertOk();
+            $this->actingAs($u[$role])->getJson("$url/items")->assertOk()->assertJsonCount(1, 'data');
+            $this->actingAs($u[$role])->get("$url/export")->assertOk();
+            $this->actingAs($u[$role])->putJson($url, ['cap' => 5000])->assertOk();
+        }
+
+        $this->actingAs($u['viewer'])->getJson($url)->assertForbidden();
+        $this->actingAs($u['viewer'])->getJson("$url/items")->assertForbidden();
+        $this->actingAs($u['viewer'])->get("$url/export")->assertForbidden();
+        $this->actingAs($u['viewer'])->deleteJson("$url/items/{$item['id']}")->assertForbidden();
+    });
+
+    it('never creates the budget when a viewer asks for it', function () {
+        [, $u, $url] = budgetEvent();
+
+        $this->actingAs($u['viewer'])->getJson($url)->assertForbidden();
+
+        expect(EventBudget::count())->toBe(0)->and(BudgetCategory::count())->toBe(0);
+    });
+});
+
 describe('first load (B2)', function () {
-    it('lets a viewer read a budget nobody opened yet without writing anything', function () {
+    it('gives a read-only role with view_budget the empty shape without writing anything', function () {
         [$event, $u, $url] = budgetEvent();
+        // No such role today (the viewer has no view_budget): grant it to stand for a read-only role that may see money.
+        Role::findByName('viewer', 'web')->givePermissionTo('view_budget');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $draft = $this->actingAs($u['viewer'])->getJson($url)->assertOk()->json('data');
         $this->actingAs($u['viewer'])->getJson("$url/items")->assertOk()->assertExactJson(['data' => []]);

@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -41,6 +42,22 @@ describe('reference data', function () {
         ])->toBe($first);
     });
 
+    it('adds view_budget to owner and editor of an existing database, and runs twice safely', function () {
+        $this->seed(RolesAndPermissionSeeder::class);
+        // A database from before the permission existed.
+        Permission::where('name', 'view_budget')->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $migration = require database_path('migrations/2027_07_14_000001_add_view_budget_permission.php');
+        $migration->up();
+        $migration->up();
+
+        expect(Role::findByName('owner')->hasPermissionTo('view_budget'))->toBeTrue()
+            ->and(Role::findByName('editor')->hasPermissionTo('view_budget'))->toBeTrue()
+            ->and(Role::findByName('viewer')->permissions->pluck('name')->all())->not->toContain('view_budget')
+            ->and(Permission::where('name', 'view_budget')->count())->toBe(1);
+    });
+
     it('creates the global and event roles', function () {
         $this->seed(RolesAndPermissionSeeder::class);
 
@@ -58,7 +75,8 @@ describe('reference data', function () {
             ->and($editor->all())->toContain('edit_event', 'create_guest')
             ->and($editor->all())->not->toContain('delete_event', 'manage_collaborators')
             ->and($viewer->all())->toContain('view_event')
-            ->and($viewer->all())->not->toContain('edit_event', 'create_guest')
+            ->and($viewer->all())->not->toContain('edit_event', 'create_guest', 'view_budget')
+            ->and($editor->all())->toContain('view_budget')
             // Event roles must never grant the admin-panel permission.
             ->and($owner->all())->not->toContain('manage')
             ->and($editor->all())->not->toContain('manage')

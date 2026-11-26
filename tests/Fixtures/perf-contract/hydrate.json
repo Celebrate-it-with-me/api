@@ -744,6 +744,7 @@
         "manage_playlist",
         "manage_rsvp",
         "upload_photo",
+        "view_budget",
         "view_danger_zone",
         "view_event",
         "view_event_comments",

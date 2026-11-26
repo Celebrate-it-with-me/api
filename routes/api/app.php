@@ -421,7 +421,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // BUDGET
             // ========================================
-            Route::prefix('budget')->name('budget.')->middleware('module.access:budget')->group(function () {
+            Route::prefix('budget')->name('budget.')->middleware(['module.access:budget', 'event.access:view_budget'])->group(function () {
                 Route::get('', [BudgetController::class, 'show'])->name('show');
                 Route::put('', [BudgetController::class, 'update'])->name('update');
                 Route::get('export', [BudgetController::class, 'export'])->name('export');
@@ -443,7 +443,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // PADRINOS
             // ========================================
-            Route::prefix('padrinos')->name('padrinos.')->middleware('module.access:padrinos')->group(function () {
+            Route::prefix('padrinos')->name('padrinos.')->middleware(['module.access:padrinos', 'event.access:view_budget'])->group(function () {
                 Route::get('', [PadrinoController::class, 'index'])->name('index');
                 Route::post('', [PadrinoController::class, 'store'])->name('store');
                 Route::put('{padrino}', [PadrinoController::class, 'update'])->name('update');
