@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
+use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
@@ -117,6 +118,77 @@ it('defaults the global api limiter to 120 per minute and reads it from config',
         $this->getJson('/api/v1/__api-limited')->assertOk();
     }
     $this->getJson('/api/v1/__api-limited')->assertStatus(429);
+});
+
+describe('reads of a signed-in user (B3)', function () {
+    beforeEach(function () {
+        Route::middleware(['api', 'auth:sanctum'])->group(function () {
+            Route::get('/api/v1/__api-read', fn () => response()->json(['ok' => true]));
+            Route::post('/api/v1/__api-write', fn () => response()->json(['ok' => true]));
+        });
+        Route::middleware(['api'])->get('/api/v1/__api-anon', fn () => response()->json(['ok' => true]));
+    });
+
+    it('gives them their own counter of 300 a minute by default', function () {
+        expect(config('app.api_read_rate_limit_per_minute'))->toBe(300);
+        Sanctum::actingAs(User::factory()->create());
+        config(['app.api_rate_limit_per_minute' => 2]);
+
+        // Well past the 120 (here 2) of writes: one Inicio is ~14 reads.
+        foreach (range(1, 20) as $i) {
+            $this->getJson('/api/v1/__api-read')->assertOk();
+        }
+    });
+
+    it('stops reads at their own limit without spending the counter of writes', function () {
+        Sanctum::actingAs(User::factory()->create());
+        config(['app.api_read_rate_limit_per_minute' => 3, 'app.api_rate_limit_per_minute' => 2]);
+
+        foreach (range(1, 3) as $i) {
+            $this->getJson('/api/v1/__api-read')->assertOk();
+        }
+        $this->getJson('/api/v1/__api-read')->assertStatus(429)->assertJsonPath('code', 'too_many_attempts')->assertHeader('Retry-After');
+
+        $this->postJson('/api/v1/__api-write')->assertOk();
+        $this->postJson('/api/v1/__api-write')->assertOk();
+        $this->postJson('/api/v1/__api-write')->assertStatus(429);
+    });
+
+    it('keeps writes on the global limit however many reads are left', function () {
+        Sanctum::actingAs(User::factory()->create());
+        config(['app.api_read_rate_limit_per_minute' => 100, 'app.api_rate_limit_per_minute' => 2]);
+
+        $this->postJson('/api/v1/__api-write')->assertOk();
+        $this->postJson('/api/v1/__api-write')->assertOk();
+        $this->postJson('/api/v1/__api-write')->assertStatus(429);
+        $this->getJson('/api/v1/__api-read')->assertOk();
+    });
+
+    it('counts each user apart', function () {
+        config(['app.api_read_rate_limit_per_minute' => 1]);
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson('/api/v1/__api-read')->assertOk();
+        $this->getJson('/api/v1/__api-read')->assertStatus(429);
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson('/api/v1/__api-read')->assertOk();
+    });
+
+    it('leaves anonymous reads on the global limit per IP', function () {
+        config(['app.api_read_rate_limit_per_minute' => 100, 'app.api_rate_limit_per_minute' => 2]);
+
+        $this->getJson('/api/v1/__api-anon')->assertOk();
+        $this->getJson('/api/v1/__api-anon')->assertOk();
+        $this->getJson('/api/v1/__api-anon')->assertStatus(429);
+    });
+
+    it('does not lift the named limits of sensitive routes', function () {
+        config(['app.api_read_rate_limit_per_minute' => 1000, 'app.api_rate_limit_per_minute' => 1000]);
+        foreach (range(1, 5) as $i) {
+            $this->postJson('/api/v1/app/reset-password', [])->assertStatus(422);
+        }
+        $this->postJson('/api/v1/app/reset-password', [])->assertStatus(429);
+    });
 });
 
 it('keeps the 429 of the global limiter readable, coded and with Retry-After', function () {

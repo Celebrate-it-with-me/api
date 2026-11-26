@@ -81,7 +81,7 @@ Route::prefix('invitation/{slug}/{code}')->middleware('code.failures')->name('in
 // Public Event Template Routes
 Route::prefix('template')->name('template.')->group(function () {
     // Guest-facing: a valid access code of this event is required, even to read (see EnsureGuestEventAccess).
-    Route::prefix('event/{event}')->middleware(['code.failures', 'event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
+    Route::prefix('event/{event}')->whereNumber('event')->middleware(['code.failures', 'event.guest', 'throttle:guest-event'])->name('event.')->group(function () {
         Route::get('comments', [PublicEventCommentController::class, 'index'])
             ->middleware('module.access:comments')->name('comments.index');
         Route::post('comments', [PublicEventCommentController::class, 'store'])
@@ -133,9 +133,9 @@ Route::prefix('')->name('auth.')->group(function () {
 });
 
 // Public Collaborator Invitation Routes
-Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])
+Route::get('event/{event}/collaborators/invite/{token}', [InviteCollaboratorController::class, 'checkToken'])->whereNumber('event')
     ->middleware('throttle:collaborator-token')->name('collaborators.checkToken');
-Route::post('event/{event}/collaborators/invite/{token}/decline', [InviteCollaboratorController::class, 'declineInvite'])
+Route::post('event/{event}/collaborators/invite/{token}/decline', [InviteCollaboratorController::class, 'declineInvite'])->whereNumber('event')
     ->middleware('throttle:collaborator-token')->name('collaborators.declineInvite');
 Route::get('collaborators/check-tokens', [InviteCollaboratorController::class, 'eventTokens'])
     ->middleware('throttle:collaborator-token')->name('collaborators.eventTokens');
@@ -208,7 +208,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
         Route::get('filters', [EventsController::class, 'filterEvents'])->name('filters');
         Route::patch('active-event', [EventsController::class, 'activeEvent'])->name('active-event');
 
-        Route::prefix('{event}')->middleware('event.access')->group(function () {
+        Route::prefix('{event}')->whereNumber('event')->middleware('event.access')->group(function () {
             Route::prefix('suggest-music')->name('suggest-music.')->middleware('module.access:suggested_music')->group(function () {
                 Route::get('export', [SuggestedMusicController::class, 'export'])->name('export');
                 Route::get('spotify-search', SpotifySearchController::class)->middleware(['event.access:edit_event', 'throttle:spotify-search'])->name('spotify-search');
@@ -421,7 +421,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // BUDGET
             // ========================================
-            Route::prefix('budget')->name('budget.')->middleware('module.access:budget')->group(function () {
+            Route::prefix('budget')->name('budget.')->middleware(['module.access:budget', 'event.access:view_budget'])->group(function () {
                 Route::get('', [BudgetController::class, 'show'])->name('show');
                 Route::put('', [BudgetController::class, 'update'])->name('update');
                 Route::get('export', [BudgetController::class, 'export'])->name('export');
@@ -443,7 +443,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
             // ========================================
             // PADRINOS
             // ========================================
-            Route::prefix('padrinos')->name('padrinos.')->middleware('module.access:padrinos')->group(function () {
+            Route::prefix('padrinos')->name('padrinos.')->middleware(['module.access:padrinos', 'event.access:view_budget'])->group(function () {
                 Route::get('', [PadrinoController::class, 'index'])->name('index');
                 Route::post('', [PadrinoController::class, 'store'])->name('store');
                 Route::put('{padrino}', [PadrinoController::class, 'update'])->name('update');

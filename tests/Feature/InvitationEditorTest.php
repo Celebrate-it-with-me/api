@@ -19,6 +19,7 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -929,6 +930,22 @@ describe('POST invitation/preview', function () {
             ->and(array_column($preview['sections'], 'type'))->toBe(array_column($public['sections'], 'type'))
             ->and($preview['branding'])->toBe($public['branding'])
             ->and($preview['guest']['name'])->toBe('Invitada/o');
+    });
+
+    it('does not repeat the fallback template or the places queries (B6)', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent();
+        EventLocation::factory()->create(['event_id' => $event->id, 'name' => 'Salón Cristal', 'address' => '1200 NW 7th St', 'city' => 'Miami', 'state' => 'FL', 'zip_code' => '33125', 'country' => 'US', 'type' => 'reception']);
+        $sql = [];
+        DB::listen(function ($query) use (&$sql) {
+            $sql[] = $query->sql;
+        });
+
+        edPreview($this, $event, $m['owner'])->assertOk();
+
+        $repeated = collect($sql)->filter(fn ($q) => str_contains($q, '"invitation_templates"') || str_contains($q, '"event_locations"'))
+            ->countBy()->filter(fn ($n) => $n > 1);
+        expect($repeated->all())->toBe([]);
     });
 
     it('gives the sample guest a pending RSVP status and no companions', function () {

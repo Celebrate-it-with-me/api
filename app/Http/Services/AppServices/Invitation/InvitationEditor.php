@@ -777,6 +777,16 @@ class InvitationEditor
      */
     public function preview(Events $event, ?User $user, array $body): array
     {
+        // One memo scope for the whole preview: the context and the build share the fallback template and the places.
+        return $this->invitations->memoize(fn () => $this->buildPreview($event, $user, $body));
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function buildPreview(Events $event, ?User $user, array $body): array
+    {
         $copy = clone $event;
         $copy->unsetRelation('template');
         $config = $event->template_config ?? [];

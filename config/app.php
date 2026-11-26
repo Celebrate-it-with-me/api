@@ -220,4 +220,8 @@ return [
     // Global `api` limiter (per user, or per IP when anonymous). Route-specific limits live in RouteServiceProvider::ROUTE_LIMITS.
     'api_rate_limit_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 120),
 
+    // Reads (GET/HEAD) of a signed-in user count apart from the limit above: the dashboard Inicio alone fires ~14 reads
+    // per visit. Writes and anonymous requests stay on `api_rate_limit_per_minute`.
+    'api_read_rate_limit_per_minute' => (int) env('API_READ_RATE_LIMIT_PER_MINUTE', 300),
+
 ];

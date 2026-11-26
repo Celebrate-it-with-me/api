@@ -75,9 +75,15 @@ class RsvpController extends Controller
      * @param  Events  $event  The event for which to retrieve RSVP statistics.
      * @return JsonResponse The JSON response containing the RSVP statistics.
      */
-    public function getRsvpStats(Events $event): JsonResponse
+    public function getRsvpStats(Request $request, Events $event): JsonResponse
     {
         $stats = $this->rsvpService->getEventStatsWithCache($event);
+
+        // `recent` names guests: only for roles that may see the guest list. Filtered after the cache, which is
+        // shared by every role of the event, so a filtered copy never gets stored under that key.
+        if (! in_array('view_guests', $request->user()->getEventPermissions($event), true)) {
+            $stats['recent'] = [];
+        }
 
         return response()->json(['message' => 'Rsvp stats retrieved.', 'data' => $stats]);
     }

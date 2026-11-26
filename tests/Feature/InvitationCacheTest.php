@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Services\AppServices\InvitationService;
 use App\Models\EventLocation;
 use App\Models\EventPlan;
 use App\Models\Events;
@@ -150,6 +151,44 @@ describe('invalidation', function () {
 
         Timeline::create(['event_id' => $event->id, 'title' => 'Misa', 'type' => 'ceremony', 'start_time' => '2027-03-20 16:00:00']);
         expect($types())->toContain('itinerary');
+    });
+
+    it('never keeps the places or the fallback template on a long-lived service instance', function () {
+        // The controller (and Octane, a queue worker) keeps one InvitationService for many requests: its memo of
+        // places and fallback template must end with each build, or a new place or template would never show.
+        [$event, $rosa] = cachedInvitationFixture();
+        $service = app(InvitationService::class);
+        $types = fn () => collect($service->build($event->fresh(), $rosa, null, true)['sections'])->pluck('type')->all();
+        expect($types())->not->toContain('locations');
+
+        EventLocation::query()->create([
+            'event_id' => $event->id, 'name' => 'Salón Jardín', 'address' => '1200 NW 7th Street',
+            'city' => 'Miami', 'state' => 'FL', 'zip_code' => '33125', 'country' => 'US', 'is_default' => true,
+        ]);
+        expect($types())->toContain('locations');
+
+        $fallback = $service->templateFor($event->fresh());
+        $fallback->update(['is_active' => false]);
+        expect($service->templateFor($event->fresh())->id)->not->toBe($fallback->id);
+    });
+
+    it('reads the fallback template once inside one memo scope, and again outside it', function () {
+        [$event] = cachedInvitationFixture(event: ['template_id' => null]);
+        $service = app(InvitationService::class);
+        $templateReads = function (callable $work) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $work();
+            $count = collect(DB::getQueryLog())->pluck('query')->filter(fn ($q) => str_contains($q, '"invitation_templates"'))->count();
+            DB::disableQueryLog();
+
+            return $count;
+        };
+
+        $once = $templateReads(fn () => $service->templateFor($event));
+        expect($once)->toBeGreaterThan(0)
+            ->and($templateReads(fn () => $service->memoize(fn () => [$service->templateFor($event), $service->templateFor($event), $service->templateFor($event)])))->toBe($once)
+            ->and($templateReads(fn () => [$service->templateFor($event), $service->templateFor($event)]))->toBe(2 * $once);
     });
 
     it('follows a change of plan (watermark) and of template configuration', function () {

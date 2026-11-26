@@ -2,6 +2,7 @@
 
 use App\Http\Services\AppServices\Hydrate\EventCacheService;
 use App\Http\Services\AppServices\Hydrate\HydrationService;
+use App\Models\EventActivity;
 use App\Models\EventPlan;
 use App\Models\Events;
 use App\Models\EventType;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -40,6 +42,22 @@ describe('reference data', function () {
         ])->toBe($first);
     });
 
+    it('adds view_budget to owner and editor of an existing database, and runs twice safely', function () {
+        $this->seed(RolesAndPermissionSeeder::class);
+        // A database from before the permission existed.
+        Permission::where('name', 'view_budget')->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $migration = require database_path('migrations/2027_07_14_000001_add_view_budget_permission.php');
+        $migration->up();
+        $migration->up();
+
+        expect(Role::findByName('owner')->hasPermissionTo('view_budget'))->toBeTrue()
+            ->and(Role::findByName('editor')->hasPermissionTo('view_budget'))->toBeTrue()
+            ->and(Role::findByName('viewer')->permissions->pluck('name')->all())->not->toContain('view_budget')
+            ->and(Permission::where('name', 'view_budget')->count())->toBe(1);
+    });
+
     it('creates the global and event roles', function () {
         $this->seed(RolesAndPermissionSeeder::class);
 
@@ -57,7 +75,8 @@ describe('reference data', function () {
             ->and($editor->all())->toContain('edit_event', 'create_guest')
             ->and($editor->all())->not->toContain('delete_event', 'manage_collaborators')
             ->and($viewer->all())->toContain('view_event')
-            ->and($viewer->all())->not->toContain('edit_event', 'create_guest')
+            ->and($viewer->all())->not->toContain('edit_event', 'create_guest', 'view_budget')
+            ->and($editor->all())->toContain('view_budget')
             // Event roles must never grant the admin-panel permission.
             ->and($owner->all())->not->toContain('manage')
             ->and($editor->all())->not->toContain('manage')
@@ -128,6 +147,21 @@ describe('demo data', function () {
 
         expect(Events::count())->toBe(3)
             ->and(User::whereIn('email', ['marisol@cwm.test', 'carlos@cwm.test', 'lucia@cwm.test', 'daniel@cwm.test'])->count())->toBe(4);
+    });
+
+    it('gives Valentina a recent activity the dashboard can put into words', function () {
+        $xv = Events::where('custom_url_slug', 'xv-de-valentina')->first();
+        $owner = User::where('email', 'marisol@cwm.test')->first();
+
+        $feed = $this->actingAs($owner)->getJson("/api/v1/app/event/{$xv->id}/dashboard-logs")->assertOk()->json('data');
+
+        expect($feed)->toHaveCount(5)
+            ->and(collect($feed)->pluck('type')->all())->toBe(['invitation_opened', 'guest_confirmed', 'guest_confirmed', 'guest_declined', 'guests_imported'])
+            ->and($feed[0]['params']['name'])->toBe('Fernando Vidal')
+            ->and($feed[1]['params'])->toMatchArray(['name' => 'Rosa Fernández', 'companions' => 1])
+            ->and($feed[2]['params'])->toMatchArray(['name' => 'Héctor Fernández', 'companions' => 2])
+            ->and($feed[4]['params'])->toMatchArray(['actor' => $owner->name, 'count' => 24]);
+        expect(EventActivity::where('event_id', '!=', $xv->id)->count())->toBe(0);
     });
 
     it('does not repeat guest codes inside an event', function () {

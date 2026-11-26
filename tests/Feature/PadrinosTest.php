@@ -142,7 +142,8 @@ describe('padrinos', function () {
         $id = $this->actingAs($u['owner'])->postJson("$api/padrinos", padrinoData())->json('data.id');
         $foreign = $this->actingAs($u2['owner'])->postJson("$api2/padrinos", padrinoData(['name' => 'Ajeno']))->json('data.id');
 
-        $this->actingAs($u['viewer'])->getJson("$api/padrinos")->assertOk();
+        // What padrinos committed and paid is money: the viewer does not see it (view_budget).
+        $this->actingAs($u['viewer'])->getJson("$api/padrinos")->assertForbidden()->assertJsonPath('code', 'forbidden');
         $this->actingAs($u['viewer'])->postJson("$api/padrinos", padrinoData())->assertForbidden();
         $this->actingAs($u['viewer'])->deleteJson("$api/padrinos/$id")->assertForbidden();
         $this->actingAs($u['stranger'])->getJson("$api/padrinos")->assertNotFound();

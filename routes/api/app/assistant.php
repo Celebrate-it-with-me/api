@@ -10,7 +10,7 @@ use App\Http\Controllers\AppControllers\Assistant\AssistantController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refresh.token', 'event.access'])
-    ->prefix('event/{event}/assistant')->name('assistant.')->group(function () {
+    ->prefix('event/{event}/assistant')->whereNumber('event')->name('assistant.')->group(function () {
         Route::middleware('throttle:assistant-read')->group(function () {
             Route::get('next', [AssistantController::class, 'next'])->name('next');
             Route::get('plan', [AssistantController::class, 'plan'])->name('plan');

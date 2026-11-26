@@ -11,9 +11,11 @@ use App\Http\Services\Budget\BudgetService;
 use App\Models\BudgetCategory;
 use App\Models\BudgetItem;
 use App\Models\BudgetPayment;
+use App\Models\EventBudget;
 use App\Models\Events;
 use App\Support\CsvCells;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -25,11 +27,11 @@ class BudgetController extends Controller
 {
     public function __construct(private readonly BudgetService $budgets) {}
 
-    public function show(Events $event): JsonResponse
+    public function show(Request $request, Events $event): JsonResponse
     {
-        $budget = $this->budgets->budgetFor($event);
+        $budget = $this->readable($request, $event);
 
-        return response()->json(['data' => $this->budgets->summary($event, $budget)]);
+        return response()->json(['data' => $budget ? $this->budgets->summary($event, $budget) : $this->budgets->draftSummary($event)]);
     }
 
     public function update(UpdateBudgetRequest $request, Events $event): JsonResponse
@@ -76,11 +78,11 @@ class BudgetController extends Controller
 
     // ── Items ────────────────────────────────────────────────
 
-    public function items(Events $event): JsonResponse
+    public function items(Request $request, Events $event): JsonResponse
     {
-        $budget = $this->budgets->budgetFor($event);
+        $budget = $this->readable($request, $event);
 
-        return response()->json(['data' => $this->budgets->items($budget)->map(fn (BudgetItem $i) => $this->budgets->row($i))->values()]);
+        return response()->json(['data' => $budget ? $this->budgets->items($budget)->map(fn (BudgetItem $i) => $this->budgets->row($i))->values() : []]);
     }
 
     public function storeItem(BudgetItemRequest $request, Events $event): JsonResponse
@@ -135,9 +137,9 @@ class BudgetController extends Controller
     // ── Export ───────────────────────────────────────────────
 
     /** The budget as a CSV file (opens in Excel and Google Sheets). */
-    public function export(Events $event): StreamedResponse|Response
+    public function export(Request $request, Events $event): StreamedResponse|Response
     {
-        $budget = $this->budgets->budgetFor($event);
+        $budget = $this->readable($request, $event);
         $rows = $this->budgets->exportRows($event, $budget);
 
         return response()->streamDownload(function () use ($rows) {
@@ -148,6 +150,18 @@ class BudgetController extends Controller
             }
             fclose($out);
         }, ($event->custom_url_slug ?: 'budget') . '-budget.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * The budget for a read. Owners and editors create it on first read (with its starting categories); a member
+     * who cannot edit (viewer) never writes on a GET, so before anyone with edit rights opens it they get null and
+     * the screens answer with the empty shape.
+     */
+    private function readable(Request $request, Events $event): ?EventBudget
+    {
+        return in_array('edit_event', $request->user()->getEventPermissions($event), true)
+            ? $this->budgets->budgetFor($event)
+            : $this->budgets->existingFor($event);
     }
 
     private function own(bool $belongs): void

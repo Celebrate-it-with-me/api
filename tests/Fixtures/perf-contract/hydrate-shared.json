@@ -622,6 +622,7 @@
         "manage_playlist",
         "manage_rsvp",
         "upload_photo",
+        "view_budget",
         "view_event",
         "view_event_comments",
         "view_event_locations",

@@ -1,6 +1,8 @@
 <?php
 
 use App\Console\Commands\SendBudgetItemReminders;
+use App\Http\Services\Budget\BudgetCatalog;
+use App\Http\Services\Budget\BudgetService;
 use App\Models\BudgetCategory;
 use App\Models\BudgetItem;
 use App\Models\EventBudget;
@@ -12,6 +14,7 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -26,7 +29,7 @@ function budgetEvent(string $type = 'quinceanera', array $extra = []): array
         'currency' => 'USD',
     ], $extra));
     $users = [];
-    foreach (['owner', 'viewer'] as $role) {
+    foreach (['owner', 'editor', 'viewer'] as $role) {
         $users[$role] = User::factory()->create();
         EventUserRole::create(['event_id' => $event->id, 'user_id' => $users[$role]->id, 'role_id' => Role::where('name', $role)->value('id')]);
     }
@@ -175,8 +178,10 @@ describe('access', function () {
         [, $u, $url] = budgetEvent();
         $item = addItem($this, $u['owner'], $url);
 
-        $this->actingAs($u['viewer'])->getJson($url)->assertOk();
-        $this->actingAs($u['viewer'])->getJson("$url/items")->assertOk();
+        // The viewer never sees money (view_budget, owner's decision 2026-11-26): not even to read.
+        $this->actingAs($u['viewer'])->getJson($url)->assertForbidden()->assertJsonPath('code', 'forbidden');
+        $this->actingAs($u['viewer'])->getJson("$url/items")->assertForbidden();
+        $this->actingAs($u['viewer'])->get("$url/export")->assertForbidden();
         $this->actingAs($u['viewer'])->putJson($url, ['cap' => 1])->assertForbidden();
         $this->actingAs($u['viewer'])->postJson("$url/items", ['title' => 'X', 'estimatedCost' => 1])->assertForbidden();
         $this->actingAs($u['viewer'])->postJson("$url/items/{$item['id']}/payments", ['amount' => 1, 'paidOn' => '2027-01-01'])->assertForbidden();
@@ -243,5 +248,90 @@ describe('export and reminders', function () {
         $this->artisan('budget-item:reminders', ['--dry-run' => true])
             ->expectsOutputToContain('"Abierto"')->doesntExpectOutputToContain('"Cerrado"')->assertSuccessful();
         expect(SendBudgetItemReminders::THRESHOLD_DAYS)->toContain(3);
+    });
+});
+
+describe('who sees the money', function () {
+    it('lets owner and editor read and change the budget, and keeps the viewer out of every read', function () {
+        [, $u, $url] = budgetEvent();
+        $item = addItem($this, $u['owner'], $url);
+
+        foreach (['owner', 'editor'] as $role) {
+            $this->actingAs($u[$role])->getJson($url)->assertOk();
+            $this->actingAs($u[$role])->getJson("$url/items")->assertOk()->assertJsonCount(1, 'data');
+            $this->actingAs($u[$role])->get("$url/export")->assertOk();
+            $this->actingAs($u[$role])->putJson($url, ['cap' => 5000])->assertOk();
+        }
+
+        $this->actingAs($u['viewer'])->getJson($url)->assertForbidden();
+        $this->actingAs($u['viewer'])->getJson("$url/items")->assertForbidden();
+        $this->actingAs($u['viewer'])->get("$url/export")->assertForbidden();
+        $this->actingAs($u['viewer'])->deleteJson("$url/items/{$item['id']}")->assertForbidden();
+    });
+
+    it('never creates the budget when a viewer asks for it', function () {
+        [, $u, $url] = budgetEvent();
+
+        $this->actingAs($u['viewer'])->getJson($url)->assertForbidden();
+
+        expect(EventBudget::count())->toBe(0)->and(BudgetCategory::count())->toBe(0);
+    });
+});
+
+describe('first load (B2)', function () {
+    it('gives a read-only role with view_budget the empty shape without writing anything', function () {
+        [$event, $u, $url] = budgetEvent();
+        // No such role today (the viewer has no view_budget): grant it to stand for a read-only role that may see money.
+        Role::findByName('viewer', 'web')->givePermissionTo('view_budget');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $draft = $this->actingAs($u['viewer'])->getJson($url)->assertOk()->json('data');
+        $this->actingAs($u['viewer'])->getJson("$url/items")->assertOk()->assertExactJson(['data' => []]);
+        $csv = $this->actingAs($u['viewer'])->get("$url/export")->assertOk()->streamedContent();
+
+        expect(EventBudget::count())->toBe(0)->and(BudgetCategory::count())->toBe(0)
+            ->and($draft['id'])->toBeNull()
+            ->and(collect($draft['categories'])->pluck('id')->filter()->all())->toBe([])
+            ->and(substr_count(trim($csv), "\n"))->toBe(0);
+
+        // Same shape and values as the real budget once the owner opens it, except for the ids.
+        $real = $this->actingAs($u['owner'])->getJson($url)->assertOk()->json('data');
+        $strip = fn (array $d) => array_merge($d, ['id' => null, 'categories' => collect($d['categories'])->map(fn ($c) => array_merge($c, ['id' => null]))->all()]);
+        expect($strip($real))->toBe($draft);
+
+        // From then on the viewer reads the real one.
+        expect($this->actingAs($u['viewer'])->getJson($url)->json('data.id'))->toBe($real['id']);
+    });
+
+    it('creates the budget once even when two first loads race', function () {
+        [$event] = budgetEvent();
+        $first = app(BudgetService::class)->budgetFor($event);
+
+        // A request that checked before the other one committed: it does not see the budget and tries to insert.
+        $late = new class(app(BudgetCatalog::class)) extends BudgetService
+        {
+            public function existingFor(Events $event): ?EventBudget
+            {
+                return null;
+            }
+        };
+
+        $second = $late->budgetFor($event);
+
+        expect($second->id)->toBe($first->id)
+            ->and(EventBudget::count())->toBe(1)
+            ->and(BudgetCategory::count())->toBe(count(app(BudgetCatalog::class)->entries('quinceanera', 'es')));
+    });
+
+    it('never leaves a budget without its categories when creating them fails', function () {
+        [$event, $u, $url] = budgetEvent();
+        BudgetCategory::creating(fn () => throw new RuntimeException('boom'));
+
+        expect(fn () => app(BudgetService::class)->budgetFor($event))->toThrow(RuntimeException::class);
+        expect(EventBudget::count())->toBe(0);
+
+        BudgetCategory::flushEventListeners();
+        $this->actingAs($u['owner'])->getJson($url)->assertOk();
+        expect(EventBudget::count())->toBe(1)->and(BudgetCategory::count())->toBeGreaterThan(0);
     });
 });
