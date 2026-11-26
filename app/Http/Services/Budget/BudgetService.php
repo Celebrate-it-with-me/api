@@ -111,7 +111,9 @@ class BudgetService
             'estimated' => round($items->sum(fn (BudgetItem $i) => (float) $i->estimated_cost), 2),
             'owed' => $owed,
             'paid' => $paid,
-            'remaining' => round(max(0, $owed - $paid), 2),
+            // Sum of each item's own balance (never below zero), so an overpaid item does not offset what is
+            // still due elsewhere and the total always equals the categories plus the uncategorized ones.
+            'remaining' => round($items->sum(fn (BudgetItem $i) => $i->remaining()), 2),
         ];
     }
 
