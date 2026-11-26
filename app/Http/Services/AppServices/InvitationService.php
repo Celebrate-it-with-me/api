@@ -53,20 +53,23 @@ class InvitationService
     private const MUSIC_TITLE_MAX = 60;
 
     /**
-     * The free template each kind of event falls back to, looked up once per instance (one request): one invitation
-     * asks for it several times (version, version id, editable fields). Keyed by event type id ('' for none).
+     * The free template each kind of event falls back to, looked up once per memo scope (see `memoize`): one
+     * invitation asks for it several times (version, version id, editable fields). Keyed by event type id ('' for none).
      *
      * @var array<string, InvitationTemplate>
      */
     private array $fallbackTemplates = [];
 
     /**
-     * The places of each event, read once per instance (one request): one invitation reads them for the calendar
+     * The places of each event, read once per memo scope (see `memoize`): one invitation reads them for the calendar
      * link, the calendar data and the place line. Keyed by event id.
      *
      * @var array<int, Collection<int, EventLocation>>
      */
     private array $places = [];
+
+    /** How many `memoize` scopes are open; the memos above are only read or filled while this is above zero. */
+    private int $memoDepth = 0;
 
     /** The catalog module that owns each public section; a section whose module is not active for the event is left out. */
     private const SECTION_MODULES = [
@@ -109,6 +112,37 @@ class InvitationService
      *                         because looking is allowed (applying is what the plan blocks)
      */
     public function build(Events $event, Guest $guest, ?string $lang = null, bool $preview = false): array
+    {
+        return $this->memoize(fn () => $this->buildPayload($event, $guest, $lang, $preview));
+    }
+
+    /**
+     * Runs $work with the fallback template and the event places read at most once, and forgets them when the
+     * outermost scope ends. The memo must never outlive one unit of work: this service is injected into controllers
+     * that the framework keeps (and under Octane or a queue worker, for many requests), so a memo kept on the
+     * instance would serve places or a template that were changed since (InvitationCacheTest "shows a new location").
+     * Outside a scope nothing is memoized: every call reads the database.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    public function memoize(callable $work): mixed
+    {
+        $this->memoDepth++;
+        try {
+            return $work();
+        } finally {
+            if (--$this->memoDepth === 0) {
+                $this->fallbackTemplates = [];
+                $this->places = [];
+            }
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function buildPayload(Events $event, Guest $guest, ?string $lang, bool $preview): array
     {
         $locale = $this->resolveLocale($lang, $guest, $event);
 
@@ -372,6 +406,10 @@ class InvitationService
         if ($own && $own->is_active && app(TemplateCatalog::class)->allows($own, $event)
             && ($ignorePlan || $this->planAllows($own, $event))) {
             return $own;
+        }
+
+        if ($this->memoDepth === 0) {
+            return $this->fallbackTemplate($event);
         }
 
         return $this->fallbackTemplates[(string) $event->event_type_id] ??= $this->fallbackTemplate($event);
@@ -908,14 +946,16 @@ class InvitationService
         ])->all()];
     }
 
-    /** The event's places with their pictures, oldest first; read once per instance (see `$places`). */
+    /** The event's places with their pictures, oldest first; read once per memo scope (see `memoize`). */
     private function placesOf(Events $event): Collection
     {
-        return $this->places[$event->id] ??= EventLocation::query()
+        $read = fn () => EventLocation::query()
             ->with('eventLocationImages')
             ->where('event_id', $event->id)
             ->orderBy('id')
             ->get();
+
+        return $this->memoDepth === 0 ? $read() : ($this->places[$event->id] ??= $read());
     }
 
     /** @return array<string, mixed>|null */
