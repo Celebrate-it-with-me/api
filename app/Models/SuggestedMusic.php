@@ -116,7 +116,10 @@ class SuggestedMusic extends Model
         return $query->withCount([
             'musicVotes as upvotes' => fn ($q) => $q->where('vote_type', 'up'),
             'musicVotes as downvotes' => fn ($q) => $q->where('vote_type', 'down'),
-        ])->orderByRaw('(upvotes - downvotes) DESC');
+        ])->orderByRaw(
+            "(select count(*) from suggested_music_votes v where v.suggested_music_id = suggested_music.id and v.vote_type = 'up')"
+            . " - (select count(*) from suggested_music_votes v where v.suggested_music_id = suggested_music.id and v.vote_type = 'down') DESC"
+        )->orderBy('created_at', 'DESC');
     }
 
     /**
