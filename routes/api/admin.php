@@ -25,7 +25,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::prefix('payments')->group(function () {
         Route::get('', [AdminPaymentController::class, 'index'])->middleware('admin.can:admin.purchases.manage');
-        Route::post('events/{event}/manual', [AdminPaymentController::class, 'manual'])->middleware(['admin.can:admin.purchases.manage', 'admin.reauth']);
+        Route::post('events/{event}/manual', [AdminPaymentController::class, 'manual'])->whereNumber('event')->middleware(['admin.can:admin.purchases.manage', 'admin.reauth']);
         Route::post('{purchase}/refund', [AdminPaymentController::class, 'refund'])->middleware(['admin.can:admin.refunds', 'admin.reauth']);
         Route::post('{purchase}/sync', [AdminPaymentController::class, 'sync'])->middleware(['admin.can:admin.purchases.manage', 'admin.reauth']);
         Route::post('{purchase}/resolve-review', [AdminPaymentController::class, 'resolveReview'])->middleware(['admin.can:admin.purchases.manage', 'admin.reauth']);
