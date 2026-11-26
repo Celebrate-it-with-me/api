@@ -96,7 +96,8 @@ class InvitationEditor
                     'slug' => $t->slug,
                     'name' => $t->name,
                     'nameI18n' => $manifest['name'] ?? ['es' => $t->name, 'en' => $t->name],
-                    'description' => $manifest['description'] ?? ['es' => null, 'en' => null],
+                    'description' => $manifest['description'] ?? $this->columnDescription($t),
+                    'tags' => $this->columnTags($t),
                     'tier' => $t->tier,
                     'locked' => $t->tier === InvitationTemplate::TIER_PREMIUM && ! $unlocked,
                     'current' => $t->id === $current,
@@ -175,7 +176,7 @@ class InvitationEditor
      *
      * @return array<string, mixed> `data` of `GET invitation` plus `undo`
      */
-    public function applyTemplate(Events $event, User $actor, string|int $templateId, bool $undo = false): array
+    public function applyTemplate(Events $event, User $actor, string|int $templateId, bool $undo = false, bool $withPreset = false, ?string $preset = null): array
     {
         $this->assertWritable($event);
         $target = InvitationTemplate::query()->with('currentVersion.package')->find($this->id($templateId));
@@ -192,23 +193,41 @@ class InvitationEditor
 
         $fromId = $event->template_id ?? $this->invitations->templateFor($event)->id;
         $changed = false;
+        $paletteOnly = false;
+        $presetFragment = $withPreset ? $this->presetFragment($event, $target, $preset) : null;
+        $previousPreset = null;
 
-        DB::transaction(function () use ($event, $target, &$fromId, &$changed) {
+        DB::transaction(function () use ($event, $target, $presetFragment, &$fromId, &$changed, &$previousPreset, &$paletteOnly) {
             $row = Events::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
             if ($this->isLocked($row)) {
                 throw InvitationError::conflict('template_locked', 'Tu invitación ya está publicada. Para cambiar de plantilla escríbenos y conservamos tus enlaces.');
             }
             $fromId = $row->template_id ?? $this->invitations->templateFor($row)->id;
-            if ($fromId === $target->id && $row->template_id === $target->id) {
+            $same = $fromId === $target->id && $row->template_id === $target->id;
+            if ($same && $presetFragment === null) {
                 return;
             }
-            [$config, $stash] = $this->swap($row, $target, $fromId);
+            $previousPreset = $row->template_config['theme']['preset'] ?? null;
+            if ($same) {
+                $config = (array) ($row->template_config ?? []);
+                $stash = (array) ($row->template_config_stash ?? []);
+            } else {
+                [$config, $stash] = $this->swap($row, $target, $fromId);
+            }
+            $before = $config;
+            if ($presetFragment !== null) {
+                $config = $this->binding->merge($config, $presetFragment);
+            }
+            if ($same && $config == $before) {
+                return;
+            }
             $row->template_id = $target->id;
-            $row->template_version_id = null;
+            $row->template_version_id = $same ? $row->template_version_id : null;
             $row->template_config = $config === [] ? null : $config;
             $row->template_config_stash = $stash === [] ? null : $stash;
             $row->save();
             $changed = true;
+            $paletteOnly = $same;
         });
 
         $event->refresh()->unsetRelation('template');
@@ -216,7 +235,41 @@ class InvitationEditor
             EventActivityLogger::log($event->id, $undo ? 'invitation_template_undone' : 'invitation_template_changed', $actor, $event, ['from' => $fromId, 'to' => $target->id, 'template' => $target->name]);
         }
 
-        return $this->state($event, $actor) + ['undo' => $changed ? ['until' => now()->addMinutes(self::UNDO_MINUTES)->toIso8601String(), 'templateId' => $fromId] : null];
+        $undoPayload = null;
+        if ($changed) {
+            $undoPayload = ['until' => now()->addMinutes(self::UNDO_MINUTES)->toIso8601String(), 'templateId' => $fromId];
+            // Only the palette changed: the template does not move, so the old palette itself is what undo sends back.
+            if ($paletteOnly) {
+                $undoPayload['preset'] = $previousPreset;
+            }
+        }
+
+        return $this->state($event, $actor) + ['undo' => $undoPayload];
+    }
+
+    /**
+     * The config fragment that sets (or, with null, clears) the palette of the target template, validated against
+     * what that template offers. Throws `preset: invalid_choice` for a palette it does not have.
+     *
+     * @return array<string, mixed>
+     */
+    private function presetFragment(Events $event, InvitationTemplate $target, ?string $preset): array
+    {
+        $fields = $this->invitations->editableFields($target->currentVersion?->package_id);
+        $field = collect($fields)->first(fn ($f) => ($f['bind']['theme'] ?? null) === 'preset');
+        if ($field === null) {
+            throw ValidationException::withMessages(['preset' => ['invalid_choice']]);
+        }
+        $fragment = $this->binding->fragment($field, $preset);
+        if ($preset !== null) {
+            try {
+                $this->validator->validate($this->binding->withoutNulls($fragment), new TemplatePackage(['editable' => ['fields' => $fields]]), $this->purchases->isUnlocked($event), $event->id);
+            } catch (ValidationException) {
+                throw ValidationException::withMessages(['preset' => ['invalid_choice']]);
+            }
+        }
+
+        return $fragment;
     }
 
     /**
@@ -864,8 +917,34 @@ class InvitationEditor
             $colors = (array) ($tokens[$choice['value']]['colors'] ?? []);
             $swatch = array_values(array_filter([$colors['surface'] ?? null, $colors['accent'] ?? null, $colors['primary'] ?? null]));
 
-            return ['value' => $choice['value'], 'label' => $choice['label'] ?? ['es' => $choice['value'], 'en' => $choice['value']]] + ($swatch === [] ? [] : ['colors' => $swatch]);
+            $label = $choice['label'] ?? ['es' => $choice['value'], 'en' => $choice['value']];
+
+            return [
+                'value' => $choice['value'],
+                'key' => $choice['value'],
+                'name' => is_string($label['es'] ?? null) ? $label['es'] : $choice['value'],
+                'label' => $label,
+                'palette' => ['background' => $colors['surface'] ?? null, 'text' => $colors['ink'] ?? null, 'accent' => $colors['accent'] ?? null],
+            ] + ($swatch === [] ? [] : ['colors' => $swatch]);
         })->values()->all();
+    }
+
+    /** @return array{es: ?string, en: ?string} the description kept in the row (plain text only), empty when there is none */
+    private function columnDescription(InvitationTemplate $t): array
+    {
+        $d = (array) $t->description;
+        $clean = fn ($v) => is_string($v) && $v !== '' ? strip_tags($v) : null;
+
+        return ['es' => $clean($d['es'] ?? null), 'en' => $clean($d['en'] ?? null)];
+    }
+
+    /** @return list<string> the style tags of the row, plain text only */
+    private function columnTags(InvitationTemplate $t): array
+    {
+        return array_values(array_filter(
+            array_map(fn ($tag) => is_string($tag) ? trim(strip_tags($tag)) : '', (array) $t->tags),
+            fn (string $tag) => $tag !== '',
+        ));
     }
 
     private function livePackage(?TemplatePackage $package): ?TemplatePackage

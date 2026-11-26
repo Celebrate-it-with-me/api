@@ -238,7 +238,7 @@ describe('GET invitation/templates and impact', function () {
         $list = $this->actingAs($m['owner'])->getJson(edUrl($event, 'templates'))->assertOk()->json('data');
 
         expect($list[0])->toMatchArray(['slug' => 'festival-quinceanera', 'current' => true, 'locked' => false, 'tier' => 'free', 'hasPresets' => true])
-            ->and($list[0]['presets'][1])->toBe(['value' => 'oliva', 'label' => ['es' => 'Oliva', 'en' => 'Olive'], 'colors' => ['#fbf8f1', '#8c8658', '#6b705c']])
+            ->and($list[0]['presets'][1])->toEqual(['value' => 'oliva', 'key' => 'oliva', 'name' => 'Oliva', 'label' => ['es' => 'Oliva', 'en' => 'Olive'], 'colors' => ['#fbf8f1', '#8c8658', '#6b705c'], 'palette' => ['background' => '#fbf8f1', 'text' => '#34382c', 'accent' => '#8c8658']])
             ->and($list[0]['nameI18n'])->toBe(['es' => 'Fiesta festival', 'en' => 'Feast festival'])
             ->and(collect($list)->firstWhere('slug', 'galeria-quinceanera'))->toMatchArray(['locked' => true, 'current' => false, 'tier' => 'premium'])
             ->and(collect($list)->pluck('slug')->all())->not->toContain('festival-wedding');
@@ -1459,5 +1459,187 @@ describe('image zones', function () {
         $left = Storage::disk('event-media')->allFiles();
         expect($left)->not->toBe([])
             ->and(collect($left)->every(fn ($f) => str_contains($f, "images/event/{$other->id}/")))->toBeTrue();
+    });
+});
+
+describe('template picker: tags, description and palettes', function () {
+    it('reads tags and description from the row, the manifest description wins, HTML never leaves', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $classicId = InvitationTemplate::where('slug', '!=', 'festival-quinceanera')->where('event_type_id', $event->event_type_id)->value('id');
+        InvitationTemplate::whereKey($classicId)->update([
+            'tags' => json_encode(['elegante', '<b>floral</b>', '', 5]),
+            'description' => json_encode(['es' => 'Clásica <script>x</script>', 'en' => null]),
+        ]);
+        InvitationTemplate::whereKey(edTemplateId('festival'))->update(['description' => json_encode(['es' => 'de la fila', 'en' => 'row'])]);
+
+        $list = collect($this->actingAs($m['owner'])->getJson(edUrl($event, 'templates'))->assertOk()->json('data'));
+
+        $classic = $list->firstWhere('id', $classicId);
+        expect($classic['tags'])->toBe(['elegante', 'floral'])
+            ->and($classic['description'])->toBe(['es' => 'Clásica x', 'en' => null])
+            ->and($classic['presets'])->toBe([])
+            ->and($list->firstWhere('slug', 'festival-quinceanera')['description']['es'])->not->toBe('de la fila');
+    });
+
+    it('lists the presets with key, name and palette next to the old fields', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+
+        $presets = $this->actingAs($m['owner'])->getJson(edUrl($event, 'templates'))->json('data.0.presets');
+
+        expect($presets)->toHaveCount(3)
+            ->and($presets[2])->toMatchArray(['value' => 'rosa', 'key' => 'rosa', 'name' => 'Rosa'])
+            ->and($presets[2]['palette'])->toBe(['background' => '#fbf8f1', 'text' => '#34382c', 'accent' => '#8c8658'])
+            ->and($presets[2]['colors'])->toBe(['#fbf8f1', '#8c8658', '#b5838d']);
+    });
+});
+
+describe('PUT invitation/template with preset', function () {
+    function tpPut($test, Events $event, User $user, array $body)
+    {
+        return $test->actingAs($user)->putJson(edUrl($event, 'template'), $body);
+    }
+
+    function tpPreset($test, Events $event, User $user): ?string
+    {
+        $fields = $test->actingAs($user)->getJson(edUrl($event))->assertOk()->json('data.fields');
+
+        return collect($fields)->firstWhere('id', 'look_preset')['value'] ?? null;
+    }
+
+    it('chooses template and palette in one save, and GET invitation shows the palette', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('galeria', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+
+        $res = tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('galeria'), 'preset' => 'oliva'])->assertOk();
+
+        expect($event->fresh()->template_id)->toBe(edTemplateId('galeria'))
+            ->and($event->fresh()->template_config['theme']['preset'])->toBe('oliva')
+            ->and($res->json('data.undo.templateId'))->toBe(edTemplateId('festival'))
+            ->and(tpPreset($this, $event, $m['owner']))->toBe('oliva');
+    });
+
+    it('undoes a template change that carried a palette, restoring the old palette', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('galeria', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        edPatch($this, $event, $m['owner'], ['look_preset' => 'rosa'])->assertOk();
+
+        $res = tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('galeria'), 'preset' => 'oliva'])->assertOk();
+        tpPut($this, $event, $m['owner'], ['template_id' => $res->json('data.undo.templateId'), 'undo' => true])->assertOk();
+
+        expect($event->fresh()->template_id)->toBe(edTemplateId('festival'))
+            ->and(tpPreset($this, $event, $m['owner']))->toBe('rosa');
+    });
+
+    it('saves only the palette when the template sent is the current one, and undo brings the old palette back', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        edPatch($this, $event, $m['owner'], ['look_preset' => 'rosa', 'ornaments' => false])->assertOk();
+
+        $res = tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => 'oliva'])->assertOk();
+
+        expect(tpPreset($this, $event, $m['owner']))->toBe('oliva')
+            ->and($event->fresh()->template_config['package']['options'])->toBe(['ornaments' => false])
+            ->and($res->json('data.undo.templateId'))->toBe(edTemplateId('festival'))
+            ->and($res->json('data.undo.preset'))->toBe('rosa');
+
+        tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => $res->json('data.undo.preset'), 'undo' => true])->assertOk();
+        expect(tpPreset($this, $event, $m['owner']))->toBe('rosa');
+        expect(EventActivity::where('event_id', $event->id)->where('type', 'invitation_template_undone')->count())->toBe(1);
+    });
+
+    it('undo of a palette that was the template default clears the override (preset null)', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+
+        $res = tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => 'rosa'])->assertOk();
+        expect($res->json('data.undo'))->toHaveKey('preset')->and($res->json('data.undo.preset'))->toBeNull();
+
+        tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => null, 'undo' => true])->assertOk();
+        expect($event->fresh()->template_config)->toBeNull();
+    });
+
+    it('does nothing and offers no undo when the palette is already the saved one', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        edPatch($this, $event, $m['owner'], ['look_preset' => 'rosa'])->assertOk();
+
+        $res = tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => 'rosa'])->assertOk();
+
+        expect($res->json('data.undo'))->toBeNull()
+            ->and(EventActivity::where('event_id', $event->id)->where('type', 'invitation_template_changed')->count())->toBe(0);
+    });
+
+    it('keeps the old behaviour without preset', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        edPatch($this, $event, $m['owner'], ['look_preset' => 'rosa'])->assertOk();
+
+        $res = tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival')])->assertOk();
+
+        expect($res->json('data.undo'))->toBeNull()->and(tpPreset($this, $event, $m['owner']))->toBe('rosa');
+    });
+
+    it('refuses a palette the template does not have, or a malformed one, with 422 invalid_choice and saves nothing', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('galeria', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+
+        foreach (['nope', ['a'], str_repeat('x', 65), 5] as $bad) {
+            tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('galeria'), 'preset' => $bad])
+                ->assertStatus(422)->assertJsonPath('errors.preset.0', 'invalid_choice');
+        }
+        expect($event->fresh()->template_id)->toBe(edTemplateId('festival'));
+    });
+
+    it('refuses a palette for a template that has none (the classic)', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $classicId = InvitationTemplate::where('slug', '!=', 'festival-quinceanera')->where('event_type_id', $event->event_type_id)->value('id');
+
+        tpPut($this, $event, $m['owner'], ['template_id' => $classicId, 'preset' => 'rosa'])->assertStatus(422)->assertJsonPath('errors.preset.0', 'invalid_choice');
+    });
+
+    it('keeps the plan and role rules: viewer 403, premium template without plan 403, other event untouched', function () {
+        edInstall(edBuilder('festival', 'free'));
+        edInstall(edBuilder('galeria', 'premium'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        [$other, $om] = edEvent(['template_id' => edTemplateId('festival'), 'custom_url_slug' => 'otro']);
+
+        tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('galeria'), 'preset' => 'oliva'])->assertForbidden()->assertJsonPath('code', 'plan_required');
+        tpPut($this, $other, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => 'oliva'])->assertNotFound();
+        expect($event->fresh()->template_config)->toBeNull()->and($other->fresh()->template_config)->toBeNull();
+        if (isset($m['viewer'])) {
+            tpPut($this, $event, $m['viewer'], ['template_id' => edTemplateId('festival'), 'preset' => 'oliva'])->assertForbidden();
+        }
+    });
+
+    it('does not save a palette once the invitation is published', function () {
+        edInstall(edBuilder('festival', 'free'));
+        [$event, $m] = edEvent(['template_id' => edTemplateId('festival')]);
+        $event->forceFill(['template_version_id' => InvitationTemplate::find(edTemplateId('festival'))->current_version_id, 'invitation_stage' => Events::STAGE_INVITATION])->save();
+
+        tpPut($this, $event, $m['owner'], ['template_id' => edTemplateId('festival'), 'preset' => 'oliva'])->assertStatus(409)->assertJsonPath('code', 'template_locked');
+    });
+});
+
+describe('invitation:template-meta', function () {
+    it('stores description and tags, and rejects HTML and long texts', function () {
+        $t = InvitationTemplate::first();
+
+        $this->artisan('invitation:template-meta', ['slug' => $t->slug, '--description-es' => 'Elegante y cálida', '--description-en' => 'Warm', '--tag' => ['elegante', 'floral']])->assertSuccessful();
+        expect($t->fresh()->description)->toBe(['es' => 'Elegante y cálida', 'en' => 'Warm'])->and($t->fresh()->tags)->toBe(['elegante', 'floral']);
+
+        $this->artisan('invitation:template-meta', ['slug' => $t->slug, '--description-es' => '<b>x</b>'])->assertFailed();
+        $this->artisan('invitation:template-meta', ['slug' => $t->slug, '--description-en' => str_repeat('a', 201)])->assertFailed();
+        $this->artisan('invitation:template-meta', ['slug' => $t->slug, '--tag' => ['Bad Tag']])->assertFailed();
+        $this->artisan('invitation:template-meta', ['slug' => 'nope'])->assertFailed();
+        expect($t->fresh()->description['es'])->toBe('Elegante y cálida');
+
+        $this->artisan('invitation:template-meta', ['slug' => $t->slug, '--clear-tags' => true])->assertSuccessful();
+        expect($t->fresh()->tags)->toBe([]);
     });
 });
