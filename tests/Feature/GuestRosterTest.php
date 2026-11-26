@@ -175,6 +175,44 @@ it('refreshes the counters after reverting a confirmation', function () {
     expect($this->actingAs($u['owner'])->getJson("$base/rsvp/stats")->json('data.pending.total'))->toBe(2);
 });
 
+it('lists the five latest answers of the main guests, newest first, without companions or pending', function () {
+    [$event, $u] = rosterEvent();
+    $base = "/api/v1/app/event/{$event->id}";
+    foreach (range(1, 6) as $i) {
+        family($event, "Familia $i", $i % 2 ? 'attending' : 'not-attending', ['attending'], ['rsvp_status_date' => now()->subDays(10 - $i)]);
+    }
+    family($event, 'Pendiente', 'pending', [], ['rsvp_status_date' => now()]);
+    family($event, 'Sin fecha', 'attending');
+    Guest::where('name', 'Sin fecha')->update(['rsvp_status_date' => null]);
+
+    $data = $this->actingAs($u['owner'])->getJson("$base/rsvp/stats")->assertOk()->json('data');
+
+    expect(array_column($data['recent'], 'name'))->toBe(['Familia 6', 'Familia 5', 'Familia 4', 'Familia 3', 'Familia 2'])
+        ->and(array_keys($data['recent'][0]))->toBe(['name', 'status', 'statusDate'])
+        ->and($data['recent'][0]['status'])->toBe('not-attending')
+        ->and($data)->toHaveKeys(['attending', 'pending', 'not_attending', 'totals', 'response_rate']);
+});
+
+it('returns an empty recent list when nobody has answered', function () {
+    [$event, $u] = rosterEvent();
+    family($event, 'Ana', 'pending');
+
+    expect($this->actingAs($u['owner'])->getJson("/api/v1/app/event/{$event->id}/rsvp/stats")->json('data.recent'))->toBe([]);
+});
+
+it('refreshes the recent answers when a family answers, is edited or is imported', function () {
+    [$event, $u] = rosterEvent();
+    $ana = family($event, 'Ana', 'pending', ['pending']);
+    $base = "/api/v1/app/event/{$event->id}";
+    $recent = fn () => array_column($this->actingAs($u['owner'])->getJson("$base/rsvp/stats")->json('data.recent'), 'name');
+
+    expect($recent())->toBe([]);
+    $this->actingAs($u['owner'])->putJson("$base/organizer/rsvp/{$ana->id}/confirm", ['guest' => ['rsvp_status' => 'attending']])->assertOk();
+    expect($recent())->toBe(['Ana']);
+    $this->actingAs($u['owner'])->postJson("$base/rsvp/guests/{$ana->id}/revert-confirmation")->assertOk();
+    expect($recent())->toBe([]);
+});
+
 it('accepts the hyphenated status when confirming companions in bulk', function () {
     [$event, $u] = rosterEvent();
     $ana = family($event, 'Ana', 'pending', ['pending']);
