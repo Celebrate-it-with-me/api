@@ -31,10 +31,12 @@ class UserSettingsController extends Controller
             // E.164: + and 7 to 15 digits, first one not zero.
             'phone' => ['nullable', 'string', 'regex:/^\+[1-9]\d{6,14}$/'],
             'avatar' => 'nullable|image|max:2048',
+            // Removes the current photo (ignored when a new `avatar` file comes in the same request).
+            'remove_avatar' => 'sometimes|boolean',
         ]);
 
         if ($this->userSettingsServices->updateProfile($request)) {
-            return response()->json(['message' => 'Profile updated successfully.']);
+            return response()->json(['message' => 'Profile updated successfully.', 'data' => ['avatar_url' => $request->user()->fresh()->avatar_url]]);
         }
 
         return response()->json(['message' => __('errors.generic.profile_update_failed')], 500);

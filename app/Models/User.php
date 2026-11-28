@@ -185,11 +185,11 @@ class User extends Authenticatable implements HasLocalePreference
      *
      * @mixin Eloquent
      */
-    public function getAvatarUrlAttribute(): string
+    public function getAvatarUrlAttribute(): ?string
     {
         return $this->avatar
             ? Storage::disk(config('filesystems.media_disk'))->url($this->avatar)
-            : '';
+            : null;
     }
 
     /** Language of the mails and notifications she receives (es/en). */
