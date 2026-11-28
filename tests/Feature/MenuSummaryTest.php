@@ -58,7 +58,7 @@ function summaryFixture(): array
     // Another event's choices must never leak in.
     $other = Events::factory()->create();
     $om = Menu::factory()->create(['event_id' => $other->id]);
-    Guest::factory()->create(['event_id' => $other->id])->selectedMenuItems()->sync([MenuItem::create(['menu_id' => $om->id, 'name' => 'X', 'type' => 'main'])->id]);
+    Guest::factory()->create(['event_id' => $other->id, 'rsvp_status' => 'attending'])->selectedMenuItems()->sync([MenuItem::create(['menu_id' => $om->id, 'name' => 'X', 'type' => 'main'])->id]);
 
     return [$event, $users, "/api/v1/app/event/{$event->id}/menus", $a, $b, $d, $guests];
 }

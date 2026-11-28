@@ -92,7 +92,7 @@ it('answers validation problems with 422 and field errors, not 500', function ()
 it('adds and removes menu items, and lists the guests with their choices', function () {
     [$event, $u, $url] = menuEvent();
     $id = $this->actingAs($u['owner'])->postJson($url, menuData())->json('id');
-    Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null]);
+    Guest::factory()->create(['event_id' => $event->id, 'parent_id' => null, 'rsvp_status' => 'attending']);
 
     $item = $this->actingAs($u['owner'])->postJson("$url/$id/menu-item", ['name' => 'Pollo', 'description' => 'Al horno', 'itemType' => 'main'])->assertCreated()->json('id');
     expect($this->actingAs($u['owner'])->getJson($url)->json('0.menu_items'))->toHaveCount(1);
