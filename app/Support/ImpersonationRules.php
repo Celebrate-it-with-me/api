@@ -135,6 +135,7 @@ final class ImpersonationRules
         'GET api/v1/app/event/{event}/location/{placeId}/images',
         'GET api/v1/app/event/{event}/menus',
         'GET api/v1/app/event/{event}/menus/guests',
+        'GET api/v1/app/event/{event}/menus/summary',
         'GET api/v1/app/event/{event}/menus/{menu}',
         'GET api/v1/app/event/{event}/onboarding',
         'GET api/v1/app/event/{event}/organizer/rsvp/{guest}/status',
