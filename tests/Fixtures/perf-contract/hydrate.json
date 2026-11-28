@@ -564,6 +564,9 @@
                 "email": "g9301@example.com",
                 "phone": null,
                 "rsvpStatus": "attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -576,6 +579,9 @@
                 "email": "g9302@example.com",
                 "phone": null,
                 "rsvpStatus": "not-attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -588,6 +594,9 @@
                 "email": "g9303@example.com",
                 "phone": null,
                 "rsvpStatus": "pending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -600,6 +609,9 @@
                 "email": "g9304@example.com",
                 "phone": null,
                 "rsvpStatus": "attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -612,6 +624,9 @@
                 "email": "g9305@example.com",
                 "phone": null,
                 "rsvpStatus": "pending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -624,6 +639,9 @@
                 "email": "g9306@example.com",
                 "phone": null,
                 "rsvpStatus": "attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -636,6 +654,9 @@
                 "email": "g9307@example.com",
                 "phone": null,
                 "rsvpStatus": "attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -648,6 +669,9 @@
                 "email": "g9308@example.com",
                 "phone": null,
                 "rsvpStatus": "pending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"
@@ -660,6 +684,9 @@
                 "email": "g9309@example.com",
                 "phone": null,
                 "rsvpStatus": "attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"

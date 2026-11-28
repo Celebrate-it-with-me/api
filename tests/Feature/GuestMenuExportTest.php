@@ -12,7 +12,7 @@ uses(RefreshDatabase::class);
 
 it('writes guest names as text, never as formulas (I-V5-6)', function () {
     $event = Events::factory()->create();
-    Guest::factory()->create(['event_id' => $event->id, 'name' => '=HYPERLINK("http://evil.test","click")', 'email' => '+cmd@x.test']);
+    Guest::factory()->create(['event_id' => $event->id, 'name' => '=HYPERLINK("http://evil.test","click")', 'email' => '+cmd@x.test', 'rsvp_status' => 'attending']);
 
     $path = tempnam(sys_get_temp_dir(), 'menu') . '.xlsx';
     file_put_contents($path, Excel::raw(new GuestMenuExport($event), ExcelWriter::XLSX));

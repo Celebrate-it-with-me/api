@@ -8,6 +8,7 @@ use App\Models\EventUserRole;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__ . '/EventAccessTest.php';
@@ -23,10 +24,17 @@ function collabApi(Events $event, string $path = ''): string
 
 function pendingInvite(Events $event, User $by, array $attrs = []): EventCollaborationInvite
 {
-    return EventCollaborationInvite::create($attrs + [
+    $invite = EventCollaborationInvite::create(Arr::except($attrs, 'sent_at') + [
         'event_id' => $event->id, 'email' => 'nueva@x.test', 'role' => 'viewer', 'token' => EventCollaborationInvite::generateToken(),
         'status' => 'pending', 'invited_by_user_id' => $by->id, 'expires_at' => now()->addDays(7),
     ]);
+
+    // `sent_at` is not mass assignable.
+    if (isset($attrs['sent_at'])) {
+        $invite->forceFill(['sent_at' => $attrs['sent_at']])->save();
+    }
+
+    return $invite;
 }
 
 it('lists members and open invitations in the screen contract', function () {
@@ -141,9 +149,42 @@ it('resends a pending or expired invitation and renews it', function () {
     $fresh = $expired->fresh();
     expect($fresh->resend_count)->toBe(1)->and($fresh->expires_at->isFuture())->toBeTrue();
     Mail::assertSent(InviteUnregisteredUserMail::class, 1);
+});
 
-    $declined = pendingInvite($event, $m['owner'], ['email' => 'no@x.test', 'status' => 'declined']);
-    $this->actingAs($m['owner'])->postJson(collabApi($event, "/invite/{$declined->id}/resend"))->assertUnprocessable();
+it('resends a declined invitation: back to pending with a new token and a new expiry', function () {
+    Mail::fake();
+    [$event, $m] = eventWithMembers();
+    $declined = pendingInvite($event, $m['owner'], ['email' => 'no@x.test', 'status' => 'declined', 'expires_at' => now()->subDay(), 'sent_at' => now()->subDays(10)]);
+    $oldToken = $declined->token;
+
+    $this->actingAs($m['editor'])->postJson(collabApi($event, "/invite/{$declined->id}/resend"))->assertForbidden();
+    $this->actingAs($m['owner'])->postJson(collabApi($event, "/invite/{$declined->id}/resend"))
+        ->assertOk()->assertJsonPath('data.status', 'pending')->assertJsonPath('data.declinedAt', null);
+
+    $fresh = $declined->fresh();
+    expect($fresh->status)->toBe('pending')->and($fresh->token)->not->toBe($oldToken)
+        ->and($fresh->resend_count)->toBe(1)->and($fresh->expires_at->isFuture())->toBeTrue()->and($fresh->sent_at->isToday())->toBeTrue();
+    $this->getJson("/api/v1/app/event/{$event->id}/collaborators/invite/{$oldToken}")->assertStatus(422);
+});
+
+it('keeps refusing to resend an accepted invitation', function () {
+    [$event, $m] = eventWithMembers();
+    $accepted = pendingInvite($event, $m['owner'], ['status' => 'accepted']);
+
+    $this->actingAs($m['owner'])->postJson(collabApi($event, "/invite/{$accepted->id}/resend"))->assertNotFound();
+});
+
+it('lists when each invitation was sent and when it was declined, in ISO 8601', function () {
+    [$event, $m] = eventWithMembers();
+    $sent = now()->subDays(3)->startOfSecond();
+    pendingInvite($event, $m['owner'], ['email' => 'p@x.test', 'sent_at' => $sent]);
+    $declined = pendingInvite($event, $m['owner'], ['email' => 'd@x.test', 'status' => 'declined', 'sent_at' => $sent]);
+    $declined->forceFill(['updated_at' => $sent->copy()->addDay()])->saveQuietly();
+
+    $rows = collect($this->actingAs($m['owner'])->getJson(collabApi($event))->assertOk()->json('data'))->where('type', 'invite')->keyBy('email');
+
+    expect($rows['p@x.test']['sentAt'])->toBe($sent->toIso8601String())->and($rows['p@x.test']['declinedAt'])->toBeNull()
+        ->and($rows['d@x.test']['sentAt'])->toBe($sent->toIso8601String())->and($rows['d@x.test']['declinedAt'])->toBe($sent->copy()->addDay()->toIso8601String());
 });
 
 it('cancels an invitation', function () {

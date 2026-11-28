@@ -560,6 +560,9 @@
                 "email": "g9312@example.com",
                 "phone": null,
                 "rsvpStatus": "not-attending",
+                "menuId": null,
+                "menuName": null,
+                "hasChosen": false,
                 "starterName": "N/A",
                 "mainName": "N/A",
                 "dessertName": "N/A"

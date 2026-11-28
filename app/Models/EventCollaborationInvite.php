@@ -28,6 +28,7 @@ class EventCollaborationInvite extends Model
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     /**

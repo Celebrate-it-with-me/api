@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -37,11 +38,22 @@ class UserSettingsServices
             $user->name = $request->input('name');
             $user->phone = $request->input('phone');
 
+            $disk = config('filesystems.media_disk');
+            $previous = $user->avatar;
+
+            // A new file wins over `remove_avatar`; without either the photo stays as it is.
             if ($request->hasFile('avatar')) {
-                $user->avatar = $request->file('avatar')->store('avatars', config('filesystems.media_disk'));
+                $user->avatar = $request->file('avatar')->store('avatars', $disk);
+            } elseif ($request->boolean('remove_avatar')) {
+                $user->avatar = null;
             }
 
             $user->save();
+
+            // The old file goes only after the row points elsewhere, so a failed save never loses the photo.
+            if ($previous && $previous !== $user->avatar && ! str_starts_with($previous, 'http')) {
+                Storage::disk($disk)->delete($previous);
+            }
 
             return true;
         } catch (Exception $ex) {

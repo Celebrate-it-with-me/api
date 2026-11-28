@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\AppResources;
 
+use App\Models\Menu;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,10 +23,19 @@ class GuestMenuConfirmationResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'rsvpStatus' => $this->rsvp_status,
+            'menuId' => $this->chosenMenu()?->id,
+            'menuName' => $this->chosenMenu()?->title,
+            'hasChosen' => $this->selectedMenuItems->isNotEmpty(),
             'starterName' => $this->getNameByMenuType('starter'),
             'mainName' => $this->getNameByMenuType('main'),
             'dessertName' => $this->getNameByMenuType('dessert'),
         ];
+    }
+
+    /** The menu of the dishes the guest chose (the one of her lowest dish id); null when she chose none. */
+    private function chosenMenu(): ?Menu
+    {
+        return $this->selectedMenuItems->sortBy('id')->first()?->menu;
     }
 
     private function getNameByMenuType(string $type): string

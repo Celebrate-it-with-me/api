@@ -243,6 +243,7 @@ return [
         'audience' => 'audience',
         'autoplay' => 'autoplay',
         'avatar' => 'photo',
+        'remove_avatar' => 'remove photo',
         'backgroundColor' => 'background color',
         'bankImages' => 'reference images',
         'bankImages.*' => 'reference image',

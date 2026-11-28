@@ -209,6 +209,7 @@ return [
         'audience' => 'audiencia',
         'autoplay' => 'reproducción automática',
         'avatar' => 'foto',
+        'remove_avatar' => 'quitar foto',
         'backgroundColor' => 'color de fondo',
         'bankImages' => 'imágenes de referencia',
         'bankImages.*' => 'imagen de referencia',
