@@ -404,6 +404,7 @@ Route::middleware(['auth:sanctum', 'not.suspended', 'impersonation.guard', 'refr
                 Route::get('', [MenuController::class, 'index'])->name('index');
                 Route::post('', [MenuController::class, 'store'])->name('store');
                 Route::get('guests', [MenuController::class, 'getGuestsMenu'])->name('guests');
+                Route::get('summary', [MenuController::class, 'summary'])->name('summary');
                 Route::get('guests/download', [ExportController::class, 'exportGuestMenuSelections'])->name('guests.export');
 
                 Route::prefix('{menu}')->group(function () {

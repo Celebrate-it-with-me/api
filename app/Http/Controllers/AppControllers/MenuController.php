@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AppControllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AppResources\GuestMenuConfirmationResource;
+use App\Http\Services\AppServices\Menu\MenuSelectionSummary;
 use App\Http\Services\Logger\EventActivityLogger;
 use App\Models\Events;
 use App\Models\Guest;
@@ -11,6 +12,7 @@ use App\Models\Menu;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 
 class MenuController extends Controller
 {
@@ -26,18 +28,35 @@ class MenuController extends Controller
     public function getGuestsMenu(Request $request, Events $event): JsonResponse|AnonymousResourceCollection
     {
         try {
+            $data = $request->validate([
+                'status' => ['sometimes', 'nullable', 'in:pending,chosen'],
+                'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
+            ]);
+
             $guests = Guest::query()
-                ->with(['selectedMenuItems'])
+                ->with(['selectedMenuItems.menu'])
                 ->where('event_id', $event->id)
-                ->paginate($request->get('per_page', 10));
+                ->when(($data['status'] ?? null) === 'pending', fn ($q) => $q->whereDoesntHave('selectedMenuItems'))
+                ->when(($data['status'] ?? null) === 'chosen', fn ($q) => $q->whereHas('selectedMenuItems'))
+                ->orderBy('name')
+                ->orderBy('id')
+                ->paginate($data['per_page'] ?? 10);
 
             // No guests yet is a normal answer: an empty page.
             return GuestMenuConfirmationResource::collection($guests);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             report($e);
 
             return response()->json(['message' => 'The guest menu selections could not be loaded.'], 500);
         }
+    }
+
+    /** Counts over all the guests of the event: who chose, per menu and per dish. */
+    public function summary(Events $event, MenuSelectionSummary $summary): JsonResponse
+    {
+        return response()->json($summary->for($event));
     }
 
     /**
