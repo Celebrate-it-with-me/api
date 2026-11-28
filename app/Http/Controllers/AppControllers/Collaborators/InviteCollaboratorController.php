@@ -130,15 +130,19 @@ class InviteCollaboratorController extends Controller
         return response()->json(['message' => 'Collaborator removed.']);
     }
 
-    /** Sends the invitation mail again and renews its 7 days. Pending and expired ones only. */
+    /**
+     * Sends the invitation mail again and renews its 7 days. Pending, expired and declined ones: a declined one goes
+     * back to pending with a new token (the link of the answer she gave stops working).
+     */
     public function resend(Events $event, int $id): JsonResponse
     {
-        $invite = $this->openInvite($event, $id, ['pending', 'expired']);
+        $invite = $this->openInvite($event, $id, ['pending', 'expired', 'declined']);
         if (! $invite) {
             return response()->json(['message' => __('errors.collaborators.resend_not_allowed')], 422);
         }
 
-        $invite->forceFill(['status' => 'pending', 'expires_at' => now()->addDays(7), 'sent_at' => now(), 'resend_count' => ($invite->resend_count ?? 0) + 1])->save();
+        $fresh = $invite->status === 'declined' ? ['token' => EventCollaborationInvite::generateToken()] : [];
+        $invite->forceFill($fresh + ['status' => 'pending', 'expires_at' => now()->addDays(7), 'sent_at' => now(), 'resend_count' => ($invite->resend_count ?? 0) + 1])->save();
 
         $registered = User::query()->whereRaw('lower(email) = ?', [strtolower($invite->email)])->exists();
         Outbox::send($invite->email, $registered ? new InviteRegisteredUserMail($invite) : new InviteUnregisteredUserMail($invite));
@@ -192,6 +196,10 @@ class InviteCollaboratorController extends Controller
             'avatar_url' => '',
             'role' => $invite->role,
             'status' => $status,
+            // ISO 8601. `sentAt`: last send or resend. `declinedAt`: only while declined (there is no column of its own:
+            // marking it declined is the last write of the row, so `updated_at` is the moment she declined).
+            'sentAt' => ($invite->sent_at ?? $invite->created_at)?->toIso8601String(),
+            'declinedAt' => $status === 'declined' ? $invite->updated_at?->toIso8601String() : null,
         ];
     }
 
