@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Exports\Roster\SafeCells;
+use App\Http\Services\AppServices\Menu\MenuSelectionSummary;
 use App\Models\Events;
 use App\Models\Guest;
 use Maatwebsite\Excel\Concerns\FromArray;
@@ -32,6 +33,7 @@ class GuestMenuListSheet implements FromArray, ShouldAutoSize, WithCustomValueBi
         $guests = Guest::query()
             ->with('selectedMenuItems')
             ->where('event_id', $this->event->id)
+            ->where('rsvp_status', '!=', MenuSelectionSummary::DECLINED)
             ->orderBy('name')
             ->get();
 

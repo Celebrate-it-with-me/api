@@ -36,6 +36,7 @@ class MenuController extends Controller
             $guests = Guest::query()
                 ->with(['selectedMenuItems.menu'])
                 ->where('event_id', $event->id)
+                ->where('rsvp_status', '!=', MenuSelectionSummary::DECLINED)
                 ->when(($data['status'] ?? null) === 'pending', fn ($q) => $q->whereDoesntHave('selectedMenuItems'))
                 ->when(($data['status'] ?? null) === 'chosen', fn ($q) => $q->whereHas('selectedMenuItems'))
                 ->orderBy('name')

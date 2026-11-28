@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * What the guests of an event chose from its menus, counted over ALL of them (never one page).
  *
+ * Declined people (`not-attending`) are not counted anywhere, even with dishes chosen before she declined.
  * The unit is the person: every row of `guests` of the event (main guests and companions) counts as one. A person has
  * "chosen" when she has at least one row in `guest_menu`. The menu a person chose is not stored on its own: it is the
  * `menu_id` of her dishes (`menu_items.menu_id`); the RSVP only accepts dishes of one menu, and if old data ever mixed
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class MenuSelectionSummary
 {
+    /** RSVP status of someone who said she does not come: she is out of every count, whatever dishes she has. */
+    public const DECLINED = 'not-attending';
+
     public const COURSES = ['starter', 'main', 'dessert'];
 
     /**
@@ -22,11 +26,12 @@ class MenuSelectionSummary
      */
     public function for(Events $event): array
     {
-        $total = DB::table('guests')->where('event_id', $event->id)->count();
+        $total = DB::table('guests')->where('event_id', $event->id)->where('rsvp_status', '!=', self::DECLINED)->count();
 
         $responded = DB::table('guest_menu')
             ->join('guests', 'guests.id', '=', 'guest_menu.guest_id')
             ->where('guests.event_id', $event->id)
+            ->where('guests.rsvp_status', '!=', self::DECLINED)
             ->distinct()
             ->count('guest_menu.guest_id');
 
@@ -47,6 +52,7 @@ class MenuSelectionSummary
             ->join('guests', 'guests.id', '=', 'guest_menu.guest_id')
             ->join('menu_items', 'menu_items.id', '=', 'guest_menu.menu_item_id')
             ->where('guests.event_id', $event->id)
+            ->where('guests.rsvp_status', '!=', self::DECLINED)
             ->groupBy('guest_menu.guest_id')
             ->selectRaw('guest_menu.guest_id, MIN(menu_items.id) as first_item');
 
@@ -72,6 +78,7 @@ class MenuSelectionSummary
             ->join('guests', 'guests.id', '=', 'guest_menu.guest_id')
             ->join('menu_items', 'menu_items.id', '=', 'guest_menu.menu_item_id')
             ->where('guests.event_id', $event->id)
+            ->where('guests.rsvp_status', '!=', self::DECLINED)
             ->groupBy('menu_items.id', 'menu_items.name', 'menu_items.type')
             ->selectRaw('menu_items.id as id, menu_items.name as name, menu_items.type as type, COUNT(*) as total')
             ->get();

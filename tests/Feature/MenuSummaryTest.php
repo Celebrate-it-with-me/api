@@ -45,11 +45,15 @@ function summaryFixture(): array
     ];
 
     $guests = Guest::factory()->count(6)->sequence(...array_map(fn ($n) => ['name' => "Guest $n"], range(1, 6)))
-        ->create(['event_id' => $event->id, 'parent_id' => null]);
+        ->create(['event_id' => $event->id, 'parent_id' => null, 'rsvp_status' => 'attending']);
     $guests[0]->selectedMenuItems()->sync([$d['a_s1']->id, $d['a_m1']->id, $d['a_d1']->id]);
     $guests[1]->selectedMenuItems()->sync([$d['a_s1']->id, $d['a_m1']->id]);
     $guests[2]->selectedMenuItems()->sync([$d['a_s2']->id]);
     $guests[3]->selectedMenuItems()->sync([$d['b_m1']->id]);
+
+    // Declined people are out of every count: one with an old dish, one without.
+    Guest::factory()->create(['event_id' => $event->id, 'name' => 'Declined A', 'rsvp_status' => 'not-attending'])->selectedMenuItems()->sync([$d['a_m1']->id]);
+    Guest::factory()->create(['event_id' => $event->id, 'name' => 'Declined B', 'rsvp_status' => 'not-attending']);
 
     // Another event's choices must never leak in.
     $other = Events::factory()->create();
@@ -133,6 +137,7 @@ it('adds a summary sheet by menu and dish after the guest list', function () {
     $book = IOFactory::load($path);
     @unlink($path);
 
+    expect(collect($book->getSheet(0)->toArray())->flatten()->implode('|'))->not->toContain('Declined');
     expect($book->getSheetNames())->toBe(['Guests', 'Summary'])
         ->and($book->getSheet(0)->getHighestRow())->toBe(7);
 
